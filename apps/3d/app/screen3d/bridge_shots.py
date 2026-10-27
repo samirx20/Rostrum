@@ -1,5 +1,6 @@
-"""The shot and the page for Bridge3D (a slot mix-in): which shot the screen shows, a new shot from the view, and the
-page (Build / Animate / Render: screen state, never the document)."""
+"""The shot and the page for Bridge3D (a slot mix-in): which shot the screen shows, a new shot from the view, Make this
+the shot and Frame the selection (the shown shot's camera moved, one undo step each), and the page (Build / Animate /
+Render: screen state, never the document)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Slot
@@ -18,8 +19,39 @@ class ShotMixin:
 
     @Slot(str, result="QVariantList")
     def shotEntries(self, view_mode):
-        """The crumb's list (shots.crumb_entries): the shots, the shown one checked, then New shot (from this view)."""
-        return shot_list.crumb_entries(self.shots, self.shot_id, view_mode, self.add.canAddShot)
+        """The crumb's list (shots.crumb_entries): the shots, the shown one checked, Frame the selection while something
+        is selected, then New shot (from this view)."""
+        return shot_list.crumb_entries(self.shots, self.shot_id, view_mode, self.add.canAddShot, bool(self._framed()))
+
+    def _framed(self) -> list[str]:
+        return shot_list.framed(self.doc, list(self.selection), self._info.get("camera", ""))
+
+    def _at(self) -> float:
+        """The playhead in seconds (where a moving camera gets its key)."""
+        return self._frame / self._info["fps"]
+
+    @Slot()
+    def takeView(self):
+        """Make this the shot: the shown shot's camera moves to the viewport's view (shot.take_view, one undo step),
+        framing what the shot frame drawn in the view holds; then the viewport looks through it."""
+        vp = self.viewport
+        if vp is None or vp.mode == "shot":
+            return
+        call = shot_list.take_view_call(self.doc, vp.cam, self.shot_id, vp.taken_fov(), self._at())
+        if self._guard(lambda: self._done(self.doc.apply([call], self.who, label="Make this the shot"), "")):
+            vp.setPreview(False)
+            vp.setMode("shot")
+
+    @Slot()
+    def frameSelection(self):
+        """Frame the selection: the shown shot's camera slides along its view line until the selection fits (shot.frame,
+        one undo step); the viewport then looks through it."""
+        items = self._framed()
+        if not items:
+            return self.fail_line("Error: frame the selection: select a shape, clay, group or light to frame first.")
+        call = shot_list.frame_call(self.shot_id, items, self._at())
+        if self._guard(lambda: self._done(self.doc.apply([call], self.who, label="Frame the selection"), ""))                 and self.viewport is not None:
+            self.viewport.setMode("shot")
 
     @Slot(str)
     def showShot(self, shot_id):

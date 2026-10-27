@@ -4,7 +4,7 @@ import RostrumKit
 // Paint on the viewport (SPEC §5; screen3d/paint_mode_qt.py, paint_stroke.py): while Paint is on, a left drag paints on
 // the mesh (each point picked by the engine; the paint lands on release, one undo step), the drag's trail is drawn
 // thin over the picture until then, and the brush shows as a disc at the pointer, its size as it lands on the surface.
-// Middle drag orbits and Shift + drag pans (they fall through to the viewport); right-click is the viewport's menu.
+// Right drag turns the view, middle drag too, Shift + drag pans (they fall through to the viewport); right-click is its menu.
 Item {
     id: ps
     visible: paintMode.on

@@ -45,6 +45,9 @@ OWN = [
     {"job": "page_animate", "keys": ["Alt+2"], "label": "Animate page", "area": "View"},
     {"job": "page_render", "keys": ["Alt+3"], "label": "Render page", "area": "View"},
     {"job": "shot_view", "keys": ["`"], "label": "Shot camera / free camera", "area": "View"},
+    # the shown shot's own camera (shots.py; the header's Make this the shot, the crumb's Frame the selection)
+    {"job": "take_view", "keys": ["Ctrl+Alt+0"], "label": "Make this the shot (its camera to this view)", "area": "View"},
+    {"job": "frame_selection", "keys": [], "label": "Frame the selection (the shot's camera)", "area": "View"},
     {"job": "look", "keys": ["Shift+F"], "label": "Look: Quick / Final", "area": "View"},
     {"job": "render", "keys": ["F12"], "label": "Render", "area": "Files"},
     {"job": "materials_list", "keys": [], "label": "Materials: the project's materials", "area": "Panels"},   # no key: the rail's ball, Ctrl+K

@@ -4,10 +4,13 @@ import RostrumKit
 // The live 3D viewport: Storm drawn inside the window (Look: Quick; LiveView.qml, or the engine's picture in offscreen
 // runs), or progressive Cycles in place with the Render button's settings (Look: Final, Shift+F; a thin line along the
 // bottom shows how far it has got) (image://view, drawn off the GUI thread at this item's size),
-// (its viewport-only settings live in the Scene panel, ScenePanel.qml). Left drag orbits, middle drag or Shift + left drag pans, the wheel
-// zooms, a click (press and release without dragging) selects what is there, a double click goes home. In the shot
-// camera, or looking through a light, any camera move continues freely from its view. None of this touches the
-// document or its history.
+// (its viewport-only settings live in the Scene panel, ScenePanel.qml). A right drag turns the view in every tool (a
+// right click, press and release without moving, opens the menu); a left drag on empty space turns it too where the
+// tool gives the left drag no other job (Select, the clay brushes off the clay, Pose off the clay; never while Draw,
+// Spin, Paint or Edit mesh's box take it). Middle drag or Shift + left drag pans, the wheel zooms; on a touchpad two
+// fingers turn the view and a pinch zooms (screen3d/view_input.py). A click selects what is there, a double click goes
+// home. In the shot camera, or looking through a light, any camera move continues freely from its view. Resting on
+// Make this the shot draws the shot's frame in the free view. None of this touches the document or its history.
 Rectangle {
     id: vp
     objectName: "viewport3d"
@@ -21,9 +24,17 @@ Rectangle {
     // the pointer over the view: while a drag turns it, the move arrows; while it pans, the closed hand; a shape (or
     // Lump) waiting for its click, the cross; else the arrow (Qt's own shapes until the kit's turn / grab pointers
     // land). The layers above that cover the view (Gizmo) show it where they have nothing of their own
-    readonly property int pointer: viewArea.pressed && viewArea.dragged ? (viewArea.panning ? Qt.ClosedHandCursor : Qt.SizeAllCursor)
+    readonly property int pointer: rightArea.pressed && rightArea.dragged ? Qt.SizeAllCursor
+                                   : viewArea.pressed && viewArea.dragged ? (viewArea.panning ? Qt.ClosedHandCursor : Qt.SizeAllCursor)
                                    : backend.adder.armed || viewport.clay.tool === "lump" && viewport.clay.on ? Qt.CrossCursor : Qt.ArrowCursor
 
+    // a wheel event, from any layer of the view: a mouse wheel (and Ctrl + wheel, a Windows touchpad's pinch) zooms, a
+    // touchpad's two-finger scroll turns (view_input.py)
+    function wheel(w) {
+        const pad = w.device !== undefined && w.device !== null && w.device.type === PointerDevice.TouchPad
+        viewport.wheel(w.angleDelta.x, w.angleDelta.y, w.pixelDelta.x, w.pixelDelta.y, w.phase !== Qt.NoScrollPhase,
+                       (w.modifiers & Qt.ControlModifier) !== 0, pad)
+    }
     function resize() { if (width > 0 && height > 0) viewport.setSize(width * dpr, height * dpr) }
     onWidthChanged: resize()
     onHeightChanged: resize()
@@ -46,9 +57,11 @@ Rectangle {
         anchors.fill: parent; keys: ["rostrum-material"]
         onDropped: (d) => { viewport.dropMaterial(d.source.materialId, d.x * vp.dpr, d.y * vp.dpr); d.accept() }
     }
-    Item {   // the shot frame (shot camera only): the scene outside it dimmed, a thin edge, the shot's name above
+    Item {   // the shot frame (shot camera, or the free view while Make this the shot is hovered): the scene outside it
+             // dimmed, a thin edge
         id: frame
-        visible: viewport.mode === "shot"
+        objectName: "shotFrame"
+        visible: viewport.mode === "shot" || viewport.previewShot
         readonly property var r: viewport.frameRect
         x: r[0] * vp.width; y: r[1] * vp.height; width: r[2] * vp.width; height: r[3] * vp.height
         readonly property color shade: Qt.rgba(0, 0, 0, viewport.dim ? 0.65 : 0)
@@ -61,16 +74,16 @@ Rectangle {
 
     ContextMenu3D { id: ctx }
     function openContext(id) { ctx.openAt(vp, width / 2, height / 2, id) }   // (the scripted `context` step)
-    MouseArea {      // right-click: pick what is under the pointer, then the menu for it (the pick answers later)
+    TurnArea {       // right drag: turn the view (every tool); right click: pick what is under the pointer, then the menu
+                     // for it (the pick answers later). Pose takes its own right button (Pose.qml: the same two)
         id: rightArea
+        objectName: "viewRightArea"
         anchors.fill: parent
-        acceptedButtons: Qt.RightButton
-        property real px: 0
-        property real py: 0
         property bool pending: false
-        onPressed: (m) => {
+        onTurned: (dx, dy) => viewport.orbit(dx, dy)
+        onRightClicked: (x, y) => {
             if (backend.adder.armed) return backend.adder.disarm()   // a right-click lets go of the shape waiting to be placed
-            px = m.x; py = m.y; pending = true; viewport.click(m.x * vp.dpr, m.y * vp.dpr)
+            pending = true; viewport.click(x * vp.dpr, y * vp.dpr)        // the menu opens at (px, py)
         }
         Connections {
             target: viewport
@@ -111,8 +124,13 @@ Rectangle {
             else viewport.click(m.x * vp.dpr, m.y * vp.dpr)
         }
         onDoubleClicked: (m) => { if (m.button === Qt.LeftButton && viewport.hasShot) viewport.home() }
-        onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
+        onWheel: (w) => vp.wheel(w)
         cursorShape: vp.pointer
+    }
+    PinchHandler {   // a pinch (touchpad gesture or two fingers on a touch screen) zooms; the view itself never scales
+        target: null
+        rotationAxis.enabled: false
+        onScaleChanged: (delta) => viewport.pinch(delta)
     }
     // the viewport's drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc
@@ -149,7 +167,7 @@ Rectangle {
     Text {  // how to move, only while the free camera is in use
         visible: vp.free && !vp.final
         anchors { left: parent.left; bottom: parent.bottom; margins: Theme.pad }
-        text: "Free camera  ·  drag to orbit  ·  Shift-drag to pan  ·  scroll to zoom" + (viewport.hasShot ? "  ·  ` back to the shot" : "")
+        text: "Free camera  ·  right-drag to turn  ·  Shift-drag to pan  ·  scroll to zoom" + (viewport.hasShot ? "  ·  ` back to the shot" : "")
         color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
     }
     Text {  // a failure says so, in place

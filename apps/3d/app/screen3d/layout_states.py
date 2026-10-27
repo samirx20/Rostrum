@@ -21,7 +21,7 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
-         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -117,6 +117,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shots-two", two_shots(), ["mode free", "orbit 30 5", "shots"]),       # Hero 01 ✓, Close 02, New shot from this view
         ("shot-switched", two_shots(), ["showshot close"]),
         ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
+        # Make this the shot (header, free view only; its place held in the shot camera) and its hover: the frame it takes
+        ("take-view-hover", s, ["mode free", "orbit 40 10", "wait 300", "hover takeShot", "wait 700"]),
+        ("shots-frame", s, ["select block", "shots"]),        # the crumb's list with Frame the selection
         ("focus-picking", s, ["select cam", "set dof true", "action focus:point"]),
         ("focus-on-item", s, ["select cam", "set dof true", "set focusItem \"vase\""]),
         ("lens-menu", s, ["select cam", "click Lenses"]),

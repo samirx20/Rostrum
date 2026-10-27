@@ -22,7 +22,7 @@ sculpt the clay again afterwards (see "Painting on clay").
      named after what it paints ("Roughness 1") and its name follows when you change Paints, until you rename it.
 4. Drag on the model in the viewport. A thin line follows the pointer while you drag; when you let go the paint lands.
    **Each stroke is one undo step** (Ctrl+Z takes back exactly that stroke). The disc at the pointer is the brush's
-   size as it lands on the surface. Middle-drag turns the view, Shift-drag pans, so you can turn the model between
+   size as it lands on the surface. Right-drag (or middle-drag) turns the view, Shift-drag pans, so you can turn the model between
    strokes. The move handles are hidden while you paint.
 5. **B** or **Esc** leaves Paint. Selecting something else leaves it too.
 
