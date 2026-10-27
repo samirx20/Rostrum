@@ -12,11 +12,8 @@ namespace r3d::clay::detail {
 
 namespace {
 
-constexpr float kEdge = 0.5f * kBand;  // the fine band's edge, in coarse grains
-
 // a fine grain's distance as the coarse copy holds it: halved on the band, "far" off it
 inline float to_coarse(float v) { return std::fabs(v) < kBand ? 0.5f * v : sgn(v) * kBand; }
-inline float to_edge(float c) { return std::min(kEdge, std::max(-kEdge, c)); }
 
 // The 8 fine chunks under one coarse chunk (sub = bit 0 x, bit 1 y, bit 2 z): a leaf's values, or one value
 struct Under {
@@ -166,7 +163,10 @@ void run_coarse(CoarseUnit& u) {
   }
 
   // E. the dabs on the copy, exactly as fine dabs run (clay_band.cpp)
-  par(extList, [&](int ci) { b.copy(ci, V, O); });
+  par(extList, [&](int ci) {
+    b.copy(ci, V, O);
+    b.each(ci, [&](int, int, int, size_t i) { D[i] = 0.0f; });
+  });
   DabUnit du;
   du.b = &b;
   du.V = V;
@@ -183,13 +183,15 @@ void run_coarse(CoarseUnit& u) {
   du.touched = &touched;
   du.M = M;
   du.maskTouched = &maskTouched;
+  du.moved = D;
   run_dabs(du);
 
-  // F. the change, clamped to the fine band's edge on both sides (beyond it the fine grains are "far" either way)
+  // F. the change: what the dabs did to each coarse grain, before their re-levelling (DabUnit::moved). Not the
+  // re-levelled values minus the copy (CL7): re-levelling rebuilds every distance off the surface with the eikonal's
+  // grid-aligned error (a tenth of a grain and more on a tilted surface), and that error, doubled and spread onto
+  // the fine grains by every dab, was the fur: mean normal noise 19 deg on the coarse path vs 3.5 deg on the fine
+  // path at the same brush (47 vs 49 grains). The brush's own move is smooth (its falloff), so the fine surface is.
   const std::vector<int> touchedList = listed(touched);
-  par(touchedList, [&](int ci) {
-    b.each(ci, [&](int, int, int, size_t i) { D[i] = to_edge(V[i]) - to_edge(O[i]); });
-  });
   auto dval = [&](int X, int Y, int Z) -> float {  // the change at coarse grain (X, Y, Z); 0 where there is none
     const int x = X - b.lo.x(), y = Y - b.lo.y(), z = Z - b.lo.z();
     if (x < 0 || y < 0 || z < 0 || x >= b.nx || y >= b.ny || z >= b.nz) return 0.0f;

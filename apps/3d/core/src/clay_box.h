@@ -345,6 +345,10 @@ struct DabUnit {
   std::vector<uint8_t>* touched = nullptr;    // out: the chunks a dab worked on (only they are written back)
   float* M = nullptr;  // the clay's mask (0..1), filled like V; null when the clay has none and no dab paints one
   std::vector<uint8_t>* maskTouched = nullptr;  // out: the chunks a Mask dab painted (their mask is written back)
+  // out (the coarse copy, clay_coarse.cpp), or null: each voxel's own move, summed over the dabs: what the brush did
+  // to it before re-levelling (the caller zeroes it over extList). The re-levelled values carry the eikonal's
+  // grid-aligned error; brought back to the fine grains they were the fur under big strokes (CL7).
+  float* moved = nullptr;
 };
 void run_dabs(const DabUnit& u);
 
