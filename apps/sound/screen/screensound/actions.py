@@ -37,7 +37,7 @@ from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
 
 from .action_defs import (CLIP, CLIPS, EFFECTS, MARKER, NAMED, NOTE, NOTE_HIT, TRACK, _STEPS, _can_make_main,
-                          _inside_clip, _outside_key, act, on, settable, takes)
+                          _inside_clip, act, on, settable, takes)
 
 ACTIONS = [
     # tracks
@@ -82,7 +82,7 @@ ACTIONS = [
     act("arpeggio", "Arpeggio…", K.has_chord, K.arp_calls, importance="primary", group="shape", menu="Chord", on=NOTE,
         asks=True, amounts=("rate", "mode", "octaves", "gate", "seed"), fit=K.arp_fit),
     act("fit_key", "Fit to key", lambda f: bool(f.by_kind(NOTE)) and key_lock.has_key(f.doc.data), *A.on(NOTE, "fit_key")[1:],
-        group="pitch", on=NOTE, promoted_when=_outside_key,         # first only while the selection holds notes outside the key
+        importance="primary", group="pitch", on=NOTE,      # always a button, in its own place: a row that came and went moved the panel's fields 36 px
         needs="Fit to key needs notes selected, in a song with a key"),
     act("humanize", "Humanise", *A.on(NOTE_HIT, "humanize"), importance="primary", group="time", on=NOTE_HIT,
         amounts=("timing", "velocity", "length", "seed")),
