@@ -14,6 +14,19 @@ Rectangle {
     // a short row puts R M S A beside the name (TrackHeader): this keeps about eight letters of the name beside them,
     // so a small window shows names, never just "…"
     readonly property int minHeader: 176
+    // The headers also give the longest track name the room it needs (up to `maxHeader`, and a third of the panel): "Double
+    // basses" and "String section" were cut at the window's choice. What a short row holds: the buttons (TrackHeader.edge + the
+    // four, + gap), then the name; a group's tracks sit 14 px in each level, a locked one has its padlock; at 217 and more the
+    // row's picture shows too (TrackHeader.cramped), 20 px of the name's room. A name still longer is cut, whole in its tip.
+    readonly property int maxHeader: 260
+    FontMetrics { id: nameFont; font.family: uiFont; font.pixelSize: Theme.body }
+    readonly property real namesNeed: {
+        var w = 0
+        for (var r of backend.tracks) if (!r.mix) w = Math.max(w, nameFont.advanceWidth(r.name) + (r.depth || 0) * 14 + (r.locked ? 18 : 0))
+        var n = Theme.gap + 11 + 4 * 22 + 3 * 2 + Theme.gap + Theme.grid + Math.ceil(w) + 6
+        return n >= 217 ? n + 20 : n
+    }
+    readonly property int headerNow: Math.max(a.headerWidth, a.minHeader, Math.min(a.maxHeader, Math.floor(a.width / 3), Math.ceil(namesNeed)))
     property bool compact: false                       // a small window: the position and key show short
     // the room an open dock (Editor or Mixer) would take but doesn't while folded: the track rows are as tall as with
     // it open, so opening the Editor never changes a row's height or layout (critic r10 must-fix 4: the spot of a
@@ -99,13 +112,22 @@ Rectangle {
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; room: rightRow.x - leftRow.x - x - Theme.gap; compact: a.compact || a.tight; tight: a.tight; anchors.verticalCenter: parent.verticalCenter }
         }
+        Text {   // while zoomed in: how far. Only words, so it goes first when the strip is short (the Library open), never the fields
+            id: zoomWords
+            readonly property real spare: rightRow.x - (leftRow.x + leftRow.width) - Theme.gap   // (rightRow.x is the room the readout is given, never this text)
+            visible: !backend.viewFit && !a.compact && !a.tight && spare >= implicitWidth + Theme.gap
+            anchors { right: rightRow.left; verticalCenter: parent.verticalCenter }
+            rightPadding: Theme.gap
+            text: "Zoom " + (Math.round(backend.song.length / backend.viewSpan * 10) / 10) + "×"
+            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+        }
         Row {
             id: rightRow
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 2
             Button { visible: backend.picture !== ""; text: "Picture"; kind: "ghost"; down: backend.pictureOpen
                      height: Theme.field; onClicked: backend.setPictureOpen(!backend.pictureOpen) }
-            Item { visible: backend.picture !== ""; width: Theme.gap; height: 1 }
+            Item { visible: backend.picture !== ""; width: Theme.grid; height: 1 }
             Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
                 id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
                 text: "Grid " + backend.gridLabel; chevron: true
@@ -121,12 +143,7 @@ Rectangle {
                      onClicked: backend.setSnap(!backend.snapOn)
                      HoverTip { text: backend.snapOn ? "Snapping is on: clicks and drags land on a marker a few pixels away, else the grid (hold Ctrl for free). Click or Shift+G to turn it off"
                                                      : "Snapping is off: everything moves freely. Click or Shift+G to turn it on"; hovered: parent.hovered } }
-            Item { width: Theme.gap; height: 1 }
-            Text {   // while zoomed in: how far
-                visible: !backend.viewFit && !a.compact && !a.tight; anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap
-                text: "Zoom " + (Math.round(backend.song.length / backend.viewSpan * 10) / 10) + "×"
-                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-            }
+            Item { width: Theme.grid; height: 1 }
             IconButton { visible: !a.tight; glyph: "−"; kind: "ghost"; tip: "Zoom out (Ctrl −)"; width: Theme.field; height: Theme.field
                          onClicked: backend.zoomStep(0.8) }
             IconButton { visible: !a.tight; glyph: "+"; kind: "ghost"; tip: "Zoom in (Ctrl +)"; width: Theme.field; height: Theme.field
@@ -137,7 +154,7 @@ Rectangle {
     }
     Timeline {
         id: timeline
-        headerWidth: Math.max(a.headerWidth, a.minHeader)
+        headerWidth: a.headerNow
         slack: a.dockSlack
         // the picture docked beside the lanes takes its own column: no bar is ever under it (critic r12 should-fix 9)
         anchors { left: parent.left; right: corner.docked ? corner.left : parent.right; top: strip.bottom; bottom: parent.bottom

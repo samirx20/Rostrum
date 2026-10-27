@@ -25,10 +25,13 @@ Item {
     property real sharedDx: 0
     readonly property bool dragging: grab.dragging && grab.pressed && sharedId === ""    // the views show the snap line
     function tagWidth(name) { return metrics.advanceWidth(name) + 14 }
+    // A tag near the band's right edge shifts left to end at the edge instead of being cut: its name stays whole (the line
+    // through the rows stays at the marker's time). Pointer hits use the same place.
+    function tagX(mx, w) { return mx < band.width ? Math.min(mx, Math.max(0, band.width - w)) : mx }
     function markerAt(x) {
         var best = null
         for (var i = 0; i < band.marks.length; i++) {
-            var m = band.marks[i], mx = ruler.xOf(m.t)
+            var m = band.marks[i], mx = tagX(ruler.xOf(m.t), tagWidth(m.name))
             if (!m.named && x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m
         }
         return best
@@ -48,8 +51,9 @@ Item {
             readonly property var modelData: band.marks[index]
             readonly property bool on: !!Picks.heads(backend, backend.pickStamp)[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
-            x: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0)); y: 1
-            visible: !modelData.named && x + width > 0 && x < band.width
+            readonly property real at: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0))
+            x: Math.round(band.tagX(at, width)); y: 1
+            visible: !modelData.named && x + width > 0 && at < band.width
             width: (naming ? Math.max(90, field.contentWidth + 10) : tag.implicitWidth) + 12; height: band.height - 2
             radius: 3; color: on ? Theme.accentFill : Theme.raised
             Rectangle { width: modelData.colour ? 3 : 2; height: parent.height; radius: 1
