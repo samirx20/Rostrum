@@ -39,6 +39,9 @@ DEFAULT_STYLIZED = REPO / "proofs" / "3d-stylized" / ".build" / "install"
 # OpenVDB 13.0's headers and import library (the clay volume, core/src/clay_*), from the same Blender lib-windows_x64
 # bundle (v5.2.2, 60d6e96) whose openvdb.dll is in LOADED below (byte-identical); the main bundle has only the DLL.
 DEFAULT_OPENVDB = Path.home() / ".rostrum" / "downloads" / "blender-lib-v5.2.2-openvdb" / "repo" / "openvdb"
+# Alembic 1.8.3 (BSD-3, a static library: imports of .abc files, core/src/convert_abc.cpp) and Imath's import library,
+# from the same bundle checkout (sparse folders alembic, imath/lib); Imath.dll itself is already in LOADED.
+DEFAULT_ALEMBIC = DEFAULT_OPENVDB.parent / "alembic"
 
 # DLLs measured as loaded by rostrum3d-core (Storm, Cycles on OptiX, stylized, pick): "bundle folder\bin" -> names.
 LOADED = {
@@ -122,6 +125,10 @@ def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path, openvdb: Path =
     jobs += [(need(bundle / f), dest / "sdk" / f) for f in SDK_FILES]
     jobs += walk(openvdb / "include", dest / "sdk" / "openvdb" / "include")
     jobs.append((need(openvdb / "lib" / "openvdb.lib"), dest / "sdk" / "openvdb" / "lib" / "openvdb.lib"))
+    jobs += walk(DEFAULT_ALEMBIC / "include", dest / "sdk" / "alembic" / "include")
+    jobs.append((need(DEFAULT_ALEMBIC / "lib" / "Alembic.lib"), dest / "sdk" / "alembic" / "lib" / "Alembic.lib"))
+    imath_lib = DEFAULT_ALEMBIC.parent / "imath" / "lib" / "Imath.lib"
+    jobs.append((need(imath_lib), dest / "sdk" / "imath" / "lib" / "Imath.lib"))
     return jobs
 
 
