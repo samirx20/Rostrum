@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 
-from . import aim
+from . import aim, clay_shapes
 from .resolve import Frames
 
 GRAIN_PX, LO, HI, ROUND = 1.5, 0.0002, 0.05, 4        # grain per pixel; clamp (m); round to 0.1 mm
@@ -28,16 +28,23 @@ def _clamp(v: float) -> float:
 def bounds(item: dict) -> tuple[list[float], float] | None:
     """(centre, radius) in the clay's own space of a sphere round its added pieces (all pieces when none adds);
     None for a clay with no pieces."""
-    pieces = [s for s in item.get("steps", []) if s.get("step") == "piece" and s.get("at")]
+    pieces = [s for s in item.get("steps", []) if s.get("step") == "piece" and not s.get("hidden")
+              and (s.get("at") or s.get("plane"))]
     pieces = [s for s in pieces if s.get("mode", "add") == "add"] or pieces
     if not pieces:
         return None
     balls = []
     for s in pieces:
-        ends = [s["at"]] + ([s["to"]] if s.get("shape") == "capsule" and s.get("to") else [])
+        if s.get("plane"):                                            # drawn or spun (CL3): balls round its points
+            own = clay_shapes.balls(s)
+        else:
+            ends = [s["at"]] + ([s["to"]] if s.get("shape") == "capsule" and s.get("to") else [])
+            own = [(p, s.get("radius", 0.1)) for p in ends]
         if s.get("symmetry") == "x":
-            ends += [[-p[0], p[1], p[2]] for p in ends]
-        balls += [([float(v) for v in p], float(s.get("radius", 0.1))) for p in ends]
+            own += [([-p[0], p[1], p[2]], r) for p, r in own]
+        balls += [([float(v) for v in p], float(r)) for p, r in own]
+    if not balls:
+        return None
     lo = [min(p[i] - r for p, r in balls) for i in range(3)]
     hi = [max(p[i] + r for p, r in balls) for i in range(3)]
     centre = [(a + b) / 2 for a, b in zip(lo, hi)]
