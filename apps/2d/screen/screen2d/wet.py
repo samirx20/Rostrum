@@ -4,7 +4,8 @@ The pen's stroke goes into the document once, when it lifts (strokes.StrokeDrag,
 it with the painting kit's own brush (wet_ink.py), so no move waits for the scene to be described and drawn again. The
 saved stroke is then drawn by the one render path (preview ≡ export); the wet picture goes when that frame lands.
 A smudging brush smears the layer's own paint: its wet ink works on that paint (`under`, in the paint canvas's px,
-laid over the layer's box like the onion skin) and shows the region smeared. The eraser's wet ink shows, where it
+laid on the world by the stroke's own place) and shows the region smeared, over the world without the layer (as the
+eraser's does: the smear holds the layer's paint, so it replaces it rather than lying on it again). The eraser's wet ink shows, where it
 lies, the world drawn without the layer it erases (asked of the canvas's engine at the press: the part of the world
 the canvas shows, at 1 px per world px, at most MOST_REVEAL px a side round the press: `reveal_rect`). Wet ink lies
 in world px, anywhere on the endless canvas, the frame at home or not.
@@ -193,15 +194,20 @@ def without_paint(scene: dict, layer_id: str, fill: bool = False) -> dict | None
     return None if comp is None else {**scene, "comp": comp}
 
 
-def smear_ink(view: WetView, brush: dict, stroke, box: dict, n: int) -> WetInk:
+def smear_ink(view: WetView, brush: dict, stroke, n: int) -> WetInk:
     """A smudging stroke's wet ink: on the layer's own paint at the playhead (its drawing there, in canvas px), laid
-    over the layer's box on the composition (`box`: the bridge's selBox), as the onion skin is."""
+    on the world where the stroke's own place (strokes.StrokeDrag.place, the one mapping its points went through) puts
+    the canvas: a drawing the stroke just made has no box on screen yet. A drawing's smear goes past its canvas (the
+    drawing grows with the stroke: rostrum2d/paint_grow.py); an element's paint stays in its box."""
     from rostrum2d.drawing import frame_at, paint_size
-    item = stroke.item
+    from rostrum2d.placement import comp_point
+    item, place = stroke.item, stroke.place
     w, h = paint_size(item, stroke.props)
     here = frame_at(item, n) if item.get("frames") else None
-    place = (box.get("x", 0), box.get("y", 0), box.get("w", w) / w, box.get("h", h) / h)
-    return view.ink(brush, stroke.sid, 1.0, (w, h), paint_under(here, w, h), place)
+    (ox, oy), (ax, _), (_, ay) = (comp_point(place, 0, 0), comp_point(place, place["w"] / w, 0),
+                                  comp_point(place, 0, place["h"] / h))
+    bounds = None if item["type"] == "drawing" else (w, h)
+    return view.ink(brush, stroke.sid, 1.0, bounds, paint_under(here, w, h), (ox, oy, ax - ox, ay - oy))
 
 
 _UNDER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-under")

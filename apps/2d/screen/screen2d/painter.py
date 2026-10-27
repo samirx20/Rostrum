@@ -204,6 +204,10 @@ class Painter(BrushPanel):
     def _erasing(self) -> bool:
         return self.brush.values.get("mode") == "erase"
 
+    def _covering(self) -> bool:
+        """The next stroke's wet ink shows over the world without its layer: the eraser's, a smudge's (wet_ink.py)."""
+        return self._erasing() or bool(self.brush.values.get("smudge"))
+
     @Property(bool, notify=targetChanged)
     def canErase(self):
         """The eraser has paint to take away: what the pen paints on holds some (else the pointer says it can't)."""
@@ -252,11 +256,14 @@ class Painter(BrushPanel):
                                               True, fill)
             settled = self.b.opened.shows_now if self.b.opened.on else None     # opened: its own picture lands
             smear = (args.get("smudge") and args.get("mode") != "erase"
-                     and (smear_ink(self._wet, args, s, self.b.selBox, self._n()) if fill is None
+                     and (smear_ink(self._wet, args, s, self._n()) if fill is None
                           else wet_through.smear(self._wet, args, s, fill, self._n())))
             if smear:                       # a smudge smears the paint it is on (its own, or its painting's: wet.py)
                 self._wet.start(smear, settled=settled)
                 self._wet.add(*s.points[-1][:3])
+                if not make:                # its picture replaces the layer's paint: shown over the world without it
+                    smear.covers = True
+                    self._ask_reveal(smear, d["id"], x, y, fill is not None)
             elif fill is not None and args.get("mode") != "erase" and (uses := wet_uses.uses(
                     self.b, fill, [through["id"], *fill_aim.others_in(self.b.comp(), fill["id"], through["id"])])):
                 ink = self._wet.ink(args, s.sid, 1.0)              # in the painting's px, on every layer using it
@@ -302,8 +309,9 @@ class Painter(BrushPanel):
     wet = Property(QObject, lambda self: self._wet, constant=True)
 
     def _ask_reveal(self, ink, layer_id, x, y, fill=False):
-        """The eraser's ink shows the world the canvas shows without the layer it erases: the one drawn ahead when it
-        is still right, else asked of the canvas's engine now, off this thread; its ink shows once it comes (wet.py)."""
+        """The eraser's ink (and a smear's) shows the world the canvas shows without the layer it works on: the one
+        drawn ahead when it is still right, else asked of the canvas's engine now, off this thread; its ink shows once
+        it comes (wet.py)."""
         if self.b.opened.on:                # opened on its own: under the painting is the empty canvas
             return self._wet.reveal(ink, *wet_through.bare(self.b.world.visible(), x, y))
         kept = self.ahead and self.ahead.ready(layer_id, fill, x, y)   # drawn before the press (reveal_ahead.py)
@@ -318,7 +326,7 @@ class Painter(BrushPanel):
 
     def _reveal(self, ink, got, error):
         if error is not None:
-            self.b._fail(f"Error: the eraser can't show what is under the layer: {error}")
+            self.b._fail(f"Error: the {'eraser' if ink.erasing else 'smudge'} can't show what is under the layer: {error}")
         else:
             self._wet.reveal(ink, *got)
 
