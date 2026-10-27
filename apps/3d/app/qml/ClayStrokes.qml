@@ -1,36 +1,89 @@
 import QtQuick
+import QtQuick.Shapes
 import RostrumKit
 
 // The Clay tool on the viewport (screen3d/clay_tool_qt.py, clay_stroke.py): with a brush chosen and a clay selected, a
 // left drag goes to the brush. On the clay it sculpts (Ctrl: the opposite, Shift: Smooth), one undo step per stroke;
 // a pen's pressure goes with every point (`pen`, a PointHandler for styluses only: it watches, the MouseArea still gets
-// the pen as a mouse; a mouse sends -1, no pressure). With F held (`sizing`) the pointer's moves size the ring instead;
-// on empty space the same drag turns the view and a click selects what is there (the tool decides from the engine's
-// answer, so the press is always taken here). The brush is a ring lying on the surface under the pointer, nothing
-// else is drawn (no helper text on the viewport). Lump's click and every other button fall through to the viewport.
+// the pen as a mouse; a mouse sends -1, no pressure). With F held (`sizing`) the pointer's moves size the ring instead,
+// its size in a chip beside it; on empty space the same drag turns the view (the pointer shows it) and a click selects
+// what is there (the tool decides from the engine's answer, so the press is always taken here). The brush is a ring
+// lying on the surface under the pointer, tilted with it, a faint inner circle where it works at half strength
+// (Falloff), and in the middle a dot, or "−" / "+" while Ctrl turns it to its opposite; no other helper text. The ring
+// is a Shape drawn on the GPU (a Canvas repainted the whole viewport on the CPU at every move). Lump's click and every
+// other button fall through to the viewport.
 Item {
     id: cs
     visible: viewport.clay.on
     readonly property real dpr: Screen.devicePixelRatio
+    readonly property var ringPts: viewport.clay.ring
+    readonly property bool shown: ringPts.length > 2 && area.inside
+    readonly property string mark: viewport.clay.sizing ? "" : viewport.clay.ringMark
 
-    Canvas {
+    function closed(k) {        // the ring's points in px, scaled by k about their middle, closed
+        var r = ringPts, n = r.length, out = []
+        if (n < 3) return out
+        var cx = 0, cy = 0
+        for (var i = 0; i < n; ++i) { cx += r[i][0]; cy += r[i][1] }
+        cx /= n; cy /= n
+        for (var j = 0; j <= n; ++j) {
+            var p = r[j % n]
+            out.push(Qt.point((cx + (p[0] - cx) * k) * width, (cy + (p[1] - cy) * k) * height))
+        }
+        return out
+    }
+
+    Shape {
         id: ring
         anchors.fill: parent
-        onPaint: {
-            var c = getContext("2d"), r = viewport.clay.ring
-            c.clearRect(0, 0, width, height)
-            if (r.length < 3 || !area.inside) return
-            c.lineJoin = "round"
-            c.beginPath(); c.moveTo(r[0][0] * width, r[0][1] * height)
-            for (var i = 1; i < r.length; ++i) c.lineTo(r[i][0] * width, r[i][1] * height)
-            c.closePath()
-            c.strokeStyle = Qt.rgba(0, 0, 0, 0.45); c.lineWidth = 3; c.stroke()     // a dark edge: readable on light clay
-            c.strokeStyle = "white"; c.lineWidth = 1.5; c.stroke()
-            if (viewport.clay.sizing) return                                         // F + drag: the ring alone
-            c.fillStyle = "white"
-            c.beginPath(); c.arc(area.mouseX, area.mouseY, 1.5, 0, 2 * Math.PI); c.fill()
+        visible: cs.shown
+        preferredRendererType: Shape.CurveRenderer
+        readonly property var outer: cs.shown ? cs.closed(1) : []
+        readonly property var inner: cs.shown && !viewport.clay.sizing ? cs.closed(viewport.clay.ringInner) : []
+        readonly property real mx: area.mouseX
+        readonly property real my: area.mouseY
+        readonly property var bar: cs.mark === "" ? [] : [Qt.point(mx - 4, my), Qt.point(mx + 4, my)]
+        readonly property var post: cs.mark === "+" ? [Qt.point(mx, my - 4), Qt.point(mx, my + 4)] : []
+        ShapePath {      // a dark edge under everything: readable on light clay
+            strokeColor: Qt.rgba(0, 0, 0, 0.45); strokeWidth: 3; fillColor: "transparent"
+            joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
+            PathPolyline { path: ring.outer }
+            PathPolyline { path: ring.bar }
+            PathPolyline { path: ring.post }
         }
-        Connections { target: viewport.clay; function onRingChanged() { ring.requestPaint() } }
+        ShapePath {
+            strokeColor: "white"; strokeWidth: 1.5; fillColor: "transparent"
+            joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
+            PathPolyline { path: ring.outer }
+            PathPolyline { path: ring.bar }
+            PathPolyline { path: ring.post }
+        }
+        ShapePath {      // half strength (Falloff): faint
+            strokeColor: Qt.rgba(1, 1, 1, 0.4); strokeWidth: 1; fillColor: "transparent"
+            PathPolyline { path: ring.inner }
+        }
+    }
+    Rectangle {          // the centre dot (no mark, not sizing)
+        visible: cs.shown && cs.mark === "" && !viewport.clay.sizing
+        x: area.mouseX - 1.5; y: area.mouseY - 1.5; width: 3; height: 3; radius: 1.5
+        color: "white"; border.color: Qt.rgba(0, 0, 0, 0.45); border.width: 0.5
+    }
+    Rectangle {          // F + drag: the size, 16 px below-right of the pointer (flipped near the edges)
+        id: chip
+        visible: viewport.clay.sizing && viewport.clay.sizeText !== ""
+        readonly property real gap: 16
+        x: area.mouseX + gap + width > cs.width ? area.mouseX - gap - width : area.mouseX + gap
+        y: area.mouseY + gap + height > cs.height ? area.mouseY - gap - height : area.mouseY + gap
+        width: sizeLabel.implicitWidth + 2 * Theme.gap; height: sizeLabel.implicitHeight + Theme.grid
+        radius: Theme.radiusCtl
+        color: Theme.raised; border.color: Theme.popupEdge; border.width: 1
+        Text {
+            id: sizeLabel
+            anchors.centerIn: parent
+            text: viewport.clay.sizeText
+            color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
+            font.features: { "tnum": 1 }
+        }
     }
 
     PointHandler {      // a pen's pressure, read by the MouseArea's handlers below (they come from the same pen event)
@@ -49,13 +102,16 @@ Item {
         acceptedButtons: Qt.LeftButton
         hoverEnabled: true
         preventStealing: true
-        cursorShape: viewport.clay.ring.length > 2 ? Qt.BlankCursor : Qt.ArrowCursor
+        // a drag off the clay turning the view: the move pointer while it lasts; the ring hides the arrow
+        cursorShape: pressed && viewport.clay.orbiting ? Qt.SizeAllCursor
+                     : viewport.clay.ring.length > 2 ? Qt.BlankCursor : Qt.ArrowCursor
         property bool inside: false
         onEntered: inside = true
-        onExited: { inside = false; viewport.clay.unhover(); ring.requestPaint() }
+        onExited: { inside = false; viewport.clay.unhover() }
         onPressed: (m) => viewport.clay.press(m.x, m.y, cs.dpr, !!(m.modifiers & Qt.ControlModifier),
                                               !!(m.modifiers & Qt.ShiftModifier), cs.pressure())
         onPositionChanged: (m) => {
+            viewport.clay.held(!!(m.modifiers & Qt.ControlModifier), !!(m.modifiers & Qt.ShiftModifier))
             if (viewport.clay.sizing) viewport.clay.sizeMove(m.x, m.y)
             else if (pressed) viewport.clay.move(m.x, m.y, cs.pressure())
             else viewport.clay.hover(m.x, m.y, cs.dpr)

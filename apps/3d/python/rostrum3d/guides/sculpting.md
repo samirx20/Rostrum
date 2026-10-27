@@ -22,20 +22,23 @@ undone, and the clay comes back exactly the same when you open the scene again.
    The seventh, **Mask**, on its own row, shapes nothing: it paints a mask on the clay, and no brush changes masked
    clay until the mask is taken away (hold **Ctrl** with Mask to take it off where you drag). Mask a part you have
    finished, then work right next to it without spoiling it. Rest the pointer on a tile to see what it does.
-4. **Drag on the clay** to sculpt. A ring lying on the surface shows the brush: where it touches and how big it is.
+4. **Drag on the clay** to sculpt. A ring lying on the surface shows the brush: where it touches and how big it is,
+   tilted with the surface. The fainter circle inside it is where the brush still works at half strength: it moves
+   out towards the ring as Falloff goes up (a hard edge) and in as it goes down (soft).
    While the Clay tool is on, the clay you sculpt has no selection outline: the ring is its only mark. The clay changes under the pointer while you drag; when you let go, **the whole stroke is one undo step** (Ctrl+Z
    takes back exactly that stroke).
    - Hold **Ctrl** for the opposite: Add carves, Carve adds, Flatten puffs the clay out, Crease pinches it up into a
-     ridge, Mask takes the mask away. (Smooth and Pull have no opposite.)
+     ridge, Mask takes the mask away. (Smooth and Pull have no opposite.) As soon as Ctrl goes down the middle of the
+     ring shows what a stroke will do now: **−** takes clay (or the mask) away, **+** adds.
    - Hold **Shift** to smooth, whatever brush is chosen.
    - **With a pen** (a drawing tablet), pressing harder makes the brush bigger and stronger, lighter makes it smaller
      and gentler, within Size and Strength. A mouse always uses Size and Strength as they are.
    - **Drag on empty space** to turn the view around the clay, so you can work on its other side between strokes; no
-     need for the middle button. The wheel zooms. A click on another thing selects it.
+     need for the middle button; the pointer shows four arrows while it turns. The wheel zooms. A click on another thing selects it.
 5. Under the brushes:
    - **Size**: the brush's radius, in metres (0.03 m = 3 cm). Faster: rest the pointer on the clay, **hold F** and move
-     the pointer right (bigger) or left (smaller); the ring shows the new size as you move, and letting go of F keeps
-     it (one undo step).
+     the pointer right (bigger) or left (smaller); the ring shows the new size as you move, with the size in millimetres
+     beside it, and letting go of F keeps it (one undo step).
    - **Strength**: how much one stroke changes the clay.
    - **Mirror**: **Left–right** (the start) makes every stroke on one side happen on the other side too, mirrored
      across the clay's own middle, so a face or a body stays even. **Off** sculpts one side only.
@@ -46,7 +49,8 @@ undone, and the clay comes back exactly the same when you open the scene again.
      reaches through a thin part (an ear, a fin) to the far side. Turn it off to work both sides of a thin part at once.
    These are the clay's settings for its next stroke: changing them never changes strokes already made (each stroke
    keeps the settings it was made with). Each change is one undo step.
-6. **Q** again, **V** or **Esc** goes back to Select. The move handles are hidden while the Clay tool is on, so they
+6. **Esc** during a stroke cancels it: the clay goes back as it was and nothing is recorded. **Q** again, **V** or
+   **Esc** (with no stroke under way) goes back to Select. The move handles are hidden while the Clay tool is on, so they
    never sit on the clay you are sculpting; with Select they are back.
 
 ## How it is kept

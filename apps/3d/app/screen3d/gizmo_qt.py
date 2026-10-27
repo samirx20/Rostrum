@@ -1,6 +1,8 @@
 """The gizmo on screen, for QML as `gizmo` (SPEC §4.1, §14): the selected item's move / turn / scale handles (V all,
 W move, E turn, S scale; D held moves the pivot instead), each drag one doc.gesture = one undo step, written through
-the bridge's own edit_call (an animated field gets its key at the playhead), so the settings panel follows live. K keys
+the bridge's own edit_call (an animated field gets its key at the playhead). While the pointer moves, the window's own
+view moves the item by itself and the document changes once, at the drop (gizmo_live.py; where it can't, each move is
+previewed in the document as before and the settings panel follows live). Esc cancels a drag mid-way (esc3d.py). K keys
 what the gizmo moved on the item at the playhead. Agents do the same with the same operations (`value.set`,
 `key.add` on x y z, rx ry rz, sx sy sz, px py pz). A selected bone whose chain is drawn (Animate) gets turn rings on its
 head, each drag keying its Turn at the playhead (gizmo_bone.py). The maths is gizmo.py's.
@@ -13,7 +15,7 @@ from rostrum_gui.edits import Drag
 from rostrum_gui.snap import Target
 from rostrum3d import aim, fields as F, resolve
 
-from . import gizmo as G, gizmo_bone, route
+from . import gizmo as G, gizmo_bone, gizmo_live as live, route
 from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
 from .gizmo_hold import HoldD
 from .viewport import scene_ids
@@ -21,7 +23,7 @@ from .viewport import scene_ids
 SHOWN = ("all", "move", "turn", "scale")
 
 
-class Gizmo(QObject):
+class Gizmo(live.LiveDrag, QObject):
     changed = Signal()
 
     def __init__(self, bridge, viewport):
@@ -29,6 +31,7 @@ class Gizmo(QObject):
         self.bridge, self.vp = bridge, viewport
         self._show, self._pivot, self._hs, self._label = "all", False, [], ""
         self._drag, self._moved = None, {}            # the open drag; item id -> fields the gizmo moved (for K)
+        self._live = None                             # the open drag's live sender (gizmo_live.Sender), when live
         viewport.serialChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._refresh)
         viewport.mesh_edit.changed.connect(self._refresh)      # Edit mesh: the gizmo stands on the selection
@@ -41,6 +44,7 @@ class Gizmo(QObject):
     pivot = Property(bool, lambda s: s._pivot, notify=changed)
     handles = Property("QVariantList", lambda s: s._hs, notify=changed)   # in parts of the viewport (0..1)
     label = Property(str, lambda s: s._label, notify=changed)
+    dragging = Property(bool, lambda s: s._drag is not None, notify=changed)
 
     # --- what is selected, as the gizmo needs it
     def _item(self):
@@ -94,6 +98,8 @@ class Gizmo(QObject):
                 "scene": scene, "parent": parent, "mesh": me.on}
 
     def _refresh(self, *_):
+        if self._live is not None:      # a live drag: the document stands still, the handles follow the drag (dragTo)
+            return
         self._ctx = None
         try:
             self._ctx = self._setup()
@@ -146,9 +152,13 @@ class Gizmo(QObject):
 
         def go():
             self._drag = Drag(self.bridge.doc, self.bridge.who, f"{words} {self.bridge.label_of(c['it'])}")
-        self._grab = {"handle": handle, "kind": kind, "start": self._pt(fx, fy), "ctx": c,
+        self._grab = {"handle": handle, "kind": kind, "start": self._pt(fx, fy), "ctx": c, "calls": [],
                       "line": next(((h["a"], h["b"]) for h in self._raw if h["id"] == handle and "a" in h), None)}
-        return self.bridge._guard(go)
+        if not self.bridge._guard(go):
+            return False
+        self._live = None if live.why_not(self.bridge, self.vp, c) else live.Sender(self.vp.link, self._unlive)
+        self.changed.emit()
+        return True
 
     @Slot(float, float, bool)
     def dragTo(self, fx, fy, free):
@@ -166,7 +176,11 @@ class Gizmo(QObject):
             g.setdefault("moved", set()).update(k for k in out if abs(out[k] - v[k]) > 1e-9)
             calls = gizmo_bone.calls(c["it"]["id"], {k: out[k] for k in g["moved"]}, self.bridge.time)
         self._moved.setdefault(c["it"]["id"], set()).update(k for k in out if abs(out[k] - v[k]) > 1e-9)
-        self.bridge._guard(lambda: self._drag.preview(calls))
+        g["calls"] = calls
+        if self._live is None:
+            self.bridge._guard(lambda: self._drag.preview(calls))
+        else:                           # the view moves the item; the handles move with it; the document waits
+            return self._live_move(c, {**v, **out})
         self.changed.emit()
 
     def _mesh_drag(self, g, c, now, free):
@@ -187,13 +201,6 @@ class Gizmo(QObject):
         bone = self.vp.bone_tool.bone_at(*(p / self.vp._scale for p in self._pt(fx, fy)))
         if bone:
             self.vp._on_picked(bone)
-
-    @Slot()
-    def end(self):
-        d, self._drag, self._label = self._drag, None, ""
-        if d is not None:
-            self.bridge._guard(lambda: self.bridge._done(d.end(), ""))
-        self._refresh()
 
     @Slot()
     def keyMoved(self):

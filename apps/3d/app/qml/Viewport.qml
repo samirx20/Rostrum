@@ -18,6 +18,11 @@ Rectangle {
     readonly property bool free: viewport.mode === "free"
     readonly property bool throughLight: viewport.mode === "light"
     readonly property bool final: viewport.look === "final"
+    // the pointer over the view: while a drag turns it, the move arrows; while it pans, the closed hand; a shape (or
+    // Lump) waiting for its click, the cross; else the arrow (Qt's own shapes until the kit's turn / grab pointers
+    // land). The layers above that cover the view (Gizmo) show it where they have nothing of their own
+    readonly property int pointer: viewArea.pressed && viewArea.dragged ? (viewArea.panning ? Qt.ClosedHandCursor : Qt.SizeAllCursor)
+                                   : backend.adder.armed || viewport.clay.tool === "lump" && viewport.clay.on ? Qt.CrossCursor : Qt.ArrowCursor
 
     function resize() { if (width > 0 && height > 0) viewport.setSize(width * dpr, height * dpr) }
     onWidthChanged: resize()
@@ -78,6 +83,7 @@ Rectangle {
     }
 
     MouseArea {
+        id: viewArea
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
@@ -106,9 +112,8 @@ Rectangle {
         }
         onDoubleClicked: (m) => { if (m.button === Qt.LeftButton && viewport.hasShot) viewport.home() }
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
+        cursorShape: vp.pointer
     }
-
-    HoverHandler { cursorShape: backend.adder.armed || viewport.clay.tool === "lump" && viewport.clay.on ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape (or Lump) waits for its click
     // the viewport's drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc
     // Clay: a left drag sculpts the clay (or turns the view off it); the brush ring. Above the gizmo: the gizmo's area
