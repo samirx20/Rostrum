@@ -115,7 +115,9 @@ Column {
         onEdited: (arr) => pp.change({ stops: arr })
     }
 
+    function takeTyping() { if (pp.coloured) colour.takeTyping() }    // open: a hex typed at once lands in the hex box
     ColorPicker {
+        id: colour
         visible: pp.coloured
         hex: pp.gradient && pp.stop ? pp.stop.color : pp.base
         alpha: pp.gradient ? (pp.stop && pp.stop.opacity !== undefined ? pp.stop.opacity : 1)
