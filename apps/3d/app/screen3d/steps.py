@@ -34,7 +34,7 @@ from __future__ import annotations
 import functools, json, operator, time  # noqa: E401
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
-from PySide6.QtTest import QTest
+from rostrum_gui.lazy_qtest import QTest   # never at import: a person's launch must not count as scripted (lazy_qtest.py)
 from rostrum_gui.settle import save_snap
 
 RENDER_WAIT_S = 600

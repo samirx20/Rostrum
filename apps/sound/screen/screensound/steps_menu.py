@@ -3,7 +3,7 @@ real click on a settings-panel button (`bar-menu`)."""
 from __future__ import annotations
 
 from PySide6.QtGui import QKeySequence
-from PySide6.QtTest import QTest
+from rostrum_gui.lazy_qtest import QTest   # never at import: a person's launch must not count as scripted (lazy_qtest.py)
 
 
 def _find(item, prop):
