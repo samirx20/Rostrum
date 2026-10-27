@@ -148,7 +148,7 @@ ACTIONS = [
     act("cut", "Cut", lambda f: f.count and f.kinds <= CLIPS, shortcut="Ctrl+X", group="edit", do="cut",
         needs="Cut needs notes, hits, clips or lines selected"),
     act("paste", "Paste", lambda f: f.clipboard, shortcut="Ctrl+V", group="edit", do="paste",
-        needs="Nothing to paste yet: copy something first"),
+        needs="Nothing copied yet: select notes and press Ctrl+C"),
     act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f) or f.one == "section"),
         C.duplicate, "Ctrl+D",
         group="edit", needs="Duplicate needs notes, hits, clips, tracks or a section", sure=True),   # (sure: its copy

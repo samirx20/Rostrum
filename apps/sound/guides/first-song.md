@@ -129,7 +129,7 @@ The **Colour** row shows the colour the track is drawn in.
    name, every key on the Keys list (Ctrl+/; "nudge" finds the arrow keys): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid;
    a setting of what is selected by its name ("velocity", "volume": Enter jumps to its field in the settings panel) and the selected track's lanes
    ("automation", "sustain": Show the Volume lane, Playing lane: Sustain). An action that can't run right now says why instead ("paste" before a copy:
-   "Nothing to paste yet: copy something first"). The same keys
+   "Nothing copied yet: select notes and press Ctrl+C"). The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 6. **Keys on the selection:**
