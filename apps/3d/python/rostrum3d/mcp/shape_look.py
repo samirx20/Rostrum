@@ -110,6 +110,8 @@ def look_shape(ctx, args):
             s["side"] = "" if abs(s["at"][0]) < 1.5 * m["cell"] else ("left" if s["at"][0] > 0 else "right")
         shape_picture.draw(views, m, spots or [], dest, item.get("name") or item["id"])
         rest = " Measured at rest (its pose isn't)." if item["type"] == "clay" and item.get("bones") else ""
+        note = clay_detail.held(doc.data, item, ctx.app.folder) if item["type"] == "clay" else ""
+        rest += " " + note if note else ""
         data = {"target": item["id"], "space": "own", **m,
                 "thinSpots": spots, "thin": thin, "mirrored": item.get("symmetry") == "x"}
         return Reply(f'{item["id"]}: ' + _words(item, m, spots, thin) + rest, data, [dest], [dest], engine.take_notices())

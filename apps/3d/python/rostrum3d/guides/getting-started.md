@@ -16,7 +16,8 @@ delete.
 
 ## On the screen
 
-**Moving around** works the same in every tool: **right-drag** (or two fingers on a touchpad) turns the view, the
+**Moving around** works the same in every tool: **right-drag** (or two fingers on a touchpad) turns the view round
+what is selected (else round everything you made) and brings it to the middle of the picture, the
 **wheel** (or a pinch) comes closer or goes back. **F** brings the selection to the middle. Turning the view never
 moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, a stroke, a colour, a pose, a light.
 
@@ -112,23 +113,29 @@ would make, the reply says so (`spotSize`, about a sixth of the body's width at 
 
 All through `edit_document`:
 
-1. `pose.find_joints` (`target: ["buddy"]`). The reply lists the joints it found, each with where it is (and
-   `dropped`: old joints the new shape no longer has). An arm gets `arm.R` (shoulder) and `forearm.R` (elbow, at
-   its middle when it is straight). `.R` is the character's right, the −x side, on the picture's left. An arm
+1. `pose.find_joints` (`target: ["buddy"]`). The reply lists the joints it found by name. The names follow the
+   shape, so use the ones it gives: an arm usually gets `arm.R` (shoulder) and `forearm.R` (elbow, at its middle
+   when it is straight), but a long or bent arm may get a third (`arm2.R`), and a body gets `chest` only when it is
+   tall enough to bend in two (else its one joint is `body`). `.R` is the character's right, the −x side, on the
+   picture's left. To see where a joint is, `inspect_item` its id (its head and tail, in the clay's space). An arm
    drawn hanging down must not touch the body's side (leave a gap of about a centimetre), or it is read as part of
    the body.
-2. `pose.drag` with `part: "hand.R"` (the end of the arm, whatever its last joint is), `to` a world point (up and a
-   little out: about 15 cm above the shoulder) and `holds`.
+2. `pose.drag` with `part: "hand.R"` (the end of the arm, whatever its last joint is), `to` a world point and
+   `holds`. Keep `to` **within the arm's reach**: no farther from the shoulder joint's head than the arm's joints
+   are long together (about 10–13 cm for the arm above). Up and a little out from the shoulder reads as a wave. A
+   point out of reach stretches the arm straight and pulls the body after it; drag again nearer.
 3. **Hold the feet**: `holds: ["foot.L", "foot.R"]`. The chest then leans a little with the arm, and the eyes lean
-   with it (parts placed on a clay follow its pose). Add `"chest"` to keep the body upright and bend only the arm.
-   Only the arm and the shoulder round it move: the body's side stays where it is.
+   with it (parts placed on a clay follow its pose). Add the body's upper joint (`"chest"`, or `"body"` when that is
+   its only one) to keep it upright and bend only the arm. Only the arm and the shoulder round it move: the body's
+   side stays where it is.
 
 ```json
-{"op": "pose.drag", "target": ["buddy"], "args": {"part": "hand.R", "to": [-0.16, 0.30, 0.04], "at": 0,
+{"op": "pose.drag", "target": ["buddy"], "args": {"part": "hand.R", "to": [-0.14, 0.27, 0.04], "at": 0,
  "holds": ["foot.L", "foot.R"]}}
 ```
 
-The reply names the joints that moved. `miss` above 0 means the hand could not reach `to`: bring it closer.
+Then `look_frame`: the arm bent at the shoulder and elbow, the hand up, the body upright.
+
 Guide `posing` has the rest (keys at several times, `pose.rest`).
 
 ### 5. The angle, then the light

@@ -6,9 +6,10 @@ For each shot with a camera, at a few frames spread over the shot (its ends and 
 (a sphere round its pieces' `at` / `to` and radius, mirrored copies included, through the clay's world transform;
 strokes are left out: they stay near the pieces) are tested against the camera's view. Where the camera sees them, one
 pixel at the clay's nearest point is distance × sensor width / (focal length × shot width) wide. The smallest of
-those × 1.5, rounded to 0.1 mm and kept within 0.2 mm .. 5 cm, is the detail; no shot sees the clay → the CL1 rule,
-its radius / 100. Rounding is what keeps it stable: a camera moving changes the clay (and its cache key) only when
-the rounded number changes. Plain Python, a few dozen transforms per clay.
+those × 1.5, rounded to 0.1 mm and kept within 0.2 mm .. 5 cm and no finer than the clay's size allows
+(MOST_GRAINS), is the detail; no shot sees the clay → the CL1 rule, its radius / 100. Rounding is what keeps it
+stable: a camera moving changes the clay (and its cache key) only when the rounded number changes. Plain Python, a
+few dozen transforms per clay.
 """
 from __future__ import annotations
 
@@ -19,6 +20,21 @@ from .resolve import Frames
 
 GRAIN_PX, LO, HI, ROUND = 1.5, 0.0002, 0.05, 4        # grain per pixel; clamp (m); round to 0.1 mm
 SAMPLES = 9                                           # frames tested per shot, its first and last included
+# CL7b: the most grains a clay's box (round its pieces, generous) may hold at the detail the shots ask for. The core
+# builds a drawn shape in one box of grains (7 buffers of 4 bytes each): a 48 cm pear seen close up asked for 0.2 mm,
+# 18 billion grains, and the core failed with "bad allocation". This box is generous (an outline's points get its
+# whole thickness): the core's own is about a third of it, so 64 million here is roughly 0.5 GB of work there.
+MOST_GRAINS = 64e6
+
+
+def floor_for(item: dict) -> float:
+    """The finest detail the clay's box allows (MOST_GRAINS), rounded up to 0.1 mm; 0 for a clay with no pieces."""
+    own = balls(item)
+    if not own:
+        return 0.0
+    lo, hi = _box(own)
+    vol = math.prod(max(b - a, 1e-6) for a, b in zip(lo, hi))
+    return math.ceil((vol / MOST_GRAINS) ** (1 / 3) * 1e4) / 1e4
 
 
 def _clamp(v: float) -> float:
@@ -134,7 +150,38 @@ def auto(data: dict, item: dict, folder=None) -> float | None:
             px = _pixel(fr, cam, item["id"], f, ball, shot.get("width", 1920), shot.get("height", 1080))
             if px is not None:
                 best = min(best, px)
-    return None if best == math.inf else _clamp(GRAIN_PX * best)
+    return None if best == math.inf else max(_clamp(GRAIN_PX * best), floor_for(item))
+
+
+def held(data: dict, item: dict, folder=None) -> str:
+    """A plain sentence when the shots ask for a finer detail than the clay's size allows (MOST_GRAINS), else ""."""
+    if item.get("detailMode", "auto") == "fixed":
+        return ""
+    ball = bounds(item)
+    found = auto(data, item, folder)
+    if ball is None or found is None:
+        return ""
+    floor = floor_for(item)
+    if found > floor:
+        return ""
+    # what the shots ask for, without the floor (auto with it lifted)
+    asked = _asked(data, item, folder)
+    if asked is None or asked >= floor:
+        return ""
+    lo, hi = _box(balls(item))
+    gb = math.prod(max(b - a, 1e-6) for a, b in zip(lo, hi)) / asked ** 3 * 28 / 1e9  # (generous box)
+    return (f"Detail held at {floor * 1e3:g} mm: the closest shot asks for {asked * 1e3:g} mm, which would need "
+            f"about {gb / 3:.0f} GB for this clay. Set Detail to Fixed to choose it yourself.")
+
+
+def _asked(data: dict, item: dict, folder=None) -> float | None:
+    global MOST_GRAINS
+    keep = MOST_GRAINS
+    MOST_GRAINS = math.inf
+    try:
+        return auto(data, item, folder)
+    finally:
+        MOST_GRAINS = keep
 
 
 def detail(data: dict, item: dict, folder=None) -> float:

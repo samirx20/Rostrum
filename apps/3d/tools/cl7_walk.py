@@ -258,6 +258,7 @@ class Walk:
 
     def pick(self, h, s, v):
         """In the open picker: a click on the hue strip at hue `h` (0-1), then on the square at saturation s, value v."""
+        W.pump(0.3)                                        # the picker settles where it opens (a person's eye too)
         strip, sq = W.find(self.root, "hueStrip"), W.find(self.root, "colourSquare")
         if strip is None or sq is None:
             return self.clock.check(False, "the picker's hue strip and colour square are on screen")
@@ -266,8 +267,13 @@ class Walk:
             self.hand.click(p, 0.5)
             W.pump(0.2)
         p = sq.mapToScene(QPointF(s * (sq.width() - 1), (1 - v) * (sq.height() - 1)))
+        top, bottom = sq.mapToScene(QPointF(0, 0)).y(), sq.mapToScene(QPointF(0, sq.height())).y()
+        self.clock.check(top >= 0 and bottom <= self.win.height(),
+                         f"the picker's colour square is inside the window (y {top:.0f}-{bottom:.0f} of {self.win.height()})")
         self.hand.click(p, 0.5)
         W.pump(0.3)
+        if os.environ.get("CL7_PICKER_SHOT"):               # (a look at the picker after the pick, for a failing check)
+            self.win.grabWindow().save(str(OUT / f"picker-{int(time.time() * 1000) % 100000}.png"))
         self.hand.key(Qt.Key_Escape)                       # the picker closes; the change is kept
         W.pump(0.4)
         if W.find(self.root, "colourSquare") is not None:   # (Esc didn't reach it: click on empty panel space)

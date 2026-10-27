@@ -44,7 +44,8 @@ pose at the playhead.
 - **Each piece bends with its own joints.** The joints come with the clay's pieces (the body, each limb): an arm's
   clay follows the arm's joints, the body's clay the body's, and the two share the bend only round the shoulder. So
   a raised arm stretches the shoulder and never pulls the body's side or hip along, even where the hanging arm was
-  close to it.
+  close to it. Where a limb meets the body the bend fades smoothly over about the limb's thickness, so the surface
+  stays closed: no crack across the chest, no marks where an arm rested on the belly.
 - **Humanoid** names (Hips, Spine, Head, LeftUpperArm, LeftLowerArm, LeftHand, LeftUpperLeg, LeftLowerLeg,
   LeftFoot …) are the ones Unity's Humanoid and VRM use, for motion capture and humanoid rigs. Only the names
   change; the bones and their keys stay.
@@ -84,6 +85,10 @@ pose.rest(target="c")                             -> every Turn key removed;  po
 pose.move_joint(target="c", joint="forearm.L", to=[x, y, z])   -> placed: kept when the joints are found again
 pose.names(target="c", names="humanoid")
 ```
+
+The values after `->` are what each operation returns in a script. Through the MCP tools (`edit_document`) the reply
+says the change and the joints' names, not these values: read a joint's place with `inspect_item` on its id, and see
+a drag's result with `look_frame` (a hand that didn't reach shows as an arm stretched straight).
 
 - **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`; `look_at` on a pixel names
   the nearest joint, "forearm.R, 3 cm off"): a joint in the wrong place is fixed with `pose.move_joint` before posing.

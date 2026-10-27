@@ -25,6 +25,10 @@ using BoneMove = std::array<double, 12>;
 // bone it hangs from, its first bone and how far round that joint the bend is shared. A point leans only on its own
 // piece's bones, and on the neighbour piece's bone at a joint within 2 × blend of it, so a raised arm never pulls
 // the body's side or hip (the bones near it through the air are another piece's).
+// CL7b: a point's piece is not one cell's but a share of each piece, read trilinearly between the cells round it, and
+// round each limb's joint (within 3 × its blend) spread through the clay's inside (never across air) over about 1.5 ×
+// the blend, so the weights change smoothly across a border: CL7's one-cell answer tore the chest open under a raised
+// arm and left "+" marks where the arms rest on the belly. Beyond the joint a touching limb keeps its own cells.
 struct SkinParts {
   std::array<double, 3> origin{};  // the grid's low corner; cell (i, j, k)'s centre is origin + (i + 0.5) × cell
   double cell = 1;
@@ -37,13 +41,19 @@ struct SkinParts {
     bool operator==(const Piece& o) const { return from == o.from && first == o.first && blend == o.blend; }
   };
   std::vector<Piece> pieces;
-  bool operator==(const SkinParts& o) const {
+  // per limb n ≥ 1, per cell (n − 1) × cells + cell: its share of piece n (make_shares); NaN: no clay near the cell
+  std::vector<float> share;
+  std::vector<std::array<double, 4>> joint;  // per piece: its joint (its first bone's head) and the share's reach
+  bool operator==(const SkinParts& o) const {  // (share follows from the rest)
     return origin == o.origin && cell == o.cell && dims == o.dims && cells == o.cells && bone == o.bone &&
            pieces == o.pieces;
   }
-  int piece_at(const double p[3]) const;  // the cell's piece, else the nearest inside one of the 26 round; -1: none
-  // how much bone b may lean on a point of `piece` at p (0..1); rest = the bones' rest segments
-  double gate(int piece, int b, const double p[3], const std::vector<std::array<double, 6>>& rest) const;
+  void make_shares(const std::vector<std::array<double, 6>>& rest);  // after the rest is read (read_skin does it)
+  // a point's share of each piece (pieces.size() numbers, adding up to 1); false: no clay near it (every bone may lean)
+  bool shares_at(const double p[3], double* out) const;
+  // how much bone b may lean on a point wholly of `piece` (0..1; CL7's rule); rest = the bones' rest segments. A
+  // point's weights are each piece's own (its gates × 1 / distance⁴, its 4 nearest, normalised) mixed by its shares
+  double gate_in(int piece, int b, const double p[3], const std::vector<std::array<double, 6>>& rest) const;
 };
 
 // `skin` (ENGINE_CONTRACT.md § 2, mesh and clay `skin`): {"rest": [[hx,hy,hz, tx,ty,tz] per bone],
@@ -66,10 +76,10 @@ BoneMove read_bone_move(const PXR_NS::JsValue& v, const std::string& where);
 // normalised. `xyz`: n points, 3 floats each; `idx` / `w`: n × skin_influences(bones) each, filled.
 // `behind` (CL5c, clay only; 0 = the mesh's rule exactly): a point behind a bone's head (its projection on the bone's
 // axis before the head) counts as farther from that bone by `behind` × that distance along the axis, so a limb whose
-// head sits on a body's surface doesn't pull the body behind it along.
+// head sits on a body's surface doesn't pull the body behind it along (with `parts`: the limbs' bones only).
 constexpr int kSkinMost = 4;
 inline int skin_influences(size_t bones) { return int(bones < size_t(kSkinMost) ? bones : size_t(kSkinMost)); }
-// `parts` (CL7, clay only; null = none): each bone's 1 / distance⁴ is times SkinParts::gate for the point's piece.
+// `parts` (CL7, clay only; null = none): each piece's weights by SkinParts::gate_in, mixed by the point's shares.
 void skin_weights(const float* xyz, size_t n, const std::vector<std::array<double, 6>>& rest, int* idx, float* w,
                   double behind = 0.0, const SkinParts* parts = nullptr);
 

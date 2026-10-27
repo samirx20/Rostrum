@@ -212,7 +212,7 @@ def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
     blend = P["pieces"][P["bone"][names.index("arm.R")]]["blend"]
     pts = np.array(P["origin"]) + (np.argwhere(parts["cells"] == 0) + 0.5) * P["cell"]     # the body's cells
     off = np.min([np.linalg.norm(pts - rest[names.index(f"arm.{s}")][:3], axis=1) for s in "LR"], axis=0)
-    far = pts[off > 2 * blend][::7]                                       # beyond either shoulder's blend
+    far = pts[off > SP.REACH * blend][::7]                                # beyond either shoulder's band (CL7b)
     assert all(not set(w) & arm for w in SP.weights(far, rest, P))
     near = pts[off < blend]                                               # and the shoulders themselves are shared
     assert any(set(w) & arm and set(w) - arm for w in SP.weights(near, rest, P))

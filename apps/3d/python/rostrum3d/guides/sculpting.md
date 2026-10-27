@@ -33,7 +33,8 @@ undone, and the clay comes back exactly the same when you open the scene again.
 
    Each Draw, Spin, Lump or Turn into clay is one undo step.
 3. **Pick a brush** in the panel. Six shape the clay:
-   - **Add** builds clay up under the brush; **Carve** takes clay away; **Smooth** evens bumps out.
+   - **Add** builds clay up under the brush; **Carve** takes clay away; **Smooth** evens bumps out (a freshly drawn
+     shape is smooth already, so there it changes little: use it over joins, stroke edges and lumps).
    - **Pull** grabs the clay under the brush and drags it along the stroke: a nose, a chin, an ear tip.
    - **Flatten** planes the clay towards its average surface: the planes of a face, a cut rock.
    - **Crease** pinches a sharp line or valley: lips, eyelids, folds.

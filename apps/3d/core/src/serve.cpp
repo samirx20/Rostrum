@@ -9,6 +9,7 @@
 #include <sstream>
 #include <map>
 #include <memory>
+#include <new>
 #include <string>
 
 #include "args.h"
@@ -98,6 +99,11 @@ std::string answer(Core& core, const std::string& line, const std::function<void
     }
     if (!body.IsObject()) throw Error(name + ": its value must be an object");
     return line_of(h->second(body.GetJsObject()));
+  } catch (const std::bad_alloc&) {  // CL7b: said in words, not "bad allocation"
+    return line_of(JsObject{{"ok", JsValue(false)},
+                            {"error", JsValue(std::string("out of memory: the request needed more memory than is free "
+                                                          "(most often a clay at a very fine Fixed detail; set a coarser "
+                                                          "one)"))}});
   } catch (const std::exception& e) {
     return line_of(JsObject{{"ok", JsValue(false)}, {"error", JsValue(std::string(e.what()))}});
   }

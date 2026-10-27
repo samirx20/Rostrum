@@ -65,6 +65,8 @@ class Renderer : public QQuickRhiItemRenderer {
   void render(QRhiCommandBuffer* cb) override {
     const QSize sz = colorTexture()->pixelSize();
     const int frame = ++frame_;
+    std::unique_lock<std::mutex> busy;  // no dab starts early while this frame uses the core (Rostrum3DView::post)
+    if (Rostrum3DView* v = item_.data()) busy = std::unique_lock<std::mutex>(v->coreBusy());
     cb->beginExternal();  // plain GL from here: the window's context is current; Qt restores its own state after
     if (!core_) {
       core_ = std::make_unique<r3d::WindowCore>();
@@ -117,6 +119,7 @@ class Renderer : public QQuickRhiItemRenderer {
       blank_ = false;
     }
     cb->endExternal();
+    if (busy.owns_lock()) busy.unlock();  // done with the core: a dab posted from here on may start at once
     QPointer<Rostrum3DView> i = item_;
     if (!answers.empty() || !drawn.isEmpty())
       QMetaObject::invokeMethod(item_, [i, answers = std::move(answers), drawn] {
@@ -165,8 +168,10 @@ QQuickRhiItemRenderer* Rostrum3DView::createRenderer() { return new Renderer; }
 void Rostrum3DView::post(int id, const QString& line) {
   std::string text = line.toStdString();
   if (unanswered_.load() == 0 && r3d::WindowCore::is_stroke_dab(text) && !std::getenv("ROSTRUM3D_NO_AHEAD")) {
+    // only while the render thread is out of the core: else it is answered in order there, as any request
+    std::unique_lock<std::mutex> idle(busyM_, std::try_to_lock);
     std::lock_guard<std::mutex> l(coreM_);
-    if (core_) core_->ahead(text);
+    if (idle.owns_lock() && core_) core_->ahead(text);
   }
   ++unanswered_;
   {

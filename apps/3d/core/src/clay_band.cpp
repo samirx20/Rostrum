@@ -173,16 +173,21 @@ void run_dabs(const DabUnit& du) {
         for (size_t k = r.begin(); k < r.end(); ++k) f(k);
       });
     };
-    // the shape (or its mirrored copy) that weighs most at p, and its weight
+    // the shape (or its mirrored copy) that weighs most at p, and both together: (w1^2 + w2^2) / (w1 + w2).
+    // CL7b: the larger of the two (as before) bends where they are equal, at x = 0, and a mirrored stroke near the
+    // middle left a crease down it. This is smooth there, never above the larger, and the same as before where only
+    // one reaches or both are equal (a dab on the middle weighs as an unmirrored one); one shape: its own weight.
     auto strongest = [&](const V3& p, float& w) {
-      w = 0;
+      float sw = 0, sw2 = 0, most = 0;
       const DabShape* best = nullptr;
       for (const DabShape& d : dabShapes[j]) {
         const V3 e = vsub(p, d.c);
         const float wd = weight(std::sqrt(vdot(e, e)) / d.r, s.falloff);
-        if (wd > w) w = wd, best = &d;
+        sw += wd, sw2 += wd * wd;
+        if (wd > most || !best) most = wd, best = &d;
       }
-      return best;
+      w = dabShapes[j].size() > 1 ? (sw > 0 ? sw2 / sw : 0.0f) : sw;
+      return w > 0 ? best : nullptr;
     };
     if (masking) {  // paint the mask towards 1 (invert: towards 0); the clay stays as it is
       const float a = std::min(std::max(s.strength, 0.0f), 1.0f);
@@ -296,7 +301,18 @@ void run_dabs(const DabUnit& du) {
           break;
         }
         case Op::Pull: {  // the clay under the brush moves by b (falling off): read where it comes from
-          V[i] = b.sample(NX, bx - best->b.x * w, by - best->b.y * w, bz - best->b.z * w);
+          V3 m = best->b;
+          if (dabShapes[j].size() > 1) {  // mirrored: both moves by their weights (the middle never moves across it)
+            float sw = 0;
+            V3 acc{0, 0, 0};
+            for (const DabShape& d : dabShapes[j]) {
+              const V3 e = vsub(p, d.c);
+              const float wd = weight(std::sqrt(vdot(e, e)) / d.r, s.falloff);
+              sw += wd, acc.x += wd * d.b.x, acc.y += wd * d.b.y, acc.z += wd * d.b.z;
+            }
+            if (sw > 0) m = {acc.x / sw, acc.y / sw, acc.z / sw};
+          }
+          V[i] = b.sample(NX, bx - m.x * w, by - m.y * w, bz - m.z * w);
           break;
         }
         case Op::Crease: {  // pinch towards the line (in the surface, across the stroke), then dig a narrow groove
