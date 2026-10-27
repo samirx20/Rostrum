@@ -534,11 +534,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
 
     def close(self):
         self.endScrub()        # a field or picker change still open is kept, as its let-go keeps it (before anything closes)
+        self.endDrag()         # so is a canvas drag still going (Alt+F4 mid-drag), before the live link closes
         if self.link:
             self.link.close()
         self.play.stop()
         self.marks.close()
-        self.endDrag()
         self._outline_paced.cancel()                       # a drag's step still waiting: nothing left to tell
         self._outline_news.cancel()
         self._kit.paced.cancel()
