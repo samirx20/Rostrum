@@ -13,7 +13,7 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum_gui import DocBridge, heap, many, pointer_quiet
+from rostrum_gui import DocBridge, many, pointer_quiet
 from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
@@ -30,6 +30,7 @@ from . import voice_card
 from .plain_errors import refusal as say_refusal, say as say_error
 from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline, velocity, view_kept
 from .action_slots import ActionSlots
+from .heap_sound import HeapRule
 from .agent_demo import AgentDemo
 from .drum_rows import DrumRowSlots
 from .drum_step_slots import DrumStepSlots
@@ -100,7 +101,8 @@ class SoundBridge(AgentDemo, HistorySlots, ViewSlots, PictureSlots, SongSlots, L
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
         self.docChanged.connect(self.listeningChanged)           # the "Solo on" chip and the Export sheet's solo / mute line
-        self.docChanged.connect(heap.after_edit)                 # what an edit leaves is set aside from the collector
+        self._heap = HeapRule(self, lambda: self.transport.playing)   # what an edit leaves is set aside from the
+        self.docChanged.connect(self._heap.after_edit)           # collector; its full walk rarer, never while playing
         self.selectedItemsChanged.connect(self._drop_point)
         for s in (self.docChanged, self.rollChanged):      # the In key chip: it comes and goes with the song's key and the track's kind
             s.connect(self.keyLockChanged)
