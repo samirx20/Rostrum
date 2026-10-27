@@ -11,6 +11,7 @@ pub mod cache;
 pub mod clipshape;
 pub mod duck;
 pub mod effects;
+pub mod held;
 pub mod mastergain;
 pub mod par;
 pub mod render;

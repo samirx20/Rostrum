@@ -31,19 +31,28 @@ fn level(outs: &[Arc<Tape>], from: &[usize], buf: usize) -> Result<Vec<f32>, Str
     Ok(t)
 }
 
-fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize) -> Result<Placed, String> {
+fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize, held: bool) -> Result<Placed, String> {
     let track = &s.tracks[k];
     if track.ducks.is_empty() && !track.mix {
         return Ok(Placed { duck: None, stats: None, ducked: None });
     }
     let sr = s.sample_rate as f64;
     if track.ducks.is_empty() {
+        // A `measure` run (held.rs): the same tape measured before in the run has the same measures.
+        let key = s.track_keys.get(k).filter(|_| held).map(|t| format!("{t}|{}|{}", track.name, s.total_samples));
+        if let Some(st) = key.as_deref().and_then(crate::mix::held::stats) {
+            return Ok(Placed { duck: None, stats: Some(st), ducked: None });
+        }
         // Measured from its tape, block by block.
         let mut m = TrackMeter::new(&track.name, outs[k].channels(), s.total_samples, sr, s.layout);
         for at in (0..s.total_samples).step_by(CHUNK) {
             m.push(&outs[k].read(at, CHUNK.min(s.total_samples - at))?);
         }
-        return Ok(Placed { duck: None, stats: Some(m.finish()), ducked: None });
+        let st = m.finish();
+        if let Some(key) = &key {
+            crate::mix::held::keep_stats(key, &st);
+        }
+        return Ok(Placed { duck: None, stats: Some(st), ducked: None });
     }
     // A duck follows the level of other tracks over the whole song (duck.rs): this track is ducked whole.
     let mut chs = outs[k].whole()?;
@@ -67,7 +76,7 @@ fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize) -> 
 }
 
 /// Every track placed, in schedule order (`keep`: the tracks kept as stems).
-pub(super) fn place_all(s: &Schedule, outs: &[Arc<Tape>], keep: &[bool], buf: usize) -> Result<Vec<Placed>, String> {
+pub(super) fn place_all(s: &Schedule, outs: &[Arc<Tape>], keep: &[bool], buf: usize, held: bool) -> Result<Vec<Placed>, String> {
     let threads = crate::mix::par::threads_for(super::tracks::job_bytes(s, buf)).min(super::MEASURE_THREADS);
-    crate::mix::par::map_n((0..s.tracks.len()).collect(), threads, |k| place(s, outs, k, keep.get(k).copied().unwrap_or(false), buf)).into_iter().collect()
+    crate::mix::par::map_n((0..s.tracks.len()).collect(), threads, |k| place(s, outs, k, keep.get(k).copied().unwrap_or(false), buf, held)).into_iter().collect()
 }

@@ -56,6 +56,9 @@ pub struct Schedule {
     /// Each track's render-cache key (trackcache.rs), made from the raw job when it is parsed.
     #[serde(skip)]
     pub track_keys: Vec<String>,
+    /// Each track's instrument key (trackcache.rs `clip_keys`): its clips' render, apart from what the track does after.
+    #[serde(skip)]
+    pub clip_keys: Vec<String>,
     /// The frames of the song the file holds (the render request's `from` / `to`; None: all of it). The tracks
     /// render whole (their cache keys do not change); the master stage, its loudness and the file's measures work
     /// on the range alone, and the stems are cut to it.
@@ -196,6 +199,7 @@ impl Schedule {
         if !(5..=9).contains(&s.version) {
             return Err(format!("schedule version {} (this engine reads 5 to 9)", s.version));
         }
+        s.clip_keys = crate::mix::trackcache::clip_keys(&raw_tracks, s.sample_rate, s.layout.name());
         s.track_keys = crate::mix::trackcache::keys(&raw_tracks, s.sample_rate, s.layout.name(), s.total_samples + s.tail_samples, &s.track_reverb_space);
         Ok(s)
     }

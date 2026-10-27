@@ -77,6 +77,7 @@ impl Mix {
 }
 
 /// One track as it reaches the mix (after its effects, fader and ducking): what an agent checks.
+#[derive(Clone)]
 pub struct TrackStats {
     pub name: String,
     pub peak: f64,

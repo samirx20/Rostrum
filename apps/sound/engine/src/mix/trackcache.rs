@@ -104,3 +104,19 @@ pub fn keys(tracks: &[Value], sample_rate: u32, layout: &str, buf: usize, reverb
     }
     keys
 }
+
+/// Each track's instrument key (`tracks`: the schedule's raw tracks, in order): what `render/clip.rs` makes from its
+/// clips depends on the clips alone (and whether they play into a bed), never on the track's effects, fader, pan or
+/// sends; so a trial that changes only those finds its instruments rendered already (held.rs).
+pub fn clip_keys(tracks: &[Value], sample_rate: u32, layout: &str) -> Vec<String> {
+    let common = format!("{FORMAT}|clips|{}|{sample_rate}|{layout}", build_stamp());
+    tracks
+        .iter()
+        .map(|t| {
+            let (clips, bed) = (t.get("clips").cloned().unwrap_or(Value::Null), t.get("bed").cloned().unwrap_or(Value::Null));
+            let mut files = vec![];
+            file_stamps(&clips, &mut files);
+            blake3::hash(format!("{common}|{bed}|{clips}|{}", files.join("|")).as_bytes()).to_hex().to_string()
+        })
+        .collect()
+}
