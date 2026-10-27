@@ -256,8 +256,9 @@ class Build:
             values, found = ops_import.read_file(values, keep)
             parts += [p for p in found if p not in parts]
         it = self.add(type_, id_, values, into)
+        names = ops_import.part_names(parts)
         for path in parts:
-            it.part(path)
+            it.part(path, name=names[path])
         return it
 
 

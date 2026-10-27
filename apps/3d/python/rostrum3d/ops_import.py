@@ -79,6 +79,14 @@ def _parts(info: dict) -> list[str]:
     return [p["path"][len(root) + 1:] for p in meshes if "/Materials" not in p["path"][len(root):]]
 
 
+def part_names(paths: list[str]) -> dict[str, str]:
+    """Each part's name in the scene list: its object's (a mesh's own name in glTF / FBX is often a generic "Cylinder";
+    "Body/Cylinder" is the Body), its own when it has no object above it, the whole path when two would match."""
+    short = {p: (p.split("/")[-2] if "/" in p else p) for p in paths}
+    taken = [n for n in short.values()]
+    return {p: n if taken.count(n) == 1 else p.replace("/", " › ") for p, n in short.items()}
+
+
 def _bounds(info: dict):
     root = info.get("defaultPrim") or ""
     for p in info.get("prims", []):
@@ -141,9 +149,10 @@ def import_add(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, f'file "{file}"', f"could not be read: {e}")
     paths += [p for p in args.get("parts", []) if p not in paths]
     item = new_item(ctx, "import", args, values)
+    names = part_names(paths)
     for path in paths:
-        item["parts"].append(build.make("part", build.part_id(item["id"], path),
-                                        {"name": path.rsplit("/", 1)[-1], "path": path}, ctx.where))
+        item["parts"].append(build.make("part", build.part_id(item["id"], path), {"name": names[path], "path": path},
+                                        ctx.where))
     parent, key = _holder(ctx, args.get("into"))
     ctx.insert(parent, key, item, args.get("index"))
     return item
