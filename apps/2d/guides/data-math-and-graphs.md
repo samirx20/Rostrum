@@ -21,7 +21,7 @@ Two ways in:
 | `param_points(f, t0, t1, n)` / `polar_points(r, a0, a1, n)` | points of `f(t) -> (x, y)` / of `r(θ)` |
 | `line_d(points, to=P, smooth=False, closed=False)` | path data through the points; `smooth` = a curve through every point |
 | `lines_d(list_of_point_lists, to=…)` | many lines as one path (a grid, a wireframe) |
-| `nice_ticks(lo, hi, count=5, extend=False)`, `tick_label(v, ticks)` | round tick values (1, 2, 5 steps) and their words |
+| `nice_ticks(lo, hi, count=5, extend=False)`, `tick_label(v, ticks, separator="")` | round tick values (1, 2, 5 steps) and their words (`separator=","` → "1,500") |
 | `view3d(yaw, pitch, scale, center, distance=None)` | `V(x, y, z)` → comp px, z up; `distance` adds perspective |
 | `surface_lines(f, (x0, x1), (y0, y1), lines=16, steps=48)` | `z = f(x, y)` as wireframe lines for `lines_d(…, to=V)` |
 | `parse_table(text)` | CSV text → `[{column: value}, …]`, numbers as numbers |
@@ -52,7 +52,8 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 
 - **Draw on:** key `trimEnd` 0 → 1 (`trimStart` takes it off again). **A dot riding the curve:** `ridePath` + `rideAt="end"`
   follows the drawn tip; `rideAt="along"` and keying `rideAlong` 0 → 1 moves it on its own clock. Its `x`, `y` become an
-  offset from the path, so set them to 0.
+  offset from the path, so set them to 0. It shows from frame 0 at the curve's start; give it `start=` the draw-on's
+  first key time (here `start=0.3`) if it should appear with the line.
 - **Gaps:** `1/x`, `tan`, `log` break; `curve_points` leaves a `None` there and the line lifts. Pass `ylim=(lo, hi)` so a
   value shooting off to infinity becomes a gap instead of a near-vertical line.
 - **Smooth or straight:** `smooth=True` bends through every sample (fewer samples look right); straight lines show the
@@ -139,7 +140,7 @@ for i, r in enumerate(rows):
     bar = shape(f"bar{i}", shape="rect", w=120, h=P.y(0) - P.y(r["solar"]), x=P.x(i + 0.5), y=P.y(0),
                 anchorY=1, fill="#ffb547", radius=6)                   # anchorY=1: grows up from the axis
     bar.key("scaleY", {at: (0, "easeOut"), at + 0.8: 1})
-    n = text(f"n{i}", counter=True, count=0, x=P.x(i + 0.5), y=P.y(r["solar"]) - 34, size=34,
+    n = text(f"n{i}", counter=True, count=0, start=at, x=P.x(i + 0.5), y=P.y(r["solar"]) - 34, size=34,
              color="#ffffff", align="center", figures="tabular lining")
     n.key("count", {at: (0, "easeOut"), at + 0.8: r["solar"]})                      # the number counts up
     n.key("y", {at: (P.y(0) - 34, "easeOut"), at + 0.8: P.y(r["solar"]) - 34})      # and rides the bar's top
@@ -162,7 +163,11 @@ for i, r in enumerate(rows):                                         # a pie / d
   the value, so a person can still read and edit it. Stagger the start per row (`at = 0.4 + i * 0.15`), or use
   `layer.stagger` afterwards.
 - **Counting numbers:** a text with `counter=True` shows its `count`; key it with the same times and ease as the bar.
-  `countDecimals`, `countPrefix`, `countSuffix`, `countSeparator` format it (`type-and-kinetic-text`).
+  `start=at` keeps a "0" from sitting on every bar before its bar grows. `countDecimals`, `countPrefix`, `countSuffix`
+  and `countSeparator` (`"comma"`, `"period"`, `"space"` or `"none"`) format it (`type-and-kinetic-text`); give the
+  axis the same grouping with `tick_label(v, yt, separator=",")`.
+- **Labels against lines:** a line chart drawn over bars crosses numbers that sit above the bars; put the numbers
+  inside the bar tops (dark text) or the line behind the bars, and look at the last frame.
 - **Pie and donut:** `shape="arc"`, `startAngle`, `sweep` (degrees; 0° is straight up, clockwise), `hole` 0-1
   (0 = a pie). Each slice starts where the last one ended; keying `sweep` from 0 grows it.
 - **Line charts:** straight `line_d` through the data points, drawn on with `trimEnd`; a dot can ride it as above.
@@ -227,4 +232,6 @@ Only numbers and strings cross over, so the document never depends on numpy.
 
 - `look_frame` at the end of the draw-on and half way through a morph or a turn (`what: "sheet"` over the stretch).
 - `look_motion` lists every `trimEnd`, `count` and `scaleY` move with its start, landing and ease.
+- A full-size still: `render_export {comp, format: "png", time: 2.5, path: "<a new folder>"}`. PNG output is always a
+  folder of numbered pictures (here one), so `path` names a folder that doesn't exist yet, not a `.png` file.
 - A key on `d` with a different number of pieces is refused, naming the two key times: sample both the same way.

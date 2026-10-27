@@ -24,6 +24,7 @@ def test_ticks_are_round_and_inside_or_reaching_past_the_range(lo, hi, extend, w
     assert got == pytest.approx(want)
     assert [tick_label(v, got) for v in got[:2]] == [tick_label(want[0], want), tick_label(want[1], want)]
     assert tick_label(-0.0001, 0.5) == "0.0" and tick_label(1500, 500) == "1500" and tick_label(0.25, 0.05) == "0.25"
+    assert tick_label(12500, 2500, separator=",") == "12,500" and tick_label(-1000, 500, " ") == "-1 000"
 
 
 def test_a_function_path_starts_and_ends_where_the_data_maps_with_y_up():

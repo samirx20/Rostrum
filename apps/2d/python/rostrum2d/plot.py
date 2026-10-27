@@ -128,16 +128,16 @@ def nice_ticks(lo, hi, count=5, extend=False):
     return [int(round(k * step)) if whole else round(k * step, 12) + 0.0 for k in range(first, last + 1)]
 
 
-def tick_label(v, ticks_or_step) -> str:
+def tick_label(v, ticks_or_step, separator="") -> str:
     """A tick's words with just the decimals its step needs (step 0.5 -> "1.5", step 2 -> "4", step 0.25 -> "0.75");
-    pass the tick list or the step."""
+    pass the tick list or the step. `separator=","` groups thousands ("1,500"), matching a counter's countSeparator."""
     t = ticks_or_step
     step = abs(t[1] - t[0]) if isinstance(t, (list, tuple)) and len(t) > 1 else abs(t) if not isinstance(t, (list, tuple)) else 1
     places = 0
     while places < 9 and abs(step * 10 ** places - round(step * 10 ** places)) > 1e-6:
         places += 1
-    text = f"{v:.{places}f}"
-    return text[1:] if text.startswith("-") and float(text) == 0 else text
+    text = f"{v:,.{places}f}".replace(",", separator)
+    return text[1:] if text.startswith("-") and round(v, places) == 0 else text
 
 
 def view3d(yaw=30.0, pitch=25.0, scale=100.0, center=(960, 540), distance=None):
