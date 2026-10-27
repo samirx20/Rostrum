@@ -1,8 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// The last render, over the viewport: the picture (fitted), where its file is, how long it took, and a close
-// button. A failed render shows its error in red here and in the top bar; never a picture. `job`: the Render
+// The last render, over the viewport: the picture (fitted), where its file is, how long it took, Show in folder (the
+// picture selected in Explorer) and a close button. A failed render shows its error in red here and in the top bar; never a picture. `job`: the Render
 // button's job (render_job.py), or a finished render picked in the Render page's queue (queue_view.py).
 Rectangle {
     id: view
@@ -32,13 +32,17 @@ Rectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: Theme.header + Theme.gap; color: Theme.panel
         Text {
-            anchors { left: parent.left; leftMargin: Theme.pad; right: close.left; rightMargin: Theme.pad
+            anchors { left: parent.left; leftMargin: Theme.pad; right: reveal.visible ? reveal.left : close.left; rightMargin: Theme.pad
                       verticalCenter: parent.verticalCenter }
             elide: Text.ElideMiddle; font.family: uiFont; font.pixelSize: Theme.label
             text: view.state_ === "done" ? view.job.note + "  ·  " + view.job.path : "Render failed"
             color: view.state_ === "done" ? Theme.fg2 : Theme.danger
         }
-        Button { id: close; text: "Close"; hint: "Esc"; kind: "ghost"
+        Button { id: reveal; objectName: "renderShowInFolder"; text: "Show in folder"; kind: "ghost"
+                 visible: view.state_ === "done" && view.job.showInFolder !== undefined
+                 anchors { right: close.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+                 onClicked: view.job.showInFolder() }
+        Button { id: close; objectName: view.job === backend.renderJob ? "renderClose" : "queueRenderClose"; text: "Close"; hint: "Esc"; kind: "ghost"
                  anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
                  onClicked: view.job.dismiss() }
     }

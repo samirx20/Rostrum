@@ -4,7 +4,7 @@
     rostrum-3d --project <folder> --item <id>                                     (the same, as an installed command)
 
 Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
-look_frame, look_sheet, look_at, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
+look_frame, look_sheet, look_at, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
 inspect_animations. One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
 """
@@ -29,7 +29,8 @@ from rostrum3d.start_scene import SOURCE as START
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
-                "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'agents', build with run_script, then check "
+                "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'getting-started' first for the five-minute character. "
+                "Read inspect_guide 'agents', build with run_script, then check "
                 "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video.")
 
 

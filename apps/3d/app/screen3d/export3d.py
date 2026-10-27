@@ -1,6 +1,6 @@
 """The render sheet (SPEC §11.2, mockup 08): Rostrum3D's fill of the kit's Export sheet (rostrum_gui/export_sheet.py;
-rows: qml/ExportSettings3D.qml; the estimate: qml/RenderEstimate.qml and estimate_sheet.py). F12, the header's Render
-and Ctrl+E open it.
+rows: qml/ExportSettings3D.qml; the estimate: qml/RenderEstimate.qml and estimate_sheet.py). The ▾ beside
+the header's Render and Ctrl+E open it (Render itself and F12 make the Final picture at once: render_job.py).
 
 What: "This frame" (the playhead frame as a picture) or the shot (its frames: the whole shot or the stretch set on it).
 Quality and Size are the shot's own render settings (render_fields): changing them here is a shot edit, one undo step,
@@ -61,7 +61,7 @@ class Export3D(ExportSheet):
 
     @Slot()
     def openFor(self):
-        """F12 / the header's Render: open on this frame on the Build page, on the shot on Animate and Render."""
+        """The ▾ beside the header's Render / Ctrl+E: open on this frame on the Build page, on the shot on Animate and Render."""
         if not self.running():
             self._choice = FRAME if self.bridge.page == "build" else SHOT
             self.stale()

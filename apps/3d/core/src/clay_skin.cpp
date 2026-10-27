@@ -159,7 +159,7 @@ void Skinning::weigh(Block& b) const {
   const float* xyz = reinterpret_cast<const float*>(b.rest.cdata());
   tbb::parallel_for(tbb::blocked_range<size_t>(0, n, 512), [&](const tbb::blocked_range<size_t>& r) {
     skin_weights(xyz + 3 * r.begin(), r.size(), rig_->rest, b.idx.data() + r.begin() * k, b.w.data() + r.begin() * k,
-                 behind_head());
+                 behind_head(), rig_->parts.get());
     const float cut = prune_share();  // the weights are normalised: a share is the weight itself
     for (size_t i = r.begin(); i < r.end(); ++i) {
       float* w = b.w.data() + i * k;

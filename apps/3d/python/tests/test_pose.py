@@ -95,7 +95,9 @@ def test_drag_bends_shoulder_and_elbow_and_leaves_holds():
     clay = _clay(PJ.find(pear()))
     r = pose_ik.Rig(clay)
     hand = r.find("forearm.R")
-    tip = pose_ik.skin.segment(r.frames()[hand], r.bones[hand])[3:]
+    if "hand.R" not in r.joint:                                          # a short arm: its end is still the hand
+        assert r.find("hand.R") == hand and r.find("RightHand") == hand
+    tip =pose_ik.skin.segment(r.frames()[hand], r.bones[hand])[3:]
     to = [tip[0] + 0.15, tip[1] + 0.3, tip[2] + 0.05]                    # the right hand up and in
     start = time.perf_counter()
     out = pose_ik.solve(clay, PJ.bone_id("c", "forearm.R"), tip, to,
@@ -152,3 +154,80 @@ def _bends(d):
     r = pose_ik.Rig(d.item("c"), 0.5)
     return {i: sum(aim._mul(pose_ik._t(pose_ik._rot(*rest)), pose_ik._rot(*now)), [])
             for i, rest, now, b in zip(r.ids, r.rest_turn, r.turn, r.bones) if b.get("keys")}
+
+
+def _grid(fn, lo=(-0.2, -0.02, -0.1), hi=(0.2, 0.28, 0.1), cells=48):
+    lo, hi = np.array(lo, float), np.array(hi, float)
+    cell = (hi - lo).max() / cells
+    dims = np.ceil((hi - lo) / cell).astype(int) + 1
+    P = np.stack(np.meshgrid(*[lo[i] + np.arange(dims[i]) * cell for i in range(3)], indexing="ij"), -1)
+    return {"occupancy": fn(P) < 0, "origin": (lo - cell / 2).tolist(), "cell": float(cell)}
+
+
+def _buddy(arm):
+    """The guide's 26 cm pear with feet and mirrored arms: arm(P, s) is one arm's distance (s = ±1, its side)."""
+    def fn(P):
+        d = _smin(_capsule(P, [0, 0.085, 0], [0, 0.085, 0], 0.085), _capsule(P, [0, 0.19, 0], [0, 0.19, 0], 0.06), 0.04)
+        for s in (1, -1):
+            d = arm(d, P, s)
+            d = _smin(d, _capsule(P, [s * 0.04, 0.012, 0.02], [s * 0.045, 0.012, 0.06], 0.015), 0.01)
+        return d
+    return _grid(fn)
+
+
+STRAIGHT = lambda d, P, s: _smin(d, _capsule(P, [s * 0.05, 0.17, 0], [s * 0.15, 0.13, 0], 0.018), 0.01)  # noqa: E731
+HANGING = lambda d, P, s: np.minimum(_smin(d, _capsule(P, [s * 0.05, 0.19, 0], [s * 0.115, 0.15, 0], 0.017), 0.01),  # noqa: E731
+                                     _capsule(P, [s * 0.115, 0.15, 0], [s * 0.12, 0.06, 0.01], 0.016))   # 1 cm off the side
+
+
+def test_a_straight_long_arm_gets_an_elbow():
+    by = {j["joint"]: j for j in PJ.find(_buddy(STRAIGHT))}
+    assert by["forearm.R"]["parent"] == "arm.R" and by["arm.R"]["parent"] in ("body", "chest")
+    elbow, shoulder, tip = (np.array(by[j][k]) for j, k in (("forearm.R", "head"), ("arm.R", "head"),
+                                                            ("forearm.R", "tail")))
+    share = np.linalg.norm(elbow - shoulder) / (np.linalg.norm(elbow - shoulder) + np.linalg.norm(tip - elbow))
+    assert 0.3 < share < 0.7                                              # about its middle
+
+
+def test_an_arm_hanging_beside_the_body_is_an_arm():
+    by = {j["joint"]: j for j in PJ.find(_buddy(HANGING))}
+    assert {"arm.L", "arm.R", "forearm.L", "forearm.R"} <= set(by)
+    assert by["forearm.R"]["tail"][1] < 0.1 < by["arm.R"]["head"][1]      # from the shoulder down to the hand
+
+
+def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
+    """Each piece bends with its own bones (skin_parts): the hip beside a hanging arm is the body's, though the arm's
+    bones are nearer it through the air (the flap the plain nearest-bones rule pulled)."""
+    from rostrum3d import skin, skin_parts as SP
+    joints, parts = PJ.find_parts(_buddy(HANGING))
+    clay = _clay(joints)
+    clay["jointParts"] = PJ.pack_parts(parts)
+    core = skin.skin(clay, [0.0])
+    rest, P = core["rest"], core["parts"]
+    names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
+    arm = {names.index(n) for n in names if n.startswith(("arm.", "forearm.", "hand."))}
+    hip = [-0.088, 0.09, 0.02]                                            # the body's side, 1-2 cm from the forearm
+    assert sum(w for b, w in SP.weights([hip], rest, None)[0].items() if b in arm) > 0.3     # the old rule's flap
+    assert not set(SP.weights([hip], rest, P)[0]) & arm
+    blend = P["pieces"][P["bone"][names.index("arm.R")]]["blend"]
+    pts = np.array(P["origin"]) + (np.argwhere(parts["cells"] == 0) + 0.5) * P["cell"]     # the body's cells
+    off = np.min([np.linalg.norm(pts - rest[names.index(f"arm.{s}")][:3], axis=1) for s in "LR"], axis=0)
+    far = pts[off > 2 * blend][::7]                                       # beyond either shoulder's blend
+    assert all(not set(w) & arm for w in SP.weights(far, rest, P))
+    near = pts[off < blend]                                               # and the shoulders themselves are shared
+    assert any(set(w) & arm and set(w) - arm for w in SP.weights(near, rest, P))
+
+
+def test_a_part_on_the_body_rides_a_body_bone_not_the_arm_beside_it():
+    """follow.nearest_bone weighs as the core bends (skin_parts): a part on the body's side (on it, or sitting just
+    off its surface) rides the body, though the hanging arm's bone is nearer through the air (the mirrored eye that
+    turned with the raised arm)."""
+    from rostrum3d import follow
+    joints, parts = PJ.find_parts(_buddy(HANGING))
+    clay = _clay(joints)
+    names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
+    for spot in ([-0.088, 0.09, 0.02], [-0.088, 0.09, 0.06]):
+        assert names[follow.nearest_bone(clay, spot)].startswith("forearm.")         # the plain rule
+        clay["jointParts"] = PJ.pack_parts(parts)
+        assert not names[follow.nearest_bone(clay, spot)].startswith(("arm.", "forearm.", "hand."))
+        del clay["jointParts"]

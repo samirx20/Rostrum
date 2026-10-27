@@ -12,14 +12,15 @@ from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 from .render_fields import shutter_frames
+from . import clay_fields
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
-CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
+CONSTRAINTS = {"follow", "followAmount", "followPose", "stick"}             # follow.py: resolved into x … sz
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
-POSE = {"jointNames", "holds", "jointsKey"}    # a clay's joint settings: the document's alone (ops_pose.py)
+POSE = {p.name for p in clay_fields.POSE}  # a clay's joint settings and data: the document's alone (ops_pose.py; skinned goes as its `skin`)
 FILE_UNIT = "fileUnit"                         # an import's: what its file was in, for Keep original size (ops_import.py)
 COPIES_DATA = {copies_fields.HELD}              # a copies item's held copies go as `held` rows, never as a prop
 RESOLVED = COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent

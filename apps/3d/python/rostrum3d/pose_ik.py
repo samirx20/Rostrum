@@ -118,13 +118,23 @@ class Rig:
 
     # --- names
     def find(self, name: str) -> int:
-        """A bone by id, joint name (hand.R) or Humanoid name (RightHand); ValueError naming the choices."""
-        from .pose_joints import HUMANOID
+        """A bone by id, joint name (hand.R) or Humanoid name (RightHand); ValueError naming the choices. A later part
+        of a limb's chain that a short limb doesn't have (hand.R on an arm with only arm.R and forearm.R) is that
+        limb's last bone: its end is still the hand, the spot a person grabs."""
+        from .pose_joints import CHAINS, HUMANOID
         if name in self.index:
             return self.index[name]
+        name = next((j for j, h in HUMANOID.items() if h == name), name)
         for n, (j, b) in enumerate(zip(self.joint, self.bones)):
             if name in (j, b.get("name"), HUMANOID.get(j)):
                 return n
+        part, _, side = name.partition(".")
+        for chain in CHAINS.values():
+            if part in chain[1:]:
+                for earlier in reversed(chain[:chain.index(part)]):
+                    key = f"{earlier}.{side}" if side else earlier
+                    if key in self.joint:
+                        return self.joint.index(key)
         raise ValueError(f'no joint "{name}"; there are: {", ".join(j or i for j, i in zip(self.joint, self.ids))}')
 
     # --- where things are

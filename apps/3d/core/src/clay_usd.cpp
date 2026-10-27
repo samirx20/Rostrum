@@ -268,7 +268,7 @@ void Blocks::set_skin(const SdfPath& clay, std::shared_ptr<const SkinRig> rig, c
   auto it = p_->skins.find(clay);
   std::unique_ptr<Skinning> old;
   if (it != p_->skins.end()) {
-    if (rig && it->second->rig().rest == rig->rest) {  // the same bones: only the pose table is new
+    if (rig && it->second->rig().same_weights(*rig)) {  // the same bones and pieces: only the pose table is new
       it->second->set_rig(std::move(rig));
       return;
     }

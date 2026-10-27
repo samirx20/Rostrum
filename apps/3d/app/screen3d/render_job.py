@@ -1,4 +1,4 @@
-"""The Render button: one final picture (Cycles) of the shot through its camera at the playhead frame, as a job off the
+"""The Render button (one click, F12): one Final-quality picture (Cycles) of the shot through its camera at the playhead frame, as a job off the
 GUI thread with its own engine process (never the viewport's), through the same code as the MCP tool render_still
 (rostrum3d.mcp.render.still): the same folder (the project's next render version, or the render cache), the same files
 (png + exr, the EXR with the shot's passes as layers) and manifest. The engine process is ended when the job is over, so its GPU memory goes back.
@@ -7,6 +7,11 @@ A render reads a snapshot taken on press (scene, shot, history step), so edits m
 its manifest says exactly which step it shows. Cancel ends that process by its own handle (never by name); the job then says "Render cancelled", shows no picture and
 leaves nothing on disk (its half-made `.partial` folder is removed).
 A failure is reported (red status, the error line), never as success.
+
+Render always makes the Final picture (SPEC § 1 6:30): the Final preset whatever the shot's Quality says (a shot set to
+Custom samples keeps its own; other qualities are the render sheet's, the ▾ beside the button). The moment it starts,
+its note says how long it will take (render_guess: the kept measurement, else a first guess) and counts the seconds
+against that; when it lands, the picture shows over the viewport (RenderView.qml) with Show in folder.
 """
 from __future__ import annotations
 
@@ -14,20 +19,28 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from rostrum_gui.export_sheet import ExportSheet
 
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.render import DocView, still
 from rostrum3d.render_fields import passes, settings
 
+from . import render_guess
+
 FORMATS = ["png", "exr"]
 
 
+def final_settings(shot: dict, info: dict) -> dict:
+    """The Render button's settings (render_fields.settings): the shot's, at the Final preset unless it has Custom samples."""
+    return settings(shot if shot.get("renderQuality") == "custom" else {**shot, "renderQuality": "final"}, info)
+
+
 def cycles_of(data: dict, shot_id: str, info: dict) -> dict:
-    """The shot's Cycles settings ({samples, denoise}) as agents read them (render_fields.settings): the one place the
-    Render button, Export and the viewport's Final look take them from."""
-    s = settings(next(x for x in data["shots"] if x["id"] == shot_id), info)
+    """The Render button's Cycles settings ({samples, denoise}): the one place the Render button and the viewport's
+    Final look take them from, so the converged view is the Render button's picture."""
+    s = final_settings(next(x for x in data["shots"] if x["id"] == shot_id), info)
     return {"samples": s["samples"], "denoise": s["denoise"]}
 CANCELLED = "Render cancelled"
 
@@ -42,6 +55,9 @@ class RenderJob(QObject):
         self._state, self._picture, self._note, self._thread = "", "", "", None
         self._engine, self._stop = None, threading.Event()
         self._landed.connect(self._on_landed)
+        self._expect, self._measured, self._t0, self._s = 0.0, False, 0.0, {}
+        self._tick = QTimer(self, interval=1000)          # the seconds so far, against the time it said
+        self._tick.timeout.connect(self._on_tick)
 
     @Property(str, notify=changed)
     def state(self):
@@ -60,8 +76,40 @@ class RenderJob(QObject):
     def note(self):
         return self._note
 
+    @Property(float, notify=changed)
+    def progress(self):
+        """0..1 while it runs: the seconds so far over the time it said (held under 1 until it lands)."""
+        if self._state != "running" or self._expect <= 0:
+            return 0.0
+        return min(0.95, (time.monotonic() - self._t0) / self._expect)
+
+    @Property(str, notify=changed)
+    def clock(self):
+        """The header's short form while it runs: "12 / 40 s" (seconds so far / the time it said)."""
+        if self._state != "running":
+            return ""
+        so_far, said = time.monotonic() - self._t0, max(1.0, self._expect)
+        return f"{so_far:.0f} / {said:.0f} s" if said < 90 else f"{so_far / 60:.0f} / {said / 60:.0f} min"
+
     def running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
+
+    @Slot()
+    def showInFolder(self):
+        """The finished picture, selected in Explorer (the kit's way, ExportSheet.showInFolder)."""
+        ExportSheet.showInFolder(self)
+
+    def _running_note(self) -> str:
+        so_far = time.monotonic() - self._t0
+        said = render_guess.words(self._expect, self._measured)
+        late = so_far > self._expect * 1.15 + 2
+        return (f"Rendering the final picture · {said}" + (f" · {so_far:.0f} s so far" if so_far >= 1 else "")
+                + (" (taking longer than that)" if late else ""))
+
+    def _on_tick(self):
+        if self._state == "running" and self._note != "Cancelling…":
+            self._note = self._running_note()
+            self.changed.emit()
 
     @Slot()
     def start(self):
@@ -76,11 +124,15 @@ class RenderJob(QObject):
         self._stop = stop = threading.Event()
         snap = DocView.of(b.doc)                      # what the manifest records: the same view the render_still tool takes
         shot = next(x for x in b.doc.data["shots"] if x["id"] == b.shot_id)
-        s, layers = settings(shot, info), passes(shot)   # the shot's render settings and EXR passes, as render_still reads them
+        s, layers = final_settings(shot, info), passes(shot)   # Final, the shot's size and EXR passes, as render_still reads them
         size, folder, cyc = (s["width"], s["height"]), b.doc.folder, {"samples": s["samples"], "denoise": s["denoise"]}
-        self._state, self._note = "running", f"Rendering frame {frame} with Cycles…"
+        self._expect, self._measured = render_guess.guess(scene, s, getattr(self._make_engine, "exe", None))
+        self._t0, self._s = time.monotonic(), s
+        self._state = "running"
+        self._note = self._running_note()
+        self._tick.start()
         self.changed.emit()
-        b.say(self._note)
+        b.say(f"Rendering frame {frame} at Final, {render_guess.words(self._expect, self._measured)}")
 
         def work():
             t0, engine = time.monotonic(), None
@@ -122,6 +174,17 @@ class RenderJob(QObject):
             self._state, self._picture, self._note = "", "", ""
             self.changed.emit()
 
+    def demo(self, state: str, picture: str = ""):
+        """Fixed states for the layout check, never a render: "running" (12 s into a 40 s guess, the clock stopped) or "done"."""
+        self._tick.stop()
+        if state == "running":
+            self._expect, self._measured, self._t0 = 40.0, False, time.monotonic() - 12
+            self._state, self._picture = "running", ""
+            self._note = self._running_note()
+        else:
+            self._state, self._picture, self._note = "done", picture, "Rendered in 38.2 s"
+        self.changed.emit()
+
     def wait(self, timeout_s: float) -> bool:
         """For scripted steps: block until the job is over (True) or the time is up (False)."""
         if self._thread is not None:
@@ -132,6 +195,7 @@ class RenderJob(QObject):
         self._finish(png, secs, error)
 
     def _finish(self, png, secs, error):
+        self._tick.stop()
         if error == CANCELLED:                      # back to idle; never a picture, never red
             self._state, self._picture, self._note = "", "", CANCELLED
             self._bridge.say(CANCELLED)
@@ -143,5 +207,7 @@ class RenderJob(QObject):
         else:
             self._state, self._picture = "done", png
             self._note = f"Rendered in {secs:.1f} s"
+            if self._s:
+                render_guess.learn(self._s, secs)
             self._bridge.say(f"Rendered frame {self._at} in {secs:.1f} s")
         self.changed.emit()

@@ -176,7 +176,9 @@ def _reply_joints(ctx, clay_id: str, ids: dict) -> list[dict]:
              "hand, leg / shin / foot, a short limb at the bottom foot, tail, part3 …; limbs on the clay's +X side are "
              ".L (the character's left when it faces +Z), on −X .R. Bone ids are <clay>_<part> (clay_arm_L). Finding "
              "them again after the shape changed keeps every joint placed by hand (pose.move_joint) and every bend "
-             "(keys). Reply: the joints, each {id, joint, head, tail (world), parent}. Look at them with look_frame "
+             "(keys). Each piece (the body, each limb) bends only with its own joints, shared smoothly round the joint where it "
+             "meets the body (a raised arm stretches the shoulder, never pulls the side or hip). Reply: the joints, "
+             "each {id, joint, head, tail (world), parent}, and `dropped`: the old joints the new shape no longer has. Look at them with look_frame "
              "before posing; move a wrong one with pose.move_joint.",
              target="clay", label="Find joints", params=[NAMES, CELLS])
 def pose_find_joints(ctx, targets, args):
@@ -188,14 +190,19 @@ def pose_find_joints(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, clay["id"], "has no shape yet", hint="clay.draw / clay.shape make some first.")
     try:
         every = all(st.get("symmetry", "x") == "x" for st in clay["steps"] if not st.get("hidden"))   # built mirrored
-        found = PJ.find(_GRID(ctx.doc, clay["id"], int(args.get("cells", 48))), mirror=True if every else None)
+        found, parts = PJ.find_parts(_GRID(ctx.doc, clay["id"], int(args.get("cells", 48))),
+                                     mirror=True if every else None)
     except (ValueError, KeyError) as e:
         ctx.fail(codes.BAD_ARGUMENT, clay["id"], f"no joints found: {e}")
     names = args.get("names") or clay.get("jointNames", "plain")
-    ids = _write(ctx, clay, PJ.merge(found, PJ.joints_of(clay)), names)
+    old = PJ.joints_of(clay) if clay.get("bones") else []
+    ids = _write(ctx, clay, PJ.merge(found, old), names)
     ctx.set(clay["id"], "jointNames", names)
     ctx.set(clay["id"], "jointsKey", PJ.steps_key(clay, ctx.doc))
-    return {"joints": _reply_joints(ctx, clay["id"], ids)}
+    ctx.set(clay["id"], "jointParts", PJ.pack_parts(parts))
+    now = {j["joint"] for j in found} | {o["joint"] for o in old if o.get("placed")}
+    return {"joints": _reply_joints(ctx, clay["id"], ids),
+            "dropped": sorted(o["joint"] for o in old if o["joint"] not in now)}
 
 
 @R.operation("pose.names", "Show a clay's joints with plain names (body, arm.L, foot.R …) or Humanoid ones (Hips, "

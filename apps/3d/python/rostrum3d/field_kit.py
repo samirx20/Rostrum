@@ -79,6 +79,9 @@ TRANSFORM = [
            "Key Amount to 0 to let go: it stays where it was let go (follow.py)"),
     N("followAmount", "Amount", "Follow", 0, 1, 0.05, "", S, FOLLOWS, default=1.0,
       help="1 = rides fully, 0 = let go (stays put). Key it: 0 until it is picked up, 1 while carried, 0 to let go"),
+    T("followPose", "Follow the pose", "Follow", False, S, FOLLOWS,
+      help="On a posed clay (or a mesh with bones): ride the bone nearest where it sits, so it bends with the pose "
+           "there (an eye on a turned head). Off: ride the whole item"),
     X("stick", "Stick to", "Stick", "", S, refers="item",
       help="Stay on the surface of this mesh straight below as the item moves: its Y is then its height above that "
            "surface (off the surface's edge it keeps its own Y). A plane, disc, box, sphere, cylinder, cone, "

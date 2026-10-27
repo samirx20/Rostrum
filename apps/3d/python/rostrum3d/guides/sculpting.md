@@ -9,7 +9,8 @@ undone, and the clay comes back exactly the same when you open the scene again.
 1. Click **Clay** on the tool rail (the second button, under Select) or press **Q**. The settings panel shows the Clay
    tool: **Make**, and once a clay is selected, **Brush** with its settings. The rest of the window stays as it is.
 2. **Make a clay.** The panel's **Make** row has the ways to start or add to a clay:
-   - **Draw** (chosen when the tool turns on): drag a closed outline in the viewport and let go. It **puffs** into a
+   - **Draw** (chosen when the tool turns on): drag a closed outline in the viewport and let go (the outline stays,
+     filled grey, until the clay is built a moment later). It **puffs** into a
      soft clay shape, as thick in the middle as the outline is wide there (a circle becomes a ball, a strip a sausage),
      facing you. On empty ground it stands on the ground under the outline as a new clay, selected; its middle is
      where you drew it and **Mirror** runs down that middle. An outline that isn't closed is closed with a straight
@@ -112,8 +113,9 @@ Sculpting a posed clay sculpts it as it stands. Guide `posing` has all of it, fo
 ## Eyes, buttons and other parts
 
 Parts that should look exact (an eye, a button) are shapes, not clay: **Shapes › Sphere**, then click on the clay where
-it goes. With Mirror on, it gets a mirrored copy on the other side that follows it (move, resize or recolour one and
-both change). Guide `modelling` › On a mirrored clay.
+it goes: it comes out sized for that spot. With Mirror on, it gets a mirrored copy on the other side that follows it
+(move, resize or recolour one and both change). Posed later, both move with the clay. Guide `modelling` › On a
+mirrored clay.
 
 ## How it is kept
 
@@ -167,9 +169,18 @@ How the points work:
   outline's points at the depth of the surface where it should join. `blend` is how softly it joins (left out: 0.3 ×
   how fat the shape is, at most 5 cm); `mode="carve"` cuts the shape out instead.
 - **Tiny.** An outline under 4 points, or thinner than 1.5 of the clay's grains, makes a lump the brush's size.
+- **A stroke's path.** `clay.stroke` `path` points are in the clay's own space; each dab lands where a ray from the
+  point along `dir` meets the clay, so the points can float in front of it (e.g. z 0.3 with `dir` [0, 0, -1] in front of
+  a face at z 0.08): the ray goes on until it reaches the clay. A point inside the clay, or whose ray misses it, makes
+  no dab. Default strength (0.5) at the brush's size makes a clean, gentle ridge or groove; pass over it again, or turn
+  `accumulate` on, for more.
 - **Spin axis.** Two points; left out, straight up (+Y) through the profile's first point. Each profile point counts
   by its distance from the axis and its height along it; the ends close to the axis.
 - **Hidden and names.** `claystep.set hidden=True` leaves a step out of the shape (kept); `name` names it.
+- **Looking at it.** `look_shape target="clay_1"` gives its outlines from the front, side and top with its measures
+  (height, width and depth, the width at each tenth of its height, the left–right difference, thin spots);
+  `look_at` on a pixel names the step that made the surface there ("arm, drawn"); `look_frame
+  highlight="steps:arm"` outlines all of what that step made. Name your steps (`name="arm"`) so these replies read.
 - **Turn into clay.** `clay.from_item` takes exact parts (meshes, combines, an import's parts) and imports; each gets
   a clay beside it named "<name> clay", Mirror off, and the original is hidden (`visible=false`), one undo step for all.
 

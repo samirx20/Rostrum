@@ -26,6 +26,7 @@ class Frames:
             stack += [(c, item["id"]) for c in item.get("children", [])]
         self._world, self._values, self._busy, self._step = {}, {}, set(), {}
         self.rides, self.riding = {}, set()                    # follow.ride's per-item moves, frame by frame
+        self.poses = {}                                        # (item, frame) -> its bones' moves (follow.ride, pose)
         self._shift = {}                                       # (id, f) -> how far a stick moved x y z (parent space)
 
     def step(self, id_: str) -> int:

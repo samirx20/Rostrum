@@ -158,7 +158,9 @@ def _tree(occ, dist, g, width):
         if n.id in touch:
             n.parent = max(touch[n.id].items(), key=lambda kv: kv[1])[0]
             nodes[n.parent].kids.append(n.id)
-    return nodes
+    node_of = np.full(occ.shape, -1, dtype=np.int32)          # each inside cell's node
+    node_of[lab >= 0] = np.searchsorted(ids, lab[lab >= 0])
+    return nodes, node_of
 
 
 def _deepest(nodes, i) -> list[int]:
@@ -328,11 +330,19 @@ def _mirror(joints: list[dict]) -> list[dict]:
 
 
 def find(grid: dict, mirror: bool | None = None) -> list[dict]:
+    """find_parts' joints alone."""
+    return find_parts(grid, mirror)[0]
+
+
+def find_parts(grid: dict, mirror: bool | None = None) -> tuple[list[dict], dict]:
     """The joints of the clay sampled in `grid` (a clay_grid reply, or {"occupancy": bool[x, y, z], "origin", "cell"}):
     parents first, {"joint", "parent", "head", "tail"} in the clay's own space (metres). A mirrored clay (`mirror`;
     None: when the grid is left-right symmetric, `mirrored`) is read on its +X half and the joints mirrored, so .L and
-    .R are always a matched pair and the middle joints sit on X = 0."""
+    .R are always a matched pair and the middle joints sit on X = 0.
+    And the clay's parts (`parts`, below): which piece (the body or a limb) each cell belongs to, so the core bends
+    a limb's clay with the limb's bones and the body's with the body's (a hanging arm no longer pulls the hip)."""
     occ = occupancy(grid)
+    whole = occ
     half = mirrored(grid, occ) if mirror is None else bool(mirror)
     if occ.sum() < 8:
         raise ValueError("the clay is too small or too thin to find joints in (sample it with more cells)")
@@ -347,7 +357,7 @@ def find(grid: dict, mirror: bool | None = None) -> list[dict]:
     radius0 = float(dist[root_cell])
     g = walk(occ, root_cell)
     occ = occ & np.isfinite(g)                                  # a loose crumb the root can't reach is left out
-    nodes = _tree(occ, dist, g, max(1.0, min(2.0, radius0 / 4)))
+    nodes, node_of = _tree(occ, dist, g, max(1.0, min(2.0, radius0 / 4)))
     root = next(n.id for n in nodes if n.parent is None and n.band == 0)
     smallest = max(6, int(0.003 * occ.sum()))
     # the body: from the root, at each branching one piece carries on (_carry); the others are limbs
@@ -377,7 +387,7 @@ def find(grid: dict, mirror: bool | None = None) -> list[dict]:
         radii = np.maximum(dist[cells[:, 0], cells[:, 1], cells[:, 2]], 0.5)    # how deep the clay is along it
         if _arclen(pts)[-1] < 0.6 * max(radii.max(), 1.0):     # shorter than it is thick: a bump, not a limb
             continue
-        found.append({"pts": pts, "radii": radii})
+        found.append({"pts": pts, "radii": radii, "k": k})
     xs = lambda f: side(f["pts"][0])  # noqa: E731
     for f in found:
         f["central"] = abs(xs(f)) < 0.5 * _thickness(f["radii"]) + 1
@@ -415,6 +425,7 @@ def find(grid: dict, mirror: bool | None = None) -> list[dict]:
     # limbs: names, sides, chains (sorted so names come out the same every time)
     used: dict[str, int] = {}
     parts = 2
+    groups = []                                                 # per limb: its joint names, its piece's cells
     for f in sorted(found, key=lambda f: (f["kind"], -xs(f), float(f["pts"][0][1]))):
         pts = f["pts"]
         cuts = _limb_joints(pts, f["radii"], f["kind"])
@@ -425,19 +436,79 @@ def find(grid: dict, mirror: bool | None = None) -> list[dict]:
             names = [f"part{parts}"]
         sided = (".L" if xs(f) > 0 else ".R") if kind in SIDED or (half and not f["central"]) else ""
         parent = body_bone(pts[0])
+        group = {"joints": [], "cells": _subtree(nodes, f["k"]), "blend": _blend(f, dist, cell)}
+        groups.append(group)
         for n in range(len(cuts) - 1):
             base = names[n] if n < len(names) else f"{names[-1]}{'_' if names[-1][-1].isdigit() else ''}{n - len(names) + 2}"
             used[base + sided] = used.get(base + sided, 0) + 1
             name = base + sided if used[base + sided] == 1 else f"{base}{used[base + sided]}{sided}"
             joints.append({"joint": name, "parent": parent, "head": where(cuts[n]), "tail": where(cuts[n + 1])})
+            group["joints"].append(name)
             parent = name
     if half:
         for j in joints:                                       # the middle ones on the mirror plane
             if not j["joint"].endswith(".L"):
                 j["head"], j["tail"] = j["head"] * np.array([0.0, 1, 1]), j["tail"] * np.array([0.0, 1, 1])
         joints = _mirror(joints)
-    return [{"joint": j["joint"], "parent": j["parent"], "head": [round(float(x), 6) + 0.0 for x in j["head"]],
-             "tail": [round(float(x), 6) + 0.0 for x in j["tail"]]} for j in joints]
+    out = [{"joint": j["joint"], "parent": j["parent"], "head": [round(float(x), 6) + 0.0 for x in j["head"]],
+            "tail": [round(float(x), 6) + 0.0 for x in j["tail"]]} for j in joints]
+    return out, _parts(whole, node_of, groups, grid, half)
+
+
+# --- parts: which piece each cell belongs to
+def _blend(f, dist, cell) -> float:
+    """How far round a limb's first joint its bend is shared with the body (metres): 1.5 × the limb's radius where it
+    leaves the body."""
+    return round(1.5 * max(0.5 * _thickness(f["radii"]), 1.0) * cell, 6)
+
+
+def _parts(occ, node_of, groups, grid, half) -> dict:
+    """{"origin", "cell", "dims", "cells": uint8 [x, y, z] (0 = the body, n = groups[n − 1], 255 = outside),
+    "groups": [{"joints": [names], "blend": metres}]} (skin_parts.py reads it). Read on a half, the other half is the
+    mirror, its groups the .R twins."""
+    cells = np.where(occ, 0, 255).astype(np.uint8)
+    out = []
+    for n, gr in enumerate(groups, 1):
+        cells[np.isin(node_of, gr["cells"]) & occ] = n
+        out.append({"joints": gr["joints"], "blend": gr["blend"]})
+    if half:
+        flip = lambda n: n[:-2] + ".R" if n.endswith(".L") else n  # noqa: E731
+        twin = {}
+        for n, gr in enumerate(list(out), 1):
+            if any(j.endswith(".L") for j in gr["joints"]):
+                out.append({"joints": [flip(j) for j in gr["joints"]], "blend": gr["blend"]})
+                twin[n] = len(out)
+        origin, cell = float(grid.get("origin", (0, 0, 0))[0]), float(grid.get("cell", 1.0))
+        xs = origin + (np.arange(occ.shape[0]) + 0.5) * cell
+        lut = np.arange(256, dtype=np.uint8)
+        for a, b in twin.items():
+            lut[a] = b
+        other = int(round(-2 * origin / cell - 1))              # cell i's mirror is cell other − i
+        for i in np.nonzero(xs < -0.5 * cell - 1e-9)[0]:
+            m = other - i
+            src = cells[m] if 0 <= m < occ.shape[0] else np.zeros_like(cells[i])
+            cells[i] = np.where(occ[i], np.where(src == 255, 0, lut[src]), 255)
+    return {"origin": [float(x) for x in grid.get("origin", (0, 0, 0))], "cell": float(grid.get("cell", 1.0)),
+            "dims": list(occ.shape), "cells": cells, "groups": out}
+
+
+def pack_parts(parts: dict) -> str:
+    """The parts as one compact text (the clay's `jointParts`): base64 of zlib'd JSON, the cells as base64 bytes."""
+    import json
+    import zlib
+    raw = np.ascontiguousarray(parts["cells"].transpose(2, 1, 0)).tobytes()      # x fastest
+    body = {**parts, "cells": base64.b64encode(raw).decode()}
+    return base64.b64encode(zlib.compress(json.dumps(body, separators=(",", ":")).encode(), 9)).decode()
+
+
+def unpack_parts(text: str) -> dict:
+    """pack_parts' text back: cells as uint8 [x, y, z]."""
+    import json
+    import zlib
+    body = json.loads(zlib.decompress(base64.b64decode(text)))
+    nx, ny, nz = body["dims"]
+    cells = np.frombuffer(base64.b64decode(body["cells"]), np.uint8).reshape(nz, ny, nx).transpose(2, 1, 0)
+    return {**body, "cells": cells}
 
 
 # --- joints and bones

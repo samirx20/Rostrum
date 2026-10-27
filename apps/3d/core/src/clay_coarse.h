@@ -4,8 +4,10 @@
 //    the fine grain is off the band; the mask, where the clay has one there, the same way (unhalved);
 //  - the dab and its re-levelling run on the copy exactly as a fine dab does (clay_band.cpp, run_dabs), over about
 //    1/6 as many band grains (a quarter-of-the-clay dab: ~200,000 -> ~35,000);
-//  - each fine grain then gains twice the coarse change, interpolated (trilinear), both sides clamped to the fine band's
-//    edge (+-kBand / 2 coarse), and is clamped to the band. Fine detail under the brush stays; the big shape moves.
+//  - each fine grain then gains twice the coarse change, interpolated (trilinear), and is clamped to the band. The
+//    change is the dabs' own move of each coarse grain (DabUnit::moved, before re-levelling: smooth, CL7), not the
+//    re-levelled values; a fine grain at the band's edge takes the copy's re-levelled distance instead. Fine detail
+//    under the brush stays; the big shape moves.
 // Chosen by the step alone (its radius in grains = the step's radius and the clay's detail; Mask dabs never), never
 // by timing or by the clay's state, so a live stroke and its replay (serial or parallel) take the same path: live =
 // replay, bit for bit. Every part is per grain and in a fixed order: the same on any number of threads.

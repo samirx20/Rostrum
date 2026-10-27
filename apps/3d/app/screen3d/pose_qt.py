@@ -1,7 +1,9 @@
 """The Pose tool on screen, for QML as `viewport.pose` (3d-simplicity SPEC § 4, CL5 contract § C). Pose shows in the
 rail on the Build and Animate pages whenever one clay is selected (Shift+P); choosing it on a clay with no joints, or
-joints found before its shape changed, finds them first (`pose.find_joints`, one undo step, "Finding joints…" on the
-status line). While Pose is on, the clay's bones are drawn thin (Pose.qml), posed at the playhead, a small dot on each
+joints found before its shape changed, finds them first (`pose.find_joints`, one undo step). Pose is on at the click
+(the rail, the panel) and `finding` says "Finding joints…" on the viewport and in the panel from the same frame; the
+check and the finding run after that frame is drawn, so a click is never a second of nothing (common brief, speed vs.
+interaction). While Pose is on, the clay's bones are drawn thin (Pose.qml), posed at the playhead, a small dot on each
 joint and an orange ring on each hold; nothing of them shows otherwise. Hovering the clay lights the bones a drag there
 would turn (from the engine's pick: pose_link.bone_at, pose_view.moving). The pointer itself is pose_drag.py's.
 Selecting something else, V, Q, B or Esc leaves Pose. Agents do all of it with the same operations (ops_pose).
@@ -38,7 +40,7 @@ class Pose(PoseDrag, QObject):
         self.solved.connect(self._on_solved)
         self._on, self._id, self._lines, self._dots, self._rings, self._lit = False, "", [], [], [], set()
         self._chip, self._cursor, self._dpr, self._n, self._hover_busy, self._hover_next = "", "pick", 1.0, 0, False, None
-        self._held, self._hover_ring = [], -1
+        self._held, self._hover_ring, self._finding = [], -1, False
         self._chip_timer = QTimer(self, singleShot=True, interval=CHIP_MS, timeout=self._chip_gone)
         self._drag_reset()
         self.answered.connect(self._on_answer)
@@ -66,6 +68,12 @@ class Pose(PoseDrag, QObject):
     joints = Property(int, lambda s: len(PV.chain_of(s._item() or {})), notify=changed)
     holds = Property(int, lambda s: len((s._item() or {}).get("holds") or []), notify=changed)
     names = Property(str, lambda s: (s._item() or {}).get("jointNames", "plain"), notify=changed)
+    finding = Property(bool, lambda s: s._finding, notify=changed)       # "Finding joints…" on the viewport and the panel
+
+    def _found(self):
+        if self._finding:
+            self._finding = False
+            self.changed.emit()
 
     # --- the clay posed
     def _item(self):
@@ -93,22 +101,36 @@ class Pose(PoseDrag, QObject):
         self.v.paint.leave()
         self.v.mesh_edit.leave()
         self._on, self._id = True, it["id"]
+        self._finding = not it.get("bones")             # no joints yet: say so at once, before any work
         self.toggled.emit()
         self.changed.emit()
         self._refresh()
+        QTimer.singleShot(30, self._check)              # after this frame is drawn: Pose shows on at the click
+
+    def _check(self):
+        """Pose's first work, a frame after the click: are the joints out of date? Then find them."""
+        it = self._item()
+        if not self._on or it is None:
+            return self._found()
         try:
             stale = L.out_of_date(it, self.b.doc.data)
         except Exception as e:  # noqa: BLE001  the joint finder isn't there or failed: said, Pose stays on
+            self._found()
             return self.b.fail_line(f"Error: pose: {e}")
-        if stale:
-            self.b.say("Finding joints…")
-            QTimer.singleShot(30, self.findAgain)       # the line shows before the engine works
+        if not stale:
+            return self._found()
+        self.b.say("Finding joints…")
+        if not self._finding:
+            self._finding = True
+            self.changed.emit()
+            return QTimer.singleShot(30, self.findAgain)      # the state shows before the engine works
+        self.findAgain()
 
     @Slot()
     def leave(self):
         if self._on:
             self.cancel()
-            self._on, self._id, self._lit, self._chip = False, "", set(), ""
+            self._on, self._id, self._lit, self._chip, self._finding = False, "", set(), "", False
             self.toggled.emit()
             self.changed.emit()
             self._refresh()
@@ -119,7 +141,10 @@ class Pose(PoseDrag, QObject):
         for it, as the view answers there), then pose.find_joints with that grid, one undo step."""
         it = self._item()
         if it is None:
-            return
+            return self._found()
+        if not self._finding:                           # Find again in the panel: the same state while it works
+            self._finding = True
+            self.changed.emit()
         scene, cid = self.v.sent()[0], it["id"]
 
         def job(eng):
@@ -134,12 +159,14 @@ class Pose(PoseDrag, QObject):
         cid, grid = answer
         it = self._item()
         if isinstance(grid, str):
+            self._found()
             return self.b.fail_line(f"Error: pose: the joints could not be found: {grid}")
         if it is None or it["id"] != cid:
-            return
+            return self._found()
         with L.grid_given(grid):
             if self.b._guard(lambda: self.b._apply(L.find_calls(cid), f"Find joints of {self.itemName}")):
                 self.b.say("")
+        self._found()
 
     @Slot(str)
     def setNames(self, names):

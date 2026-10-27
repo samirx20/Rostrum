@@ -1,5 +1,7 @@
 # Building, looking and fixing a 3D shot
 
+New here? `inspect_guide` `getting-started` first: a small clay character, from an empty project to a render, in five minutes.
+
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
@@ -16,6 +18,9 @@ and framed before you add anything; change or delete any of them like any item (
 2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
+   Every look picture is saved in the project's `looks` folder (the reply gives its full path); it stays after the session.
+   A look that takes longer than a moment (a `final` one, a busy machine) answers "Job … is running" with a `job_id`:
+   ask `inspect_job` with it (and `wait_s`) for the picture. Read the picture only from the finished reply.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
      `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
@@ -25,7 +30,16 @@ and framed before you add anything; change or delete any of them like any item (
      added: distance and a starting brightness too). The lighting guide explains it.
    - `look_at` — "what is at this pixel?" Give x, y of the picture you were just shown (same width). It answers with the item id,
      the part, its material, the point in the world and the distance. Use it to find the id behind something that looks wrong,
-     and to check a thing is where you meant (several points at once with `points`).
+     and to check a thing is where you meant (several points at once with `points`). On a clay it also names the **step**
+     that made the surface there (`step`: id, name and kind, "arm, drawn"; a mirrored step counts on both sides) and, once
+     its joints are found, the nearest **joint** ("forearm.R", 3 cm off): talk about parts by those names.
+   - `look_frame highlight="steps:arm"` (or `"steps:arm,foot"`, names or ids) outlines what those steps made on the
+     picture, each in its own colour, posed as the clay stands; the reply gives each region's box in pixels and says if
+     another item hides part of it. Use it before reshaping a step: is "arm" really the arm you see?
+   - `look_shape target=<clay or mesh>` — the form, not a lit picture: outlines from the front, the side and the top on one
+     scale, with its measures in numbers (height, width, depth, the width at every tenth of its height, the widest, the
+     left–right difference and, on a clay, thin spots). Check proportions and symmetry here after every few modelling
+     steps: "51 cm tall … widest 75 cm at 59 % height … left and right differ by up to 3.6 cm at 70 % height".
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
 5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` are jobs: they return a job id at once;
@@ -159,7 +173,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
   they need; `clay.set detailMode=fixed detail=0.001` fixes it (finer is slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
-  keeps them. Look with `look_frame` from two sides after each few steps. The person's side: guide `sculpting`.
+  keeps them. Look with `look_frame` from two sides after each few steps, and `look_shape` for the numbers: is it as
+  tall as meant, are the arms the same length (a step with Mirror off, a one-sided stroke shows as a left–right
+  difference at that height), is a neck or wrist thinner than a few grains (a thin spot: it may break up). `look_at`
+  says which step made a spot, `look_frame highlight="steps:<name>"` shows all of it. The person's side: guide `sculpting`.
 - **Paint on a model.** A mesh: `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height (Relief),
   metal, glow) and `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the
   `uv` under a pixel. A clay: no unfold; `stroke.add` with `anchors` (from `look_at`'s `local` and `localNormal`) and
@@ -195,6 +212,8 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   later. Part-way amounts ride that share of each frame's move. `stick.add` (`item`: a plane, disc, box, sphere,
   cylinder, cone, capsule or editable mesh; optional `height`) stands them on its surface straight below; their `y` is
   then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
+  `follow.add` with `pose: true` on a posed clay (or a mesh with bones) rides the bone nearest each rider instead
+  (`followPose`): an eye on a turning head. Parts placed on a clay get it already (`place_on`, `edit_place_on`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_sheet` shows whether the rider stays put after it is let go.
 - **Posing a clay.** Any clay bends: `pose.find_joints` finds its joints from its shape (body, chest, arm.L,

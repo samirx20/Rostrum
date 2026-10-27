@@ -74,8 +74,12 @@ def place_highlight(ctx, args):
 def place_on(ctx, args):
     """Stand a mesh on the surface at pixel (x, y) of the shot camera's picture, its base on the surface along the surface's
     direction there, the way a person places a shape by clicking (an eye on a face). On a clay whose Mirror is on, a point off
-    its middle also gives the mesh a mirrored copy on the other side ("<mesh>_mirrored", named "<name> (mirrored)") that
-    follows it: edit the original (edits sent to the copy go to it). One change in the history. Then look_frame to see it."""
+    its middle (farther than the mesh's own half size, so the two don't overlap) also gives the mesh a mirrored copy on the
+    other side ("<mesh>_mirrored", named "<name> (mirrored)") that follows it: edit the original (edits sent to the copy go
+    to it). On a clay the mesh also follows the clay's pose (Follow, followPose): posed later, it moves and turns with the
+    bone nearest it, its copy with its own side's, so eyes stay on a turning head. The reply gives the size a part
+    placed by a click there gets (spotSize, about a sixth of the clay's width at the spot) when the mesh is far from
+    it. One change in the history. Then look_frame to see it."""
     doc, info = doc_and_shot(ctx, args)
     frame = frame_of(ctx, info, args)
     w, h = size_of(info, args, 960)
@@ -103,11 +107,19 @@ def place_on(ctx, args):
     has_copy = any(i.get("mirror") == args["mesh"] for i in doc.items())
     copy = (args.get("mirror", True) and not has_copy
             and surface_place.mirrors(doc.item(on), on_world, point, shape_size.extent(mesh)))
+    clay = doc.item(on) if doc.item(on).get("type") == "clay" else None
+    if clay:                                          # it bends with the clay's pose there (follow.py followPose)
+        calls.append({"op": "follow.add", "target": [args["mesh"]], "args": {"item": on, "pose": True}})
     if copy:
         calls.append({"op": "mesh.mirror", "target": [args["mesh"]], "args": {"on": on}})
+    fit = surface_place.part_size(clay, on_world, point) if clay else None
     change = ctx.apply(doc, calls, "Place on a surface")
     made = next((i["id"] for i in doc.items() if i.get("mirror") == args["mesh"]), "") if copy else ""
+    size = shape_size.extent(mesh)
+    hint = (f" It is {size:.3f} m across; a part sized for this spot (as a click on the screen makes it) is about "
+            f"{fit:.3f} m." if fit and size and not 0.67 < size / fit < 1.5 else "")
     return Reply(f'{args["mesh"]} now stands on {on} at {[round(c, 3) for c in point]}'
-                 + (f"; its mirrored copy {made} follows it." if made else "."),
+                 + (f"; its mirrored copy {made} follows it" if made else "")
+                 + ("; it bends with the clay's pose there." if clay else ".") + hint,
                  {"mesh": args["mesh"], "on": on, "point": point, "normal": normal, "mirrored": made,
-                  "seq": change.seq if change else doc.seq})
+                  "followsPose": bool(clay), "spotSize": fit, "seq": change.seq if change else doc.seq})

@@ -7,7 +7,8 @@ the body bends to follow, each joint turning as little as it can.
 ## On the screen
 
 1. Select a clay and click **Pose** on the tool rail (Build or Animate page). The first time, or after the shape
-   changed, the joints are found (a second or so); thin bone lines and joint dots show while Pose is on, never
+   changed, the joints are found: Pose is on at the click and says "Finding joints of …" on the viewport (and
+   "Finding…" in the panel) for the second or so it takes; thin bone lines and joint dots show while Pose is on, never
    otherwise.
 2. **Hold** what should stay still: click a spot once (an orange ring). Click a ring again, or hover it and press
    **Del**, to let go; drag a ring to move it.
@@ -32,12 +33,18 @@ pose at the playhead.
 ## What the joints are
 
 - **body** is the root (the thickest part); **chest** starts where the arms join; **head** sits above a narrowing.
+- A limb is a branch to a tip; an arm drawn hanging down beside the body is found when there is a small gap
+  between them (about a centimetre); where it touches the body's side it is read as part of the body.
 - A limb gets a joint where it meets the body, where it bends most, and a middle one when it is long: **arm /
   forearm / hand**, **leg / shin / foot**; a short limb at the bottom is a **foot**; one pointing up from the top a
   **neck / head**, one pointing back a **tail**; anything else **part3**, **part4** ….
 - **.L** is the character's left: the clay's +X side (the character faces +Z, towards the default camera); **.R**
   is −X. A mirrored clay (built with Mirror on, or left–right the same) is read on one side and mirrored, so its
   .L and .R joints are always a matched pair.
+- **Each piece bends with its own joints.** The joints come with the clay's pieces (the body, each limb): an arm's
+  clay follows the arm's joints, the body's clay the body's, and the two share the bend only round the shoulder. So
+  a raised arm stretches the shoulder and never pulls the body's side or hip along, even where the hanging arm was
+  close to it.
 - **Humanoid** names (Hips, Spine, Head, LeftUpperArm, LeftLowerArm, LeftHand, LeftUpperLeg, LeftLowerLeg,
   LeftFoot …) are the ones Unity's Humanoid and VRM use, for motion capture and humanoid rigs. Only the names
   change; the bones and their keys stay.
@@ -52,12 +59,22 @@ spots on the resting clay, so they stay too.
 resting shape, so the change follows the character into every pose (Mirror works on the resting shape: a change on
 one arm shows on both, in every pose).
 
+## Parts on a posed clay
+
+A shape placed on a clay (an eye, a button: Shapes, then a click on it; `place_on` or `edit_place_on` for agents)
+**follows its pose**: it rides the bone nearest where it sits, turning and moving with it at every time, so an eye
+stays on a head that leans and a button on a chest that turns. A mirrored copy rides the bone on its own side. The
+bone is chosen again whenever the joints are found again. It is the item's Follow (the clay) with **Follow the
+pose** on: turn that off to ride the whole clay instead, or clear Follow to let it stand still. Deleting the clay
+leaves the part where it was put.
+
 ## For agents
 
 Every step above is an operation (one undo step each); positions are world points unless said otherwise.
 
 ```
-pose.find_joints(target="c", names="plain")       -> {"joints": [{id, joint, head, tail, parent}, …]} (world)
+pose.find_joints(target="c", names="plain")       -> {"joints": [{id, joint, head, tail, parent}, …] (world),
+                                                      "dropped": [old joints the new shape no longer has]}
 pose.hold(target="c", bone="foot.L")              -> holds the middle of that joint (off=True lets go)
 pose.hold(target="c", spot=[x, y, z], at=0)       -> holds the joint under a world spot on the clay
 pose.drag(target="c", part="hand.R", to=[x, y, z], at=1.0)
@@ -68,11 +85,13 @@ pose.move_joint(target="c", joint="forearm.L", to=[x, y, z])   -> placed: kept w
 pose.names(target="c", names="humanoid")
 ```
 
-- **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`): a joint in the wrong place
-  is fixed with `pose.move_joint` before posing. `cells` (8–128, default 48) samples the shape more finely for thin
+- **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`; `look_at` on a pixel names
+  the nearest joint, "forearm.R, 3 cm off"): a joint in the wrong place is fixed with `pose.move_joint` before posing.
+  `look_shape` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
   limbs.
 - **Grab by name** (`part="hand.R"`, `"RightHand"` or the bone id `c_hand_R`): the grabbed spot is the end of that
-  bone. `grab` is a world point on the clay as it stands at `at`.
+  bone. A short arm found with no hand of its own still answers to `hand.R` (its last bone: the end is the hand); the
+  same for `foot` on a short leg. `grab` is a world point on the clay as it stands at `at`.
 - **Holds** (`holds`, names or bone ids) replace the clay's own holds for one drag; left out, the clay's holds
   (`pose.hold`) apply. A held joint and every joint that carries it (its parents) never turn, so holding both feet
   keeps the body still and only the arm bends. With no holds the body (root) doesn't turn.
