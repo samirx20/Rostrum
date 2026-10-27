@@ -240,14 +240,15 @@ void read_surface(const UsdStageRefPtr& stage, State& s) {
 }
 
 // Places on the surface, area-weighted, each at least minSpacing from the ones before it (darts from the seed: the
-// first copies stay where they are when the count grows). Fewer than asked when the surface is full.
+// first copies stay where they are when the count grows). When the surface is full at minSpacing, the rest come closer
+// (the gap shrinks by steps, down to touching), so Count is always met.
 void scatter(const State& s, std::vector<GfVec3f>* pos, std::vector<GfVec3f>* nrm) {
   const Params& p = s.p;
   const Surface& sf = s.surf;
   const double total = sf.cumulative.back();
   int want = p.byDensity ? int(std::lround(total * p.density)) : p.count;
   want = std::clamp(want, 0, 10000);
-  const float gap = float(p.minSpacing);
+  float gap = float(p.minSpacing);
   std::unordered_map<int64_t, std::vector<int>> grid;  // minSpacing cells -> placed copies
   const auto cell = [&](const GfVec3f& v, int dx, int dy, int dz) {
     const int64_t x = int64_t(std::floor(v[0] / gap)) + dx, y = int64_t(std::floor(v[1] / gap)) + dy,
@@ -256,7 +257,15 @@ void scatter(const State& s, std::vector<GfVec3f>* pos, std::vector<GfVec3f>* nr
   };
   constexpr int kTries = 30;
   int misses = 0;
-  for (int i = 0; int(pos->size()) < want && misses < 64; ++i) {
+  for (int i = 0; int(pos->size()) < want; ++i) {
+    if (misses >= 64) {  // full at this gap: closer for the rest, the placed ones re-filed in the new cells
+      if (gap <= 0) break;
+      gap = gap > 1e-4f ? gap * 0.7f : 0.f;
+      grid.clear();
+      if (gap > 0)
+        for (int j = 0; j < int(pos->size()); ++j) grid[cell((*pos)[j], 0, 0, 0)].push_back(j);
+      misses = 0;
+    }
     bool placed = false;
     for (int t = 0; t < kTries && !placed; ++t) {
       const uint64_t ch = 1000 + uint64_t(t) * 3;

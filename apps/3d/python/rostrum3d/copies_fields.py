@@ -41,7 +41,7 @@ COPIES = [
        help="Count: this many in all. Density: this many for every square metre"),
     N("density", "Density", "Copies", 0, 1e5, 0.1, "per m²", P, BY_DENSITY, default=10.0),
     N("minSpacing", "Keep apart", "Copies", 0, 1e4, 0.001, "m", S, SURFACE,
-      help="No two copies closer than this (0 = they may touch)"),
+      help="How far apart they stay; when the surface is full the rest come closer, so Count is met (0 = they may touch)"),
     T("alongSurface", "Stand on it", "Copies", True, S, SURFACE,
       help="Each copy stands along the surface's direction there (off: straight up)"),
     T("onTop", "Only on top", "Copies", True, S, SURFACE,

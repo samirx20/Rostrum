@@ -36,7 +36,7 @@ Copies are counted from 0 in the order the layout makes them. A person does the 
 
 ## Scatter over a surface, and what the camera sees
 
-`surface` can be a plane, a mesh, a clay or an import; copies are spread over its area evenly, `minSpacing` keeps them apart (a scatter starts at the source's own width, so they lie side by side; 0 lets them touch and pile), and
+`surface` can be a plane, a mesh, a clay or an import; copies are spread over its area evenly, `minSpacing` keeps them apart (a scatter starts at the source's own width, so they lie side by side; 0 lets them touch and pile; when the surface is full at that distance the rest come closer, so the count is always met), and
 `alongSurface` stands each along the surface's direction there; `onTop` (on by default) uses only the faces that look up, where things can rest (a box's top, not its sides; off for moss on a wall). By default **`onlySeen` is on**: copies the shot camera never
 sees (behind it, behind other things, outside the picture, at any of a few frames of the shot) are not drawn or rendered at all,
 so a field of 400,000 blades costs what the camera sees. The reply of `look_frame` says it: "Copies: grass 212 of 400 seen by Hero 01";
