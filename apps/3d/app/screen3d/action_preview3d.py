@@ -37,7 +37,8 @@ class ActionPreview3D:
     def _facts3d(self) -> Facts:
         vp = getattr(self, "viewport", None)
         screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
-                  "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False}
+                  "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False,
+                  "pose": vp is not None and vp.pose_tool.on}
         return Facts(self.doc, list(self.selection), self._fits, screen)
 
     def engine_said(self, line: str) -> None:
@@ -63,6 +64,10 @@ class ActionPreview3D:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
         if name == "clay-from" and getattr(self, "viewport", None) is not None:
             return self.viewport.clay_tool.turnIntoClay()  # clay_tool_qt.py: one clay.from_item, the new clay selected
+        if name in ("pose-rest", "pose-find", "pose-names") and getattr(self, "viewport", None) is not None:
+            p = self.viewport.pose_tool                     # pose_qt.py: one change each
+            return p.rest() if name == "pose-rest" else p.findAgain() if name == "pose-find" else p.setNames(
+                "plain" if p.names == "humanoid" else "humanoid")
         if name == "send-2d":
             return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
         if name in ("duplicate", "delete"):

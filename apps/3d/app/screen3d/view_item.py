@@ -142,6 +142,11 @@ class ViewLink(QObject):
         next scene; the item draws its view again by itself (gizmo_live.py)."""
         self.post({"xform": {"item": item, **fields}}, then)
 
+    def clay_pose(self, item: str, pose: list, then):
+        """A pose drag's live bone moves on a clay (one [12 numbers] per bone), light, as xform: drawn until the next
+        scene; then(reply) as post gives it."""
+        self.post({"clay_pose": {"item": item, "pose": pose}}, then)
+
     def _post_line(self, line: str, then):
         n = next(self._ids)
         with self._lock:
@@ -231,6 +236,12 @@ class ItemEngine:
 
     def clay_info(self, item: str) -> dict:
         return self.link.ask({"clay_info": {"item": item}})
+
+    def clay_pose(self, item: str, pose: list) -> dict:
+        return self.link.ask({"clay_pose": {"item": item, "pose": pose}})
+
+    def clay_grid(self, item: str, cells: int = 48) -> dict:
+        return self.link.ask({"clay_grid": {"item": item, "cells": cells}})
 
     def show(self, req: dict):
         self.link.show(req)

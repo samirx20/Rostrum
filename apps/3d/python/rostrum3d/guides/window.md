@@ -96,8 +96,27 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Paint** (B), at the bottom while one mesh or clay is selected: paint on it (colour, roughness, relief, metal, glow). The
   settings panel becomes Brush and Paint layers; a drag on it paints, one undo step per stroke; B or Esc leaves.
   The guide `painting` has it all.
+- **Pose** (Shift+P), on the Build and Animate pages while one clay is selected: bend the clay by dragging its parts. The
+  first time (or after the shape changed) it finds the joints from the shape, one undo step ("Finding joints…" shows
+  meanwhile). While Pose is on, the clay's bones are thin lines with a small dot on each joint, posed at the playhead;
+  the gizmo hides. Rest the pointer on the clay: the bones a drag there would bend light up in blue.
+  - **Drag a part** (a hand, the head, a tail tip): the chain from it back towards the body bends to follow the pointer;
+    a chip beside the pointer names the part and its biggest bend ("forearm.R · 64°"). Letting go is one undo step: the
+    Turn of every bone that moved is keyed at the playhead. **Esc** during the drag puts everything back, with nothing
+    in the history.
+  - **Click a spot** (no drag): a **hold**, an orange ring; that part stays where it is while you drag others (a foot
+    on the ground), and the body bends only between the nearest hold and the part you drag. Click a ring to let it go,
+    drag a ring to move it, or rest the pointer on it and press **Delete**.
+  - **Alt + drag a joint dot**: moves the joint itself (its rest place; it is kept when the joints are found again).
+  - A left drag off the clay, or a right drag anywhere, turns the view; a right click opens the menu: **Pose: back to
+    rest** (Build page: every bend of the shot gone; Animate page: the rest pose keyed at the playhead), **Find joints
+    again**, **Joint names: Plain / Humanoid**.
+  - The settings panel shows **Joints** (how many; Find again), **Names** (Plain or Humanoid: Hips, Spine, LeftUpperArm …
+    as motion-capture tools name them) and **Holds** (how many; Clear).
+  - On the Animate page a drag at another playhead time keys there: the clay's bones show their keys on the timeline as
+    a mesh's bones do. Shift+P again, V or Esc goes back to Select. The guide `sculpting` tells what posing does to the clay.
 
-**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (Shift+B, while a mesh is selected), Lights and Camera:
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (Shift+B, while a mesh is selected), **Pose** (Shift+P, while a clay is selected; above), Lights and Camera:
 
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
   and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
@@ -220,6 +239,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | F (held) | Clay: move the pointer left or right to size the brush; let go to keep it |
 | R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
 | P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
+| Shift+P | Pose: drag the selected clay's parts (Shift+P again: Select) |
 | W · E · S | The gizmo's move, turn or scale handles only (V: all) |
 | 1 · 2 · 3 | Edit mesh: points, edges, faces |
 | Shift+K · Alt+Z | Edit mesh: Knife, X-ray |
@@ -229,10 +249,10 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | F12 | Render (on the Render page: the shown shot's render, next in the queue) |
 
 **Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
-newest one); then a gizmo drag, a clay stroke or an outline being drawn (Draw, Spin) still under way is cancelled (the item or the clay goes back, nothing
+newest one); then a gizmo drag, a pose drag (or a hold or joint being moved), a clay stroke or an outline being drawn (Draw, Spin) still under way is cancelled (the item or the clay goes back, nothing
 is recorded); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
 for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
-Knife's line is dropped; then Edit mesh, Paint or the Clay tool is left; then an animation picked on the timeline goes back to its item;
+Knife's line is dropped; then Edit mesh, Paint, the Clay tool or Pose is left; then an animation picked on the timeline goes back to its item;
 then several picked keys are let go; then the selection is let go (the Scene panel shows).
 
 ## Files

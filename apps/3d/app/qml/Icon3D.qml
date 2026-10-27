@@ -34,6 +34,8 @@ Item {
         rig: e(9, 11, 7, 3.5) + "M5 3h7v5.5H5z",
         pose: e(9, 3.2, 1.7, 1.7) + "M9 5v6M4 6.5l5 1.5 4.5-3M9 11l-3 5M9 11l3.5 4.5",    // a figure mid-move
         onion: e(5.5, 9, 3.5, 3.5) + e(9, 9, 3.5, 3.5) + e(12.5, 9, 3.5, 3.5),               // three steps of one shape
+        "pose-drag": "M3.5 15.5L7 10.5l5 1L15 4.5M12.4 4.3l2.6.2.3 2.6" + e(3.5, 15.5, 1.3, 1.3) + e(7, 10.5, 1.3, 1.3)
+                     + e(12, 11.5, 1.3, 1.3),                                    // Pose: a jointed limb pulled by its tip
         bone: e(4, 14, 2, 2) + "M5.5 12.5L8 7.5 15 3 10.5 10z",                                  // a bone: head and diamond
         material: e(9, 9, 6.5, 6.5) + "M5.6 7.6a3.8 3.8 0 0 1 2.6-2.8"                              // a material ball and its shine
     })

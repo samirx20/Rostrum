@@ -157,6 +157,18 @@ ACTIONS += [
            valid=lambda f: mouths.is_mouth(f.items[0]),
            why="Lip sync works on a mouth group: a group whose items are the mouth's shapes."),
 ]
+# Pose on (pose_qt.py): right-click on the clay. Back to rest: the Build page clears every turn, the Animate page keys
+# the rest at the playhead (pose.rest). Joint names: the other naming (Plain / Humanoid), the joints found again.
+_POSE = dict(kinds=("clay",), max_targets=1, importance="primary", group="pose", valid=lambda f: bool(f.screen.get("pose")))
+ACTIONS += [
+    Action("pose:rest", "Pose: back to rest", rank=3, do="pose-rest", **_POSE,
+           why="Pose: back to rest works on the clay being posed (choose Pose in the rail first)."),
+    Action("pose:find", "Find joints again", rank=4, do="pose-find", **_POSE,
+           why="Find joints again works on the clay being posed (choose Pose in the rail first)."),
+    Action("pose:names", lambda f: "Joint names: Plain" if f.items[0].get("jointNames") == "humanoid"
+           else "Joint names: Humanoid", rank=5, do="pose-names", **_POSE,
+           why="Joint names work on the clay being posed (choose Pose in the rail first)."),
+]
 # Empty space (nothing selected): the view's own
 _NOTHING = dict(min_targets=0, max_targets=0, group="view")
 ACTIONS += [
