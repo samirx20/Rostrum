@@ -140,9 +140,6 @@ AppShell {
                     model: backend.mats.rows
                     delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }
                 }
-                // room after the material's row of names: the kit counts a wrapped row of names one line short, so its
-                // last line ("+ Lines · Light to colour · Halftone") could not be scrolled into view (brief 22; kit ask)
-                Item { width: 1; height: Theme.row + 2 * Theme.grid }
             }
         }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" && !viewport.clay.on }
