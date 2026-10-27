@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import RostrumKit
 
 // The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip, every control one height (Theme.field),
@@ -48,6 +49,7 @@ Rectangle {
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
 
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: fileDialog
         title: "Add from a file: a sound, a MIDI file or a video"
         nameFilters: fileIn.filters

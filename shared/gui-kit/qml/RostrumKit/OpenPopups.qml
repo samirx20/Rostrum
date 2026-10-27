@@ -20,6 +20,15 @@ QtObject {
     readonly property bool covered: open.some(p => !!p.covers)
     readonly property var top: { for (let i = open.length - 1; i >= 0; i--) if (open[i].escCloses) return open[i]; return null }
     property Item focused: null                 // the window's activeFocusItem (AppShell)
+    property Item overlay: null                 // the window's popup layer (AppShell): Qt Quick's own dialogs lie there too
+    // The keyboard is in a popup the kit didn't make (a file or folder dialog): every key is its own. Typing a path there
+    // made a marker (M), and Ctrl+L, the dialog's own "type a path", went to the window (critic 2d-final, Add a song).
+    readonly property bool foreign: {
+        if (!focused || !overlay) return false
+        let inside = false
+        for (let it = focused; it; it = it.parent) if (it === overlay) { inside = true; break }
+        return inside && !open.some(p => holds(p, focused))
+    }
     readonly property bool typing: !!focused && focused.cursorPosition !== undefined && focused.selectByMouse !== undefined
     // Esc closes `top`, except while a text box outside it has the keys: there Esc drops the typing first (a name box)
     readonly property bool escWanted: !!top && !(typing && !holds(top, focused))
@@ -67,7 +76,7 @@ QtObject {
         return false
     }
     function takes(keys) {
-        if (covered) return true                                  // nothing behind the start screen hears a key
+        if (covered || foreign) return true                       // nothing behind the start screen or a dialog hears a key
         const ks = (keys || []).map(spell)
         if (ks.indexOf("Esc") >= 0 && top) return true          // its Esc closes it (BrushFlyout leaves Esc to the app)
         for (const p of open) if (owns(p.ownKeys, ks)) return true

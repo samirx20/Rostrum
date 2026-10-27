@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import "."
 
 // The ≡ button and menu, the same in every app (INTERACTION.md 1.19 item 2, kit piece 13): New, Open…, Open recent ▸,
@@ -61,18 +62,21 @@ IconButton {
     }
 
     FolderDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: openDialog
         title: "Open a " + (root.source ? root.source.noun : "project") + ": choose its folder"
         currentFolder: root.source ? root.source.projectsUrl : ""
         onAccepted: root.source.pickLater("path:" + selectedFolder.toString())
     }
     FolderDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: findDialog
         title: "Find missing files: choose the folder they are in"
         currentFolder: root.source ? root.source.projectsUrl : ""
         onAccepted: root.source.findMissing(selectedFolder.toString())
     }
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: duplicateDialog
         title: "Duplicate: name the copy and choose where"
         fileMode: FileDialog.SaveFile

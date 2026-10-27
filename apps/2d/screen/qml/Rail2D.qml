@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import RostrumKit
 
 // 2D's tool rail (design v2 §2.1): the kit's ToolRail (RostrumKit/ToolRail.qml) filled with 2D's tools. Groups from the
@@ -66,6 +67,7 @@ ToolRail {
     FirstUse { id: brushes; ahead: true; sourceComponent: Component { BrushFlyout { } } }   // made while idle after the window shows: the first click is instant
 
     FileDialog {    // Ctrl+K's Add picture / Add video (scripted: add image <file>): the file first, then one layer, centred (backend.adder.addFile)
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: dialog
         property string type: ""
         title: "Choose a " + (type === "image" ? "picture" : type)
@@ -74,6 +76,7 @@ ToolRail {
         onAccepted: backend.adder.addFile(type, selectedFile.toString())
     }
     FileDialog {    // Add from a file…: the file, then in at once, centred (as if let go on the canvas: one change per file;
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: importDialog     // a PDF of several pages asks which page first)
         objectName: "importDialog"
         title: "Add from a file"

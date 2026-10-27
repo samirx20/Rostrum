@@ -1,6 +1,7 @@
 import QtQml
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import RostrumKit
 
 // Rostrum2D, one workspace (apps/2d/DESIGN.md). Left edge: the tool rail (Rail2D.qml, the kit's ToolRail); centre: the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
@@ -168,6 +169,7 @@ AppShell {
                       extra: [{ value: "add_song", label: "Add a song from RostrumSound…", group: "app" }]
                       onPicked: (v) => { if (v === "add_song") songDialog.open() } }
     FileDialog {     // a Sound project's song (its docs\<name>.trk); copied in, the original stays
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: songDialog
         objectName: "songDialog"
         title: "Add a song from RostrumSound"

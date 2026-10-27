@@ -171,7 +171,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         row = _row("layer", lay, depth, label_of(lay), summary)
         row["stretches"] = first["stretches"]
         row.update(past(fields))
-        if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
+        if F.param(lay["type"], "start") is not None:   # a camera, a shape â€¦: when it shows, as a bar
             row.update(bar=True, trim=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
                        end=min(max(lay.get("end", duration), 0.0), duration),
                        startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
@@ -187,7 +187,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
                 row["frames"] = framing.clipped(row["frames"], row["start"], row["end"])
             row["again"] = framing.again(lay, fps, duration)    # a looping drawing's later rounds, faint
         out.append(row)
-        out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
+        out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC Â§9.4)
         if not is_open:
             return out
         out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past))

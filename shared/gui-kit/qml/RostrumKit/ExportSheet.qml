@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import "."
 
 // Export (INTERACTION.md 1.19 item 8): a sheet in the right column, in the settings panel's place, so the work stays in
@@ -170,6 +171,7 @@ Panel {
     EdgeFade { flick: flick; anchors.fill: flick }   // a half-scrolled row fades (S36 stray check)
 
     FolderDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: folderDialog
         title: "Export into this folder"
         onAccepted: sheet.model.setFolder(selectedFolder.toString())

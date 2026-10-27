@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import RostrumKit
 
 // "My sounds" in the Sounds panel: the person's own sound folders (library_panel.py, `soundLibrary`), searched by the
@@ -30,6 +31,7 @@ Item {
     }
 
     FolderDialog { id: picker; title: "Choose a folder of your sounds"
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
                    onAccepted: soundLibrary.addFolder(selectedFolder.toString()) }
 
     Column {   // no folder yet: the one thing you can do
