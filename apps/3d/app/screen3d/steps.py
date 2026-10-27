@@ -9,6 +9,7 @@
     svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
     type <words …> (real keys into a 3D text just placed: live, one undo step) | typeend (Esc ends the typing)
     (a click in the viewport by real input: the kit's `mouseclick <x> <y>`, window pixels)
+    import-hover | import-note | import-file | import-drop (imports: import_steps.py)
     drawings (From a 2D drawing's list of 2D items) | drawing <doc2d> (its path layers: the list's second level)
     wait <ms> | settled (until the newest picture is in and the engine idle) | snap <png path> (a screenshot now, the run goes on)
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
@@ -145,6 +146,9 @@ def do_step(bridge, win, step):
         _key(win, Qt.Key_Escape, "")
         if bridge.adder.typer.item:
             raise RuntimeError("typeend: Esc did not end the typing")
+    elif word.startswith("import-"):   # import-hover | import-note | import-file | import-drop (import_steps.py)
+        from . import import_steps
+        import_steps.do(bridge, win, step)
     elif word == "drawings":
         QMetaObject.invokeMethod(win, "openDrawings")
     elif word == "drawing":
@@ -159,6 +163,8 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
     elif word == "lipsync":        # lipsync <mouth group id>: the right-click menu's Lip sync… (lipsync3d.py)
         bridge.open_lipsync(rest[0])
+    elif word == "assets":         # assets [sample]: Import › Asset library (assets_qt.py); sample = Poly Haven on, a fixed offline list
+        bridge.assets.use_sample() if rest[:1] == ["sample"] else bridge.assets.open()
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
     elif word == "panel":          # panel poses | onion: the Animate rail's own small panels (Rail3D.qml)

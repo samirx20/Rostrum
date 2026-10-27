@@ -142,7 +142,40 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
 
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
-selected item. The rail only shows tools that work today. Others (simulation, import) appear as they are built.
+selected item. The rail only shows tools that work today. Simulation appears when it is built.
+
+## Import
+
+Bring in a model made elsewhere: glTF or GLB, OBJ, FBX, Alembic (its animation plays with the shot) or USD. The file is
+used where it is and never changed.
+
+- **The Import list** (Build page, under Type & logo; **Ctrl+I**): **glTF / GLB…**, **OBJ…**, **FBX…**, **Alembic…**,
+  **USD…** each open the file window showing only that kind of file. The file you pick lands at once on whatever is in
+  the middle of the view (its bottom on the surface there), or on the ground when the middle shows empty floor, or in
+  front of the camera when it shows only sky. Last in the list, **Asset library** (below).
+- **Drag files from Explorer** onto the viewport: while one hovers, a small ring shows where it will land; let go and it
+  lands on the surface under the pointer. Several files dropped together land on the same spot.
+- Each import is **one undo step**, arrives **selected**, and the tool is back to Select. It goes into the selected group
+  (or the group holding the selected item), else the top of the scene list. Its name is the file's.
+- **Sizes**: Rostrum works in metres. A file made in another unit (centimetres, millimetres, inches …) is scaled to
+  metres on the way in, so a 20 cm toy is 20 cm here, and the line at the top says so once ("Imported at 1/100: it was
+  in centimetres"). Under its settings, **Keep original size** takes the file's own numbers instead (a 20 cm toy then
+  stands 20 m tall); it stays there until your next edit and is one undo step. A file made with Z pointing up is stood
+  upright.
+- **Parts**: the meshes inside the file are listed under the import in the scene list (open it with its arrow). Click a
+  part to select it: its settings have its own **Material** (pick or drop one) and **Visible** (hide just that part).
+  The import's own Material, when set, goes over the whole file.
+
+## Asset library
+
+Import › **Asset library** opens a sheet in the settings panel's place with the sources of free models: Poly Haven and
+ambientCG, both CC0 (free to use, no credit needed). Every source is **off** until you switch it on there; while it is
+off nothing is asked of its site, and agents can't switch it on. With a source on: type words in the search field
+(Enter) and its models show as tiles; **More** at the end loads the next ones. With two on, the bar at the top picks
+whose models show. Click a tile: the model downloads (a bar fills on the tile) into the project folder, under
+`assets\<source>\<model>\`, and lands on the surface in the middle of the view, selected, as one undo step. A
+model already downloaded is used again at once. The scene must be in a project folder (the sample scene isn't). Esc
+or × closes the sheet.
 
 ## The settings panel (right)
 
@@ -238,6 +271,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | Q | Clay: make clay and sculpt it (Q again: Select) |
 | F (held) | Clay: move the pointer left or right to size the brush; let go to keep it |
 | R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
+| Ctrl+I | The Import list of the rail (Build page) |
 | P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
 | Shift+P | Pose: drag the selected clay's parts (Shift+P again: Select) |
 | W · E · S | The gizmo's move, turn or scale handles only (V: all) |

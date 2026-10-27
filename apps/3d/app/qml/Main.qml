@@ -54,6 +54,7 @@ AppShell {
         clay_tool: () => viewport.clay.toggle(),
         shapes_menu: () => rail.openGroup("shapes"), type_menu: () => rail.openGroup("type"),
         lights_menu: () => rail.openGroup("lights"), camera_menu: () => rail.openGroup("camera"),
+        add_file: () => { if (backend.page === "build") rail.openGroup("import") },     // Ctrl+I: the Import group
         poses_panel: () => { if (backend.page === "animate") rail.openPanel("poses") },
         materials_list: () => rail.openPanel("materials"),
         quit: () => Qt.quit()
@@ -108,6 +109,7 @@ AppShell {
             anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on && !backend.stretch.shown
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
+                KeepSizeRow { width: parent.width }       // an import just rescaled to metres: Keep original size (importing.py)
                 MaterialRow { id: materialRow; width: parent.width }
                 Repeater {
                     model: backend.mats.rows
@@ -122,6 +124,7 @@ AppShell {
         ClayPanel { anchors.fill: parent; visible: viewport.clay.on }  // Clay: Make, Brush, Size, Strength, Mirror (DESIGN mockup 2)
         PosePanel { anchors.fill: parent; visible: viewport.pose.on }  // Pose: Joints, Names, Holds
         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
+        FirstUse { anchors.fill: parent; visible: backend.assets.shown; when: visible; sourceComponent: Component { AssetSheet { } } }   // Import › Asset library
         AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: [

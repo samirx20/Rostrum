@@ -46,6 +46,7 @@ Rectangle {
         anchors.fill: parent; keys: ["rostrum-material"]
         onDropped: (d) => { viewport.dropMaterial(d.source.materialId, d.x * vp.dpr, d.y * vp.dpr); d.accept() }
     }
+    ImportDrop { anchors.fill: parent; z: 12 }   // a file from Explorer: lands where it is dropped (importing.py)
     Item {   // the shot frame (shot camera only): the scene outside it dimmed, a thin edge, the shot's name above
         id: frame
         visible: viewport.mode === "shot"
