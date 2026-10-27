@@ -192,8 +192,10 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 - With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
   and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the
-  last sound**, the default, or a number of bars: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
-  room to write in) and **More**. With a number of bars, **Ring out** (right under **Length**, on at first) lets what still
+  last sound**, the default, a number of bars, or **Type a length…**: type `23 bars`, the bar it ends on (`bar 24`), seconds
+  (`62.5 s`) or a clock (`1:02.5`) and press Enter (Esc leaves it as it was). Bars follow a tempo change; seconds stay put, for a
+  cut to picture. Playback and the playhead stop where the sound ends, with its tail; the ruler keeps
+  room to write in. Agents: `doc.set` `length` with seconds, `{"beat": n}` or a marker `"#end"`) and **More**. With a set length, **Ring out** (right under **Length**, on at first) lets what still
   rings at the end (a held chord's release, a cymbal, an echo) die away before the song stops (agents: `doc.set` `ringOut`).
   Switch it off to stop at the length; then **Soft end** appears below it (on at first) and fades the last tenth of a second so the stop has no
   click; switch that off too for a dead stop (`endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the

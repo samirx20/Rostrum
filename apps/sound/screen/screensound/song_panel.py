@@ -16,16 +16,13 @@ from types import SimpleNamespace
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_gui import rows
-from rostrum_gui.edits import Scrub, edit_label
+from rostrum_gui.edits import Scrub, edit_label, field_call
 from rostrum_gui.model import RowsModel
 from rostrum_sound import main_mix
 
-from rostrum_sound.doc import meter, tempo
-
-from . import music_map, song_edit, timeline, timing
+from . import music_map, song_edit, song_length, timeline, timing
 
 ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture", "length")   # SongList's Bar 1 rows / the Picture corner / the Length picker (below): never rows here
-LENGTHS = (4, 8, 16, 32, 64, 128)                    # the bars the Length picker offers, after "Until the last sound"
 METERS = ["2/4", "3/4", "4/4", "5/4", "6/4", "7/4", "3/8", "5/8", "6/8", "7/8", "9/8", "12/8", "2/2"]
 
 
@@ -90,34 +87,34 @@ class SongPanel(QObject):
             self.bridge._fail(str(e))
         self.mainMixChanged.emit()
 
-    # ---- the Length picker: "Until the last sound", or a number of bars --------------------------------------------
-    def _bars(self) -> float | None:
-        root = self.doc.data
-        if root.get("length") is None:
-            return None
-        return round(meter.bar_at(root, tempo.beat_at(root, timing.sec(root["length"], root))), 2)
-
+    # ---- the Length picker: "Until the last sound", a number of bars, or a typed length (song_length.py) ----------
     @Property("QVariantList", notify=changed)
     def lengthChoices(self):
-        """[{value, label}]: "" is until the last sound; a song whose length is not one of the list (a script set it)
-        keeps its own entry, so the field always says what it is."""
-        bars = self._bars()
-        counts = sorted({*LENGTHS, *([bars] if bars is not None else [])})
-        return [{"value": "", "label": "Until the last sound"},
-                *({"value": f"{n:g}", "label": f"{n:g} bar" + ("" if n == 1 else "s")} for n in counts)]
+        """[{value, label}]: until the last sound, the preset bars, and the song's own length where it is none of
+        them, so the field always says what it is."""
+        return song_length.choices(self.doc.data)
 
     @Property(str, notify=changed)
     def lengthChoice(self):
-        bars = self._bars()
-        return "" if bars is None else f"{bars:g}"
+        own = song_length.current(self.doc.data)
+        return "" if own is None else own[0]
 
-    @Slot(str)
-    def setLength(self, value):
-        """"" puts the length back to the last sound; else that many bars (written in beats: it follows the tempo)."""
-        root = self.doc.data
-        end = None if value == "" else {"beat": meter.bar_start(root, int(float(value)) + 1)}
+    @Slot(str, result=bool)
+    def setLength(self, text):
+        """A picked or typed length ("" = until the last sound; "23 bars", "bar 24", "62.5 s", "1:02.5", "#end"):
+        one `doc.set` of the song's length, in the form the words mean. Words it can't read: said in the top bar,
+        nothing changes (False)."""
+        if text == song_length.OWN:
+            return True
         b = self.bridge
-        b._guard(lambda: b._apply([b.edit_call(self._root, "length", end)], "Song length"))
+        try:
+            end = song_length.parse(text, self.doc.data)
+        except (ValueError, RostrumError) as e:
+            b._fail(f"Length: {e}" if isinstance(e, ValueError) else str(e))
+            return False
+        # written as it is (field_call, not the inspector's edit_call, which keeps a time in its old form): seconds typed
+        # over a length in bars become seconds
+        return b._guard(lambda: b._apply([field_call(self.doc, self._root, "length", end)], "Song length"))
 
     @Slot()
     def makeMain(self):

@@ -75,12 +75,16 @@ def test_plus_effect_adds_one_step_on_a_track_and_the_master(bridge):
         assert bridge.selected == doc.item(owner)["effects"][-1]["id"]
 
 
-def test_song_length_picker_sets_bars_and_goes_back_to_the_last_sound(bridge):
-    """The Length picker: N bars is written in beats (it follows the tempo), "" puts it back to left out."""
+def test_song_length_picker_sets_bars_typed_lengths_and_goes_back_to_the_last_sound(bridge):
+    """The Length picker: N bars is written in beats (it follows the tempo), a typed time in seconds, a typed bar where it
+    starts; words it can't read change nothing; "" puts it back to left out."""
     from screensound.song_panel import SongPanel
     panel, doc = SongPanel(bridge), bridge.doc
     assert panel.lengthChoice == "" and panel.lengthChoices[0]["label"] == "Until the last sound"
-    panel.setLength("8")
-    assert doc.data["length"] == {"beat": 32.0} and panel.lengthChoice == "8"
+    panel.setLength("8 bars")
+    assert doc.data["length"] == {"beat": 32.0} and panel.lengthChoice == "8 bars"
+    assert panel.setLength("1:02.5") and doc.data["length"] == 62.5 and panel.lengthChoices[-1]["label"] == "1:02.50"
+    assert panel.setLength("bar 24") and panel.lengthChoice == "23 bars"
+    assert not panel.setLength("soon") and panel.lengthChoice == "23 bars"
     panel.setLength("")
     assert doc.data["length"] is None and panel.lengthChoice == ""
