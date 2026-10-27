@@ -1,12 +1,13 @@
 # Building, looking and fixing a 3D shot
 
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
-scene from the document each time you look. Imported USD files stay untouched; your changes to them are overrides.
+scene from the document each time you look. Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
 ## The loop
 
 1. **Know the shot.** `inspect_shot` gives the frame rate, the frame range, the picture size, the shot camera and every light.
-   `inspect_usd_file` shows what a file you want to import holds (its parts, their materials and sizes) before you import it.
+   `inspect_3d_file` shows what a file you want to import holds before you import it: USD, glTF / GLB, OBJ, FBX or Alembic; its
+   unit, up axis, animation (frames, fps) and parts (their materials and sizes).
 2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.

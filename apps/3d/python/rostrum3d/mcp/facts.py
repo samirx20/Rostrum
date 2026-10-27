@@ -1,4 +1,4 @@
-"""inspect_usd_file, inspect_shot and inspect_exposure: facts, never changes."""
+"""inspect_3d_file, inspect_shot and inspect_exposure: facts, never changes."""
 from __future__ import annotations
 
 import tempfile
@@ -7,11 +7,11 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
+from ..ops_import import EXTENSIONS, unit_name
 from . import draw
 from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()
-USD_EXT = (".usd", ".usda", ".usdc", ".usdz")
 SHOWN = 24
 
 
@@ -19,31 +19,43 @@ def _size(bounds) -> list[float] | None:
     return [round(b - a, 4) for a, b in zip(*bounds)] if bounds else None
 
 
-@tools.tool("inspect_usd_file", {"required": ["file"], "properties": {
-    "file": {"type": "string", "description": "A .usd / .usda / .usdc / .usdz file (absolute, or relative to the project folder)."},
+def _frames(r: dict) -> str:
+    if not r.get("animated"):
+        return ""
+    return f', animated: frames {r.get("startFrame"):g}–{r.get("endFrame"):g} at {r.get("framesPerSecond"):g} fps'
+
+
+@tools.tool("inspect_3d_file", {"required": ["file"], "properties": {
+    "file": {"type": "string", "description": "A 3D file an import reads: USD (.usd .usda .usdc .usdz), glTF (.gltf .glb), OBJ, FBX or "
+                                              "Alembic (.abc); absolute, or relative to the project folder."},
     "detail": {"enum": ["short", "full"], "default": "short", "description": "full adds every prim the engine listed (at most 2000)."}}})
-def inspect_usd_file(ctx, args):
-    """What a USD file holds, without importing it: its default prim, up axis, units, and its parts (prim path, type, material, size in
-    scene units). Use it to pick the parts you will give other materials or hide when you import the file."""
+def inspect_3d_file(ctx, args):
+    """What a 3D file holds, without importing it: its format, its unit (and whether the file states one), up axis, animation
+    (frames and fps), and its parts (path, type, material, size in the file's units). Use it before import.add to pick the parts
+    you will give other materials or hide; import.add itself scales a file in another unit to metres and lists its meshes as parts."""
     path = Path(args["file"])
     if not path.is_absolute() and ctx.app.folder:
         path = Path(ctx.app.folder) / path
-    if path.suffix.lower() not in USD_EXT or not path.is_file():
-        raise RostrumError(codes.NOT_FOUND, ctx.tool, f'"{args["file"]}"', "is not a USD file that exists" if path.suffix.lower() in USD_EXT else "is not a USD file",
-                           USD_EXT, f"Looked for {path}.")
+    if path.suffix.lower() not in EXTENSIONS or not path.is_file():
+        raise RostrumError(codes.NOT_FOUND, ctx.tool, f'"{args["file"]}"', "is not a file that exists" if path.suffix.lower() in EXTENSIONS
+                           else "is not a 3D file an import reads", EXTENSIONS, f"Looked for {path}.")
     engine = draw.engine_of(ctx)
     try:
         r = engine.inspect_usd(path)
     except Exception as e:
         raise RostrumError(codes.RENDER_FAILED, ctx.tool, f'"{path.name}"', f"could not be read: {e}") from e
     prims = [{**p, "size": _size(p.get("bounds"))} for p in r.get("prims", [])]
-    parts = [p for p in prims if p["path"].count("/") <= 2]
+    parts = [p for p in prims if p["path"].count("/") <= 2 and "/Materials" not in p["path"]]
+    unit = r.get("metersPerUnit") or 1.0
+    units = f"{unit_name(unit)} ({unit:g} m per unit)" if r.get("unitsKnown", True) else "no unit stated (taken as metres)"
     lines = [f'{p["path"]} ({p["type"]}{", " + p["material"] if p.get("material") else ""}{", " + " × ".join(f"{v:g}" for v in p["size"]) if p["size"] else ""})'
              for p in parts[:SHOWN]]
-    summary = (f'{path.name}: default prim {r.get("defaultPrim") or "none"}, up axis {r.get("upAxis")}, {r.get("metersPerUnit")} m per unit, '
-               f'{len(prims)} prims{" (list cut at 2000)" if r.get("truncated") else ""}. Top parts: ' + ("; ".join(lines) or "none") +
+    summary = (f'{path.name}: {r.get("format", "USD")}, {units}, up axis {r.get("upAxis")}, default prim {r.get("defaultPrim") or "none"}'
+               f'{_frames(r)}, {len(prims)} prims{" (list cut at 2000)" if r.get("truncated") else ""}. Top parts: ' + ("; ".join(lines) or "none") +
                (f"; … {len(parts) - SHOWN} more" if len(parts) > SHOWN else "") + ".")
-    data = {"file": str(path), "default_prim": r.get("defaultPrim"), "up_axis": r.get("upAxis"), "meters_per_unit": r.get("metersPerUnit"),
+    data = {"file": str(path), "format": r.get("format", "USD"), "default_prim": r.get("defaultPrim"), "up_axis": r.get("upAxis"),
+            "meters_per_unit": unit, "units_known": r.get("unitsKnown", True), "animated": r.get("animated", False),
+            "start_frame": r.get("startFrame"), "end_frame": r.get("endFrame"), "frames_per_second": r.get("framesPerSecond"),
             "prim_count": len(prims), "truncated": r.get("truncated", False), "parts": parts}
     if args.get("detail") == "full":
         data["prims"] = prims

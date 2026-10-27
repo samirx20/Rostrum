@@ -28,7 +28,8 @@ def use_engine(engine, folder=None):
         engine.ensure_scene(C.describe(doc, shots[0]["id"], folder))
         return engine.geometry(id_)
     _GEOMETRY = geometry if engine is not None else None
-    from . import ops_pose, unfold
+    from . import ops_import, ops_pose, unfold
+    ops_import.use_engine(engine)                    # import.add reads a file's units, size and parts through it
     unfold.use_engine(engine, folder)                # mesh.unfold asks the same engine
     ops_pose.use_engine(engine, folder)              # pose.find_joints asks it for the clay's grid
 
