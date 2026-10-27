@@ -41,6 +41,25 @@ double behind_head() {
   return v;
 }
 
+// CL6: posed clay blends its bone moves as dual quaternions (dual_quat.h), so a point shared by the body and a
+// high-raised arm turns round the shoulder instead of being pulled to the average of its two places (the pinch under
+// the arm). ROSTRUM3D_CLAY_SKIN_LINEAR=1 goes back to the linear blend (to compare).
+bool linear_only() {
+  static const bool v = [] {
+    const char* env = std::getenv("ROSTRUM3D_CLAY_SKIN_LINEAR");
+    return env && std::atoi(env) != 0;
+  }();
+  return v;
+}
+
+// a point's influence with the largest weight (the pivot its dual quaternions are lined up with)
+int heaviest(const int* idx, const float* w, int k) {
+  int best = 0;
+  for (int j = 1; j < k; ++j)
+    if (w[j] > w[best]) best = j;
+  return idx[best];
+}
+
 // the zero-area placeholder prims (an emptied block, the ring kept ready: clay_usd.h): one triangle, its 3 points
 // the same. Never kept, posed or cast against
 bool placeholder(const VtVec3fArray& p, const VtIntArray& i) {
@@ -120,6 +139,7 @@ bool Affine::inverse(Affine& out) const {
 Skinning::Skinning(std::shared_ptr<const SkinRig> rig) : rig_(std::move(rig)) {
   moves_.assign(rig_->rest.size(), kRest);
   aff_.assign(rig_->rest.size(), Affine{});
+  dq_.assign(rig_->rest.size(), DualQuat{1, 0, 0, 0, 0, 0, 0, 0});
   nmat_.assign(rig_->rest.size(), std::array<double, 9>{1, 0, 0, 0, 1, 0, 0, 0, 1});
 }
 
@@ -179,6 +199,23 @@ void Skinning::pose_block(Block& b) const {
     GfVec3f* pn = normals ? nrm.data() : nullptr;
     for (size_t i = 0; i < n; ++i) {
       const double x = rp[i][0], y = rp[i][1], z = rp[i][2];
+      if (dual_) {  // one blended turn and shift; the normal turns with it (a turn is its own normal matrix)
+        const int* ix = b.idx.data() + i * k;
+        const float* iw = b.w.data() + i * k;
+        const DualQuat& pivot = dq_[heaviest(ix, iw, k)];
+        DualQuat sum{};
+        for (int j = 0; j < k; ++j)
+          if (iw[j] > 0) add_weighted(sum, dq_[ix[j]], iw[j], pivot);
+        Affine a;
+        if (!to_move(sum, a.m, a.t)) a = Affine{};
+        const GfVec3d q = a.point(GfVec3d(x, y, z));
+        pp[i] = GfVec3f(float(q[0]), float(q[1]), float(q[2]));
+        if (rn) {
+          GfVec3d nn = a.dir(GfVec3d(rn[i][0], rn[i][1], rn[i][2]));
+          pn[i] = nn.Normalize() > 1e-20 ? GfVec3f(nn) : rn[i];
+        }
+        continue;
+      }
       double px = 0, py = 0, pz = 0, nx = 0, ny = 0, nz = 0;
       for (int j = 0; j < k; ++j) {
         const float ww = b.w[i * k + j];
@@ -270,6 +307,10 @@ std::vector<BlockKey> Skinning::pose(const std::vector<BoneMove>& moves) {
     posed = posed || moves[b] != kRest;
   }
   posed_ = posed;
+  dual_ = !linear_only();
+  for (size_t b = 0; b < bones() && dual_; ++b) dual_ = rigid(aff_[b].m);
+  if (dual_)
+    for (size_t b = 0; b < bones(); ++b) dq_[b] = dual_quat(aff_[b].m, aff_[b].t);
   // the blocks one of whose bones moved. A block not weighed yet was kept while every bone was at rest and none
   // moved since (any pose away from rest weighs them all): it is weighed now, and drawn at rest until then.
   std::vector<std::pair<BlockKey, Block*>> todo;
@@ -303,8 +344,20 @@ std::vector<BlockKey> Skinning::pose(const std::vector<BoneMove>& moves) {
 Affine Skinning::blend_at(const Block& b, int tri, const double bary[3]) const {
   Affine out;
   if (!b.weighted) return out;
-  for (double& v : out.m) v = 0;
   const int k = skin_influences(bones());
+  if (dual_) {  // the dual-quaternion blend of the corners' influences, as pose_block draws them
+    const int v0 = b.indices[tri * 3];
+    const DualQuat& pivot = dq_[heaviest(b.idx.data() + size_t(v0) * k, b.w.data() + size_t(v0) * k, k)];
+    DualQuat sum{};
+    for (int c = 0; c < 3; ++c) {
+      const int v = b.indices[tri * 3 + c];
+      for (int j = 0; j < k; ++j)
+        add_weighted(sum, dq_[b.idx[size_t(v) * k + j]], bary[c] * b.w[size_t(v) * k + j], pivot);
+    }
+    if (!to_move(sum, out.m, out.t)) out = Affine{};
+    return out;
+  }
+  for (double& v : out.m) v = 0;
   for (int c = 0; c < 3; ++c) {
     const int v = b.indices[tri * 3 + c];
     for (int j = 0; j < k; ++j) {

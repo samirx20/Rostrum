@@ -9,6 +9,7 @@
 // f32 uv[6 nTris] (per triangle corner, 0..1, t up, as st), i32 blocks[4 nBlocks] (x, y, z, triangle count).
 // The triangles are the blocks', in this block order (BlockKey order), each block's in its own order.
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,15 @@ struct SurfaceBlock {  // a full-detail block as drawn (Blocks::get)
   PXR_NS::VtVec3fArray points, normals;
   PXR_NS::VtIntArray indices;  // 3 per triangle
 };
+
+// the blocks' points joined where they sit at exactly the same place (a seam's two sides are bit-identical): the
+// blocks in their order, each block's triangles in its own order (`tris`: their total, to reserve). Also the Cycles
+// whole (clay_whole.h). Throws r3d::Error naming `where` when a block names a point it doesn't have.
+struct Welded {
+  std::vector<float> points, normals;  // xyz each
+  std::vector<int32_t> tris;           // 3 per triangle, into points
+};
+Welded weld(const std::vector<SurfaceBlock>& blocks, uint64_t tris, const std::string& where);
 
 struct SurfaceStats {
   bool made = false;  // false: read from the file

@@ -36,8 +36,8 @@ def test_cancel_leaves_nothing_and_says_so(tmp_path):
     doc = FILES_3D.blank(folder)
     b = Bridge3D(Document.open(folder, doc.item_id, doc.kind), viewport=None, render_engine=slow)
     q = b.queue
-    first = q.call("render.queue.add", {"shot": "hero"})
-    second = q.call("render.queue.add", {"shot": "hero"})
+    first = q.call("render.queue.add", {"shot": "shot_1"})
+    second = q.call("render.queue.add", {"shot": "shot_1"})
     _until(lambda: made and made[0].proc is not None and q.jobs.get(first).status == "running", "the first render starting")
     assert q.jobs.get(second).status == "queued"                       # one at a time: the second waits
     proc = made[0].proc

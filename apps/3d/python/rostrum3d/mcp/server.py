@@ -25,6 +25,7 @@ from rostrum3d.engine import Engine
 from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
+from rostrum3d.start_scene import SOURCE as START
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, lights and cameras, animated by keys and rendered by Hydra "
@@ -43,11 +44,14 @@ def app_tools():
 
 
 def open_documents(project: str, items: list[str]) -> dict:
-    """Open each item from the project folder (or start it empty when it has no file yet), saving after every change."""
+    """Open each item from the project folder (or start it as New does when it has no file yet: start_scene.py, a
+    ground, the Studio sky and Shot 1's camera), saving after every change."""
     docs = {}
     for item in items:
         exists = paths(project, item, KIND.ext)["doc"].exists()
         doc = Document.open(project, item, KIND) if exists else Document.new(KIND, project, item)
+        if not exists:
+            doc.run_script("start.py", run_source(START, "start.py"))
         doc.subscribe(lambda ev, d=doc: d.save() if ev.kind == "change" else None)
         if not exists:
             doc.save()

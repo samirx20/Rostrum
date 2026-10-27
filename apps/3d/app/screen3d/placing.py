@@ -2,14 +2,16 @@
 in the viewport. The engine's pick gives the point and the surface's direction there (`normal`, facing the camera);
 the shape stands along that direction with its base on the surface, sized to the scene's size class: a tenth of a
 metre in an empty scene (product scale), else a fifth of the thing it was placed on (a 10 cm box on a 50 cm plinth).
-Clicking empty space places it on the ground (y = 0) where the view's ray meets it. Plain maths, no Qt.
+Clicking empty space places it on the ground (y = 0) where the view's ray meets it. Standing on the point and the
+mirrored copy on a mirrored clay are rostrum3d.surface_place's (shared with agents). Plain maths, no Qt.
 """
 from __future__ import annotations
 
 import math
 
 from rostrum3d import aim
-from rostrum3d.shape_size import extent, half_height
+from rostrum3d.shape_size import extent
+from rostrum3d.surface_place import clean, into_parent, mirrors, stand, up_turn  # noqa: F401  (one source: placing's maths)
 
 PRODUCT = 0.1                        # the first shape in an empty scene, in metres (product scale)
 FIFTH = 0.2                          # after that: this much of the thing it was placed on
@@ -37,24 +39,6 @@ def shape_fields(shape: str, size: float) -> dict:
             "disc": {"radius": r}}.get(shape, {})
 
 
-STRAIGHT = 0.01                      # a surface direction this close to an axis is taken as the axis (smooth-shading noise)
-
-
-def clean(normal) -> list[float]:
-    """`normal` with near-zero parts made zero, unit length: a box's top gives exactly up, so nothing is tilted 0.04°."""
-    n = [0.0 if abs(c) < STRAIGHT else c for c in normal]
-    length = math.hypot(*n) or 1.0
-    return [c / length for c in n]
-
-
-def up_turn(normal) -> tuple[float, float]:
-    """(rx, rz) degrees that stand the shape's up (+Y) along `normal` (X turn first, then Z: aim.py's order)."""
-    nx, ny, nz = normal
-    rx = math.degrees(math.asin(max(-1.0, min(1.0, nz))))
-    rz = math.degrees(math.atan2(-nx, ny)) if math.hypot(nx, ny) > 1e-9 else 0.0
-    return rx, rz
-
-
 def ground_hit(view, x, y):
     """(point, normal) where the view's ray through picture px (x, y) meets the ground y = 0; None when it doesn't."""
     ray = view.ray(x, y)
@@ -66,24 +50,8 @@ def ground_hit(view, x, y):
 
 def placed(shape: str, point, normal, size: float) -> dict:
     """The mesh.add fields (top level, world space) for `shape` standing on the surface at `point` along `normal`."""
-    f, normal = shape_fields(shape, size), clean(normal)
-    rx, rz = up_turn(normal)
-    lift = half_height({"shape": shape, **f})
-    x, y, z = (round(p + n * lift, 4) for p, n in zip(point, normal))     # to a tenth of a millimetre
-    return {**f, "x": x, "y": y, "z": z, **({"rx": round(rx, 4)} if abs(rx) > 1e-4 else {}),
-            **({"rz": round(rz, 4)} if abs(rz) > 1e-4 else {})}
-
-
-def into_parent(args: dict, parent_world) -> dict:
-    """`args`' world position and turn moved into a parent's space (a new item going into a group or combine)."""
-    if parent_world is aim.IDENTITY:
-        return args
-    inv = aim._inverse(parent_world[0])
-    p = aim._apply(inv, [a - t for a, t in zip((args["x"], args["y"], args["z"]), parent_world[1])])
-    turn = aim._mul(inv, aim.local({"x": 0, "y": 0, "z": 0, "rx": args.get("rx", 0.0), "ry": args.get("ry", 0.0),
-                                    "rz": args.get("rz", 0.0), "sx": 1, "sy": 1, "sz": 1})[0])
-    rx, ry, rz = aim.euler(turn)
-    return {**args, "x": p[0], "y": p[1], "z": p[2], "rx": rx, "ry": ry, "rz": rz}
+    f = shape_fields(shape, size)
+    return {**f, **stand({"shape": shape, **f}, point, normal)}
 
 
 # ---- text and logos (SPEC §4.4): an outline stands upright, never flat on the floor --------------------------------

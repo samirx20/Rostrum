@@ -1,12 +1,12 @@
 """The compiler: one shot of the document → the scene description the C++ core builds its USD stage from
 (ENGINE_CONTRACT.md § 2). Every field is present (defaults filled in), colours are linear, aims, sticks and follows
-are turned into x … sz (resolve.py, follow.py), and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps (an item
+are turned into x … sz (resolve.py, follow.py), a mirrored copy into a plain mesh (mirror.py), and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps (an item
 on 2s or 3s, its `timing`, holds each value for 2 or 3 frames, counted from the shot's start).
 Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.keys' (the same keys as 2D).
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, fields as F, follow, material_scene, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_scene, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -20,7 +20,7 @@ FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns 
 CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
 POSE = {"jointNames", "holds", "jointsKey"}    # a clay's joint settings: the document's alone (ops_pose.py)
-RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | {FOCUS_ITEM, TIMING, SKINNED}   # resolved, never sent
+RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
@@ -97,12 +97,15 @@ def _node(item: dict, fr: _Frames) -> dict:
               and not (type_ == "light" and p.name in LIGHT_DOC_ONLY)]
     v0 = fr.values(item["id"], first)
     node = {"id": item["id"], "type": type_, "props": {p.name: _out(p, v0[p.name]) for p in params}}
+    if type_ == "light" and v0["kind"] == "dome":
+        node["props"]["texture"] = skies.path(v0["texture"])   # "sky:studio": the sky that comes with the app (skies/)
     if type_ == "mesh" and v0["shape"] in OUTLINE_SHAPES:
         _outline_props(item["id"], v0, node["props"], fr.folder)
     elif type_ == "mesh":
         for name in DOCUMENT_ONLY:
             node["props"].pop(name)
-    animated = {k["prop"] for k in item.get("keys", [])} - RESOLVED
+    copy_of = fr.items.get(item.get("mirror") or "")             # a mirrored copy is keyed by its original's keys
+    animated = {k["prop"] for k in (copy_of or item).get("keys", [])} - RESOLVED
     if any(v0.get(p) for p in PIVOT) and animated & {"rx", "ry", "rz", "sx", "sy", "sz", *PIVOT}:
         animated |= {"x", "y", "z"}                            # the origin moves as it turns around its pivot
     if type_ == "light" and v0["kind"] == "dome" and "turn" in animated:
@@ -110,6 +113,8 @@ def _node(item: dict, fr: _Frames) -> dict:
     worked = set(ROTATION if item.get("aim", "none") != "none" else ()) | set(follow.TRS if item.get("follow") else ())
     if item.get("stick"):
         worked |= {"x", "y", "z"}                              # fields worked out per frame (resolve.py)
+    if copy_of:
+        worked |= set(follow.TRS)                              # placed through the mirror, per frame (mirror.py)
     per_frame = {r: [fr.values(item["id"], f)[r] for f in fr.frames] for r in worked}
     animated |= {r for r, vals in per_frame.items() if max(vals) - min(vals) > 1e-9}
     anim = {}

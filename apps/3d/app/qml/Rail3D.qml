@@ -23,7 +23,7 @@ ToolRail {
     Component { id: icon3d; Icon3D { } }
     // `job` on an entry or a group: the key map job whose key its hover shows (keys3d.py: V, P, O, B; R T L C open the
     // groups, but the kit's rail shows a group's key only through its entries, which would put "R" on every shape)
-    function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value })) }
+    function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value, help: e.help || "" })) }
     readonly property var selectGroup: ({ id: "select", items: [{ name: "Select", icon: "select", tool: "select", job: "move_tool", help: "Click a thing in the viewport or the scene list." }] })
     // Pose (Shift+P): both pages, one clay selected (pose_qt.py); stays while it is on
     readonly property var poseGroups: viewport.pose.can || viewport.pose.on ? [{ id: "pose", items: [{ name: "Pose", icon: "pose-drag",

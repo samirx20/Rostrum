@@ -87,6 +87,9 @@ class PaintStroke:
             return self.b.fail_line("Error: paint: the engine's pick gave no point on the clay's surface (`local`); "
                                     "the 3D core is older than this app: build it again")
         a = [*(round(v, 6) for v in r["local"]), *(round(v, 5) for v in r["localNormal"]), 1.0]
+        if r.get("rest"):                   # a posed clay: the stroke is kept on the rest shape, as sculpting is
+            normal = P.clay_rest_normal(self._scene, self._id, r["rest"], a[3:6])
+            a = [*(round(v, 6) for v in r["rest"]), *(round(v, 5) for v in normal), 1.0]
         if self._anchors:
             self._moved[0] += sum((p - q) ** 2 for p, q in zip(a[:3], self._anchors[-1][:3])) ** 0.5
             self._moved[1] += ((x - self._last[0]) ** 2 + (y - self._last[1]) ** 2) ** 0.5

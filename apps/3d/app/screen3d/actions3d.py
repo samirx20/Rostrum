@@ -21,6 +21,7 @@ from rostrum_core.tree import index
 from rostrum_gui.actions import Action, ActionList
 
 from .keys3d import KEYS3D
+from .shots import FRAMED, framed
 
 WORDS = {"union": "Union", "subtract": "Subtract", "intersect": "Intersect"}
 
@@ -32,7 +33,7 @@ class Facts:
     def __init__(self, doc, selection: list[str], fits: dict | None = None, screen: dict | None = None):
         """`screen`: what the screen knows and the document doesn't (screen state, never saved): {copied: the material
         Copy material took, shot_id: the shot shown, can_shot: a shot can be made, mode: the viewport's camera
-        ("shot" | "free" | "light"), has_shot: the viewport has a shot camera}."""
+        ("shot" | "free" | "light"), has_shot: the viewport has a shot camera, camera: the shown shot's camera}."""
         self.doc, self.ids = doc, [i for i in selection if doc.has(i)]
         self.fits = fits or {}          # {item id: the largest bevel that fits, metres} from the engine's last refusal
         self.screen = screen or {}
@@ -178,5 +179,15 @@ ACTIONS += [
     Action("view:new_shot", "New shot from this view", rank=41, do="new-shot", **_NOTHING,
            valid=lambda f: bool(f.screen.get("can_shot")) and f.screen.get("mode") == "free",
            why="New shot from this view: turn the free camera to the view you want first."),
+]
+# The shown shot's own camera (shots.py, ops_shot_camera.py): Make this the shot whatever is selected (the header's button,
+# Ctrl+Alt+0); Frame the selection on what can be framed (the crumb's list)
+ACTIONS += [
+    Action("view:take", "Make this the shot", min_targets=0, rank=39, group="view", job="take_view", do="take-view",
+           valid=lambda f: bool(f.screen.get("has_shot")) and f.screen.get("mode") != "shot",
+           why="Make this the shot: turn the view (right-drag) to the picture you want first."),
+    Action("shot:frame", "Frame the selection", kinds=FRAMED, rank=42, group="view", job="frame_selection",
+           do="frame-selection", valid=lambda f: bool(framed(f.doc, f.ids, f.screen.get("camera", ""))),
+           why="Frame the selection works on shapes, clay, groups and lights (not the shot's own camera)."),
 ]
 LIST = ActionList(ACTIONS, KEYS3D, noun="solid")

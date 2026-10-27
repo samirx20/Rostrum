@@ -11,7 +11,7 @@ from rostrum_core.errors import codes
 from . import clay_shapes, clay_steps as CS
 from .clay_fields import SOURCES
 from .kind import REGISTRY as R
-from .ops_clay import AXIS, BLEND, FACING, MODE, NAME, PTS, PUFF, SYM, add_step, grain
+from .ops_clay import AXIS, BLEND, FACING, MODE, NAME, PTS, PUFF, SYM, add_step, clay_material, grain
 from .ops_items import new_item
 
 OUTLINE = dataclasses.replace(PTS("outline", "Outline", "[[x, y, z], …] the outline (4 points or more; closed last → "
@@ -58,7 +58,8 @@ def _beside(ctx, item_id: str) -> tuple[dict, str, str]:
 
 
 @R.operation("clay.from_item", "Turn into clay: for each exact part or import, a clay copy to sculpt beside it "
-             '(named "<its name> clay", detail following the cameras, Mirror off, its material kept), its first '
+             '(named "<its name> clay", detail following the cameras, Mirror off, its material kept, else the '
+             "project's \"Clay\" one), its first "
              "step the item's shape (shape=item, source=the item). The original is hidden (visible=false), not "
              "deleted: showing it again or deleting the clay brings it back. One undo step for all.",
              target=SOURCES, label="Turn into clay")
@@ -68,7 +69,8 @@ def clay_from_item(ctx, targets, args):
         src = ctx.item(t)
         place, parent, key = _beside(ctx, t)
         fields = {k: place.get(k, 0.0) for k in ("x", "y", "z", "rx", "ry", "rz")}
-        fields.update(symmetry="off", detailMode="auto", material=src.get("material") or place.get("material") or "")
+        fields.update(symmetry="off", detailMode="auto",
+                      material=src.get("material") or place.get("material") or clay_material(ctx))
         clay = new_item(ctx, "clay", {"name": f"{src.get('name') or t} clay"}, fields)
         ctx.insert(parent, key, clay, ctx.idx[place["id"]].index + 1)
         add_step(ctx, clay["id"], {"step": "piece", "shape": "item", "source": t, "mode": "add", "blend": 0.0,

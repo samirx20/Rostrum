@@ -24,6 +24,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `group(id, **fields)` | a group; items made inside `with group(...):` go in it |
 | `mesh(id, shape=, **fields)` | `box sphere cylinder cone capsule plane disc torus`, or the outlines `text svg path2d` |
 | `item.place_on(other)` | stand a mesh on top of another (same group, both unturned): base on its top, over its middle |
+| `item.place_on(clay or mesh, at=(x, y, z), normal=)` | stand a mesh on that surface at a world point (`normal` left out: straight out from its upright middle line); on a clay with Mirror on, off its middle, it also gets its mirrored copy `<id>_mirrored`, which follows it. From a pixel of a look instead: the tool `edit_place_on` |
 | `light(id, kind=, **fields)` | `rect disk strip sphere spot distant dome` |
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
@@ -53,7 +54,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
   (`lightsOnly` is ids separated by spaces; `turn` and `texture` are for a dome).
 - **camera** `focalLength sensorWidth dof fStop focusDistance focusItem near far` (`focusItem`: an item id kept sharp as it moves).
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
-- **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
+- **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
 - **import** `file prim material`; **part** `path material visible`.
 - **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd motionBlur shutter` (motion blur: camera-rigs.md)

@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "clay_whole.h"
 #include "error.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -95,6 +96,7 @@ struct Blocks::Impl {
   SdfLayerRefPtr layer;  // held here: an anonymous layer lives as long as someone holds it
   std::optional<SdfChangeBlock> changes;
   std::map<SdfPath, std::unique_ptr<Skinning>> skins;  // CL5: the skinned clays' rest surfaces and weights
+  std::set<SdfPath> stale;  // CL6: clays whose Cycles whole no longer matches their blocks (clay_whole.h)
   Skinning* skin_of(const SdfPath& clay) const {
     auto it = skins.find(clay);
     return it == skins.end() ? nullptr : it->second.get();
@@ -134,6 +136,7 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   const SdfPath path = clay.AppendChild(block_name(key));
   const bool exists = have.count(key) != 0;
   const auto attr = [&](const char* name) { return path.AppendProperty(TfToken(name)); };
+  p_->stale.insert(clay);
   if (exists) drop_st(layer, path);
   Skinning* skin = p_->skin_of(clay);
   if (m.empty()) {
@@ -232,6 +235,7 @@ void Blocks::remove_all(const SdfPath& clay, std::set<BlockKey>& have) {
     else layer->RemoveRootPrim(spec);
   }
   have.clear();
+  p_->stale.insert(clay);  // its wholes went with the clay's spec; none is made again until it has blocks
   if (Skinning* skin = p_->skin_of(clay)) skin->clear();
   check(mark, "removing the blocks of " + clay.GetString());
 }
@@ -260,6 +264,7 @@ bool Blocks::get(const SdfPath& clay, const BlockKey& key, VtVec3fArray& points,
 void Blocks::set_skin(const SdfPath& clay, std::shared_ptr<const SkinRig> rig, const std::set<BlockKey>& have) {
   TfErrorMark mark;
   const SdfLayerHandle layer = p_->layer;
+  p_->stale.insert(clay);
   auto it = p_->skins.find(clay);
   std::unique_ptr<Skinning> old;
   if (it != p_->skins.end()) {
@@ -317,6 +322,7 @@ int Blocks::pose(const SdfPath& clay, const std::vector<BoneMove>& moves, double
   const std::vector<BlockKey> moved = skin->pose(moves);  // the bending, in parallel
   if (skinMs) *skinMs += ms(t0);
   const auto t1 = Clock::now();
+  if (!moved.empty()) p_->stale.insert(clay);
   for (const BlockKey& k : moved) {  // the writes, one after another, in the caller's change block
     VtVec3fArray pts, nrm, extent;
     skin->posed_surface(k, pts, nrm, extent);
@@ -345,6 +351,7 @@ void Blocks::set_st(const SdfPath& clay, const BlockKey& key, VtVec2fArray st) {
         ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->faceVarying));
   }
   layer->SetField(stPath, SdfFieldKeys->Default, VtValue::Take(st));
+  p_->stale.insert(clay);
   check(mark, "writing the unfolding of " + path.GetString());
 }
 
@@ -352,7 +359,41 @@ void Blocks::clear_st(const SdfPath& clay, const BlockKey& key) {
   TfErrorMark mark;
   const SdfPath path = clay.AppendChild(block_name(key));
   drop_st(p_->layer, path);
+  p_->stale.insert(clay);
   check(mark, "taking the unfolding off " + path.GetString());
+}
+
+bool Blocks::whole_stale(const SdfPath& clay) const { return p_->stale.count(clay) != 0; }
+
+void Blocks::make_whole(const SdfPath& clay, const std::set<BlockKey>& have, const std::string& where) {
+  TfErrorMark mark;
+  const SdfLayerHandle layer = p_->layer;
+  const TfToken& dflt = SdfFieldKeys->Default;
+  std::vector<SurfaceBlock> plain, painted;
+  std::vector<VtVec2fArray> st;
+  for (const BlockKey& k : have) {  // the prims as written: posed for a skinned clay, so the whole is posed too
+    const SdfPath path = clay.AppendChild(block_name(k));
+    const VtValue p = layer->GetField(path.AppendProperty(TfToken("points")), dflt);
+    const VtValue n = layer->GetField(path.AppendProperty(TfToken("normals")), dflt);
+    const VtValue i = layer->GetField(path.AppendProperty(TfToken("faceVertexIndices")), dflt);
+    if (!p.IsHolding<VtVec3fArray>() || !i.IsHolding<VtIntArray>()) continue;
+    SurfaceBlock b{k, p.UncheckedGet<VtVec3fArray>(), {}, i.UncheckedGet<VtIntArray>()};
+    if (n.IsHolding<VtVec3fArray>()) b.normals = n.UncheckedGet<VtVec3fArray>();
+    if (b.indices.empty()) continue;
+    if (b.indices.size() == 3 && b.points.size() == 3 && b.points[0] == b.points[1] && b.points[1] == b.points[2])
+      continue;  // an emptied block (set)
+    const VtValue s = layer->GetField(path.AppendProperty(TfToken(kSt)), dflt);
+    if (s.IsHolding<VtVec2fArray>() && s.UncheckedGet<VtVec2fArray>().size() == b.indices.size()) {
+      st.push_back(s.UncheckedGet<VtVec2fArray>());
+      painted.push_back(std::move(b));
+    } else {
+      plain.push_back(std::move(b));
+    }
+  }
+  write_whole(layer, clay, kWhole, plain, nullptr, where);
+  write_whole(layer, clay, kWholePainted, painted, &st, where);
+  p_->stale.erase(clay);
+  check(mark, "welding the whole of " + clay.GetString());
 }
 
 }  // namespace r3d::clay

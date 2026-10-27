@@ -95,7 +95,6 @@ Item {
         onReleased: (m) => pl.tool.release(m.x, m.y)
         onCanceled: pl.tool.cancel()
         onExited: pl.tool.unhover()
-        onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
         CanvasCursor { kind: pl.tool.cursor }     // the arrow over the clay and around it; the turn shape while turning
     }
     Connections { target: pl.tool; function onMenuAt(x, y) { pl.menuAt(x, y) } }

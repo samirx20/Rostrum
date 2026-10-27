@@ -48,7 +48,7 @@ Item {
             }
             Text { visible: paintMode.layers.length === 0; width: parent.width; wrapMode: Text.Wrap
                    color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
-                   text: "Drag on " + paintMode.itemName + " to paint · middle-drag orbits" }
+                   text: "Drag on " + paintMode.itemName + " to paint · right-drag turns the view" }
             Repeater {
                 model: paintMode.layers
                 delegate: Rectangle {

@@ -3,7 +3,7 @@ import RostrumKit
 
 // The settings panel with nothing selected: the Scene (SPEC §3.4). Its header is the shot's name and "Shot · nothing
 // selected"; View holds the viewport's own settings (screen state: never the document, never in the history); Sky is the
-// scene's dome light (a click selects it), or "Sky +" to add one; Shot lists the shot's values and a click opens the
+// scene's dome light: its picture ("Picture: Studio ▾", one undo step) and the light (a click selects it), or "Sky +" to add one; Shot lists the shot's values and a click opens the
 // shot's own settings (where it is edited: one place). Same grid as the item settings (28 px rows, one label column).
 // Rows that do nothing right now are absent. While the Final look is on, the Quick look's rows give way to one line.
 Panel {
@@ -105,6 +105,11 @@ Panel {
                 }
 
                 Title { text: "Sky"; width: parent.width; visible: !!panel.state.sky.id || panel.canAddSky }
+                Line {              // the sky's picture: real photographed skies that come with the app (rostrum3d/skies)
+                    visible: !!panel.state.sky.id; text: "Picture"   // under the Sky title: "Sky" again would repeat it
+                    ChoiceField { objectName: "scenePicture"; width: parent.width; options: panel.state.sky.pictures || []
+                                  current: panel.state.sky.picture || ""; onPicked: (v) => backend.setSky(v) }
+                }
                 Line {
                     visible: !!panel.state.sky.id; text: "Light"; value: panel.state.sky.label || ""
                     clickable: true; onClicked: backend.select(panel.state.sky.id)

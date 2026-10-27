@@ -9,6 +9,7 @@ from .actions3d import fit_note
 from .materials import USERS
 
 FINAL_TIP = "Shows in Final, not in the Quick view"
+APPROX_TIP = "Shows fully in Final; the Quick view only hints at it"
 NONE_FIRST = {"material", "item"}       # fields naming another item that may name none ("" = no material, focus on a distance)
 DATA_GROUPS = F.DATA_GROUPS              # data an operation writes (a mesh's points, a bone's head), never rows
 
@@ -25,6 +26,7 @@ def _without_data(r):
 
 class RowsMixin:
     FINAL_ONLY: dict = {}               # set by Bridge3D: fields the quick view can't show
+    QUICK_APPROX: dict = {}             # set by Bridge3D: fields the quick view only hints at
 
     def facts_of(self, item: dict) -> dict:
         """The kind's facts and what only the screen knows (the same names agents' facts carry): `animating`, so a
@@ -65,6 +67,8 @@ class RowsMixin:
                 r["note"] = {"text": line, "kind": "warning"} if line else None
             if r["row"] == "param" and r["id"] in self.FINAL_ONLY.get(type_, ()):
                 r["tag"], r["tagHelp"] = "Final", FINAL_TIP
+            elif r["row"] == "param" and r["id"] in self.QUICK_APPROX.get(type_, ()):
+                r["tag"], r["tagHelp"] = "Final", APPROX_TIP
             p = F.param(type_, r["id"]) if r["row"] == "param" else None
             if p is not None and p.type == "text" and p.kind:
                 doc_items = doc_items or list(self.doc.items())

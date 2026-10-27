@@ -10,6 +10,7 @@ from __future__ import annotations
 from .field_kit import CH, C, D, IS, N, NOT, S, X
 
 GLOWS = NOT("emissionStrength", 0)
+UNDER = NOT("subsurface", 0)
 BRUSH = ["uv", "around x", "around y", "around z"]
 DOC_ONLY = {"emissionRender"}       # the compiler turns it into emissionTexture, one picture per frame (screen.py)
 
@@ -48,6 +49,15 @@ MATERIAL = [
             "through its origin (spun brushing, like a watch back or a knob's face)"),
     N("anisotropyRotation", "Brush turn", "Brushed", 0, 1, 0.01, "", D, NOT("anisotropy", 0),
       help="Turns the brushing on the surface: 0..1 = 0..360°"),
+    N("subsurface", "Light under the surface", "Under the surface", 0, 1, 0.01, "", S,
+      help="How much light goes into the surface, spreads inside and comes out elsewhere (skin, wax, soap, marble, "
+           "milk): shadows soften and thin parts (an ear, a finger) glow against a light behind them. 0 = off"),
+    C("subsurfaceColor", "Colour inside", "Under the surface", "#ffffff", S, UNDER,
+      help="Which colours travel farthest inside: thin parts lit from behind glow this colour (skin: a warm red). "
+           "White = all colours travel the same distance. The surface's own colour stays the base colour"),
+    N("subsurfaceRadius", "How far it travels", "Under the surface", 0, 500, 0.1, "mm", S, UNDER, default=4.0,
+      help="How far light gets inside before it comes back out, in real millimetres: skin about 4, wax and soap "
+           "about 8, marble about 5. A small object shows it more than a big one with the same value"),
     X("bumpTexture", "Bump image", "Relief", "", D, help="A grey height image: white is raised"),
     N("bumpStrength", "Bump strength", "Relief", 0, 1, 0.01, "", D, NOT("bumpTexture", ""), default=0.5),
     N("emissionStrength", "Glow strength", "Glow", 0, 1e4, 0.1, "", D, help="The surface gives off light (screens, LEDs)"),
@@ -60,4 +70,5 @@ MATERIAL = [
            "at each moment of the shot (held at the ends). Read-only: change it in Rostrum2D and render again"),
     N("thinFilm", "Thin film", "Coat", 0, 2000, 1, "nm", D, help="Rainbow coating thickness (anodizing, soap); 0 = off (Cycles)"),
 ]
-FINAL_ONLY = {"coatTint", "coatIor", "sheen", "anisotropy", "thinFilm"}   # Cycles only (see each help); the panel tags their rows "Final"
+FINAL_ONLY = {"coatTint", "coatIor", "sheen", "anisotropy", "thinFilm", "subsurfaceRadius"}   # Cycles only (see each help); the panel tags their rows "Final"
+QUICK_APPROX = {"subsurface", "subsurfaceColor"}   # Final shows them fully, the quick view only a tint (ENGINE_CONTRACT § 2); also tagged "Final"

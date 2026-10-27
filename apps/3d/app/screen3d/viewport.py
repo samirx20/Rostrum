@@ -4,7 +4,9 @@ the studio light never touch the document or its history. Clicking picks through
 (empty space selects nothing, as clicking the empty 2D canvas selects the composition).
 
 It starts looking through the shot camera; orbiting, panning or zooming there switches to the free camera from
-the shot camera's view. Look: Final (Shift+F, final_look.py) draws progressive Cycles in place with the Render button's
+the shot camera's view (a right drag, a touchpad's two-finger scroll and pinch too: view_input.py). In the free view,
+resting on Make this the shot draws the shot's frame where the camera would take it (`previewShot`).
+Look: Final (Shift+F, final_look.py) draws progressive Cycles in place with the Render button's
 settings; any change starts it over, and while the Render button's own render runs it waits (one Cycles on the card).
 With a panel, bulb or sun light selected it can look through that light (to aim it by eye),
 following the light while it moves; moving the view there continues freely from it (the light stays where it is). It draws again when the document, the playhead frame or the selection changes.
@@ -18,7 +20,9 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum3d import aim, ops_mesh, through
 
-from . import dab_trace, placing, shot_frame
+import math
+
+from . import dab_trace, placing, shot_frame, view_input
 from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
@@ -63,6 +67,7 @@ class Viewport(QObject):
         self._scene, self._shot, self._started = None, None, False
         self._wide, self._frame = None, (0.0, 0.0, 1.0, 1.0)  # the scene with the wider shot camera; the frame (0..1)
         self._dim = True                             # dim the scene outside the shot frame (screen state)
+        self._preview = False                        # the shot frame drawn in the free view (Make this the shot's hover)
         self.final = FinalLook()
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
@@ -128,6 +133,8 @@ class Viewport(QObject):
     dim = Property(bool, lambda s: s._dim, notify=settingsChanged)
     # the shot frame in the viewport, as parts of its width and height [x, y, w, h]; shown in the shot camera only
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
+    # the free view shows the frame Make this the shot would take (while the pointer rests on it)
+    previewShot = Property(bool, lambda s: s._preview and s.cam.mode != "shot", notify=settingsChanged)
     onionSkin = Property(QObject, lambda s: s.onion, constant=True)
     clay = Property(QObject, lambda s: s.clay_tool, constant=True)        # QML: viewport.clay (clay_tool_qt.py)
     bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)
@@ -155,8 +162,8 @@ class Viewport(QObject):
                 self.settingsChanged.emit()
         return self._scene
 
-    def _fit(self):
-        """The shot frame for this viewport size, and the scene with the shot camera made that much wider."""
+    def _frame_fit(self) -> tuple:
+        """(x, y, w, h) picture pixels of the shot frame in this viewport (shot_frame.fit), kept as `frameRect`."""
         w, h = self._size
         dpr = QGuiApplication.primaryScreen().devicePixelRatio() if QGuiApplication.primaryScreen() else 1.0
         x, y, fw, fh = shot_frame.fit(w, h, self._shot["width"], self._shot["height"], shot_frame.MARGIN * dpr * self._scale)
@@ -164,7 +171,19 @@ class Viewport(QObject):
         if frame != self._frame:
             self._frame = frame
             self.settingsChanged.emit()
+        return x, y, fw, fh
+
+    def _fit(self):
+        """The shot frame for this viewport size, and the scene with the shot camera made that much wider."""
+        w, h = self._size
+        fw = self._frame_fit()[2]
         self._wide = shot_frame.overscan(self._scene, self._shot["camera"], w / fw, w / h)
+
+    def taken_fov(self) -> float:
+        """The vertical view (degrees) the shot frame drawn in the free view holds: Make this the shot takes that."""
+        self._compiled()
+        fh = self._frame_fit()[3]
+        return math.degrees(2 * math.atan(math.tan(math.radians(self.cam.fov) / 2) * fh / self._size[1]))
 
     def sent(self) -> tuple[dict, dict]:
         """(scene, camera part) as the engine gets them: through the shot camera, its wider copy (shot_frame.py)."""
@@ -306,6 +325,26 @@ class Viewport(QObject):
             setattr(self, name, value)
             self.settingsChanged.emit()
             self.redraw()
+
+    @Slot(bool)
+    def setPreview(self, b):
+        """Show (or hide) the shot's frame in the free view: what Make this the shot would take."""
+        if self._size is not None and b and not self._guard(lambda: (self._compiled(), self._frame_fit())):
+            return
+        self._setting("_preview", bool(b))
+
+    @Slot(float, float, float, float, bool, bool, bool)
+    def wheel(self, ax, ay, px, py, phased, ctrl, touchpad):
+        """A wheel event (QML WheelEvent: angleDelta, pixelDelta, a scroll phase, Ctrl, a touchpad's device): a mouse
+        wheel and a pinch zoom, a touchpad's two-finger scroll turns the view (view_input.wheel)."""
+        kind, a, b = view_input.wheel(ax, ay, px, py, phased, ctrl, touchpad)
+        self.orbit(a, b) if kind == "orbit" else self.zoom(a)
+
+    @Slot(float)
+    def pinch(self, scale):
+        """A pinch on a touchpad or touch screen: `scale` since the last step (> 1 spreads: nearer)."""
+        if scale > 0:
+            self.zoom(view_input.pinch_steps(scale))
 
     @Slot(bool)
     def setDim(self, b):

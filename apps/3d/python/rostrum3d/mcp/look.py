@@ -122,7 +122,8 @@ def look_at(ctx, args):
     """What is at a pixel (x, y) of a picture from the shot camera at a frame: the item id, the part (prim), its material, the point in the
     world (metres) and the distance from the camera; on a mesh also `uv`, the spot on its unfolded surface (paint canvas pixel
     x = u × paintSize, y = (1 − v) × paintSize; guide `painting`); on a clay `local` and `localNormal`, the point and the surface's
-    normal in the clay's own space (a clay paint stroke's `anchors`: [x, y, z, nx, ny, nz, pressure]; guide `painting`). Counted from the top-left of a width×height picture, the same whatever
+    normal in the clay's own space (a clay paint stroke's `anchors`: [x, y, z, nx, ny, nz, pressure]; guide `painting`); on a posed
+    clay also `rest`, the same spot on its rest shape: anchor paint there, as the screen does. Counted from the top-left of a width×height picture, the same whatever
     renderer drew it."""
     doc, info = doc_and_shot(ctx, args)
     points = args.get("points") or ([[args["x"], args["y"]]] if "x" in args and "y" in args else None)
@@ -143,6 +144,7 @@ def look_at(ctx, args):
                                                               + (f', uv {[round(c, 4) for c in r["uv"]]}' if r.get("uv") else "")
                                                               + (f', local {[round(c, 5) for c in r["local"]]} normal '
                                                                  f'{[round(c, 3) for c in r.get("localNormal") or []]}' if r.get("local") else "")
+                                                              + (f', rest {[round(c, 5) for c in r["rest"]]}' if r.get("rest") else "")
                                                               if r.get("hit") else "nothing (background)") for r in rows]
         t = seconds(info, frame)
         return Reply(f'At frame {frame} ({t:.3f} s) of {info["id"]}, picture {w}×{h}: ' + "; ".join(lines) + ".",

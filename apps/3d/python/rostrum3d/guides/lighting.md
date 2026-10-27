@@ -4,7 +4,7 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 
 ## Kinds
 
-- **`rect`** — a rectangular panel (`width`, `height` in metres) shining along its −Z. The softbox and the strip light of a photo studio. The workhorse of product lighting.
+- **`rect`** — a rectangular panel (`width`, `height` in metres) shining along its −Z: **Soft light** in the Lights list. The softbox of a photo studio. The workhorse of product lighting.
 - **`disk`** — a round panel (`radius`), also shining along −Z. Gives round highlights (a beauty dish).
 - **`strip`** — a long thin panel: `length` along its X, `width` across it (along its Y), shining along −Z. The strip softbox of a product studio (a `rect` with its own two sizes, so you think in length and width).
 - **`sphere`** — a ball of light (`radius`) shining every way: a bulb, a candle flame, a practical lamp in the scene.
@@ -40,7 +40,7 @@ Light falls off with the square of the distance, so a product a few centimetres 
 
 A product photographer moves a light until its highlight sits where they want it. Do the same:
 
-- **On the screen:** pick **Lights › Softbox** (or any light) in the tool rail, then click the spot on the item where its highlight should land. The light is placed where that spot reflects it towards the camera, 4 × the item's size away, aimed at the spot, with a **starting brightness** worked out from that distance, so the first look is neither black nor blown out. Later, with a light selected, **Alt+click** any surface to move its highlight there (its distance and brightness stay). A sun is turned so it shines straight onto the spot (its lit side). A strip stands on end. When the exact spot would need a light under the floor (a side seen from a little above bounces the view downwards), the light takes the same angle from above the ground instead: it lights the spot as much, and its highlight shows a little lower.
+- **On the screen:** pick **Lights › Soft light** (a `rect`, the photographers' softbox; **Round soft light** is a `disk`) or any light in the tool rail, then click the spot on the item where its highlight should land. The light is placed where that spot reflects it towards the camera, 4 × the item's size away, aimed at the spot, with a **starting brightness** worked out from that distance, so the first look is neither black nor blown out. Later, with a light selected, **Alt+click** any surface to move its highlight there (its distance and brightness stay). A sun is turned so it shines straight onto the spot (its lit side). A strip stands on end. When the exact spot would need a light under the floor (a side seen from a little above bounces the view downwards), the light takes the same angle from above the ground instead: it lights the spot as much, and its highlight shows a little lower.
 - **Agents:** `edit_place_highlight` with the light's id and the pixel (`x`, `y`) of the last `look_frame` picture (its `width`); `fresh=true` for a light just added (distance and starting brightness too). In operations: `light.place_highlight` with the world `point`, the surface's `normal`, the camera's `eye` (and `distance`, `brightness`).
 - **Starting brightness:** `light.add` without an `intensity` works it out from the distance to what the light aims at (else the scene's middle) and the light's size and `exposure`: about 3 units of light on the spot, so a pale surface facing it reads light grey. Then trim with `exposure`.
 

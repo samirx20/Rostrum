@@ -22,7 +22,7 @@ from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.time_snap import TimeSnap
 
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
-from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
+from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL, QUICK_APPROX as MATERIAL_APPROX
 
 from . import job_when3d, lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
@@ -57,6 +57,7 @@ def _viewport(bridge):
 class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, DocBridge):
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: a "Final" tag
+    QUICK_APPROX = {"material": MATERIAL_APPROX}                         # fields it only hints at: a "Final" tag too
 
     def __init__(self, doc, shot_id=None, autosave=False, viewport=_viewport, render_engine=None, parent=None):
         shots = doc.data.get("shots", [])
@@ -150,10 +151,16 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         return route.animate_calls(self.doc.item(item_id), param, self.time, self._info["fps"], stop)
 
     def _first(self):
-        return next((i["id"] for i in self.doc.data.get("items", [])), "")
+        """Nothing: a scene opens (and an undone add leaves) with no selection, so the first view is the shot with no
+        handles on it and the panel is the Scene's (its sky and shot), SPEC §1 "Before the first click"."""
+        return ""
 
     @Slot(str)
     def select(self, item_id):
+        """A mirrored copy is picked as its original: the copy follows it, so a move, a size or a colour is the
+        original's (rostrum3d/mirror.py)."""
+        if item_id and self.doc.has(item_id):
+            item_id = self.doc.item(item_id).get("mirror") or item_id
         super().select(item_id)
         self.outlineChanged.emit()
 

@@ -3,6 +3,11 @@
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
+A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`), the sky `sky` (a dome light
+showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
+`shot_1_camera`, looking at the middle of the ground, framed for things a hand to an arm tall. So the first look is lit
+and framed before you add anything; change or delete any of them like any item (your script's own ids must differ).
+
 ## The loop
 
 1. **Know the shot.** `inspect_shot` gives the frame rate, the frame range, the picture size, the shot camera and every light.
@@ -105,6 +110,11 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **Another angle is another shot.** `shot.from_view` with `position` [x, y, z], `turn` [rx, ry, rz] (degrees, it looks along
   its −Z) and `focalLength` makes a camera and a shot through it in one step ("Shot N", the first shot's size, frame rate, time
   and render settings; `id`, `name`, `cameraId` optional). A camera may serve several shots; each shot is its own window of time.
+- **Move a shot's own camera.** `shot.take_view` (target the shot) puts its camera at `position`, looking at `lookAt` (both
+  world), with `focalLength`: one step, inside a group or on a rig it stays there, an aimed camera aims at `lookAt`, a camera
+  with keys gets a key at `at` (seconds). `shot.frame` with `items` [ids] frames them: the camera keeps its direction and lens
+  and moves so they sit in the middle and fill the picture with a 10 % margin (aimed at an item, it only goes nearer or
+  farther). Check the result with a look at the shot.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the
   replies carry both `time` and `frame`.
 - **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.

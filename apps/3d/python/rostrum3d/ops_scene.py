@@ -13,7 +13,7 @@ from . import fields as F
 from .kind import REGISTRY as R
 from .ops_items import ID, NAME, new_item
 
-USERS = ("mesh", "combine", "import", "part")      # items that name a material
+USERS = ("mesh", "combine", "import", "part", "clay")      # items that name a material
 
 
 @R.operation("material.add", "Add a material (one physically based surface: base colour, metallic, roughness, "
@@ -23,7 +23,7 @@ def material_add(ctx, targets, args):
     ctx.insert("root", "materials", new_item(ctx, "material", args, {k: v for k, v in args.items() if k in fields}))
 
 
-@R.operation("material.assign", "Give meshes, combines, imports or import parts a material (\"\" = none, or the file's own).",
+@R.operation("material.assign", "Give meshes, clays, combines, imports or import parts a material (\"\" = none, or the file's own).",
              target=USERS, label="Assign material",
              params=[Param.text("material", label="Material", required=True, help='A material id, or ""')])
 def material_assign(ctx, targets, args):

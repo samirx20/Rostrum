@@ -44,7 +44,7 @@ LIGHT = [
       help="How gradually the edge of the pool fades: 0 = a hard edge, 1 = fading all the way from the middle"),
     N("angle", "Angle", "Shape", 0, 180, 0.01, "°", when=IS("kind", "distant"), default=0.53,
       help="How wide the sun looks; bigger = softer shadows (the real sun is 0.53°)"),
-    X("texture", "HDR image", "Shape", "", when=DOME, help='Absolute .hdr / .exr path, or "" for a flat colour'),
+    X("texture", "HDR image", "Shape", "", when=DOME, help='Absolute .hdr / .exr path, a sky that comes with the app ("sky:studio"), or "" for a flat colour'),
     N("turn", "Turn", "Shape", -36000, 36000, 0.1, "°", when=DOME,
       help="Spins the sky around the up axis (moves the sun and the horizon's features)"),
     T("seenByCamera", "Seen by the camera", "Shape", True, S, DOME,

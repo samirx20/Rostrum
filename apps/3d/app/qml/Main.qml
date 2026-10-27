@@ -2,8 +2,9 @@ import QtQuick
 import RostrumKit
 
 // Rostrum3D's window (docs/3d-design/SPEC.md §1, mockup 01). Header (the kit's one merged bar, header-design SPEC §3):
-// the app mark ▾ (the kit's File menu), the project › shot crumb, the Build | Animate | Render pages (centred), Undo,
-// Redo, History, Search, the camera and look in one button ("Shot camera · Quick ▾": ViewLookButton), Render, ?.
+// the app mark ▾ (the kit's File menu), the project › shot crumb and, beside it while the view isn't the shot's, Make this
+// the shot, the Build | Animate | Render pages (centred), Undo, Redo, History, Search, the camera and look in one button
+// ("Shot camera · Quick ▾": ViewLookButton), Render, ?.
 // Left edge: the tool rail (Rail3D; the Materials list opens from its ball). Centre:
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
 // own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
@@ -37,9 +38,10 @@ AppShell {
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { rail.openPanel("materials") }    // (the scripted `materials` step; Ctrl+K)
     function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
-    function openShots() {         // read as it opens: the shown shot checked, "from this view" only off the shot camera
+    function openShots() {         // read as it opens: the shown shot checked, Frame the selection while something is
+                                   // selected, "from this view" only off the shot camera
         shotsMenu.entries = backend.shotEntries(viewport.mode)
-        shotsMenu.openFrom(crumb, "left")
+        shotsMenu.openFrom(crumbBox, "left")
     }
     function openView() { viewLook.openMenu() }                  // (the scripted `view` step)
 
@@ -69,23 +71,46 @@ AppShell {
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }
 
-    crumb: Item {   // "› Hero 01 ▾": the shot this screen shows; its list switches to another shot or makes a new one
+    crumb: Row {   // "› Hero 01 ▾": the shot this screen shows; its list switches to another shot or makes a new one. Then,
+                   // only while the view isn't the shot's, Make this the shot (3d-simplicity SPEC §5): the shown shot's
+                   // camera to this view, one undo step; resting on it draws, in the view, the frame the shot would take.
+                   // Only empty space and the pages are to its right, so its going after the click moves nothing under
+                   // the pointer
         id: crumb
-        implicitWidth: crumbRow.implicitWidth + 2 * Theme.grid; implicitHeight: Theme.button
-        Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: crumbArea.containsMouse ? Theme.hover : "transparent" }
-        Row {
-            id: crumbRow
-            x: Theme.grid; anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
-            Text { visible: shell.documentName !== ""; text: "›"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: backend.shotInfo.label; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
-                   font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-            Chevron { color: Theme.fg3; anchors.verticalCenter: parent.verticalCenter }
+        spacing: Theme.gap
+        Item {
+            id: crumbBox
+            implicitWidth: crumbRow.implicitWidth + 2 * Theme.grid; implicitHeight: Theme.button
+            width: implicitWidth; height: implicitHeight
+            Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: crumbArea.containsMouse ? Theme.hover : "transparent" }
+            Row {
+                id: crumbRow
+                x: Theme.grid; anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
+                Text { visible: shell.documentName !== ""; text: "›"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: backend.shotInfo.label; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                       font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                Chevron { color: Theme.fg3; anchors.verticalCenter: parent.verticalCenter }
+            }
+            MouseArea { id: crumbArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: shell.openShots() }
+            Menu {
+                id: shotsMenu
+                width: 200
+                onPicked: (v) => v === "+view" ? backend.newShotFromView() : v === "+frame" ? backend.frameSelection()
+                                 : v === "+shot" ? backend.showShot(backend.adder.add("shot")) : backend.showShot(v)
+            }
         }
-        MouseArea { id: crumbArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: shell.openShots() }
-        Menu {
-            id: shotsMenu
-            width: 200
-            onPicked: (v) => v === "+view" ? backend.newShotFromView() : v === "+shot" ? backend.showShot(backend.adder.add("shot")) : backend.showShot(v)
+        Button {
+            id: takeShot
+            objectName: "takeShot"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: viewport.hasShot && viewport.mode !== "shot"
+            text: shell.width >= 1400 ? "Make this the shot" : "Make shot"
+            tip: "Make this the shot"
+            help: backend.shotInfo.label + "'s camera moves to this view (the frame shown); Undo puts it back."
+            job: "take_view"
+            onHoveredChanged: viewport.setPreview(hovered && visible)
+            onVisibleChanged: if (!visible) viewport.setPreview(false)
+            onClicked: backend.takeView()
         }
     }
     tools: Segmented {   // the pages (Alt+1 / 2 / 3)

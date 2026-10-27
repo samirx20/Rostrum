@@ -9,11 +9,12 @@ sits on top of it.
 |---|---|
 | **The 3D mark ▾** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E: the render sheet) |
 | **The project's name** | Click it to rename the project. A scene in a project folder saves after every change; an amber dot on the name means it is not being saved (the sample), red that saving failed (its hover says why) |
-| **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
+| **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). While something is selected, **Frame the selection** moves the shown shot's camera so the selection sits in the middle of the picture and fills it with a margin: the camera keeps the way it looks and its lens (aimed at a point, the point moves with it; aimed at an item, it only goes nearer or farther, so it keeps looking at that item); one undo step, and the viewport then looks through it. In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
+| **Make this the shot** | Right after the shot's name, only while you look through the free camera (or a light): the shown shot's camera moves to this view, one undo step (Ctrl+Alt+0). Rest the pointer on it first: the viewport shows the shot's frame, exactly the picture it will take. Then the viewport looks through the shot camera again. A camera that moves gets a key at the playhead; an aimed camera keeps aiming, at the middle of this view. In a window narrower than 1400 px it reads **Make shot** |
 | **Build · Animate · Render** | The pages (Alt+1, Alt+2, Alt+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
 | **Undo, Redo, History** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z); the clock opens History (Ctrl+H) |
 | **Search** | Ctrl+K: every action and setting by name |
-| **Shot camera · Quick ▾** | How the viewport shows the scene, in one menu. **Camera**: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is). **Look**: Quick is the live view; Final draws the render's own picture in place (Shift+F). In a narrow window it reads **Shot · Quick** |
+| **Shot camera · Quick ▾** | How the viewport shows the scene, in one menu. **Camera**: the shot camera, a free camera, or through the selected light (and **Make this the shot** while the view isn't the shot's). \` switches between the shot and the free camera. Turning the view in the shot camera turns it into **Free camera** (the shot's own camera stays where it is). **Look**: Quick is the live view; Final draws the render's own picture in place (Shift+F). In a narrow window it reads **Shot · Quick** |
 | **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 | **– ▢ ✕** | Minimise, maximise and close the window. Drag the bar's empty parts to move the window; double-click them to maximise |
@@ -23,16 +24,23 @@ sits on top of it.
 - Through the shot camera, the shot's frame sits in the middle with a thin edge. The scene just outside it is shown
   too, dimmed, so you see what is in the picture and what is just out of it. (Dim outside, in the Scene panel, turns
   the dimming off.)
-- Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. While you orbit the pointer shows four
-  arrows, while you pan a closed hand. A click selects what is there; a click on empty space selects nothing. Double-click goes back to the shot's view.
+- **Moving around works the same in every tool.** Right-drag turns the view (a right click, without dragging, opens the
+  menu). A left drag on empty space turns it too where the tool gives the left drag no other job (Select, the clay
+  brushes off the clay, Pose off the clay); while Draw, Spin, Paint or Edit mesh's box take the left drag, it never
+  turns. Middle-drag also turns, Shift+drag pans, the wheel zooms. On a touchpad, two fingers turn the view and a pinch
+  zooms. While you turn the pointer shows four arrows, while you pan a closed hand. Turning the view while looking
+  through the shot camera switches to the free camera; the shot's own camera never moves (Make this the shot moves it,
+  on purpose). A click selects what is there; a click on empty space selects nothing. Double-click goes back to the
+  shot's view.
 - **Right-click** an item (here or in the scene list): the same actions as the settings panel's top and Ctrl+K, only what
   applies, six at most, each with its key: Edit mesh (Enter), Combine (two solids), Copy material (Ctrl+Alt+C) / Paste
   material (Ctrl+Alt+V) on shapes, Look through and Pick what it lights (lights), Focus on a point (a camera with depth of
   field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
   mesh each shape shows, Apply: one undo step, keys on the timeline), then Duplicate (Ctrl+D) and Delete (Delete). An item
-  outside the selection is selected alone first. Right-click empty space (nothing there): Back to the shot's view (`)
-  and New shot from this view, while you look through the free camera.
+  outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
+  Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
+  while something is selected.
 
 ### The gizmo
 
@@ -86,7 +94,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   words and they change in the viewport as you type; Enter or Esc ends. The whole typing is one undo step; ending with
   nothing typed keeps the word "Text". **SVG logo** asks for the .svg file first. **2D drawing** lists the 2D items in
   this project, then the picked one's path layers; it stays linked, so a change in Rostrum2D shows here.
-- **Lights** (L): Softbox, Round softbox, Strip, Bulb, Spot, Sun, Sky.
+- **Lights** (L): Soft light, Round soft light, Strip, Bulb, Spot, Sun, Sky (a soft light is what photographers call a softbox).
 - **Camera** (C): Camera; then the rigs, which put the camera on a rig in one step, starting exactly where it
   was (the selected camera, else the shot camera; absent while it already rides one): **Orbit** and **Turntable** wait
   for a click on what to circle (a turntable also turns once round over the shot); **Crane**, **Dolly** and
@@ -180,15 +188,16 @@ or × closes the sheet.
 ## The settings panel (right)
 
 The panel shows what is selected: an item, a material, a shot or a key. With **nothing selected** (Esc, or a click
-on empty space) it shows the **Scene**:
+on empty space; a scene also opens that way) it shows the **Scene**:
 
 - **View:** Exposure, Studio light, Scene lights, Shadows (contact shadows, and their strength), Depth of field (when
   the camera has it) and Dim outside. These are how the viewport looks: never part of the scene, never undone. In
   Final they are absent (Final uses the Render settings).
-- **Sky:** the scene's sky light (click to edit it), or **Sky +** to add one.
+- **Sky:** **Picture ▾** chooses the photographed sky that lights the scene (a new scene starts on **Studio**; one
+  undo step), and **Light** opens the sky light itself (brightness, turn); with no sky, **Sky +** adds one.
 - **Shot:** size, frame rate, length and camera. Click any of them for the shot's own settings.
 
-A setting with a small **Final** tag after its name (a panel light's Spread and Lights only, a material's coat colour, sheen, brushing and thin film) shows in the Final look only: the Quick view can't draw it. Hover the tag for that.
+A setting with a small **Final** tag after its name (a panel light's Spread and Lights only, a material's coat colour, sheen, brushing and thin film) shows in the Final look only: the Quick view can't draw it. A material's light under the surface and its colour inside carry the tag too: the Quick view only tints the colour a little, and only Final shows the soft shadows and the glow of thin parts. Hover the tag for that.
 
 An item's rows come from its own settings:
 
@@ -279,6 +288,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | Shift+K · Alt+Z | Edit mesh: Knife, X-ray |
 | Alt+1 · Alt+2 · Alt+3 | The Build, Animate and Render pages |
 | ` | The shot camera's view, or the free camera from it |
+| Ctrl+Alt+0 | Make this the shot: the shot's camera to this view |
 | Shift+F | Look: Quick or Final |
 | F12 | Render (on the Render page: the shown shot's render, next in the queue) |
 

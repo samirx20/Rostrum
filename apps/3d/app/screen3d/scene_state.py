@@ -2,6 +2,8 @@
 and the scene's sky (its dome light) if it has one. Read-only; the shot's settings are where it is edited. No Qt."""
 from __future__ import annotations
 
+from rostrum3d import skies
+
 from .outline import label_of
 
 
@@ -16,9 +18,13 @@ def find_item(data: dict, item_id: str) -> dict | None:
 
 
 def sky(data: dict) -> dict:
-    """{id, label} of the first dome light, {} when the scene has none."""
+    """{id, label, picture, pictures} of the first dome light ({} when the scene has none): `picture` its texture
+    ("sky:studio"), `pictures` the Sky list's [{value, label}] (the skies that come with the app, rostrum3d/skies)."""
     dome = next((i for i in _walk(data.get("items", [])) if i.get("type") == "light" and i.get("kind") == "dome"), None)
-    return {"id": dome["id"], "label": label_of(dome)} if dome else {}
+    if not dome:
+        return {}
+    texture = dome.get("texture", "")
+    return {"id": dome["id"], "label": label_of(dome), "picture": texture, "pictures": skies.choices(texture)}
 
 
 def _number(x: float) -> str:

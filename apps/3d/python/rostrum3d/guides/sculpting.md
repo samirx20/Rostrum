@@ -109,6 +109,12 @@ Any clay can bend: select it, click **Pose** on the tool rail and drag a hand (h
 are found from the shape, and found again when you sculpt it further (joints you placed and bends you keyed stay).
 Sculpting a posed clay sculpts it as it stands. Guide `posing` has all of it, for people and agents.
 
+## Eyes, buttons and other parts
+
+Parts that should look exact (an eye, a button) are shapes, not clay: **Shapes › Sphere**, then click on the clay where
+it goes. With Mirror on, it gets a mirrored copy on the other side that follows it (move, resize or recolour one and
+both change). Guide `modelling` › On a mirrored clay.
+
 ## How it is kept
 
 A drawn shape is kept as its outline on a flat plane; a spun one as its profile and axis; a clay turned from an item
@@ -143,6 +149,10 @@ clay.set(target="clay_1", brush="smooth", brushSize=0.02, brushStrength=0.4, sym
 claystep.set(target="clay_1.step_3", name="nose") · claystep.set(target="clay_1.step_2", hidden=True)
 claystep.set(target="clay_1.step_2", puff=0.6) · claystep.remove(target="clay_1.step_3")
 ```
+
+A new clay without `material=` gets the project's **Clay** material (grey, matte; made from the Clay start the
+first time and shared by every clay made so: change it once to recolour them all, or give one clay its own with
+`material.from(start="skin", to=["clay_1"])`; guide `materials`). A clay turned from an item keeps that item's material.
 
 How the points work:
 

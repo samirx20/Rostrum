@@ -49,6 +49,30 @@ Picture emission_picture(Reader& p, const JsObject* anim, const std::string& id,
   return pic;
 }
 
+// Light under the surface: Cycles' random walk. The base colour stays what the surface shows; `subsurfaceColor` sets
+// how far each colour travels inside (per channel, relative to the farthest one), `subsurfaceRadius` how far that
+// farthest one goes, in millimetres. A channel never goes below a hundredth of the farthest (a black channel of the
+// colour would otherwise stop the walk for that colour at the surface).
+GfVec3f subsurface_spread(const GfVec3f& colour) {
+  const float top = std::max({colour[0], colour[1], colour[2]});
+  if (top <= 0.0f) return GfVec3f(1.0f);
+  GfVec3f r;
+  for (int i = 0; i < 3; ++i) r[i] = std::max(colour[i] / top, 0.01f);
+  return r;
+}
+
+// The quick view's hint (UsdPreviewSurface has no subsurface): the diffuse colour leans a quarter of the way
+// (× subsurface) toward the inside colour at the base colour's brightness, so the hue matches Final at a glance
+// without getting lighter or darker. Soft shadows and glowing thin parts are Final only.
+GfVec3f subsurface_hint(const GfVec3f& base, const GfVec3f& colour, float amount) {
+  const auto luma = [](const GfVec3f& c) { return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2]; };
+  const float lc = luma(colour);
+  if (amount <= 0.0f || lc <= 0.0f) return base;
+  const GfVec3f tint = colour * (luma(base) / lc);
+  const float t = 0.25f * std::clamp(amount, 0.0f, 1.0f);
+  return base * (1.0f - t) + tint * t;
+}
+
 void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, const JsObject* anim, int start,
                int end) {
   const SdfValueTypeName kFloat = SdfValueTypeNames->Float, kColor = SdfValueTypeNames->Color3f;
@@ -65,6 +89,9 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   const float emission_strength = float(p.num("emissionStrength"));
   const float anisotropy = float(p.num("anisotropy"));
   const std::string brush = p.one_of("brushDirection", kBrush);
+  const float subsurface = float(p.num("subsurface"));
+  const GfVec3f subsurface_colour = p.vec3("subsurfaceColor");
+  const float subsurface_mm = float(p.num_min("subsurfaceRadius", 0.0, true));
 
   // Cycles
   UsdShadeShader c = shader(stage, path, "Cycles", "cycles_principled_bsdf");
@@ -86,6 +113,10 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(c, "emission_color", kColor, emission);
   set(c, "emission_strength", kFloat, emission_strength);
   set(c, "thin_film_thickness", kFloat, float(p.num("thinFilm")));
+  set(c, "subsurface_weight", kFloat, subsurface);
+  set(c, "subsurface_method", SdfValueTypeNames->String, std::string("random_walk"));
+  set(c, "subsurface_radius", SdfValueTypeNames->Vector3f, subsurface_spread(subsurface_colour));
+  set(c, "subsurface_scale", kFloat, subsurface_mm * 0.001f);  // the scene is in metres
   if (!base_tex.empty()) {
     UsdShadeShader t = cycles_image(stage, path, "BaseColorTexture", base_tex, true);
     link(c, "base_color", kColor, t, "color", kColor);
@@ -114,14 +145,15 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   mat.CreateSurfaceOutput(TfToken("cycles"))
       .ConnectToSource(c.CreateOutput(TfToken("BSDF"), SdfValueTypeNames->Token));
 
-  // UsdPreviewSurface: the same values where it has them (no anisotropy, sheen, coat tint / IOR, thin film or bump).
+  // UsdPreviewSurface: the same values where it has them (no anisotropy, sheen, coat tint / IOR, thin film, bump or
+  // subsurface: that is only hinted, subsurface_hint).
   // Glass in Storm: what transmits has no diffuse colour and lets most light through (low opacity), while its
   // reflections stay whole (UsdPreviewSurface's "transparent" opacity mode keeps the specular), so a clear
   // cover reads as a clear cover with the studio reflected in it, not as a grey slab. Storm can't blur what is
   // behind, so rough (frosted) glass is shown less see-through and milkier the rougher it is.
   const float see_through = transmission * (1.0f - 0.6f * std::clamp(roughness, 0.0f, 1.0f));
   UsdShadeShader v = shader(stage, path, "Preview", "UsdPreviewSurface");
-  set(v, "diffuseColor", kColor, base * (1.0f - see_through));
+  set(v, "diffuseColor", kColor, subsurface_hint(base, subsurface_colour, subsurface) * (1.0f - see_through));
   set(v, "metallic", kFloat, metallic);
   set(v, "roughness", kFloat, roughness);
   set(v, "ior", kFloat, ior);

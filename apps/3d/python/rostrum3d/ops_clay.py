@@ -18,6 +18,7 @@ from rostrum_core.errors import codes
 from . import build, clay_detail, clay_steps as CS
 from .clay_fields import BRUSHES, SYMMETRY
 from .kind import REGISTRY as R
+from .material_starts import STARTS, start_values
 from .ops_items import PLACE, _holder, new_item
 
 V3 = lambda name, label, required=False, help="": Param.list(name, "number", label=label, min=-1e5, max=1e5,  # noqa: E731
@@ -51,6 +52,19 @@ def grain(ctx, clay: dict) -> float:
     return clay_detail.detail(ctx.doc, clay)
 
 
+def clay_material(ctx) -> str:
+    """The project's material named "Clay", made from the Clay start the first time (SPEC §5: a new clay starts as
+    Clay, grey): every clay made without a material shares it, so one change recolours them all until one is given
+    its own (material.split). Renamed, it is the person's own material and the next clay makes a new "Clay"."""
+    label = STARTS["clay"]["label"]
+    for m in ctx.doc.get("materials", []):
+        if m.get("name") == label:
+            return m["id"]
+    item = new_item(ctx, "material", {"name": label}, start_values("clay", {}))
+    ctx.insert("root", "materials", item)
+    return item["id"]
+
+
 def _piece(ctx, clay: str, args: dict, shape: str):
     return add_step(ctx, clay, piece_values(ctx.item(clay), args, shape))
 
@@ -75,7 +89,8 @@ PUFF = Param.number("puff", label="Puff", min=0.1, max=3, default=1.0,
              "middle. A tiny drawing (under 4 points, or thinner than 1.5 grains) makes a lump of `radius` (else "
              "3 cm) instead. Its detail (the smallest grain) follows the shot cameras (clay.set detailMode=fixed "
              "detail=… fixes it); its brush is a quarter of its size. Then clay.draw / clay.spin / clay.lump join "
-             "more, clay.stroke sculpts it.", label="Add clay",
+             "more, clay.stroke sculpts it. Without `material` it gets the project's \"Clay\" material (made from the "
+             "Clay start the first time, shared by every clay made so).", label="Add clay",
              params=[*PLACE, dataclasses.replace(AT, required=False), RADIUS, DRAW, SPIN, FACING, AXIS, PUFF, SYM,
                      Param.text("material", label="Material", kind="material")])
 def clay_add(ctx, targets, args):
@@ -98,7 +113,7 @@ def clay_add(ctx, targets, args):
     fields = {**placed, "symmetry": sym,
               "brushSize": round(max(size / 4, 0.0005), 4),     # a quarter of the clay: big enough to shape it,
                                                                  # small enough to stay within a frame (proof: medium dab)
-              "material": args.get("material") or ""}
+              "material": args.get("material") or clay_material(ctx)}
     item = new_item(ctx, "clay", args, fields)
     parent, key = _holder(ctx, args.get("into"))
     ctx.insert(parent, key, item, args.get("index"))
