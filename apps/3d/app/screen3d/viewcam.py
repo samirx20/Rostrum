@@ -2,7 +2,8 @@
 
 - "shot": look through the shot's own camera (the request names it: `camera`).
 - "free": a turntable camera, `eye` looking at `target` with a vertical `fov`, Y up (ENGINE_CONTRACT.md § 4).
-  Left drag orbits around the target, pan slides both, zoom moves the eye along its line.
+  Left drag orbits around the target, or around a pivot (the viewport's: what is selected, else what is in the scene)
+  so that the pivot stays where it is in the picture; pan slides both, zoom moves the eye along its line.
 - "light": through a light (rostrum3d.through), from where it stands along the way it shines, following it as it moves.
 
 `home` starts the free camera where the shot camera stands and looks, from the compiled scene (its world transform
@@ -34,6 +35,13 @@ def _norm(v):
 
 def _cross(a, b):
     return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+
+
+def _rotate(v, axis, deg):
+    """v turned `deg` degrees about the unit `axis` (Rodrigues)."""
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    k, kv = _cross(axis, v), sum(a * b for a, b in zip(axis, v))
+    return [v[i] * c + k[i] * s + axis[i] * kv * (1 - c) for i in range(3)]
 
 
 def find_camera(scene: dict, camera: str, frame: int):
@@ -98,9 +106,19 @@ class ViewCam:
         back = [math.cos(p) * math.sin(y), math.sin(p), math.cos(p) * math.cos(y)]
         self.eye = _add(self.target, back, dist)
 
-    def orbit(self, dx: float, dy: float):
+    def orbit(self, dx: float, dy: float, pivot=None):
         dist, yaw, pitch = self._polar()
-        self._place(dist, yaw - dx * ORBIT_DEG, max(-89.0, min(89.0, pitch + dy * ORBIT_DEG)))
+        new_pitch = max(-89.0, min(89.0, pitch + dy * ORBIT_DEG))
+        if pivot is None:
+            return self._place(dist, yaw - dx * ORBIT_DEG, new_pitch)
+        # the same turn of the view as round the target, made round the pivot: eye and target both turn about it
+        back = _norm(_sub(self.eye, self.target))
+        tilt, turn = _norm(_cross(back, [0.0, 1.0, 0.0])), [0.0, 1.0, 0.0]
+
+        def spin(p):
+            v = _rotate(_rotate(_sub(p, pivot), tilt, new_pitch - pitch), turn, -dx * ORBIT_DEG)
+            return _add(pivot, v)
+        self.eye, self.target = spin(self.eye), spin(self.target)
 
     def pan(self, dx: float, dy: float, height: int):
         """Slide by (dx, dy) picture pixels of a picture `height` pixels tall: what is under the pointer stays under it."""

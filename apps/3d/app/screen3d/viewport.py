@@ -18,7 +18,7 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from rostrum3d import aim, ops_mesh, through
+from rostrum3d import aim, item_bounds, ops_mesh, through
 
 import math
 
@@ -30,6 +30,29 @@ from .frames import EngineVia, ViewRenderer
 from . import view_item
 from .view_item import ViewLink
 from .viewcam import ViewCam
+
+STAGE = ("light", "camera")          # never a pivot: where they stand is not what the picture is about
+
+
+def pivot_of(doc: dict, selected: str, t: float):
+    """The middle of the box round `selected` (if it is something with a size), else round every top item that is not
+    a ground (a plane or disc), a light or a camera; None when there is none or it can't be measured."""
+    def ground(it):
+        return it.get("type") == "mesh" and it.get("props", {}).get("shape") in ("plane", "disc")
+    tops = doc.get("items", [])
+    found = {}
+    stack = list(tops)
+    while stack:
+        it = stack.pop()
+        found[it.get("id")] = it
+        stack += it.get("children", [])
+    sel = found.get(selected)
+    ids = [selected] if sel is not None and sel.get("type") not in STAGE and not ground(sel) else         [it["id"] for it in tops if it.get("type") not in STAGE and not ground(it)]
+    try:
+        lo, hi = item_bounds.world_box(doc, ids, t) if ids else (None, None)
+    except Exception:  # noqa: BLE001  something not measurable here (an imported file): round the target
+        return None
+    return None if lo is None else [(a + b) / 2 for a, b in zip(lo, hi)]
 
 MAX_WIDTH = 1600             # pictures wider than this are drawn smaller and scaled up on screen
 
@@ -146,6 +169,7 @@ class Viewport(QObject):
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
         self._scene = self._shot = self._wide = None
+        self._pivots = {}
         self.redraw()
 
     def _on_shot(self):
@@ -277,7 +301,20 @@ class Viewport(QObject):
 
     @Slot(float, float)
     def orbit(self, dx, dy):
-        self._move(lambda: self.cam.orbit(dx, dy))
+        self._move(lambda: self.cam.orbit(dx, dy, self._pivot()))
+
+    def _pivot(self):
+        """What a turn of the free view goes round, so it stays put in the picture: the middle of what is selected,
+        else of everything in the scene but grounds, lights and cameras; None (round the view's target) when that
+        is nothing or can't be measured. Once per document change, selection and frame."""
+        sel, cache = self.bridge.selected, getattr(self, "_pivots", None)
+        if cache is None:
+            cache = self._pivots = {}
+        key = (sel, self.bridge.frame)
+        if key not in cache:
+            cache.clear()
+            cache[key] = pivot_of(self.bridge.doc.data, sel, self.bridge.time)
+        return cache[key]
 
     @Slot(float, float)
     def pan(self, dx, dy):
