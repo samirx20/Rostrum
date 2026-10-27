@@ -25,7 +25,7 @@ INFO = {"id": "hero", "camera": "cam", "fps": 24, "start": 0, "end": 47, "width"
 
 
 class Doc:
-    item_id, data, seq = "demo", dict(INFO, shots=[{"id": "hero"}]), 1
+    item_id, data, seq, folder = "demo", dict(INFO, shots=[{"id": "hero"}]), 1, None   # no project: looks go to the cache
     history = types.SimpleNamespace(changes=[])
 
 
@@ -35,7 +35,7 @@ def engine():
 
 def test_refusal_is_loud_and_a_dead_engine_is_reported_then_restarted(tmp_path, monkeypatch):
     monkeypatch.setattr(look, "LOOK_SAMPLES", 1)
-    monkeypatch.setattr(look, "look_path", lambda stem, ext="png": tmp_path / f"{stem}.{ext}")
+    monkeypatch.setattr(look, "look_path", lambda stem, ext="png", project=None: tmp_path / f"{stem}.{ext}")
     monkeypatch.setattr(look.draw, "scene_of", lambda doc, shot: {"shot": shot})
     shot = {"value": dict(INFO)}
     monkeypatch.setattr(look, "doc_and_shot", lambda ctx, args: (Doc, shot["value"]))
