@@ -21,6 +21,7 @@ Panel {
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var actions: null           // the app's ActionHub: the selection's actions first (ActionsSection), above everything
+    property int actionLines: 0          // the action row's fixed slot, in lines (ActionsSection.holdLines; 0: as tall as its buttons)
     // a bridge's rows as one list per kind's layout (rostrum_gui/row_pages.py: a pick of another kind shows that kind's
     // list, kept made, instead of turning one list's rows into the other kind's), else one list (a RowsModel)
     readonly property var pages: panel.bridge.rows && panel.bridge.rows.paged === true ? panel.bridge.rows : null
@@ -80,7 +81,8 @@ Panel {
         Column {
             id: list
             width: parent.width
-            ActionsSection { width: Theme.wideFor(parent.width); hub: panel.actions; visible: !!panel.actions && rows.length > 0 && !panel.bridge.search }
+            ActionsSection { width: Theme.wideFor(parent.width); hub: panel.actions; holdLines: panel.actionLines
+                             visible: !!panel.actions && (rows.length > 0 || holdLines > 0) && !panel.bridge.search }
             Column {  // mixed kinds: one line per kind, a click narrows the selection to it
                 width: parent.width; visible: panel.narrow.length > 0
                 Text { text: "Show only"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label

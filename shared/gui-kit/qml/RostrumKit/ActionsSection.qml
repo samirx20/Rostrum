@@ -25,8 +25,13 @@ Item {
         : r.title !== "" ? [{ items: r.items, icons: false, title: r.title, menu: r.menu || [] }]
         : r.items.map(i => ({ items: [i], icons: false, title: "" }))), [])
     readonly property int size: Theme.field
-    visible: rows.length > 0
-    height: visible ? runs.height + Theme.pad : 0
+    // A fixed slot (an app's choice; 0 = as tall as its buttons): the row keeps the room of `holdLines` lines, even with
+    // fewer actions or none, so the settings under it sit at one place whatever the selection allows, and clicking
+    // from item to item never moves a field under the pointer. More lines than that still grow it.
+    property int holdLines: 0
+    readonly property real held: holdLines > 0 ? holdLines * size + (holdLines - 1) * runs.spacing : 0
+    visible: rows.length > 0 || holdLines > 0
+    height: visible ? Math.max(rows.length > 0 ? runs.height : 0, held) + Theme.pad : 0
     property string resting: ""          // the action the pointer is on; its preview starts after the delay
     function rest(id) { resting = id; delay.restart() }
     function leave() { resting = ""; delay.stop(); if (hub) hub.previewEnd() }

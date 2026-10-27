@@ -37,6 +37,7 @@ ContextBar { hub: backend.actions; dragging: view.dragging
              anchors.top: view.top; anchors.topMargin: Theme.gap; anchors.horizontalCenter: view.horizontalCenter
              maxWidth: view.width - 2 * toolStripWidth }
 ActionMenu { id: menu; onPicked: (v) => backend.actions.run(v) }
+Inspector { actions: backend.actions; actionLines: 2 }         // the panel's action row; actionLines: its fixed slot (optional)
 //   right-click: select the item alone if it isn't selected, then: menu.entries = backend.actions.menu(); menu.openAt(x, y)  (window coords)
 KeyMap { hub: backend.actions; enabled: !typing }               // in the root window
 ```
@@ -121,3 +122,7 @@ Plug in, after merging main once S31 is in:
   3D: Lenses on Focal length, Pick on Focus on, Use N mm on Bevel.
 - **A unit never cuts its number.** A number field keeps the unit's room out of the number's, rounds to fewer decimals when
   the field is narrow, and shows every digit again while you type.
+
+**The action row's fixed slot.** `Inspector.actionLines` (ActionsSection `holdLines`) keeps the row's room at that many
+lines even with fewer actions or none, so the settings below stay at one place from item to item (a field never moves
+under the pointer). 0 (the default) is as tall as its buttons; more lines than the slot still grow it.
