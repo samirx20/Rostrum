@@ -64,3 +64,42 @@ class SongSlots:
             self._grab = song_edit.edge_grab(self.doc, section_id, edge)
             self._drag = Drag(self.doc, self.who, moves.LABELS["edge"])
         return self._guard(go)
+
+
+# ---- where the person is, kept across this window reopening the song (a rename) ------------------------------
+FRESH_S = 30.0          # a place saved this long ago or less is this window's own reopen (the song renamed)
+
+
+def place(bridge) -> dict:
+    """Where the person is (the kit's AppFiles `place`): the selection, the Editor or Mixer open and the Editor's track,
+    the playhead and the stretch of the song on screen. Screen state, never a change."""
+    import time
+    v = bridge._zoom
+    return {"saved": time.time(), "selected": list(bridge.selectedIds), "dock": bridge.workspace.dock,
+            "track": bridge._track, "t": bridge._t, "view": {"start": v.start, "span": v.span, "fit": v.fit}}
+
+
+def restore_place(bridge, p: dict) -> None:
+    """Put a place back (AppFiles `restore_place`), only when it was saved moments ago: this window reopening the
+    song under a new name keeps the Editor, its track and the selection (critic r12 should-fix 7). A song opened
+    later starts as before."""
+    import time
+    if time.time() - float(p.get("saved", 0)) > FRESH_S:
+        return
+    doc = bridge.doc
+    ids = [i for i in p.get("selected", []) if doc.has(i)]
+    if p.get("track") and doc.has(p["track"]):
+        bridge._track = p["track"]
+        bridge._show_roll()
+    if ids:
+        bridge._pick(ids)
+    if p.get("t") is not None:
+        bridge.setTime(float(p["t"]))
+    view = p.get("view") or {}
+    if view and not view.get("fit"):
+        v = bridge._zoom
+        v._span, v.fit, v.auto, v.start = float(view["span"]), False, False, float(view["start"])
+        v.clamp()
+        bridge._tv.changed.emit()
+    if p.get("dock"):
+        bridge.workspace.setDock(p["dock"])
