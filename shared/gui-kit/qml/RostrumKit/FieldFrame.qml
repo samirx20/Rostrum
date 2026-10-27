@@ -30,6 +30,7 @@ FocusScope {
     // key that types (`starts`: any character; a NumberField's digits and sums) starts typing with it; every other key
     // (Enter, Ctrl+G, Delete …) stays the window's, the same every time it opens (critic 2d-r11).
     property bool typeToStart: false
+    property bool numeric: false        // a number box: a key it cannot use (Delete with nothing after the caret, a letter) is the window's (KeyMap)
     property var starts: /^\S$/
     readonly property bool ready: typeToStart && editable && activeFocus && !input.activeFocus
     function startsWith(e) { return ready && !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && starts.test(e.text) }
@@ -104,7 +105,8 @@ FocusScope {
         font.family: uiFont
         font.features: { "tnum": 1 }        // digits all one width, so numbers do not wobble while scrubbing
         clip: true
-        readOnly: !f.editable
+        property bool passing: false    // a key this box cannot use is on its way to the window's shortcut: read-only for that one key press
+        readOnly: !f.editable || passing
         activeFocusOnPress: f.editable
         activeFocusOnTab: f.editable        // Tab goes from field to field in the order they lie (X, then Y), never back to the top bar
         selectByMouse: f.editable
@@ -116,6 +118,24 @@ FocusScope {
         readonly property bool pending: activeFocus && text !== f.text && text !== f.editText && text !== sent
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
+        // A key this box cannot use (numeric boxes only): Delete with nothing after the caret, a letter or any key a number never
+        // holds. KeyMap lets it through to the window's shortcut (the box lets go first, keeping what was typed).
+        function cannotUse(keys) {         // any one of the job's keys (Delete, Backspace): each press is judged by the key itself (below)
+            if (!f.numeric) return false
+            const at = cursorPosition, sel = selectedText, n = text.length      // read here: the shortcut's `enabled` follows them
+            for (const k of keys) {
+                const parts = String(k).split("+"), key = parts[parts.length - 1] || "+"
+                if (parts.length > 1) continue
+                // a letter: not in an expression ("=time*2") nor a number's exponent ("1e3")
+                if (key === "Delete" ? (sel === "" && at >= n) : (key.length === 1 && !f.starts.test(key) && !/[eE]/.test(key) && text.indexOf("=") < 0)) return true
+            }
+            return false
+        }
+        Timer { id: passTimer; interval: 60; onTriggered: input.passing = false }
+        // A focused TextInput claims Delete and every plain key before any shortcut is tried, and its own accept is out of QML's
+        // reach. So the window's key filter (rostrum_gui/typed_word.py) asks here first, once per fresh press: for a key this box
+        // cannot use the box is read-only for that press, so the shortcut KeyMap allows (cannotUse) runs. A held key never.
+        function passKey(k) { if (f.numeric && cannotUse([k])) { passing = true; passTimer.restart() } }
         property bool typed: false      // a key was typed since the caret went in: a value typed again as it already is says so (below)
         onTextEdited: typed = true
         function commit() {

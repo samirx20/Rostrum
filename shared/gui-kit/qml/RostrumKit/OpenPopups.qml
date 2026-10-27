@@ -35,6 +35,16 @@ QtObject {
         return true
     }
 
+    // A command run by a shortcut (KeyShortcut, before the command itself) closes the menus and lists still open, the ones that
+    // did not run it: they would stay floating over a document that changed (an Ease list with stale entries, a "More" menu).
+    // Not closed: a dialog (modal), a panel or sheet (EscCloses), and the keys a popup answers itself (Enter, Esc, arrows).
+    function closeForCommand(sequences) {
+        if (open.length === 0) return
+        for (const k of sequences || []) if (/^(Esc|Escape|Return|Enter|Up|Down|Tab)$/.test(String(k).split("+").pop())) return
+        for (const p of open.slice())
+            if (p.modal === false && p.area === undefined && !p.covers && typeof p.close === "function") p.close()
+    }
+
     function add(p) { if (open.indexOf(p) < 0) open = open.concat([p]) }
     function remove(p) { if (open.indexOf(p) >= 0) open = open.filter(o => o !== p) }
 

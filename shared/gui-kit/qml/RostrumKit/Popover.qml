@@ -89,11 +89,12 @@ SmallPopup {
     // A field (FieldFrame) takes the keys ready to type, without a caret: a digit starts the number, and Ctrl+G, Delete or
     // a tool key still reach the window, the same the first time and every time after (critic 2d-r11: the first opening
     // put the caret in, where the window's keys wait, so Ctrl+G did nothing; from the second on it did not).
-    onOpened: {
+    function takeKeys() {
         const it = focusItem ? focusItem : pop
         if (it.typeToStart !== undefined) { it.typeToStart = true; it.input.focus = false }
         it.forceActiveFocus()
     }
+    onOpened: takeKeys()
     onClosed: { if (before && before.visible) before.forceActiveFocus(); before = null }
     // Enter keeps it wherever the keyboard is while it is the newest popup open (critic r10: a choice list picked with the
     // mouse hands the keys to the window behind as it closes, and an Enter that asked `mine` was then heard by nothing).

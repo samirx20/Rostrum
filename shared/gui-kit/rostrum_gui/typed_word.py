@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import QEvent, Qt, Slot
+from PySide6.QtCore import Q_ARG, QEvent, QMetaObject, Qt, Slot
 
 from .gui_filter import GuiFilter
 
@@ -57,6 +57,20 @@ def typing_in_field(win) -> bool:
     return is_field(win.activeFocusItem() if hasattr(win, "activeFocusItem") else None)
 
 
+def pass_unusable_key(win, event) -> None:
+    """A number box with the caret in it (FieldFrame.numeric) cannot use Delete with nothing after the caret, or a letter: it
+    claims every key before shortcuts are tried and QML cannot undo that, so it is asked here, first (FieldFrame.passKey)."""
+    item = win.activeFocusItem() if hasattr(win, "activeFocusItem") else None
+    mo = item.metaObject() if item is not None else None
+    if mo is None or mo.indexOfMethod("passKey(QVariant)") < 0 or event.isAutoRepeat():
+        return
+    if event.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.MetaModifier):
+        return
+    name = "Delete" if event.key() == Qt.Key.Key_Delete else event.text()
+    if name:
+        QMetaObject.invokeMethod(item, "passKey", Qt.ConnectionType.DirectConnection, Q_ARG("QVariant", name))
+
+
 class TypedWord(GuiFilter):
     def __init__(self, clock=time.monotonic):
         super().__init__()
@@ -83,6 +97,7 @@ class TypedWord(GuiFilter):
     def on_event(self, obj, event):
         t = event.type()
         if t == QEvent.Type.ShortcutOverride:               # the usual way: asked before any shortcut is tried
+            pass_unusable_key(obj, event)
             self.judged = (event.key(), event.timestamp())     # the press that follows has the same stamp
             if self._drop(obj, event):
                 self.dropping = event.key()

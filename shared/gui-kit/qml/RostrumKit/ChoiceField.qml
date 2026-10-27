@@ -38,7 +38,7 @@ FieldFrame {
     function handKeysBack() {
         for (let it = f.parent; it; it = it.parent) {
             const p = it.popover
-            if (p && p.opened) { if (!p.mine) (p.focusItem ? p.focusItem : p).forceActiveFocus(); return }
+            if (p && p.opened) { p.takeKeys(); return }
         }
     }
     function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
