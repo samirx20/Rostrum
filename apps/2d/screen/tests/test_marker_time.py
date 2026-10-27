@@ -78,3 +78,21 @@ def test_an_edit_on_a_marker_key_changes_that_key(bridge):
     bridge.moveBy(50, 0)
     bridge.endDrag()
     assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item("dot"), "x")} == {"#reveal": 150, 3.0: 200}
+
+
+def test_an_anchor_drag_on_marker_keys_changes_those_keys(bridge):
+    """Dragging the anchor ring with the playhead on a marker key: that key changes and stays on the marker (as the
+    move drag above); no plain key at the playhead's seconds beside it (2D after ix, item 4)."""
+    bridge.doc.apply([{"op": "key.add", "target": "dot", "args": {"prop": "x", "t": "#reveal", "v": 100}},
+                      {"op": "key.add", "target": "dot", "args": {"prop": "x", "t": 3.0, "v": 200}},
+                      {"op": "key.add", "target": "dot", "args": {"prop": "anchorX", "t": "#reveal", "v": 0.5}},
+                      {"op": "key.add", "target": "dot", "args": {"prop": "anchorX", "t": 3.0, "v": 0.5}}], Who.person("sam"))
+    bridge.select("dot")
+    bridge.setTime(11.6)
+    assert bridge.beginAnchor()
+    bridge.anchorBy(10, 0, True)
+    bridge.endDrag()
+    for prop in ("x", "anchorX"):
+        ts = [k["t"] for k in keys_of(bridge.doc.item("dot"), prop)]
+        assert sorted(map(str, ts)) == ["#reveal", "3.0"], (prop, ts)       # changed in place: no plain key beside it
+    assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item("dot"), "anchorX")}["#reveal"] != 0.5

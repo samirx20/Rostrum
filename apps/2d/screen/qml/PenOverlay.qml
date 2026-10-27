@@ -8,8 +8,11 @@ import RostrumCursors 1.0
 // (open), then Move with the path selected; no Done (the Pen's hover help says how: Rail2D.qml).
 // A path layer whose points are being edited (double-click it or Enter; Esc: its box again) shows its points (square = corner, round = smooth); click a point to select it and its handles show; dragging one is one
 // change (Alt: move one handle alone). `ox`, `oy`, `fit`: where the frame sits in this item and its scale.
-// Pointers (CURSORS.md): the pen with × before a path starts, plain while drawing, ○ over the first point (a click
-// closes: pen.CLOSE_PX); a path's point `pick` + point, a handle end `pick` + bend.
+// Pointers (CURSORS.md, CANVAS 1.3 pen table): the pen with × before a path starts, plain while drawing, ○ over the
+// first point (a click closes), ^ over the last (drag: its out handle alone; click: sharp again), − over another point
+// (a click removes it), + over the line (a click adds a point, the curve kept); with no path being drawn, a picked
+// path's points (−) and line (+) answer the same way. Editing points: a point `pick` + point (Alt: pen −, Alt+click
+// removes it), a handle end `pick` + bend, the line pen + (a click adds a point).
 Item {
     id: ov
     property real fit: 1
@@ -36,17 +39,35 @@ Item {
         return d
     }
 
+    readonly property real near: 8 / Math.max(fit, 0.0001)      // 8 screen px, in composition px (pen.CLOSE_PX at 100 %)
     MouseArea {  // the pen's clicks (on top of the canvas's move-drag while the pen is on)
+        id: penArea
         anchors.fill: parent
         enabled: ov.pen.on
         visible: enabled        // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
         hoverEnabled: true
         preventStealing: true
-        readonly property bool onFirst: ov.pts.length > 1 && Math.hypot((mouseX - ov.ox) / ov.fit - ov.pts[0].x, (mouseY - ov.oy) / ov.fit - ov.pts[0].y) <= 8
-        CanvasCursor { visible: parent.enabled; kind: "pen"; badge: ov.pts.length === 0 ? "x" : parent.onFirst ? "close" : "" }
-        onPressed: (m) => ov.pen.press((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
-        onPositionChanged: (m) => ov.pen.pull((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
-        onReleased: ov.pen.release()
+        // What a press here would do = the pen's badge (pen.zone): × no path yet, ○ first point, ^ last point, − another
+        // point, + the line; re-read on every move and whenever the points change; kept while the button is down.
+        property string zone: "x"
+        function look() { if (!pressed && ov.pen.on) zone = ov.pen.zone((mouseX - ov.ox) / ov.fit, (mouseY - ov.oy) / ov.fit, ov.near) }
+        Connections { target: ov.pen; function onChanged() { penArea.look() } }
+        CanvasCursor { visible: parent.enabled; kind: "pen"; badge: penArea.zone }
+        onPressed: (m) => ov.pen.press((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit, ov.near)
+        onPositionChanged: (m) => { if (pressed) ov.pen.pull((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit); else look() }
+        onReleased: { ov.pen.release(); look() }
+    }
+    MouseArea {  // editing a path's points (pen off): its line takes a click (a point there, the curve kept), pen +
+        id: lineArea
+        anchors.fill: parent
+        enabled: ov.pen.editing && !ov.pen.on
+        visible: enabled
+        hoverEnabled: true
+        containmentMask: QtObject {   // only the line itself: elsewhere the canvas under it keeps its own presses
+            function contains(p: point) : bool { return lineArea.enabled && ov.pen.zone((p.x - ov.ox) / ov.fit, (p.y - ov.oy) / ov.fit, ov.near) === "copy" }
+        }
+        CanvasCursor { kind: "pen"; badge: "copy" }
+        onPressed: (m) => ov.pen.addOnLine((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit, ov.near)
     }
     Shape {  // the path being drawn, and the handles of the points shown
         anchors.fill: parent
@@ -86,11 +107,14 @@ Item {
         MouseArea {
             anchors.fill: parent; anchors.margins: -4
             enabled: !ov.pen.on
+            visible: enabled        // the pen on: its own area shows the pen's badge here (a shown, disabled area wins the pointer)
             preventStealing: true
-            CanvasCursor { kind: "pick"; badge: k.part === "point" ? "point" : "bend" }
+            CanvasCursor { kind: k.part === "point" && altHeld ? "pen" : "pick"; badge: k.part !== "point" ? "bend" : altHeld ? "remove" : "point" }
             property point start
             property bool dragging: false
-            onPressed: (m) => { start = mapToItem(ov, m.x, m.y); if (k.part === "point") ov.pen.selectPoint(k.i); dragging = ov.pen.beginPointDrag(k.i, k.part) }
+            onPressed: (m) => {
+                if (k.part === "point" && (m.modifiers & Qt.AltModifier)) { ov.pen.removePoint(k.i); return }   // Alt+click: pen −
+                start = mapToItem(ov, m.x, m.y); if (k.part === "point") ov.pen.selectPoint(k.i); dragging = ov.pen.beginPointDrag(k.i, k.part) }
             onPositionChanged: (m) => {
                 if (!dragging) return
                 var q = mapToItem(ov, m.x, m.y)

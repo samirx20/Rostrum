@@ -1,14 +1,18 @@
 """The anchor point on the canvas: drag the ring to move the point a layer turns and scales around, while the layer
 stays exactly where it shows (Position follows: After Effects' "pan behind"). One drag = one undo step, made of the
-same layer.anchor call an agent makes (rostrum2d/ops_anchor.py: it moves Position so the layer keeps its place). The ring shows only while the settings panel's Anchor group is
+same layer.anchor call an agent makes (rostrum2d/ops_anchor.py: it moves Position so the layer keeps its place; a layer with
+keys timed on a marker writes the same fields through route.value_call, so the marker key there changes). The ring shows only while the settings panel's Anchor group is
 open (`anchorOpen`), on a single layer that has a box; the maths of what moves is transform.turn. A slot mix-in for
 Bridge2D (see rostrum_gui/parts.py); it uses handle_slots' grab.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum2d.ops_anchor import moved
+from rostrum2d.sizes import own_size
+from rostrum_core.keys import marked
 
-from . import bounds, drag_chip, transform as T
+from . import bounds, drag_chip, route, transform as T
 
 SNAP_PX = 5.0              # a screen distance: the anchor catches the edges and the middle (0, 50, 100 %) this close
 CATCH = (0.0, 0.5, 1.0)
@@ -44,6 +48,19 @@ class AnchorSlots:
         if not free:
             ax, ay = self._caught(ax, b["lw"]), self._caught(ay, b["lh"])
         drag_chip.say(self, f"{ax * 100:.0f} %, {ay * 100:.0f} %")      # where in the layer: 50 %, 50 % = its middle
-        call = {"op": "layer.anchor", "target": [item["id"]],
-                "args": {"x": round(ax, 4), "y": round(ay, 4), "keep_place": True, "at": self.own_t(item["id"])}}
-        self._guard(lambda: self._drag.preview([call]))
+        self._guard(lambda: self._drag.preview(self._anchor_calls(item, g, ax, ay)))
+
+    def _anchor_calls(self, item, g, ax, ay) -> list[dict]:
+        """The agents' layer.anchor call; for a layer with keys timed on a marker, the same fields (ops_anchor.moved's
+        maths) each through route.value_call, which changes the marker key under the playhead and keeps it on its
+        marker: layer.anchor sees no markers, so it would add a plain key beside it (and can't read the layer's values)."""
+        t = self.own_t(item["id"])
+        if not any(marked.marked(k) for k in item.get("keys", [])):
+            return [{"op": "layer.anchor", "target": [item["id"]],
+                     "args": {"x": round(ax, 4), "y": round(ay, 4), "keep_place": True, "at": t}}]
+        p = g.p
+        sets = {"anchorX": ax, "anchorY": ay}
+        if not g.placed:
+            dx, dy = moved(p, own_size(item["type"], p), ax, ay)
+            sets.update(x=p["x"] + dx, y=p["y"] + dy)
+        return [route.value_call(item, prop, round(v, 4), t) for prop, v in sets.items() if abs(v - p[prop]) > 1e-9]

@@ -13,7 +13,8 @@ import RostrumCursors 1.0
 // the Stage's mapping only (compScale, fromComp, toComp), turned and scaled as the text is. Until the engine's picture of
 // a key lands, the box draws the typed words itself in the text's font and colour (backend.create.ink, typed_ink.py),
 // so a letter shows under the caret at once and the picture takes over unseen. It lies in the canvas (Stage.qml).
-// Pointers (CURSORS.md): a shape tool `make`; the Text tool `text-box` (a click: words there, a drag: a box to wrap in).
+// Pointers (CURSORS.md): a shape tool `make`; the Text tool `text-box` (a click: words there, a drag: a box to wrap in),
+// over a text the I-beam `text` (a click types in that text, the caret where it was clicked).
 Item {
     id: ov
     property Item stage
@@ -34,7 +35,11 @@ Item {
         anchors.fill: parent
         enabled: (ov.creating || ov.create.typing) && !backend.playing && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
-        CanvasCursor { kind: ov.shapeTool ? "make" : "text-box" }
+        hoverEnabled: ov.tool === "text"
+        // the Text tool over a text: the I-beam, and a press types in that text at the click (create.textAt), not a new one
+        readonly property string overText: ov.tool === "text" && !ov.create.typing && containsMouse
+                                           ? ov.create.textAt(ov.toComp(mouseX, mouseY).x, ov.toComp(mouseX, mouseY).y) : ""
+        CanvasCursor { kind: ov.shapeTool ? "make" : area.overText !== "" ? "text" : "text-box" }
         preventStealing: true
         property point p0
         property real px: 0
@@ -45,6 +50,10 @@ Item {
             ending = ov.create.typing                         // a press here is outside the typing box (that takes its own):
             if (ending) return ov.create.commitText(editor.text)   // the text is made / kept, one change
             p0 = ov.atMouse(m); px = m.x; py = m.y
+            if (!shape) {
+                const t = ov.create.textAt(p0.x, p0.y)
+                if (t !== "") { editor.caretAt = Qt.point(m.x, m.y); ov.create.editText(t, false); return }   // type in it, there
+            }
             if (shape) ov.create.beginShape(ov.tool, p0.x, p0.y, 4 / ov.scale)
         }
         onPositionChanged: (m) => {
@@ -109,6 +118,7 @@ Item {
         transform: Rotation { origin.x: (ov.box.ax || 0) * (ov.box.w || 0) * ov.scale; origin.y: (ov.box.ay || 0) * (ov.box.h || 0) * ov.scale
                               angle: ov.box.rot || 0 }      // a turned text is typed turned (the box: create.py _text_box)
         property alias text: edit.text
+        property point caretAt: Qt.point(-1, -1)        // a Text tool click on a text: the caret goes where it was clicked
         Text { id: words; visible: false; text: edit.text; font: edit.font }     // the one place the typed width is measured
         HaloLine { anchors.fill: parent; anchors.margins: -4; radius: 2 }
         TextEdit {
@@ -146,6 +156,11 @@ Item {
                 if (editor.on && edit.text !== ov.create.body) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.cursorPosition = edit.length }
             }
         }
-        onOnChanged: if (on) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.forceActiveFocus(); if (ov.create.editWhole) edit.selectAll(); else edit.cursorPosition = edit.length }   // Enter: every word picked; a double-click: the caret at the end (create.editWhole)
+        // Enter: every word picked; a double-click: the caret at the end (create.editWhole); a Text tool click: where clicked
+        onOnChanged: if (on) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.forceActiveFocus()
+                         if (ov.create.editWhole) edit.selectAll()
+                         else edit.cursorPosition = edit.length
+                         if (!ov.create.editWhole && caretAt.x >= 0) Qt.callLater(editor.placeCaret) }   // once the box has moved there
+        function placeCaret() { const q = ov.mapToItem(edit, caretAt.x, caretAt.y); edit.cursorPosition = edit.positionAt(q.x, q.y); caretAt = Qt.point(-1, -1) }
     }
 }
