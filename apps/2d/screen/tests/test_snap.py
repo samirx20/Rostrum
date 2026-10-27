@@ -28,3 +28,12 @@ def test_frame_first_and_one_edge_for_a_resize():
     assert dx == -4
     dx, _, _ = S.snap((100, 100, 1917, 200), [FRAME], 6.0, xs=(2,), ys=())   # the right edge only
     assert dx == 3
+
+
+def test_a_snap_line_says_what_it_caught():
+    """The word on the magenta line (CANVAS.md §2 row 24): the frame's middle is "centre", a layer's side "edge"."""
+    _, _, lines = S.snap(box_at(964, 300), [FRAME], S.threshold(1.0))
+    assert lines[0]["what"] == "centre"
+    other = (1, (500, 0, 600, 50))
+    _, _, lines = S.snap((397, 300, 502, 400), [other], 6.0, xs=(2,), ys=())   # the right edge onto the layer's left
+    assert lines[0]["what"] == "edge"

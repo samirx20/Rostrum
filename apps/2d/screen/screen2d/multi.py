@@ -5,17 +5,15 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 layer.distribute {gap}). A QObject part, read in QML as `backend.multi`."""
 from __future__ import annotations
 
-import math
-
 from rostrum2d import boxes as B
 from rostrum_gui import news
 from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.edits import Drag
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui.selection_rules import box, click
+from rostrum_gui.selection_rules import click
 
-from . import bounds, picking, snap, under_menu
+from . import band, bounds, picking, snap, under_menu
 from .handle_kinds import dressed
 from .group_slots import union
 
@@ -25,12 +23,14 @@ class Multi(QObject):
     pickedChanged = Signal()                                # which layers (count, ids, lit: the list's rows)
     rideChanged = Signal()
     gapChanged = Signal()                                   # the Gap row (in the settings panel)
+    bandChanged = Signal()                                  # what the growing rubber band would pick (bandPath)
 
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
         self._known = None                                  # (selection, document data, its layers)
         self._even, self._drag = (None, {}), None           # ((selection, data, time), the Gap row); a Gap scrub
+        self._band = ((), "")                               # (the ids the rubber band would pick, their outlines)
         # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
@@ -79,14 +79,8 @@ class Multi(QObject):
             return self._path[2]
         out = []
         for b in boxes:
-            if b.get("id") == skip or b.get("w") is None:
-                continue
-            x, y, w, h = b["x"], b["y"], b["w"], b["h"]
-            ax, ay, a = x + b.get("ax", 0) * w, y + b.get("ay", 0) * h, math.radians(b.get("rot", 0))
-            c, s = math.cos(a), math.sin(a)
-            pts = [(ax + (px - ax) * c - (py - ay) * s, ay + (px - ax) * s + (py - ay) * c)
-                   for px, py in ((x, y), (x + w, y), (x + w, y + h), (x, y + h))]
-            out.append("M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z")
+            if b.get("id") != skip and b.get("w") is not None:
+                out.append(band.outline(b))
         self._path = (boxes, skip, " ".join(out))
         return self._path[2]
 
@@ -265,13 +259,29 @@ class Multi(QObject):
         """The rubber band (composition px), by the kit's rule (selection_rules.box, INTERACTION 1.3): every layer it
         touches, as its outermost group (never a locked one); `mods` "shift" adds them to the selection, "ctrl" picks
         the deepest pieces instead (not groups). Returns how many are selected."""
-        lo_x, hi_x, lo_y, hi_y = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
-        found = [x for x in bounds.boxes(self.b.placed(), self.b._t) if not x["locked"]
-                 and (e := bounds.extent(x)) and e[0] <= hi_x and e[2] >= lo_x and e[1] <= hi_y and e[3] >= lo_y]
-        touched = [((x["up"] or (x["id"],))[0], x["id"]) for x in reversed(found) if x["type"] != "group"]   # topmost first
-        ids = box(self.layers(), touched, set(mods.split()), "canvas")
+        ids = band.picks(self.b, self.layers(), (x0, y0, x1, y1), mods)
+        self.endBand()
         self._set(ids)
         return len(ids)
+
+    @Property(str, notify=bandChanged)
+    def bandPath(self):
+        """While the rubber band grows: the outlines of what letting go now would pick, as one svg path (band.py)."""
+        return self._band[1]
+
+    @Slot(float, float, float, float, str)
+    def bandTo(self, x0, y0, x1, y1, mods=""):
+        """The rubber band at (x0, y0)-(x1, y1) on a pointer move: the layers it would pick light up (bandPath)."""
+        got = band.preview(self.b, self.layers(), (x0, y0, x1, y1), mods, self._band)
+        if got is not self._band:
+            self._band = got
+            self.bandChanged.emit()
+
+    @Slot()
+    def endBand(self):
+        if self._band[1]:
+            self._band = ((), "")
+            self.bandChanged.emit()
 
 
 def _same(was, now) -> bool:

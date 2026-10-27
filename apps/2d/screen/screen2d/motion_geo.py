@@ -89,7 +89,8 @@ def _field(owner: dict, prop: str):
     return at
 
 
-def _position(owner: dict):
+def position(owner: dict):
+    """t -> (x, y): where the owner is at t, in its own parent's px (the frame: world px)."""
     fx, fy = _field(owner, "x"), _field(owner, "y")
     return lambda t: (fx(t), fy(t))
 
@@ -107,7 +108,7 @@ def track(owner: dict, fps: float) -> dict | None:
     if len(times) < 2:
         return None
     t0, t1 = next(iter(times)), next(reversed(times))
-    pos = _position(owner)
+    pos = position(owner)
     at = list(times.items())
     lines, cuts, ticks, run = [], [], [], []
     for (ta, ka), (tb, _) in zip(at, at[1:]):
@@ -199,3 +200,24 @@ def on_canvas(tr: dict, m) -> dict:
         keys.append(row)
     return {"lines": [_flat(m, line) for line in tr["lines"]], "cuts": [_flat(m, cut) for cut in tr["cuts"]],
             "ticks": _flat(m, tr["ticks"]), "keys": keys}
+
+
+def time_near(owner: dict, fps: float, m, x: float, y: float, limit: float) -> float | None:
+    """Ctrl+click on the path line: the time of the frame dot nearest the canvas point (x, y) (world px) on a travelled
+    stretch, when the line passes within `limit` px of it; None elsewhere (a jump has no dots and takes no key). The
+    path is sampled as `track` draws it, so the time is the one the dot under the pointer stands for."""
+    times = list(_keys(owner).items())
+    pos, best = position(owner), None
+    for (ta, ka), (tb, _) in zip(times, times[1:]):
+        if _jump(ka):
+            continue
+        n = max(1, round((tb - ta) * fps))
+        pts = [(ta + (tb - ta) * i / (n * FRAME_STEPS), apply(m, *pos(ta + (tb - ta) * i / (n * FRAME_STEPS))))
+               for i in range(n * FRAME_STEPS + 1)]
+        for (t0, p0), (t1, p1) in zip(pts, pts[1:]):
+            vx, vy = p1[0] - p0[0], p1[1] - p0[1]
+            u = max(0.0, min(1.0, ((x - p0[0]) * vx + (y - p0[1]) * vy) / ((vx * vx + vy * vy) or 1.0)))
+            d = (p0[0] + u * vx - x) ** 2 + (p0[1] + u * vy - y) ** 2
+            if d <= limit * limit and (best is None or d < best[0]):
+                best = (d, ta + (tb - ta) * round((t0 + u * (t1 - t0) - ta) / (tb - ta) * n) / n)
+    return None if best is None else round(best[1], 6)

@@ -4,6 +4,9 @@ operation are unchanged; agents set it as before. No Qt."""
 from __future__ import annotations
 
 ONE, EACH = "radius", "radiusTL"
+# each corner: where it is across and down the box (0 / 1) and its field's ending; the canvas's radius dots use the same
+# (shape_handle_geom.py: an Alt-drag on one dot switches Each corner on and sets only that corner's radius)
+CORNERS = {"nw": (0, 0, "TL"), "ne": (1, 0, "TR"), "se": (1, 1, "BR"), "sw": (0, 1, "BL")}
 
 
 def rows(rows: list[dict], item: dict | None) -> list[dict]:

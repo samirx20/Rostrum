@@ -56,6 +56,10 @@ class ShownState:
     def view_zoom(self) -> float:
         return self._zoom
 
+    def shows_now(self) -> bool:
+        """The picture on screen is of the document as it is now (None yet: nothing older shows either)."""
+        return self._shown is None or self._shown[0] is self.doc.data
+
     def frame_tag(self):
         """What a frame about to be requested is rendered from (it comes back with the frame: _frame_shown)."""
         return (self.doc.data, self.marks.times if self.marks else None, self._t)

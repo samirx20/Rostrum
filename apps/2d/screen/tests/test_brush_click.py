@@ -1,5 +1,5 @@
 """A new piece opens with nothing picked (the scene: a first drag never moves the frame), and a real click on the
-Brush icon opens the brush panel at once. Its first opening once froze the app for good: the panel's strokes were
+Brush icon opens the brush panel at once; with it open, a press on the picture closes it and paints, one Ctrl+Z away. Its first opening once froze the app for good: the panel's strokes were
 read on Qt's loader thread, which waited for Python's lock while the click held it (rostrum_gui/screen_images.py).
 A frozen app can't even exit, so the click runs in a child process the test ends after a time limit."""
 import os
@@ -45,6 +45,9 @@ def _child(folder):
     QTest.qWait(300)
     print("panel then:", "open" if fly.property("opened") else "closed", "painted:", any(
         l["type"] == "drawing" for l in b.comp()["layers"]), flush=True)
+    QTest.keyClick(session.win, Qt.Key_Z, Qt.ControlModifier)       # one Ctrl+Z takes the stroke back, nothing else
+    QTest.qWait(200)
+    print("after one undo: painted:", any(l["type"] == "drawing" for l in b.comp()["layers"]), "tool:", b.tool, flush=True)
     app.processEvents()
     session.close()
 
@@ -66,6 +69,7 @@ def test_a_new_piece_picks_nothing_and_a_real_brush_click_opens_the_panel(tmp_pa
     assert "picked: scene" in out, out
     assert "panel: open tool: draw" in out, out
     assert "panel then: closed painted: True" in out, out      # no dead zone: the press that closes the panel paints
+    assert "after one undo: painted: False tool: draw" in out, out   # the stroke is one undo step; the Brush stays on
 
 
 if __name__ == "__main__":

@@ -58,11 +58,11 @@ m.key("x", {0.0: 0, 1.0: 100})
     assert on_twos(0.3) == on_twos(0.2) != on_twos(0.4)    # between steps the outline sits on the drawn picture
 
 
-def test_resize_knobs_show_the_arrow_that_matches_their_screen_direction():
+def test_resize_knobs_point_their_arrow_along_their_screen_direction():
     from screen2d.transform import resize_cursor as c
-    assert [c(*k, 0) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == ["hor", "ver", "fdiag", "bdiag"]
-    assert [c(*k, 45) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == ["fdiag", "bdiag", "ver", "hor"]
-    assert c(-1, -1, 90) == "bdiag" and c(1, 0, 180) == "hor"
+    assert [c(*k, 0) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == [0, 90, 45, 135]
+    assert [c(*k, 20) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == [20, 110, 65, 155]   # leans with a turned layer
+    assert c(-1, -1, 90) == 135 and c(1, 0, 180) == 0 and c(1, 0, 33) == 35                # a line: 180° round is the same; 5° steps
 
 
 def test_group_resize_and_turn_are_one_undo_step_and_leave_unselected_layers_alone(bridge):  # noqa: F811

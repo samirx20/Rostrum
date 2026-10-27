@@ -80,3 +80,17 @@ cam.key("x", {0.0: 160, 2.0: 220})
 cam.key("y", {0.0: 90, 2.0: 70})
 cam.key("zoom", {0.0: 1, 2.0: 1.4})
 '''
+
+
+def test_ctrl_click_on_the_line_adds_a_key_at_that_dot_in_one_step(bridge):  # noqa: F811
+    """Ctrl+click between two keys (motion_path.addKeyAt): a key on x and y at the dot's time, on the path's place there."""
+    _path_with_three_keys(bridge)
+    mp, doc = bridge.motionPath, bridge.doc
+    n = len(doc.history.changes)
+    assert not mp.addKeyAt(250, 120, 2)            # off the line: nothing (the canvas's own Ctrl+press goes on)
+    assert mp.addKeyAt(251, 40.5, 2)               # on the flat stretch from (200, 40) at 0 s to (300, 40) at 0.5 s
+    assert len(doc.history.changes) == n + 1
+    xs = {k["t"]: k["v"] for k in keys_of(doc.item("box"), "x")}
+    ys = {k["t"]: k["v"] for k in keys_of(doc.item("box"), "y")}
+    new = [t for t in xs if t not in (0.0, 0.5, 1.0)]
+    assert len(new) == 1 and 0.0 < new[0] < 0.5 and new[0] in ys and abs(ys[new[0]] - 40) < 0.5

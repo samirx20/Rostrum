@@ -1,12 +1,15 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import RostrumCursors 1.0
 
 // The pen tool and a path's points, over the canvas (screen2d/pen.py does the work; the tool rail turns the pen on).
 // Pen on: click = corner point, press-drag = smooth point, click the first point = close, Enter / Escape / another tool = made
 // (open), then Move with the path selected; no Done (the Pen's hover help says how: Rail2D.qml).
 // A path layer whose points are being edited (double-click it or Enter; Esc: its box again) shows its points (square = corner, round = smooth); click a point to select it and its handles show; dragging one is one
 // change (Alt: move one handle alone). `ox`, `oy`, `fit`: where the frame sits in this item and its scale.
+// Pointers (CURSORS.md): the pen with × before a path starts, plain while drawing, ○ over the first point (a click
+// closes: pen.CLOSE_PX); a path's point `pick` + point, a handle end `pick` + bend.
 Item {
     id: ov
     property real fit: 1
@@ -36,8 +39,11 @@ Item {
     MouseArea {  // the pen's clicks (on top of the canvas's move-drag while the pen is on)
         anchors.fill: parent
         enabled: ov.pen.on
-        cursorShape: Qt.CrossCursor
+        visible: enabled        // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
+        hoverEnabled: true
         preventStealing: true
+        readonly property bool onFirst: ov.pts.length > 1 && Math.hypot((mouseX - ov.ox) / ov.fit - ov.pts[0].x, (mouseY - ov.oy) / ov.fit - ov.pts[0].y) <= 8
+        CanvasCursor { visible: parent.enabled; kind: "pen"; badge: ov.pts.length === 0 ? "x" : parent.onFirst ? "close" : "" }
         onPressed: (m) => ov.pen.press((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
         onPositionChanged: (m) => ov.pen.pull((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
         onReleased: ov.pen.release()
@@ -80,8 +86,8 @@ Item {
         MouseArea {
             anchors.fill: parent; anchors.margins: -4
             enabled: !ov.pen.on
-            cursorShape: Qt.SizeAllCursor
             preventStealing: true
+            CanvasCursor { kind: "pick"; badge: k.part === "point" ? "point" : "bend" }
             property point start
             property bool dragging: false
             onPressed: (m) => { start = mapToItem(ov, m.x, m.y); if (k.part === "point") ov.pen.selectPoint(k.i); dragging = ov.pen.beginPointDrag(k.i, k.part) }

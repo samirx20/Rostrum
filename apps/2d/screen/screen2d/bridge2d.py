@@ -13,8 +13,9 @@ from rostrum_core.tree import index
 from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 from rostrum2d.scene_keep import Keeper
 
-from . import bounds, colour_feed, outline, picture_change, route, screen_seen
+from . import bounds, colour_feed, drag_cancel, outline, picture_change, route, screen_seen
 from .drags import DragSlots
+from .panel_hold import PanelHold
 from .command_words import CommandWords
 from .file_commands import FileCommands
 from .key_routes import KeyRoutes
@@ -23,6 +24,7 @@ from .frames import FrameRenderer
 from .group_slots import GroupSlots
 from .anchor_slots import AnchorSlots
 from .handle_slots import HandleSlots
+from .shape_handle_slots import ShapeHandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
 from .action_preview import PREVIEW_TAG, ActionPreview
@@ -33,6 +35,7 @@ from .painting_open import OpenedPainting
 from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
 from .frame_view import FrameView
+from .change_flash import ChangeFlash
 from .world_view import WorldView
 from .outline_news import OutlineNews
 from .reveal_ahead import RevealAhead
@@ -56,7 +59,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, PanelHold, DragSlots, HandleSlots, ShapeHandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -108,10 +111,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self._opened = OpenedPainting(self)                 # a painting opened on its own (painting_open.py)
         self.painter = Painter(self)
+        self._esc = drag_cancel.watch(self)                # Esc mid-drag puts everything back (drag_cancel.py)
         self._paint_edge, self._world = PaintEdge(self), WorldView(self)   # paint_edge.py, world_view.py
         self.painter.ahead = RevealAhead(self.painter, self)      # the eraser's reveal, drawn before the press (reveal_ahead.py)
         self.frames.pictured.connect(self._world.shown)
         self._frame_view = FrameView(self)                  # frame_view.py
+        self._change_flash = ChangeFlash(self)              # the change outline's boxes (change_flash.py)
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
@@ -155,6 +160,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     world = Property(QObject, lambda self: self._world, constant=True)           # the world picture on the canvas (world_view.py)
     frameView = Property(QObject, lambda self: self._frame_view, constant=True)   # the frame's box on the canvas (frame_view.py)
+    changeFlash = Property(QObject, lambda self: self._change_flash, constant=True)   # where the change outline goes (change_flash.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
     cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)
@@ -482,9 +488,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
                 self._layers_check()                        # dragged) at once, the parts that follow the outline
                 if reached:                                 # (panels, overlays) once per screen refresh
                     self._outline_paced.ask()
+                self._esc.arm()                             # Esc now puts the drag back (drag_cancel.py)
             else:                                           # the frame after (outline_news.py); a change elsewhere
                 self._outline_paced.cancel()                # (an agent's, an undo): only the timeline's rows; the
                 self._outline_news.soon(bool(reached))      # canvas overlays follow the new picture (shownChanged)
+                if self.doc._gesture is None:               # the gesture ended (kept, or put back): Esc is free again
+                    self._esc.disarm()
         if event.kind != "preview":                         # (a step's picture was asked before: _before_followers)
             with STATS.stage("doc.render"):
                 self._render()

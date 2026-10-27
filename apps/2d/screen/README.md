@@ -86,7 +86,15 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Gap row** (`multi.gap`, `qml/GapRow.qml`, objectName `gapBox`): 3+ picked layers in one place sitting equally apart
   (`snap.even`, within 0.5 px) show "Gap ⟷ 48 px" / "Gap ↕"; a typed (sums, `*2`) or scrubbed gap is
   `layer.distribute {gap}`, one change. Alt+Shift+H / Alt+Shift+V are Even gaps across / down.
-- **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.
+- **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`, `screen2d/band.py`): Shift adds,
+  Ctrl the deepest. While the band grows, `multi.bandTo` lights what letting go would pick (`multi.bandPath`, one svg
+  path; objectName `bandOutline`), from the kept boxes, never a picture. Snap lines also say what they caught
+  (`what`: "centre" / "edge", SnapMarks.qml).
+- **Alt measuring** (`screen2d/measure.py` pure, `measure_view.py` as `backend.measure`, `qml/MeasureMarks.qml`,
+  objectName `measureMarks`): one layer picked, Alt held: red lines and px numbers to the hovered layer or the frame.
+  `setAlt` for scripts. Nothing in the document changes.
+- **Motion path key by click** (`motionPath.addKeyAt`, `motion_geo.time_near`): Ctrl+click the line (objectName
+  `motionPathLine`, 5 screen px) = `value.set x, y {at}` at the dot's time, one change.
 - **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
   shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
   drawing. Each stroke is one `paint.stroke` change (the agent's operation too). Frame keys: `,` `.` step drawings,

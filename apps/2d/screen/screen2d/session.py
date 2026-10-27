@@ -82,6 +82,7 @@ class Session:
                                           "paintthumbs": bridge._paint_layers.thumbs})
         bridge.painter.tilt.watch(win)                   # the pen's lean: Qt Quick's handlers don't give it
         bridge.colourPick.watch(win)                     # Alt picks a colour (paint_pick.py)
+        bridge.measure.watch(win)                        # Alt measures (measure_view.py)
         self.space.watch(win)                            # Space: tap plays, hold pans (spacekey.py)
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
