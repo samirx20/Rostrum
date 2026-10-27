@@ -138,6 +138,38 @@ A paint layer's `ground` (a colour; `paint.add {ground}` / `paint.set {ground}`,
 layer with the colour before its first stroke: a toned paper the strokes go on. See painted-backgrounds.md › Washes,
 glazes and an inked line for how these work together.
 
+### Brush settings by technique
+
+What each kind of mark needs from the settings above. These are how the marks are made, not looks to copy: colours,
+sizes and where they go are yours.
+
+| Technique | The settings that make it |
+|---|---|
+| Flat wash (one even colour over an area) | `paint.wash` (below), or by hand: a `round` tip, `hardness` 0.3–0.6, rows no further apart than about `0.1 + 0.6 × hardness` sizes (a stroke is as strong as its strongest dab, so rows further apart leave paler lines), strokes running a size past the area's sides. `flat` / `bristle` tips streak along the rows instead (a dragged, dry look) |
+| Graded wash (dark to light, or one colour into another) | `paint.wash` with `to` (the far colour) and `bands` (more = smoother); by hand, rows top to bottom, each a step towards the far colour, or one colour wash then a second `multiply` glaze over part of it under a feathered paint mask |
+| Wet-in-wet (colours melting into each other) | low `hardness` (0–0.2) so edges are soft; overlapping strokes of the two colours; then `smudge` on with `wet` 1 on a soft `round` tip along the join to blend (it drags paint, so work over an opaque base or a `ground`) |
+| Wet-on-dry (crisp, layered passes) | higher `hardness` (0.5+), `edge_darken` 0.3–0.7 so each pass keeps a dried rim; `mode: "multiply"` for each glaze over the last |
+| Dry brush (broken, scratchy paint) | `bristle` or `chalk` tip, `grain` 0.5–1 with a `paper`, little paint: `opacity` 0.5–0.8, fast strokes (few points); `texture` `streaks` or `ragged` for more break-up |
+| Granulating wash (speckled pigment) | `granulation` 0.3–0.8 with `paper` and `paper_scale` choosing the speckle; reads most on flat areas |
+| Glow / bloom (a lamp, a lantern) | `round`, `hardness` 0, a wide `size`, low `opacity` (0.15–0.4), `mode: "add"` or `"screen"` on its own paint layer, laid last: a small bright core stroke and a wider, fainter one round it. Several lights: vary each one's size, opacity and colour a little (`size_jitter`, `color_jitter` or your own numbers per light) and their spacing, or a row of them reads as stamped copies. A layer-level `glow` / `blur` effect does the same after the fact |
+| Inked line | see painted-backgrounds.md › Washes, glazes and an inked line (`wobble`, `swell`, `taper_*`, `pool`) |
+
+### A wash to the edges: `paint.wash`
+
+`paint.wash {target: <paint layer>, color, …}` (script: `p.wash(color=…, …)` on a paint layer `frame.paint()` gave)
+lays a wash with the brush going back and forth past every side of its region, so no strip is left bare where a
+stroke stopped short or a ragged brush end fell inside the area. It makes ordinary strokes plus one paint mask
+(`<id>_edge`), one undo step; `drawnSoFar` paints it on pass by pass.
+
+- Region: the whole canvas (default), `box: [x0, y0, x1, y1]`, or `outline: [[x, y], …]` (a polygon), canvas px.
+- `edge`: px the edge is blurred (the mask's feather); 0 = as crisp as the brush. A side on the canvas's edge stays solid there.
+- `bleed`: the edge runs out unevenly past the region by up to this many px (paint creeping into damp paper).
+- `to` + `bands`: a graded wash from `color` (top, or left with `direction: "down"`) to `to`.
+- `overlap`: rows this many sizes apart; left out, as far apart as the `hardness` allows with no paler seams.
+- `size` defaults to a fifth of the region; every brush setting applies (`brush`, `opacity`, `granulation`, `edge_darken`, `paper`, `wobble`, `mode` …).
+- The passes run past the region, but a masked stroke never grows the drawing past its mask, so a whole-canvas wash keeps the canvas size.
+- Where two washes meet edge to edge, a light seam shows (both edges are soft there): overlap them with `bleed`, or keep the seam on purpose.
+
 The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke
 records what it was drawn with, so an agent sets the same ones.
 
@@ -164,6 +196,11 @@ does. Every saved brush is its own brush, even with the same settings as another
 - `look_drawing (what "landed") stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with
   where you meant it to go.
 - `look_frame`, `look_frame` (`what: "sheet"`), `render_video`: the whole composition, drawn by the engine exactly as it exports.
+- `look_drawing (what "coverage") layer time=…`: how much is painted at that time (as far as `drawnSoFar` has got), per paint
+  layer and together (painted = at least 60 % opaque, thin = 15–60 %, bare = less), and each bare area named with its box
+  ("bare paper: a 1920×104 px strip along the bottom edge, the full width, canvas x 0–1920, y 976–1080 (composition x 0–1920,
+  y 976–1080)"); the picture tints bare paper magenta. A drawing placed straight in the composition is measured over the
+  part the composition shows, so paint past the frame doesn't count.
 
 ## Painting on a shape, text or other element
 

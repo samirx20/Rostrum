@@ -150,16 +150,32 @@ def _outline(points) -> tuple[float, float, float, float]:
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def _inside(box, frame: dict, mask_id, w: int, h: int) -> tuple:
+    """A box cut to the paint mask the mark paints inside (its outline, and its feather's reach on the sides inside the
+    canvas): paint past the mask never shows, so it never grows the canvas (a wash's passes run past the canvas's edge,
+    paint_wash.py). An inverted mask cuts nothing."""
+    m = next((m for m in frame.get("paintmasks", []) if m["id"] == mask_id), None) if mask_id else None
+    if m is None or m.get("invert") or len(m.get("points", [])) < 3:
+        return box
+    mx0, my0, mx1, my1 = _outline(m["points"])
+    f = float(m.get("feather", 0)) * 3
+    mx0, my0 = (mx0 - f if mx0 > 0 else mx0), (my0 - f if my0 > 0 else my0)
+    mx1, my1 = (mx1 + f if mx1 < w else mx1), (my1 + f if my1 < h else my1)
+    cut = max(box[0], mx0), max(box[1], my0), min(box[2], mx1), min(box[3], my1)
+    return cut if cut[0] <= cut[2] and cut[1] <= cut[3] else (mx0, my0, mx0, my0)
+
+
 def hold_strokes(drawing: dict) -> None:
     """A drawing a script built grown to hold every stroke and fill it was given, as `paint.stroke` grows it (the same `grow`):
     a script's stroke past the canvas's edge is never clipped. Erasing strokes never grow it. Past MOST px a side it
     fails loudly, naming the drawing (a script splits it into two drawings itself)."""
-    boxes = [reach(s["points"], s) if s["type"] == "stroke" else _outline(s["points"]) for f in drawing.get("frames", [])
-             for p in f.get("paints", []) for s in p.get("strokes", []) if s.get("points") and s.get("mode") != "erase"]
+    w, h = int(drawing.get("w", 1920)), int(drawing.get("h", 1080))
+    boxes = [_inside(reach(s["points"], s) if s["type"] == "stroke" else _outline(s["points"]), f, s.get("mask"), w, h)
+             for f in drawing.get("frames", []) for p in f.get("paints", []) for s in p.get("strokes", [])
+             if s.get("points") and s.get("mode") != "erase"]
     if not boxes:
         return
     box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
-    w, h = int(drawing.get("w", 1920)), int(drawing.get("h", 1080))
     if not fits(w, h, box):
         left, top, right, bottom = need(w, h, box)
         raise ValueError(f'drawing "{drawing["id"]}": its strokes reach {w + left + right} × {h + top + bottom} canvas px '

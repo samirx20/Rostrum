@@ -16,6 +16,7 @@ OPS = ModuleList("rostrum2d", [
     ".ops_anchor",   # layer.anchor: move the anchor point, keeping the layer in place
     ".ops_clip",   # layer.paste: copy / cut / paste of layers
     ".ops_paint", ".ops_fill", ".paint_transform",   # paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing
+    ".paint_wash",   # paint.wash: a wash over a region or the whole canvas, to its edges
     ".ops_frame",   # comp.size, layer.fill_frame
     ".ops_frame_fit",   # frame.fit, frame.cut, frame.home: framing and cuts
     ".ops_depth", ".ops_fog",   # layer.pin, layer.set_depth: pinned to frame and depth, keeping where it shows; frame.fog: haze by distance
@@ -29,7 +30,7 @@ OPS = ModuleList("rostrum2d", [
 ])
 
 TOOLS = ModuleList("rostrum2d.mcp", [      # the agent server's tool modules, each with a `tools`; the order is the tools' order
-    ".look", ".look_empty", ".motion", ".at", ".video", ".draw", ".rig", ".lipsync", ".curves", ".export_tool", ".layout_tool", ".swap_tool",
+    ".look", ".look_empty", ".motion", ".at", ".video", ".draw", ".coverage_tool", ".rig", ".lipsync", ".curves", ".export_tool", ".layout_tool", ".swap_tool",
     ".import_tool", ".diagnose_tool", ".fonts_tool", ".background_tool", ".project_tool", ".soundtrack_tool", ".sound_cue_tool",
     ".brand_tool", ".picture_tool", ".brush_tool", ".painting_tool", ".world", ".data_tool",
 ])
