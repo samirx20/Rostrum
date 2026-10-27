@@ -174,13 +174,13 @@ MouseArea {
             visible: !!m.ghost && m.grid.shows(key)
             x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
             width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
-            color: m.grid.roll.hue; opacity: 0.4
+            color: m.grid.roll.hue; opacity: 0.55       // faint, still seen on the dark rows (real-window check)
         }
     }
     Diamond {   // a hit
         shown: !!m.ghost && m.ghost.row !== undefined
         at: shown ? Qt.point(m.bars.xOf(m.ghost.t), (m.ghost.row + 0.5) * m.grid.rowH) : Qt.point(0, 0)
-        color: m.grid ? m.grid.roll.hue : "transparent"; opacity: 0.45; side: m.grid ? m.grid.hitHalf * Math.SQRT2 : 0
+        color: m.grid ? m.grid.roll.hue : "transparent"; opacity: 0.55; side: m.grid ? m.grid.hitHalf * Math.SQRT2 : 0
     }
     Repeater {   // a note a click would remove (each of its keys)
         model: m.lit && m.over.keys ? m.over.keys : []
