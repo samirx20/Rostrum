@@ -79,7 +79,6 @@ Item {
         onPositionChanged: (m) => { if (pressed) dr.d.move(m.x, m.y); else dr.d.hover(m.x, m.y, dr.dpr) }
         onReleased: dr.d.release()
         onCanceled: dr.d.cancel()
-        onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
         CanvasCursor { kind: "pen" }    // the pencil: a press here draws
     }
 }

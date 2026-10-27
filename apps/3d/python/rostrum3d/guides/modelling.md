@@ -20,6 +20,13 @@ the top afterwards.
       mesh("plinth", shape="box", width=0.5, height=0.3, depth=0.5, y=0.15)
       mesh("cap", shape="cone", radius=0.04, height=0.09).place_on("plinth").set(x=0.12)
 
+**On a mirrored clay** (a clay whose Mirror is on, as a new one is), a shape clicked anywhere off its middle gets a
+**mirrored copy** on the other side, named "… (mirrored)": one eye makes both. The copy follows the original: move,
+resize or recolour either one and both change (clicking the copy selects the original; a move on one side is the
+mirror of a move on the other). Deleting the original or the clay deletes the copy; deleting only the copy keeps the
+original. A shape put on the clay's middle line (a nose) gets no copy. Agents: `place_on("buddy", at=(x, y, z))` in a
+script, `edit_place_on` with a pixel of the last look, or `mesh.mirror` with `on=<clay>` on any mesh.
+
 Agents placing by numbers use `mesh.add`'s `x y z rx ry rz`; the engine's `pick` gives the point **and the surface's
 direction** (`normal`) under any pixel, so an agent can do what the screen does.
 
@@ -114,7 +121,7 @@ back).
    the Shape group of the settings once the mesh is editable.
 5. Otherwise the gizmo sits on the selection: drag it to move, turn (E) or scale (S) the selected points, edges or faces;
    each drag is one undo step.
-6. Middle-drag turns the view while you edit. **Esc** (with no Knife line) or **Shift+Enter** leaves editing, and so does picking another item.
+6. Right-drag (or middle-drag) turns the view while you edit. **Esc** (with no Knife line) or **Shift+Enter** leaves editing, and so does picking another item.
 
 ### For agents
 

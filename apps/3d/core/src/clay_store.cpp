@@ -908,6 +908,25 @@ int Store::pose_frame(int frame) {
   return n;
 }
 
+double Store::whole_for_cycles() {
+  Impl& s = *p_;
+  if (previewing()) return 0;  // the clay's blocks are down for the preview; Cycles never draws one (3d-cl4)
+  const auto t0 = std::chrono::steady_clock::now();
+  bool begun = false;
+  try {
+    for (auto& [id, e] : s.clays) {
+      if (!s.blocks.whole_stale(e.path)) continue;
+      if (!begun) s.blocks.begin(), begun = true;
+      s.blocks.make_whole(e.path, e.blocks, id);
+    }
+  } catch (...) {
+    if (begun) s.blocks.end();
+    throw;
+  }
+  if (begun) s.blocks.end();
+  return begun ? std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() : 0.0;
+}
+
 PoseReply Store::pose(const std::string& item, const std::vector<BoneMove>& moves) {
   Impl& s = *p_;
   const auto t0 = std::chrono::steady_clock::now();

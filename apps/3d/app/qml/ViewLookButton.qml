@@ -3,7 +3,8 @@ import RostrumKit
 
 // How the viewport shows the scene, in one top-bar button (header SPEC §3 "Rostrum3D"), built like 2D's "Fit · 53 % ▾":
 // "Shot camera · Quick ▾" ("Shot · Quick" in a window narrower than 1400 px). Its menu: Camera (the shot camera, a free
-// camera, through the selected light while one is selected; the one in use ticked), then Look
+// camera, through the selected light while one is selected; the one in use ticked; Make this the shot while the view
+// isn't the shot's), then Look
 // (Quick, the live view; Final, the render's own picture in place; Shift+F flips it). The choices are read as it opens.
 // openMenu() is the scripted `view` step (Main.qml openView).
 Item {
@@ -22,6 +23,8 @@ Item {
                      { value: "cam:free", label: "Free camera", checked: m === "free" }]
         if (viewport.canThroughLight)       // follows the selection
             out.push({ value: "cam:light", label: "Through the selected light", checked: m === "light" })
+        if (viewport.hasShot && m !== "shot")      // the header's button too (Main.qml)
+            out.push({ value: "take", label: "Make this the shot", keys: keyOf("take_view") })
         const fin = viewport.look === "final"
         out.push({ value: "look:quick", label: "Quick", checked: !fin, heading: "Look", group: "look", keys: fin ? keyOf("look") : "" })
         out.push({ value: "look:final", label: "Final", checked: fin, group: "look", keys: fin ? "" : keyOf("look") })
@@ -29,7 +32,8 @@ Item {
     }
     function openMenu() { spot.open(vl.entries()) }
     function act(v) {
-        if (v.startsWith("cam:")) viewport.setMode(v.slice(4))
+        if (v === "take") backend.takeView()
+        else if (v.startsWith("cam:")) viewport.setMode(v.slice(4))
         else if (v.startsWith("look:")) viewport.setLook(v.slice(5))
     }
 

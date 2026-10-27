@@ -15,6 +15,7 @@
 #include <chrono>
 #include <thread>
 
+#include "clay_whole.h"
 #include "cycles_lights.h"
 #include "dome_cycles.h"
 #include "error.h"
@@ -153,6 +154,7 @@ namespace {
 void register_scene_fixes() {
   register_cycles_dome_fix();
   register_cycles_lights();
+  clay::register_cycles_clay_whole();
   register_storm_sun();
   register_storm_lights();
 }

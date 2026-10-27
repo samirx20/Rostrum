@@ -38,6 +38,7 @@ class ActionPreview3D:
         vp = getattr(self, "viewport", None)
         screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
                   "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False,
+                  "camera": self._info.get("camera", ""),
                   "pose": vp is not None and bool(getattr(vp, "pose_tool", None) and vp.pose_tool.on)}
         return Facts(self.doc, list(self.selection), self._fits, screen)
 
@@ -91,6 +92,8 @@ class ActionPreview3D:
             return vp.setMode("shot")
         if name == "new-shot":
             return self.newShotFromView()
+        if name in ("take-view", "frame-selection"):
+            return self.takeView() if name == "take-view" else self.frameSelection()       # bridge_shots.py
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:

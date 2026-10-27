@@ -10,7 +10,7 @@ from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 from rostrum_core.tree import child_keys, index, subtree_ids
 
-from . import build, fields as F, highlight
+from . import build, fields as F, highlight, mirror
 from .kind import REGISTRY as R
 
 ID = Param.text("id", label="Id", help="Optional; counted per type when left out (mesh_1, mesh_2 …). Letters, digits, _")
@@ -98,12 +98,17 @@ def part_add(ctx, targets, args):
         ctx.insert(t, "parts", build.make("part", id_, {"name": args["path"], **args}, ctx.where))
 
 
-@R.operation("item.remove", "Delete items (with everything inside them, their keys and parts).",
+@R.operation("item.remove", "Delete items (with everything inside them, their keys and parts, and the mirrored "
+             "copies of a deleted mesh or across a deleted clay).",
              target=(*F.ITEMS, "part"), label="Delete", importance="secondary")
 def item_remove(ctx, targets, args):
+    gone = set()
     for t in targets:
         if t in index(ctx.doc, ctx.kind.lists):     # already gone with a removed parent: fine
+            gone |= set(subtree_ids(ctx.item(t), ctx.kind.lists))
             ctx.remove(t)
+    for c in mirror.copies_of((loc.item for loc in index(ctx.doc, ctx.kind.lists).values()), gone):
+        ctx.remove(c)                               # a copy goes with its original or its clay (mirror.py)
 
 
 def _reid(item: dict, new_id: str, taken: set, lists: dict):

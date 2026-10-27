@@ -127,6 +127,5 @@ Item {
         }
         onReleased: viewport.clay.release()
         onCanceled: viewport.clay.cancel()
-        onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 }

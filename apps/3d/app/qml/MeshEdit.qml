@@ -3,8 +3,8 @@ import RostrumKit
 
 // Edit mesh over the viewport (screen3d/mesh_edit_qt.py has the picking and the edits): the mesh's edges as thin lines,
 // the picked points / edges / faces in the selection blue (faces tinted), and with Extrude or Bevel the grip arrow. A click picks what is under the pointer (Shift adds or takes away), a drag on empty space draws a box, a
-// drag on the arrow sets the extrude distance (one undo step on release; Ctrl frees the 0.5 mm steps). The middle
-// button still orbits (Viewport.qml). Only there while Edit mesh is on.
+// drag on the arrow sets the extrude distance (one undo step on release; Ctrl frees the 0.5 mm steps). The right and middle
+// buttons still turn the view (Viewport.qml). Only there while Edit mesh is on.
 Item {
     id: me
     visible: meshEdit.on

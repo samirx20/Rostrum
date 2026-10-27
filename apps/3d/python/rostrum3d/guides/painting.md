@@ -22,7 +22,7 @@ sculpt the clay again afterwards (see "Painting on clay").
      named after what it paints ("Roughness 1") and its name follows when you change Paints, until you rename it.
 4. Drag on the model in the viewport. A thin line follows the pointer while you drag; when you let go the paint lands.
    **Each stroke is one undo step** (Ctrl+Z takes back exactly that stroke). The disc at the pointer is the brush's
-   size as it lands on the surface. Middle-drag turns the view, Shift-drag pans, so you can turn the model between
+   size as it lands on the surface. Right-drag (or middle-drag) turns the view, Shift-drag pans, so you can turn the model between
    strokes. The move handles are hidden while you paint.
 5. **B** or **Esc** leaves Paint. Selecting something else leaves it too.
 
@@ -77,7 +77,9 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
   path (several `look_at` points in one call), or space them evenly along a line you work out on the clay's shape;
   between anchors the path is a straight line taken to the nearest surface. Strokes by anchors stay on the same spots
   through reshapes; pixel `points` on a clay (from its `uv`) would slide when its shape changes. A clay with no paint
-  layer yet gives no `uv`, only `local`.
+  layer yet gives no `uv`, only `local`. On a **posed** clay `look_at` also gives `rest`, the same spot on the clay's
+  rest shape: anchor there (`[*rest, *normal, 1]`, the normal from the rest shape; `localNormal` is close enough on
+  parts the pose hardly turns). Paint is kept on the rest shape, so it rides with every pose, as the screen does.
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.
 

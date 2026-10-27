@@ -51,4 +51,10 @@ MESH = [
            "the mesh keeps its shape"),
     *PAINT_MESH,                    # a mesh is a paint canvas (paint_fields.py)
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
+    # A mirrored copy (mirror.py): made by mesh.mirror, everything it shows is its original's, through the clay's mirror;
+    # an operation's data, never rows (DATA_GROUPS)
+    X("mirror", "Mirrored copy of", "Mirror data", "", D, refers="mesh",
+      help="This mesh is the mirrored copy of that mesh: its shape, material, keys and place follow it (mesh.mirror)"),
+    X("mirrorOn", "Mirrored across", "Mirror data", "", D, NOT("mirror", ""), refers="clay",
+      help="The clay whose mirror (its own X = 0 plane) the copy is reflected through"),
 ] + TRANSFORM

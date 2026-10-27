@@ -33,7 +33,7 @@ LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", 
          "combine": ["children", "keys"],
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
-DATA_GROUPS = {"Mesh data", "Bone data"}       # data an operation writes (a mesh's points, a bone's head), never rows
+DATA_GROUPS = {"Mesh data", "Bone data", "Mirror data"}   # data an operation writes (a mesh's points, a bone's head, a mirrored copy's link), never rows
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},

@@ -17,6 +17,16 @@ class SceneMixin:
         """What the panel shows with nothing selected: {shot: {id, label, rows}, sky: {id, label} or {}} (scene_state)."""
         return scene_state.scene_state(self.doc.data, self.shotInfo)
 
+    @Slot(str)
+    def setSky(self, texture):
+        """The Scene panel's Sky list: the scene's sky (its first dome light) shows this picture ("sky:studio"), one
+        undo step, through the same `light.set` agents use."""
+        sky = scene_state.sky(self.doc.data)
+        if not sky:
+            return self._fail("Error: sky: this scene has no sky; Sky + adds one.")
+        self._guard(lambda: self._done(self.doc.apply([{"op": "light.set", "target": [sky["id"]],
+                                                        "args": {"texture": texture}}], self.who, label="Sky"), ""))
+
     @Property("QVariantList", notify=S.outlineChanged)
     def sceneRows(self):
         """The scene list, its keys on the same rows (outline.scene_rows). Worked out once per outlineChanged: a drag

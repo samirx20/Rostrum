@@ -32,10 +32,11 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import build, clay_detail, clay_steps, fields as F, shape_size
+from . import aim, build, clay_detail, clay_steps, fields as F, mirror, shape_size, surface_place
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
+from .resolve import Frames
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -98,9 +99,15 @@ class Item:
             return self.set(aim="point", aimX=float(x), aimY=float(y), aimZ=float(z), **extra)
         return self.set(aim="item", aimItem=target, **extra)
 
-    def place_on(self, other) -> "Item":
-        """Stand this mesh on top of `other` (a mesh made earlier in the same group): its base on other's top, over
-        other's middle (move it along the top afterwards with .set(x=…, z=…)). Both unturned."""
+    def place_on(self, other, at=None, normal=None) -> "Item":
+        """Stand this mesh on `other`. Without `at`: on top of a mesh made earlier in the same group, its base on that
+        mesh's top, over its middle (move it along the top afterwards with .set(x=…, z=…)); both unturned. With
+        `at=(x, y, z)`, a point in the world on `other`'s surface (a clay or a mesh made earlier anywhere): its base
+        on the surface there, standing along `normal` (left out: straight out from `other`'s upright middle line).
+        On a clay whose Mirror is on, a point off its middle also makes the mesh's mirrored copy, which follows it
+        (mesh.mirror; edit_place_on does the same from a pixel of a look)."""
+        if at is not None:
+            return self._place_at(other, [float(c) for c in at], normal)
         o = other.node if isinstance(other, Item) else next(
             (n for n in self._siblings() if n["id"] == other), None)
         if o is None or o not in self._siblings():
@@ -111,6 +118,25 @@ class Item:
                 raise ValueError(f"{self.id}.place_on: {n} must be an unturned mesh")
         y = theirs["y"] + shape_size.half_height(theirs) * theirs["sy"] + shape_size.half_height(mine) * mine["sy"]
         return self.set(x=theirs["x"], y=round(y, 6), z=theirs["z"])
+
+    def _place_at(self, other, at, normal) -> "Item":
+        oid = _id_of(other)
+        if self.node["type"] != "mesh":
+            raise ValueError(f"{self.id}.place_on: only a mesh is placed on a surface (this is a {self.node['type']})")
+        if oid not in self._b.taken or self._b.taken[oid] not in ("mesh", "clay"):
+            raise ValueError(f"{self.id}.place_on: {oid!r} is not a mesh or clay made earlier in the script")
+        fr = Frames(self._b.root, range(0, 1), 1.0)
+        world, holder = fr.world(oid, 0), (self._b.holders[-1]["id"] if self._b.holders else "")
+        if normal is None:                  # out from the upright line through its middle, level
+            mid = aim.point(world, [0.0, 0.0, 0.0])
+            normal = [at[0] - mid[0], 0.0, at[2] - mid[2]]
+            normal = normal if math.hypot(*normal) > 1e-9 else [0.0, 1.0, 0.0]
+        placed = surface_place.stand(self.node, at, [float(c) for c in normal])
+        self.set(**surface_place.into_parent(placed, fr.world(holder, 0) if holder else aim.IDENTITY))
+        if surface_place.mirrors(fr.items[oid], world, at, shape_size.extent(self.node) or 0.0):
+            self._b.item("mesh", f"{self.id}_mirrored", name=f"{self.node['name']}{mirror.SUFFIX}", **mirror.stored(self.node), mirror=self.id,
+                         mirrorOn=oid)
+        return self
 
     def _siblings(self) -> list:
         return self._b.holders[-1]["children"] if self._b.holders else self._b.root["items"]
@@ -256,7 +282,7 @@ def _import(name, *args, **kw):
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
        "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
-       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh)",
+       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 

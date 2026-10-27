@@ -38,7 +38,7 @@ Item {
             Text { text: meshEdit.count; color: meshEdit.picked ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
             Text { visible: meshEdit.picked === 0; width: parent.width; wrapMode: Text.Wrap
                    color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
-                   text: "Click to pick · Shift-click adds · drag a box · middle-drag orbits" }
+                   text: "Click to pick · Shift-click adds · drag a box · right-drag turns the view" }
             Flow {
                 visible: meshEdit.actions.length > 0
                 width: parent.width; spacing: Theme.grid

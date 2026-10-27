@@ -1,4 +1,4 @@
-"""Resolving the document's values per frame: keys, rigs, aims, stick, pivots and follow, and every item's world
+"""Resolving the document's values per frame: keys, rigs, aims, stick, pivots, follow and mirrored copies, and every item's world
 transform (compile.py's `_Frames`). An item on 2s or 3s (its `timing`) holds each value for 2 or 3 frames, counted
 from the shot's start. Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.keys'.
 """
@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from rostrum_core.keys import keys_of
 
-from . import aim, fields as F, follow, rigs
+from . import aim, fields as F, follow, mirror, rigs
 
 PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
 TIMING = "timing"                              # stepped timing: Frames.values holds the values
@@ -57,6 +57,8 @@ class Frames:
 
     def _resolve(self, id_: str, f: int) -> dict:
         item, t = self.items[id_], f / self.fps
+        if item.get("mirror"):                               # a mirrored copy: all the original's (mirror.py)
+            return mirror.values(self, id_, f)
         v = {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]}
         for prop in F.KEYED_TOGGLES & v.keys():
             v[prop] = bool(v[prop])                          # a still Visible left as 1.0 / 0.0 by key.clear

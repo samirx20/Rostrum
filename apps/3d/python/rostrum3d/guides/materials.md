@@ -2,7 +2,7 @@
 
 Rostrum3D has one material type: a physically based surface (`material.add`, `material.set`). Glass, metal and paint are not presets; they are values of the same fields. This guide explains what each field does to light, so you can reach any surface yourself and judge it in a render.
 
-Look at the result, not the numbers: render a still with `cycles`. Storm, the fast view, only approximates glass and coat, and doesn't show brushing, sheen, coat colour or thin film at all (see "What the fast view can't show" below).
+Look at the result, not the numbers: render a still with `cycles`. Storm, the fast view, only approximates glass, coat and light under the surface, and doesn't show brushing, sheen, coat colour or thin film at all (see "What the fast view can't show" below).
 
 ## Giving an item a material (on the screen)
 
@@ -13,7 +13,7 @@ Select a mesh (or a combine, or an imported part). Its **Material** row in the s
 
 Two clicks, one undo step.
 
-- **The settings under the Material row are the material's own:** Surface (colour, metallic, roughness) always open; Glass, Coat, Sheen, Brushed, Relief, Glow open once changed, the rest as one row of names you click to open.
+- **The settings under the Material row are the material's own:** Surface (colour, metallic, roughness) always open; Glass, Coat, Under the surface, Sheen, Brushed, Relief, Glow open once changed, the rest as one row of names you click to open.
 - **Shared materials.** When other items use the same material, a grey line says **Used by 3 items**: changing a setting changes every one of them (that is what sharing is). **Make its own** gives this item its own copy in one click; the others keep the original.
 - **Edit** opens the material alone in the settings panel.
 - **Drag a ball** (from the picker or the Materials list) onto an item in the viewport or the scene list to give it that material.
@@ -24,7 +24,7 @@ The balls are real renders through the same fast view as the viewport, made once
 
 ### Starting points
 
-Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The rest of this guide explains each setting they use.
+Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). The rest of this guide explains each setting they use.
 
 ## For agents: the same, as operations
 
@@ -77,6 +77,17 @@ A painted product (a car body, a coloured phone back, a lacquered toy) is two la
 - **`sheenTint`**: the colour of that glow. White reads as dust or fine fibres catching light; the fibre's own colour, lighter, reads as a dyed fabric.
 - Sheen shows at grazing angles, so judge it on curved shapes and at the edges, lit from the side or from behind.
 
+## Light under the surface: skin, wax, soap, marble
+
+In skin, wax, soap, marble, milk or jade, light doesn't bounce off the top: it goes in, spreads around inside and comes out a little way off. Shadows get soft edges, and thin parts (an ear, a finger, a candle's rim) glow when a light is behind them.
+
+- **`subsurface`** (Light under the surface) 0..1: how much of the light goes in. Skin, wax and soap are about 1; 0 is off.
+- **`subsurfaceRadius`** (How far it travels), in millimetres: how far the light gets inside before it comes out. Measured values: skin about 4, marble about 5–8, wax and soap about 8. The distance is real: the same value looks more see-through on a small object than on a big one, so a 5 cm toy in Skin glows much more than a life-size head. Keep it real for a real size; raise it on purpose for a smaller, glowier look.
+- **`subsurfaceColor`** (Colour inside): which colours travel farthest. Skin's red travels about five times farther than its blue, so thin skin lit from behind glows red; that is a warm red-orange here. White = every colour travels the same distance (wax, soap). The surface's own colour stays `baseColor`.
+- **The starts:** **Skin** (`subsurface` 1, 3.7 mm, colour inside `#ffa477`, a neutral-warm base colour to change to the skin you want), **Wax / soap** (`subsurface` 1, 8 mm, nearly white inside), **Clay** (modelling clay: grey, matte, soft highlights, no light inside) and **Stone** (rough, grey, no light inside; for marble, add `subsurface` 1 with about 6 mm).
+- **To see it:** put a light behind or beside the thin part, facing the camera through it, and render a Final still. Front light alone hides most of it.
+- **The Quick view** only leans the colour a little toward the colour inside; the soft shadows and the glow of thin parts show in Final only (the rows carry the **Final** tag).
+
 ## Lettering and marks on a dark product
 
 Bare metal shows only what it reflects. Metal lettering on a dark face in a dark set mirrors the dark and reads as broken shapes. Give a mark a non-metal (pale enamel or paint, `metallic` 0, perhaps a touch of `emissionStrength`), or put a light or a bright card where the lettering reflects it. Raise it slightly above any glass over it, or the glass bends its edges.
@@ -103,7 +114,7 @@ Bare metal shows only what it reflects. Metal lettering on a dark face in a dark
 
 ## What the fast view can't show
 
-Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film or bump. Always judge those in a Cycles still.
+Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. Light under the surface shows only as a slight tint toward the colour inside. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film or bump. Always judge those in a Cycles still.
 
 ## Checking your surface
 
