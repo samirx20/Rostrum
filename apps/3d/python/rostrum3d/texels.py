@@ -22,7 +22,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 
 KIND = "texels"
-VERSION = "rostrum3d-texels@1+contract-1.22"   # bump with the engine's texels request (its file or how it finds u, v)
+VERSION = "rostrum3d-texels@2+contract-1.22"   # bump with the engine's texels request (its file or how it finds u, v); 2: ids without materials (glass)
 FILE, REPLY = "texels.bin", "reply.json"
 LOOKS = {"material", "materials"}              # what a scene's look is, not its shape: texels never depend on it
 LATER = "paintLater"                           # paint_scene.LATER: paint pictures still to make, a look too
