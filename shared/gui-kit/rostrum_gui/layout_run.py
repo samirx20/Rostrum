@@ -12,6 +12,10 @@ The states run BATCH to a process (layout_batch.py: the app starts once, each st
 settings home emptied between); a state that kills its process is reported and the rest go on. Where the time goes
 (ROSTRUM_CHECK_TIMING=1 prints it per state): the app's start ~9 s (imports 3 s, the engine and first frame 4 s), then
 per state its open and steps, then ~1.5 s per size (settle, check, picture).
+Then the stability pass (layout_stable.py, K2 "nothing moves under the pointer"): a few real clicks per state, at most
+layout_stable.BUDGET_S; its faults are kind "stable", with a before | after picture <state>-stable-<n>.png.
+ROSTRUM_CHECK_STABLE=0 skips it; until the apps' first finds are fixed they are reported (stable-finds.txt), not
+failed; ROSTRUM_CHECK_STABLE=strict fails them.
 """
 from __future__ import annotations
 
@@ -181,7 +185,8 @@ def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, 
         states = [s for s in states if s[0] in names]
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "faults.json").unlink(missing_ok=True)
+    for old in ("faults.json", "stable.json", "stable-tried.txt", "stable-finds.txt"):
+        (out / old).unlink(missing_ok=True)
     from .app import offscreen_env
     env = {**offscreen_env(), **os.environ}
     batch = getattr(app_states(main_py), "BATCH", BATCH)
@@ -201,9 +206,27 @@ def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, 
     total = len(lines)
     print(f"\nlayout check: {len(states)} states x {len(wanted_sizes())} sizes, {total} fault(s), {len(broken)} state(s) failed"
           f" in {time.time() - started:.0f} s -> {out / 'faults.txt'}")
+    if (out / "stable.json").is_file():
+        st = json.loads((out / "stable.json").read_text(encoding="utf-8")).values()
+        print(f"stability pass: {sum(s['clicked'] for s in st)} clicks, {sum(s['finds'] for s in st)} find(s), "
+              f"{sum(s['s'] for s in st):.0f} s of the run"
+              + ("" if _stable_strict() else f" (reported, not failed: {out / 'stable-finds.txt'})"))
     for b in broken:
         print(f"FAIL: {b}", file=sys.stderr)
     return 0 if not total and not broken else 5
+
+
+def _stable_strict() -> bool:
+    from .layout_stable import strict
+    return strict()
+
+
+def add(out: Path, name: str, kind: str, lines: list[str]):
+    """Add a pass's fault lines to a state already recorded (the stability pass after the sizes)."""
+    f = Path(out) / "faults.json"
+    data = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+    data.setdefault(name, {})[kind] = lines
+    f.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
 def done_in(out: Path, name: str) -> bool:
