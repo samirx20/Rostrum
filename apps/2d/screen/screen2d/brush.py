@@ -16,7 +16,8 @@ from rostrum_paint.fields import BAR_VALUE, BRUSH
 from . import brush_presets
 
 
-QUICK = ("size", "opacity", "color", "steady", "size_pressure", "opacity_pressure")   # the quick rows, in this order
+QUICK = ("size", "opacity", "color", "steady", "taper_start", "taper_end", "size_pressure", "opacity_pressure")   # the quick rows, in this order
+TAPERS = {"taper_start", "taper_end"}   # quick rows of the brush only: a mouse-written title looks like a pen (critic r12)
 STEADY_GROUPS = ("Ink",)       # Steadiness is a quick row only on these presets' brushes (clean lines)
 # What each paint tool shows in the settings panel: its quick rows (data, never per-panel hand code: the rule of
 # individuality, an absent row is not greyed), whether the brush's own row and "Edit brush ›" are there, and Close gaps.
@@ -24,12 +25,13 @@ STEADY_GROUPS = ("Ink",)       # Steadiness is a quick row only on these presets
 # (strokes picked: their Copy / Paste / Delete are the context bar's) have no brush at all.
 TOOL_PARTS = {
     "brush":  {"rows": QUICK, "brush": True, "gaps": False},
-    "eraser": {"rows": tuple(r for r in QUICK if r != "color"), "brush": True, "gaps": False},
+    "eraser": {"rows": tuple(r for r in QUICK if r != "color" and r not in TAPERS), "brush": True, "gaps": False},
     "fill":   {"rows": ("color",), "brush": False, "gaps": True},
     "pick":   {"rows": (), "brush": False, "gaps": False},
     "select": {"rows": (), "brush": False, "gaps": False},
 }
-PRESSURE = {"size_pressure", "opacity_pressure"}     # folded into "Edit brush ›" on a short window (tight)
+PRESSURE = {"size_pressure", "opacity_pressure"}
+FOLDED = PRESSURE | TAPERS      # folded into "Edit brush ›" on a short window (tight)
 TILT = {"tilt_angle", "tilt_size"}     # shown only while a tilting pen is connected (pen_tilt.py)
 LIGHT_INK = "#f2f2f2"          # the starting colour on a dark background (a light one keeps the setting's own default)
 
@@ -87,7 +89,7 @@ class Brush:
         mine = TOOL_PARTS[tool]["rows"]
         quick = [r for r in out if r["row"] == "param" and r["id"] in mine
                  and (r["id"] != "steady" or brush_presets.group(self.preset) in STEADY_GROUPS)
-                 and not (self.tight and r["id"] in PRESSURE)]
+                 and not (self.tight and r["id"] in FOLDED)]
         return sorted(quick, key=lambda r: QUICK.index(r["id"]))
 
     def shown(self) -> tuple[list[str], list[str]]:

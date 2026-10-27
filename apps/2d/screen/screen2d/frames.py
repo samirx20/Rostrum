@@ -87,15 +87,56 @@ class WorldCache:
             self._kept = self._kept[-(self.MOST - 1):] + [(key, image)]
 
 
+class QuickCache:
+    """A scrub's quick pictures (half size, one blur step: playback.py) of the scene shown, by time, for one view
+    rectangle: drawn ahead while nothing else is asked (`fill`, nearest the playhead first), so a scrub or a ruler click
+    over them shows its picture in the frame of the move, as After Effects' cached frames. Capped in bytes (the
+    laptop's memory); a new scene or view lets them all go. `times` is what the ruler's ready line shows."""
+    MOST_BYTES = 160 * 1024 * 1024
+
+    def __init__(self):
+        self._scene, self._world, self._kept, self._bytes = None, None, {}, 0
+        self.lock = threading.Lock()
+
+    def _for(self, scene, world):
+        if scene is not self._scene or world != self._world:
+            self._scene, self._world, self._kept, self._bytes = scene, world, {}, 0
+
+    def get(self, scene, t, world):
+        with self.lock:
+            self._for(scene, world)
+            return self._kept.get(round(t, 4))
+
+    def full(self) -> bool:
+        return self._bytes >= self.MOST_BYTES
+
+    def put(self, scene, t, world, image) -> bool:
+        with self.lock:
+            self._for(scene, world)
+            if round(t, 4) in self._kept or self.full():
+                return False
+            self._kept[round(t, 4)] = image
+            self._bytes += image.sizeInBytes()
+            return True
+
+    def times(self, scene, world) -> list[float]:
+        with self.lock:
+            return sorted(self._kept) if scene is self._scene and world == self._world else []
+
+
 class FrameRenderer(PictureWorker):
     ready = Signal(int, object)  # serial of the newest frame, and the tag it was asked with (what it was rendered from)
     note = Signal(str)           # a plain notice for the status line (painting on the processor: no graphics driver)
     placed = Signal(object)      # {id: place} the job asked for, just before its `ready`
     pictured = Signal(int, object)  # the newest frame's serial and its world rect {x, y, w, h, scale} (None: the export), before `ready`
+    filled = Signal(object, float, bool)  # a quick picture drawn ahead: the scene, its time, and whether there is room for more
 
     def __init__(self, parent=None):
         super().__init__("frames2d", parent)
         self._kept = WorldCache()
+        self.quick = QuickCache()
+        self._seq = self._served = 0                     # requests asked / the newest one served from QuickCache
+        self._publishing = threading.Lock()
         self._pool = ImagePool(WorldCache.MOST + 3)
         self._loaded = None
         SCRATCH.mkdir(parents=True, exist_ok=True)
@@ -110,13 +151,33 @@ class FrameRenderer(PictureWorker):
         picture of that rectangle instead (`pictured` says which); `place`: layer ids whose places come with the frame
         (`placed`, world px with a world picture). `ahead`: the time asked for next (playing): the engine draws it while
         this one is shown (ENGINE_CONTRACT.md › ahead)."""
-        self.post_latest((scene, t, samples, scale, tag, world, place, ahead))
+        self._seq += 1
+        if samples == 1 and world is not None and not place:
+            image = self.quick.get(scene, t, world)      # drawn ahead for a scrub: shown now, in the frame of the move
+            if image is not None:
+                self._served = self._seq                 # an older picture the engine is still drawing must not land after it
+                with self._cv:
+                    self._latest = None                  # nor one still waiting
+                serial = self.publish(image)
+                self.pictured.emit(serial, world)
+                self.ready.emit(serial, tag)
+                return
+        self.post_latest((scene, t, samples, scale, tag, world, place, ahead, self._seq))
 
     def request_edit(self, scene: dict, edits: list[dict], t: float, samples: int | None = None, scale: float = 1.0, tag=None,
                      world=None, place=None, ahead=None):
         """Draw `scene` with `edits` (engine `edit`: absolute values, so a newer request may replace an older one) at `t`:
         a drag of many layers (ghost_move.py). Never kept in the frame cache; the next `request` loads its scene whole."""
         self.post_latest(("edit", scene, edits, t, samples, scale, tag, world, place, ahead))
+
+    def publish(self, image: QImage) -> int:
+        """As the kit's, under a lock: a quick picture is served from the screen thread too (request)."""
+        with self._publishing:
+            return super().publish(image)
+
+    def fill(self, scene: dict, t: float, world: dict) -> None:
+        """Draw the quick picture of `t` ahead (QuickCache), behind any picture asked for; `filled` says when."""
+        self.post_ordered(("fill", scene, t, world))
 
     def place(self, scene: dict, t: float, ids: list[str], timeout_s: float = 10.0, world: bool = False) -> dict:
         """The layers' places at `t` now (ahead of the next picture), from the engine that draws the canvas. Raises
@@ -182,6 +243,15 @@ class FrameRenderer(PictureWorker):
             self.pictured.emit(serial, world)
             self.ready.emit(serial, tag)
             return
+        if job[0] == "fill":
+            _, scene, t, world = job
+            if self.quick.get(scene, t, world) is None and not self.quick.full():
+                self._load(eng, scene)
+                image = _frame(eng, t, SCRATCH / "frame.png", 1, 1.0, None, None, world, None, None)
+                if not image.isNull():           # 16-bit colour: half the memory, plenty for a picture seen while moving
+                    self.quick.put(scene, t, world, image.convertToFormat(QImage.Format.Format_RGB16))
+            self.filled.emit(scene, t, not self.quick.full())
+            return
         if job[0] == "ask":
             _, scene, fn, done = job
             try:
@@ -190,9 +260,11 @@ class FrameRenderer(PictureWorker):
             except Exception as e:  # noqa: BLE001  handed to the asker, who says it
                 return done(None, e)
             return done(answer, None)
-        scene, t, samples, scale, tag, world, place, ahead = job
+        scene, t, samples, scale, tag, world, place, ahead, seq = job
         key = WorldCache.key(scene, t, samples, world, place)
         image = self._kept.get(scene, key)
+        if image is None and samples == 1 and world is not None and not place:
+            image = self.quick.get(scene, t, world)        # drawn ahead for a scrub
         if image is None:
             self._load(eng, scene)
             image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place, None, world, self._pool, ahead)
@@ -200,6 +272,8 @@ class FrameRenderer(PictureWorker):
                 raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
             self._kept.put(scene, key, image)
             self.placed.emit(eng.placed if place else {})
+        if seq < self._served:                               # a newer picture was shown from QuickCache meanwhile
+            return
         serial = self.publish(image)
         self.pictured.emit(serial, world)
         self.ready.emit(serial, tag)

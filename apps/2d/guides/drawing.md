@@ -8,7 +8,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 
 ## 1. Pick the brush
 
-1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens beside the rail, so the settings column at the right (brush, size, colour) stays in view: click or drag on the canvas outside it and the panel closes and the stroke starts in that same press (one **Ctrl+Z** takes that stroke back, nothing else).
+1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens beside the rail, so the settings column at the right (brush, size, colour) stays in view: click or drag on the canvas outside it and the panel closes and the stroke starts in that same press (one **Ctrl+Z** takes that stroke back, nothing else). When the window is too narrow for the panel and the frame side by side, the frame slides right to make room instead of hiding under the panel, and slides back when the panel closes (after the stroke, never under a pressed pen). The brushes scroll under the five tools; **My brushes** are last.
 2. The top row of the panel holds the five paint tools:
 
    | Tool | Key | Does |
@@ -42,7 +42,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
 ![The brush's quick rows and Painting on, with Draw each frame turned on](pictures/draw-each-frame.png)
 
 1. **The brush name** (Brush and Eraser only): the current brush's name as a plain label. Click it to open the brush panel again: that panel is the one place a brush is chosen. Each tool shows only what it uses: the Eraser has no Colour, Fill shows Colour and Close gaps only, and Pick and Select show no brush settings at all (Select's Copy, Paste and Delete are in the bar over the strokes).
-2. **The quick rows**: **Size**, **Opacity**, **Colour** (a swatch plus a hex box: click the swatch for the picker, or type `#rrggbb`), **Pressure → size** and **Pressure → opacity** for a pressure pen. The ink brushes also show **Steadiness**. On a short window (under 800 px high, such as 1280×720) the two pressure rows are not in the quick rows: they stay under **Edit brush ›**, and the rows below sit a little closer so the whole panel, down to **Lock**, fits without scrolling.
+2. **The quick rows**: **Size**, **Opacity**, **Colour** (a swatch plus a hex box: click the swatch for the picker, or type `#rrggbb`), **Taper start** and **Taper end** (the stroke begins or ends thin over that many tip widths, so a title written with a mouse looks like a pen), **Pressure → size** and **Pressure → opacity** for a pressure pen. The ink brushes also show **Steadiness**. The Eraser has no tapers. On a short window (under 800 px high, such as 1280×720) the two taper rows and the two pressure rows are not in the quick rows: they stay under **Edit brush ›**, and the rows below sit a little closer so the whole panel, down to **Lock**, fits without scrolling.
 3. **Edit brush ›** opens every setting, with **‹ Back** to return. Only the settings that apply to the tip you chose are shown:
 
 ![Edit brush: every setting of the brush](pictures/brush-edit.png)

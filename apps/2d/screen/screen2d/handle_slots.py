@@ -81,7 +81,7 @@ class HandleSlots:
             self._fail(f"Error: {label}: this layer has no box to {label}.")
             return None
         placed = layout_drag.begin(self.doc, self.placed(), layer, self._t) is not None
-        p = resolve(item, self.own_t(layer))
+        p = resolve(self.placed_item(layer), self._t)           # keys on a marker placed (as drags.py)
         g = Grab(layer, p, box, placed=placed, kit=box.get("handles", "box"))
         for prop in fields_of(g, item):
             if exprs.drives(item, prop):

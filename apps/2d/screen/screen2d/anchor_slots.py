@@ -1,6 +1,7 @@
 """The anchor point on the canvas: drag the ring to move the point a layer turns and scales around, while the layer
 stays exactly where it shows (Position follows: After Effects' "pan behind"). One drag = one undo step, made of the
-same layer.anchor call an agent makes (rostrum2d/ops_anchor.py: it moves Position so the layer keeps its place). The ring shows only while the settings panel's Anchor group is
+same layer.anchor call an agent makes (rostrum2d/ops_anchor.py: it moves Position so the layer keeps its place; a key timed
+on a marker at the playhead changes and stays on its marker). The ring shows only while the settings panel's Anchor group is
 open (`anchorOpen`), on a single layer that has a box; the maths of what moves is transform.turn. A slot mix-in for
 Bridge2D (see rostrum_gui/parts.py); it uses handle_slots' grab.
 """

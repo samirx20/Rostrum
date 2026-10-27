@@ -144,46 +144,59 @@ SmallPopup {
             }
         }
         Rectangle { width: parent.width; height: 1; color: Theme.popupEdge }
-        Flickable {
-            id: list
-            width: 3 * fly.tileW + 2 * 8
-            height: Math.min(groups.height, fly.room)
-            contentHeight: groups.height; clip: true; boundsBehavior: Flickable.StopAtBounds
-            Column {
-                id: groups
-                width: parent.width
-                Repeater {
-                    model: painter.presets
-                    delegate: Column {
-                        id: grp
-                        required property var modelData
-                        width: groups.width
-                        Text { text: grp.modelData.group; height: 22; verticalAlignment: Text.AlignVCenter
-                               color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
-                        Grid {
-                            columns: 3; columnSpacing: 8; rowSpacing: 4
-                            Repeater {
-                                model: grp.modelData.presets
-                                delegate: BrushTile { }
+        Item {      // the brushes, scrolling under the tools row: the kit's thin bar says there is more (My brushes last)
+            width: list.width; height: list.height
+            Flickable {
+                id: list
+                width: 3 * fly.tileW + 2 * 8
+                height: Math.min(groups.height, fly.room)
+                contentHeight: groups.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+                WheelHandler {      // a wheel notch moves about a row of brushes (Flickable's own moved ~3 px a notch:
+                    target: null    // at 1280 x 720 My brushes was out of reach); a touchpad scrolls its own px
+                    onWheel: (e) => {
+                        const d = e.pixelDelta.y !== 0 ? e.pixelDelta.y : e.angleDelta.y / 120 * (fly.tileH + 22 + 4) * 1.5
+                        list.contentY = Math.max(0, Math.min(list.contentHeight - list.height, list.contentY - d))
+                    }
+                }
+                Column {
+                    id: groups
+                    width: parent.width
+                    Repeater {
+                        model: painter.presets
+                        delegate: Column {
+                            id: grp
+                            required property var modelData
+                            width: groups.width
+                            Text { text: grp.modelData.group; height: 22; verticalAlignment: Text.AlignVCenter
+                                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+                            Grid {
+                                columns: 3; columnSpacing: 8; rowSpacing: 4
+                                Repeater {
+                                    model: grp.modelData.presets
+                                    delegate: BrushTile { }
+                                }
                             }
+                            Item { width: 1; height: 4 }
                         }
-                        Item { width: 1; height: 4 }
                     }
-                }
-                Text { text: "My brushes"; height: 22; verticalAlignment: Text.AlignVCenter     // as the groups' headings
-                       color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
-                Grid {
-                    columns: 3; columnSpacing: 8; rowSpacing: 4
-                    Repeater { model: painter.myBrushes; delegate: BrushTile { mine: true } }
-                    Rectangle {     // + Save this brush: the last tile, its name field in place
-                        width: saveTile.naming ? 2 * fly.tileW + 8 : fly.tileW; height: fly.tileH + 22; radius: Theme.radiusCtl
-                        color: "transparent"; border.color: saveTile.naming ? "transparent" : Theme.popupEdge
-                        SaveBrush { id: saveTile; align: Text.AlignHCenter
-                                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 1 } }
+                    Text { text: "My brushes"; height: 22; verticalAlignment: Text.AlignVCenter     // as the groups' headings
+                           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+                    Grid {
+                        columns: 3; columnSpacing: 8; rowSpacing: 4
+                        Repeater { model: painter.myBrushes; delegate: BrushTile { mine: true } }
+                        Rectangle {     // + Save this brush: the last tile, its name field in place
+                            objectName: "saveBrushTile"
+                            width: saveTile.naming ? 2 * fly.tileW + 8 : fly.tileW; height: fly.tileH + 22; radius: Theme.radiusCtl
+                            color: "transparent"; border.color: saveTile.naming ? "transparent" : Theme.popupEdge
+                            SaveBrush { id: saveTile; align: Text.AlignHCenter
+                                        anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 1 } }
+                        }
                     }
+                    Item { width: 1; height: 4 }
                 }
-                Item { width: 1; height: 4 }
             }
+            EdgeFade { flick: list; anchors.fill: list }
+            VScrollBar { flick: list }
         }
       }
       Rectangle {     // the brush the pointer rests on, its stroke larger (no text), centred on the tile

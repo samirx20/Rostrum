@@ -37,6 +37,7 @@ from .time_snap import TimeSnap
 from .depth_typed import DepthTyped
 from .cover_band import CoverBand
 from .ease_play import EasePlay
+from .work_area import WorkArea
 
 
 class ToolSlots(SlotMixin):
@@ -52,7 +53,9 @@ class ToolSlots(SlotMixin):
         self._cover_band = CoverBand(self)                  # the edges the frame sees past, picked (cover_band.py): backend.coverBand
         self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
         self._ease_play = EasePlay(self)                    # an ease picked plays once on the canvas (ease_play.py)
+        self._work = WorkArea(self)                         # the ruler's right-click and the work area (work_area.py): backend.workArea
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
+        self._work.changed.connect(self._exporter.changed)      # the Export sheet offers the work area as a range
         self._library = LibraryView(self)                   # the Library drawer's brand kit and styles (brand_view.py): backend.library
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
@@ -121,6 +124,11 @@ class ToolSlots(SlotMixin):
     def stagger(self):
         """Stagger…: layers start one after another, live, one change (stagger.py)."""
         return self._stagger
+
+    @Property(QObject, constant=True)
+    def workArea(self):
+        """The time ruler's right-click menu and the work area it sets (work_area.py)."""
+        return self._work
 
     @Property(QObject, constant=True)
     def depthTyped(self):

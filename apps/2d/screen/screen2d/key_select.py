@@ -143,4 +143,6 @@ class KeySelect(KeyMoves, QObject):
         ok = self.b.guard(lambda: self.b.done(self.b.doc.apply([{"op": "key.remove", "target": ids, "args": {}}], self.b.who,
                                                                label="Delete key" if n == 1 else f"Delete {n} keys"), ""))
         self.changed.emit()
+        if ok:                                  # said after the pick empties (that refresh would clear it): never silent
+            self.b._set_status("Deleted 1 key" if n == 1 else f"Deleted {n} keys")
         return ok

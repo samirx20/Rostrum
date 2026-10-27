@@ -90,7 +90,7 @@ class GroupSlots:
                 if exprs.drives(item, prop):
                     self._fail(f"Error: {label.lower()}: {self.label_of(item)}'s {prop} is driven by an expression; clear it first (the cross on its row).")
                     return False
-            grab.append((lay, resolve(item, self.own_t(lay)), frames[lay]))
+            grab.append((lay, resolve(self.placed_item(lay), self._t), frames[lay]))   # keys on a marker placed
         self._frames = frames
         g = GroupGrab(grab, union([f for _, _, f in grab]), int(hx), int(hy))
         return self._begin(f"{label} {len(ids)} layers", g)

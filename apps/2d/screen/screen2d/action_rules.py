@@ -176,11 +176,19 @@ def _stacks(f: Facts):
     return (([c["id"] for c in f.doc.item(parent)["layers"]], picked) for parent, picked in by_parent.items())
 
 
+def _moved(f: Facts, now: list[str], picked: set[str], how: str) -> list[str]:
+    """The stack in its new order, the frame (a camera) kept at its place: it is no picture to stack, so Send to back
+    on the lowest layer moves nothing (and is not offered) rather than slipping under the frame."""
+    fixed = {i: id_ for i, id_ in enumerate(now) if f.doc.item(id_)["type"] == "camera"}
+    rest = iter(reordered([i for i in now if i not in fixed.values()], picked, how))
+    return [fixed[i] if i in fixed else next(rest) for i in range(len(now))]
+
+
 def _order(f: Facts, how: str) -> list[dict]:
     """layer.arrange calls that put each parent's stack in the new order (none when nothing would move)."""
     calls = []
     for now, picked in _stacks(f):
-        for i, id_ in enumerate(reordered(now, picked, how)):
+        for i, id_ in enumerate(_moved(f, now, picked, how)):
             if now[i] != id_:
                 calls.append({"op": "layer.arrange", "target": [id_], "args": {"index": i}})
                 now.remove(id_)
@@ -242,7 +250,7 @@ def said(calls: list[dict], label: str, doc) -> str:
 
 def _order_moves(f: Facts, how: str) -> bool:
     """`_order` would make a call: some stack's order changes (one pass per stack, not a call per layer moved)."""
-    return any(reordered(now, picked, how) != now for now, picked in _stacks(f))
+    return any(_moved(f, now, picked, how) != now for now, picked in _stacks(f))
 
 
 # a rule's "would it make any call", told sooner (Action.any_calls), with the rule's own arguments as `RULES`

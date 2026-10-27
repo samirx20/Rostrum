@@ -1,16 +1,18 @@
-"""The eraser's reveal, drawn ahead: while the Eraser (or a smudging brush) is on and the selection holds paint, the world the canvas shows
-without the layer it would erase (wet.py `without_paint`, `reveal_rect`) is asked of the canvas's engine before the pen
-goes down, so the first eraser stroke shows at once like every brush's wet ink (it waited ~70-170 ms for this picture
-at the press). Asked again, when the pointer is quiet, after anything it depends on changes: the document (a new
-scene), the playhead, the selection, the view, the brush's mode. A press whose reveal is not the one kept asks for its
-own, as before (painter._ask_reveal). Screen state only.
+"""The wet ink's pictures, drawn ahead (wet_layers.py): while the Draw tool is on, the pictures the next stroke on the
+selection shows its ink with (the eraser's world without the layer, a smudge's world under the layer and the layers
+above it, plain ink's when layers lie above) are asked of the canvas's engine before the pen goes down, so the first
+stroke shows at once in its place like every brush's wet ink (the eraser waited ~70-170 ms for its picture at the
+press). Asked again, when the pointer is quiet, after anything they depend on changes: the document (a new scene), the
+playhead, the selection, the view, the brush. A press whose pictures are not the ones kept asks for its own, as before
+(painter._ask_reveal). Screen state only.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from rostrum_gui import pointer_quiet
 
-from .wet import reveal_rect, without_paint
+from . import wet_layers
+from .wet import reveal_rect
 
 WAIT_MS = 120          # a burst of changes (a stroke landing, a pan) asks once, after it
 
@@ -30,14 +32,19 @@ class RevealAhead(QObject):
                     painter.brushChanged, bridge.world.changed):
             sig.connect(self.soon)
 
-    def _target(self) -> tuple[str, bool] | None:
-        """(the layer an eraser stroke would erase, through a painted fill?), or None when no stroke would erase."""
+    def _target(self) -> tuple[str, bool, str] | None:
+        """(the layer the next stroke works on, through a painted fill?, wet_layers kind), or None: nothing to draw."""
         p = self.p
-        if self.b.tool != "draw" or not p._covering() or not p.canErase or self.b.opened.on or p._stroke is not None:
+        if self.b.tool != "draw" or not p.canErase or self.b.opened.on or p._stroke is not None or not self.b._scene:
             return None
         through = p.through()
         d = through if through is not None else p._aim()
-        return (d["id"], through is not None) if d else None
+        if not d:
+            return None
+        kind = "erase" if p._erasing() else "smear" if p._covering() else "ink"
+        if kind == "ink" and not wet_layers.has_above(self.b._scene, d["id"]):
+            return None
+        return d["id"], through is not None, kind
 
     def _key(self, target, x=None, y=None):
         visible = self.b.world.visible()
@@ -59,12 +66,12 @@ class RevealAhead(QObject):
         key, rect = self._key(target)
         if key in (self._asked, self._kept and self._kept[0]):
             return
-        scene = without_paint(self.b._scene, *target)
-        if scene is None:
+        scenes = wet_layers.asks(self.b._scene, *target)
+        if not scenes:
             return
         self._asked, held = key, self.b._scene    # (held: the scene object the key names stays alive while drawn)
-        self.b.frames.still(scene, self.b.time, self.b.play.samples(),
-                            lambda px, e: self._came.emit((key, held), (px, (rect["x"], rect["y"])), e), rect)
+        wet_layers.draw(self.b.frames, scenes, self.b.time, self.b.play.samples(), rect,
+                        lambda got, e: self._came.emit((key, held), got, e))
 
     def _take(self, asked, got, error):
         key, _ = asked
@@ -73,9 +80,10 @@ class RevealAhead(QObject):
         if error is None:                         # a failed one is said by the press that needs it (painter._reveal)
             self._kept = (key, got, asked[1])
 
-    def ready(self, layer_id: str, fill: bool, x: float, y: float):
-        """The kept reveal for an eraser pressed at x, y (world px) on `layer_id`, or None (not drawn yet, or stale)."""
+    def ready(self, layer_id: str, fill: bool, kind: str, x: float, y: float):
+        """The kept pictures ({part: (pixels, origin)}) for a stroke of `kind` pressed at x, y (world px) on
+        `layer_id`, or None (not drawn yet, or stale)."""
         if self._kept is None:
             return None
-        key, _ = self._key((layer_id, fill), x, y)
+        key, _ = self._key((layer_id, fill, kind), x, y)
         return self._kept[1] if key == self._kept[0] else None

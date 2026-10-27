@@ -51,6 +51,7 @@ class Playback(QObject):
         self._timer = FrameClock(self)                      # ticks on time where a Qt timer can't (frame_clock.py)
         self._timer.timeout.connect(self._tick)
         self.scrubbing, self._moved_at = False, 0.0         # the playhead moved by hand, and when last
+        self.quick = False                                  # a hand move's quick picture is due (until it rests)
         self._settle = QTimer(self)
         self._settle.setSingleShot(True)
         self._settle.setInterval(SETTLE_MS)
@@ -88,18 +89,21 @@ class Playback(QObject):
         now = time.perf_counter()
         self.scrubbing = now - self._moved_at < SETTLE_MS / 1000
         self._moved_at = now
-        if self.scrubbing:
-            self._settle.start()
+        self.quick = True                       # every move by hand, a ruler click too: the quick picture at once (half
+        self._settle.start()                    # size, one blur step), sharpened in place SETTLE_MS later (PLAN D2)
         return self.scrubbing
 
     def _rest(self):
+        self.quick = False
         if self.scrubbing:
             self.scrubbing = False
             self.b.time_rests()
+        else:
+            self.b._show()                      # a single move: its panels followed at once; the sharp picture now
 
     def moving(self) -> bool:
         """Time is moving: playing, or a scrub."""
-        return self._timer.isActive() or self.scrubbing
+        return self._timer.isActive() or self.scrubbing or self.quick
 
     @Slot()
     def toggle(self):
@@ -107,7 +111,7 @@ class Playback(QObject):
             self.stop()
             self.b.setTime(self.b.time)        # the rest of the screen catches up; the full frame is drawn
         else:
-            self.scrubbing = False
+            self.scrubbing = self.quick = False
             self._settle.stop()
             self._clock = (time.perf_counter(), self.b.time)
             self._timer.start(self._tick_ms())

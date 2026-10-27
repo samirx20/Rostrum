@@ -201,6 +201,7 @@ class Create(QObject):
         return self._whole
 
     @Slot(str)
+    @Slot(str, bool)
     def editText(self, layer_id, whole=True):
         """Type in an existing text again (Enter; a double-click with whole=False): `text.set {body}`, one change; empty
         or unchanged = nothing. A text that counts a number shows no words to type: it is only picked (its Counter rows
@@ -213,6 +214,14 @@ class Create(QObject):
             self._text = Session(self.b, layer_id, {}, {})
             self.b.select(layer_id)
             self._text_box()
+
+    @Slot(float, float, result=str)
+    def textAt(self, x, y):
+        """The text a Text tool press at (x, y) would type in (the I-beam pointer; a click edits it rather than making
+        a new one), else "". A counting text is left out: it has no words to type."""
+        hit = self.b._multi.target(x, y, "in")
+        item = self.b.doc.item(hit) if hit else None
+        return hit if item and item["type"] == "text" and not item.get("counter") else ""
 
     @Slot(float, float, result=bool)
     def editAt(self, x, y):

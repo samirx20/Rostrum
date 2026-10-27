@@ -59,6 +59,49 @@ Rectangle {
         else if (viewBefore) { view.cx = viewBefore.cx; view.cy = viewBefore.cy; view.asked = viewBefore.asked
                                view.fitted = viewBefore.fitted; viewBefore = null }
     }
+    // The brush drawer: "push, don't cover". Open over the frame (a narrow window), it takes its width from the canvas:
+    // the frame refits into the rest, sliding there (`push`); it closes: the view slides back to where it was, unless
+    // the view was moved meanwhile. A press painting on: it waits for the release (the frame never moves under a pen).
+    // A drawer clear of the frame (a wide window) changes nothing. `drawerRight`: the open drawer's right edge in window
+    // px (Main.qml, from the rail), 0 when closed.
+    property real drawerRight: 0
+    readonly property real drawerCover: drawerRight > 0 ? Math.max(0, drawerRight - well.mapToItem(null, 0, 0).x) : 0
+    property real pushCover: 0                       // what the fits keep clear for the drawer now
+    property var pushedFrom: null                    // the view before the push: { cx, cy, asked, fitted, to }
+    function pushView(to) {                          // slide the view to { cx, cy, asked }
+        pushAnim.stop()
+        pushCx.from = view.cx; pushCx.to = to.cx; pushCy.from = view.cy; pushCy.to = to.cy
+        pushZoom.from = view.asked; pushZoom.to = to.asked
+        pushAnim.start()
+    }
+    ParallelAnimation {
+        id: pushAnim
+        NumberAnimation { id: pushCx; target: view; property: "cx"; duration: Theme.sheetSlide; easing.type: Theme.revealEasing }
+        NumberAnimation { id: pushCy; target: view; property: "cy"; duration: Theme.sheetSlide; easing.type: Theme.revealEasing }
+        NumberAnimation { id: pushZoom; target: view; property: "asked"; duration: Theme.sheetSlide; easing.type: Theme.revealEasing }
+    }
+    function drawerMoved() {
+        if (drawerCover > 0 && !pushedFrom) {
+            const r = backend.frameView.fitRect()
+            if (view.ox + r.x0 * view.zoom >= drawerCover + Theme.gap) return       // the frame is clear of it: stays as is
+            const was = { cx: view.cx, cy: view.cy, asked: view.asked, fitted: view.fitted }
+            pushCover = drawerCover
+            view.fitAll(r)                           // where the frame fits in the rest: worked out, then slid to
+            const to = { cx: view.cx, cy: view.cy, asked: view.asked }
+            view.cx = was.cx; view.cy = was.cy; view.asked = was.asked
+            pushedFrom = Object.assign(was, { to: to })
+            pushView(to)
+        } else if (drawerCover === 0 && pushedFrom) {
+            if (pen.active) return                   // painting: back once the pen lifts (onActiveChanged below)
+            const f = pushedFrom, to = f.to
+            pushCover = 0
+            pushedFrom = null
+            const moved = Math.abs(view.cx - to.cx) + Math.abs(view.cy - to.cy) > 0.5 || Math.abs(view.asked - to.asked) > 1e-6
+            if (!moved) { pushView(f); view.fitted = f.fitted }  // the person moved the view meanwhile: it stays where they put it
+        }
+    }
+    onDrawerCoverChanged: Qt.callLater(drawerMoved)
+    Connections { target: pen; function onActiveChanged() { if (!pen.active) Qt.callLater(panel.drawerMoved) } }
     function fitEverything() { view.fitEverything(backend.frameView.everythingRect()) }
     function zoomPercent(p) { view.show(p / 100) }
     function centreOn(x, y) { view.centreOn(x, y) }
@@ -90,7 +133,7 @@ Rectangle {
         radius: Theme.radiusCtl; color: Theme.sunken
         clip: true
         readonly property bool drawing: backend.tool === "draw"
-        CanvasView { id: view; wellW: well.width; coverLeft: Math.max(0, panel.coverLeft - Theme.pad); wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
+        CanvasView { id: view; wellW: well.width; coverLeft: Math.max(0, panel.coverLeft - Theme.pad, panel.pushCover); wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
                      dpr: Screen.devicePixelRatio }
 
         Item {  // world px from here: (0, 0) of the world at view.ox, oy; one world px is view.zoom screen px
@@ -118,21 +161,10 @@ Rectangle {
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""
                 cache: false; smooth: true
             }
-            Image {  // wet ink's settled part (screen2d/wet.py; an opened painting shows its own: OpenedPainting.qml)
-                readonly property var w: painter.wet
-                visible: w.drySerial > 0 && !panel.opened && w.uses.length === 0
-                x: (w.dryBox.x || 0) * view.zoom; y: (w.dryBox.y || 0) * view.zoom
-                width: (w.dryBox.w || 0) * view.zoom; height: (w.dryBox.h || 0) * view.zoom
-                source: w.drySerial > 0 ? "image://wet/dry-" + w.drySerial : ""
-                cache: false; smooth: true; asynchronous: false
-            }
-            Image {  // wet ink: the stroke being drawn, at once, until the frame with it saved lands (screen2d/wet.py)
-                readonly property var w: painter.wet
-                visible: w.serial > 0 && !panel.opened && w.uses.length === 0
-                x: (w.box.x || 0) * view.zoom; y: (w.box.y || 0) * view.zoom
-                width: (w.box.w || 0) * view.zoom; height: (w.box.h || 0) * view.zoom
-                source: w.serial > 0 ? "image://wet/tip-" + w.serial : ""
-                cache: false; smooth: true; asynchronous: false
+            WetInk {  // wet ink: the stroke being drawn, at once, in its layer's place, until the frame with it saved lands
+                      // (screen2d/wet.py; an opened painting shows its own: OpenedPainting.qml)
+                zoom: view.zoom
+                visible: !panel.opened && painter.wet.uses.length === 0
             }
             WetUses { zoom: view.zoom }   // painting a painted fill in place: the stroke on every layer using the painting
             Item {  // wet ink on a seamless painting: where the stroke crosses its edge it shows on the other side too (wet_wrap.py), inside the element
@@ -183,7 +215,10 @@ Rectangle {
             visible: well.drawing
             // the brush ring: the pointer is the brush's outline at its size on screen (Brush, Eraser); [ ] and
             // Alt + right-drag size it (left-right size, up-down hardness: `sizing`), the ring staying where the drag began
-            readonly property bool noErase: backend.paintTool.now === "eraser" && !painter.canErase   // nothing to erase here: the pointer says so
+            // a press would do nothing here, the pointer says so (`no`): nothing to erase, or what the pen paints on is
+            // locked (painter.blocked: the press says why in the top bar instead)
+            readonly property bool locked: painter.blocked !== "" && backend.paintTool.now !== "fill" && backend.paintTool.now !== "select"
+            readonly property bool noErase: locked || backend.paintTool.now === "eraser" && !painter.canErase
             readonly property bool ringTool: !backend.colourPick.alt && !noErase && (backend.paintTool.now === "brush" || backend.paintTool.now === "eraser")
             Item {
                 id: ring
@@ -253,6 +288,8 @@ Rectangle {
                         backend.strokeSelect.beginHandle(backend.strokeSelect.handleAt(p.x, p.y, view.zoom), p.x, p.y); mode = "handle"   // a corner scales, the knob turns
                     } else if (active && backend.strokeSelect.count > 0 && backend.strokeSelect.hits(p.x, p.y)) {
                         backend.strokeSelect.beginMove(); from = p; mode = "move"                                    // picked strokes: drag moves them
+                    } else if (active && parent.locked) {
+                        backend.refuse(painter.blocked); mode = ""                                                   // locked: says why, paints nothing
                     } else if (active) {
                         backend.strokeSelect.clear()                                                                 // a press outside lets go of them
                         mode = painter.beginStroke(p.x, p.y, pressure) ? "stroke" : ""
@@ -285,6 +322,7 @@ Rectangle {
             id: canvas
             anchors.fill: parent
             enabled: !well.drawing
+            visible: enabled        // painting: out of the way, so the paint tool's own pointer shows (ring, `no`, dropper); a shown, disabled area wins the pointer
             preventStealing: true
             property bool moving: false
             property bool band: false
@@ -369,7 +407,7 @@ Rectangle {
             id: motionPath
             anchors.fill: parent
             visible: !backend.playing && !well.drawing && !backend.pen.on && !panel.opened
-            interactive: backend.tool === "move"
+            interactive: backend.tool === "move" && !backend.pen.editing   // a path's points being edited: its points and line take the pointer
             noFrame: look.on
             pointerAlt: canvasPointer.altBadge; pointerCtrl: canvasPointer.ctrlBadge   // its line catcher covers the canvas: the same pointer
             fit: view.zoom; ox: view.ox; oy: view.oy

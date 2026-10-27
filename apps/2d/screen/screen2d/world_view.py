@@ -52,16 +52,17 @@ class WorldView(QObject):
     def scale(self) -> float:
         """Device px per world px for the next picture."""
         k = self.b.view_zoom() * self._ratio
-        moving = self.b.dragging() or self.b.play.scrubbing
+        moving = self.b.dragging() or self.b.play.scrubbing or self.b.play.quick
         return k * DRAG_SCALE if moving and not self.b.play.playing else k
 
-    def rect(self) -> dict | None:
+    def rect(self, k: float | None = None) -> dict | None:
         """The world rectangle the next frame job asks for (None while playing or before the view is known): the
-        last one while it still covers the view at the same size, else the view with a margin round it."""
+        last one while it still covers the view at the same size, else the view with a margin round it. `k`: at that
+        scale instead of the one now (quick_rect)."""
         if self._visible is None or self.b.play.playing:
             return None
         x0, y0, x1, y1 = self._visible
-        k = round(min(self.scale(), MOST_SCALE), 4)
+        k = round(min(self.scale() if k is None else k, MOST_SCALE), 4)
         last = self._covers
         if last and last["scale"] == k and last["x"] <= x0 and last["y"] <= y0 \
                 and last["x"] + last["w"] >= x1 and last["y"] + last["h"] >= y1:
@@ -71,6 +72,11 @@ class WorldView(QObject):
         w, h = w + 2 * mx, h + 2 * my
         k = round(min(k, (MOST_PX - 2) / w, (MOST_PX - 2) / h), 4)     # 2 px spare: on_pixels rounds out
         return on_pixels(x0 - mx, y0 - my, w, h, k)
+
+    def quick_rect(self) -> dict | None:
+        """The rectangle a scrub's quick picture asks for with the view as it is: the frames filled ahead for the
+        scrub (frames.py QuickCache) are drawn for it, so a scrub over them finds them."""
+        return self.rect(self.b.view_zoom() * self._ratio * DRAG_SCALE)
 
     def asked(self, rect):
         """A frame job with this world rect (None: the export, playing) was just requested."""
