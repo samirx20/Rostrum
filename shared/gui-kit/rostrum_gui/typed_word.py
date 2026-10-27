@@ -25,8 +25,9 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import Q_ARG, QEvent, QMetaObject, Qt, Slot
+from PySide6.QtCore import Q_ARG, QEvent, QMetaObject, Qt, QTimer, Slot
 
+from .ack import ACK
 from .gui_filter import GuiFilter
 
 WORD_S = 0.3
@@ -69,6 +70,21 @@ def pass_unusable_key(win, event) -> None:
     name = "Delete" if event.key() == Qt.Key.Key_Delete else event.text()
     if name:
         QMetaObject.invokeMethod(item, "passKey", Qt.ConnectionType.DirectConnection, Q_ARG("QVariant", name))
+        if name != "Delete" and item.property("passing"):     # a letter the box can't hold, on its way to a shortcut:
+            return item, name                                 # if none runs, the box says so (TypedWord.unheard)
+    return None
+
+
+def say_unheard(item, name) -> None:
+    """No shortcut took the letter a number box passed on: the box says it wants a number (NumberField.saysLetter), so
+    the key never vanishes (INTERACTION.md principle 8)."""
+    try:
+        while item is not None and item.metaObject().indexOfMethod("saysLetter(QVariant)") < 0:
+            item = item.parentItem()            # (the caret is in the box's own text input)
+        if item is not None:
+            QMetaObject.invokeMethod(item, "saysLetter", Qt.ConnectionType.DirectConnection, Q_ARG("QVariant", name))
+    except RuntimeError:        # the box went away meanwhile
+        pass
 
 
 class TypedWord(GuiFilter):
@@ -77,11 +93,20 @@ class TypedWord(GuiFilter):
         self.clock = clock
         self.last, self.in_word = -1.0, False       # the previous plain key's time; it was a word's letter (no shortcut ran)
         self.dropping = self.judged = None
+        self.shortcuts = 0                          # shortcuts fired so far (a passed letter's turn checks it moved)
 
     @Slot()
     def ran(self):
-        """A shortcut just fired (KeyShortcut calls this): the key that fired it started no word."""
+        """A shortcut just fired (KeyShortcut calls this): the key that fired it started no word. What it runs is a
+        person's press: drawn first, then run (ack.py)."""
         self.in_word = False
+        self.shortcuts += 1
+        ACK.key()
+
+    def _heard(self, passed, count):
+        """The key's turn is over: a letter a number box passed on that no shortcut took is said, not lost."""
+        if self.shortcuts == count:
+            say_unheard(*passed)
 
     def _drop(self, win, event) -> bool:
         """Is this key the rest of a word (and so to be dropped)? Each press is judged once."""
@@ -97,7 +122,9 @@ class TypedWord(GuiFilter):
     def on_event(self, obj, event):
         t = event.type()
         if t == QEvent.Type.ShortcutOverride:               # the usual way: asked before any shortcut is tried
-            pass_unusable_key(obj, event)
+            passed = pass_unusable_key(obj, event)
+            if passed:
+                QTimer.singleShot(0, lambda c=self.shortcuts: self._heard(passed, c))
             self.judged = (event.key(), event.timestamp())     # the press that follows has the same stamp
             if self._drop(obj, event):
                 self.dropping = event.key()

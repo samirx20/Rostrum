@@ -19,16 +19,20 @@ the app's one AmountsPopover opens there. An app with amounts gives `drag_fn(lab
 """
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from . import commands as command_box
 from . import action_views as views
 from . import pointer_quiet, qt_faults
+from .ack import ACK
 from .actions import ActionList
 from .after_frame import AfterFrame
 from .amounts_page import AmountsPage
 from .keyhold import KeyHold
 from .match import starts
+from .told import Told, words as told_words
 
 
 class ActionHub(QObject):
@@ -52,6 +56,7 @@ class ActionHub(QObject):
         self._later = AfterFrame(self.refresh, self)        # refresh_later: once, the frame after
         self._subject = subject_fn or (lambda _id, facts: self._what(facts))
         self._page = AmountsPage(drag_fn, kept_fn or (lambda change, label: None), message_fn, self) if drag_fn else None
+        self._told = Told(parent)                      # no action is silent: the host's message line and document, watched per run
 
     def _now(self, shown=False):
         """(facts, entries). `shown`: for the list as shown, whose calls are never read (ActionList.listed)."""
@@ -225,19 +230,32 @@ class ActionHub(QObject):
     @Slot(str)
     def keyUp(self, job):
         """A hold key let go: the release of what its press ran (the press ran nothing, or a refusal: nothing)."""
+        if ACK.defer(self.keyUp, job):            # its press still waits its turn (ack.py): the release comes after it
+            return
         entry = self._held.pop(job, None)
         if entry:
             self._do(entry["release"], entry)
             self.refresh()
 
     def _go(self, entry):
+        heavy = getattr(self.list.find(entry["id"]), "heavy", False)
+        if ACK.wanted(entry["id"], heavy):   # a person's press of a long action: its frame and its line first (ack.py)
+            what = self._what(self._facts())
+            return ACK.run(lambda: self._go(entry), note=entry["label"].rstrip("…. ") + (f" · {what}" if what else ""),
+                           key=entry["id"], heavy=heavy)
         self._refreshed = False
+        what = self._what(self._facts()) if self._told.watching else ""     # before the run: what it acts on
+        t0 = time.monotonic()
         try:
-            if entry["do"]:
-                self._do(entry["do"], entry)
-            else:
-                self._apply(entry["calls"], entry["label"])
+            with self._told.run() as r:
+                if entry["do"]:
+                    self._do(entry["do"], entry)
+                else:
+                    self._apply(entry["calls"], entry["label"])
+            if r.changed and not r.said:             # it changed the document and said nothing: its own words (told.py)
+                self._told.say(told_words(self.list.find(entry["id"]), entry["label"], what), self._say)
         except Exception:
             qt_faults.python_error(f'action "{entry["id"]}"', entry["label"])
+        ACK.took(entry["id"], time.monotonic() - t0)     # a slow one shows its line before it runs next time
         if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough);
             self.refresh_later()        # else once the action's event is done (the buttons are not needed before)

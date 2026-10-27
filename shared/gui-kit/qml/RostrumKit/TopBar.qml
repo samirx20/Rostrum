@@ -15,6 +15,8 @@ import "."
 // narrow even for two lines leaves it to Saved's hover (and History).
 // While the agent chip shows, the message is not shown: the agent's words are in the chip's dropdown.
 // The change count opens History (historyClicked, and bridge.agent.askHistory, which a kit AppShell listens to).
+// An action a person started that runs past 0.2 s: a thin moving line on the bar's lower edge, its words below it at the
+// right, from 1 s its job chip with Cancel (WorkingLine.qml, rostrum_gui/ack.py); over the bar, so nothing in it moves.
 Item {
     id: bar
     property var bridge
@@ -318,4 +320,5 @@ Item {
             }
         }
     }
+    WorkingLine { anchors.left: parent.left; anchors.right: parent.right; y: parent.height - height; height: implicitHeight; z: 5 }
 }

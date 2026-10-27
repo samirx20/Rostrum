@@ -37,8 +37,7 @@ SmallPopup {
     property var chosen: undefined
     onClosed: { spotAnchor = null; if (chosen !== undefined) { const v = chosen; chosen = undefined; picked(v) } }
     background: MenuBackground { }
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
-    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
+    quickClose: chosen !== undefined                  // a pick closes it at once: the choice runs on its close (SmallPopup's motion)
     contentItem: Column {
         focus: true
         function pick(i) { menu.chosen = menu.entries[i].value; menu.close() }

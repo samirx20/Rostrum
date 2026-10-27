@@ -14,8 +14,7 @@ SmallPopup {
     padding: Theme.pad
     focus: true
     background: MenuBackground { radius: Theme.radiusPanel }
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
-    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
+    shiftY: 0                                       // it comes from the side it opens on (place(): shiftX)
 
     function openBeside(item) { anchorItem = item; place(); open() }
     function place() {
@@ -27,7 +26,8 @@ SmallPopup {
         for (let it = anchorItem.parent; it; it = it.parent) if (it.popupsBeside === true) { side = it; break }
         const s = side.mapToItem(ov, 0, 0)
         let x0 = s.x - width - Theme.gap
-        if (x0 < Theme.grid) x0 = s.x + side.width + Theme.gap
+        shiftX = -Theme.popupShift                  // left of the field: drifts in leftwards, from the field
+        if (x0 < Theme.grid) { x0 = s.x + side.width + Theme.gap; shiftX = Theme.popupShift }
         x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))
         y = Math.max(Theme.grid, Math.min(p.y, ov.height - height - Theme.grid))
     }

@@ -5,7 +5,8 @@ partner's); a change by an agent, or by a script an agent ran (it carries a sess
 - `chip`: {"state", "text", "say", "count", "session", "who"}. "working" while changes keep arriving less than 5 s
   apart, "done" after 5 s of quiet, "" after Keep or Undo all. `text` is the chip ("Claude · 12 changes"); `say` the
   agent's sentence (its last change, or what it said), shown in the chip's dropdown.
-- `flash`: ids of the items the agent changed in the last second (apps outline them, ChangeOutline.qml).
+- `flash`: ids of the items the agent changed in the last second, or that the person's own undo / redo just took back or
+  put again (`flashMine`): apps outline them (ChangeOutline.qml), so an undo is seen (INTERACTION.md 1.21 rule 9).
 - `message`: "Claude: <what>", the agent's last change in words.
 It only reads changes: it never moves the selection, the playhead or the scroll. Keep is not a change.
 """
@@ -26,7 +27,7 @@ class AgentWatch(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._who, self._session, self._count, self._state = None, "", 0, ""
-        self._flash, self._message, self._text = [], "", ""
+        self._flash, self._message, self._text, self._mine = [], "", "", False
         self._seen: dict[int, int] = {}          # per document: the newest step already counted
         self._quiet = self._timer(QUIET_MS, self._rest)
         self._fade = self._timer(FLASH_MS, self._unflash)
@@ -46,6 +47,8 @@ class AgentWatch(QObject):
         self._seen[id(doc)] = change.seq
         who = change.who
         if not (who.kind == "agent" or (who.kind == "script" and change.session)):
+            if not change.original:      # the person's own undo / redo: what it took back flashes once (1.21 rule 9)
+                self._flashed(doc, change, mine=True)
             return
         if not change.original:          # the agent's own undo / redo: shown, not counted as new work
             self._message = f"{who_name(who)}: {change.label}"
@@ -57,8 +60,13 @@ class AgentWatch(QObject):
         self._count += 1
         self._state = "working"
         self._message = f"{who_name(who)}: {change.label}"
-        self._flash = list(dict.fromkeys(k[0] for k in sorted(doc.history.keys(change), key=str)))
         self._quiet.start()
+        self._flashed(doc, change)
+
+    def _flashed(self, doc, change, mine=False):
+        """The items `change` touched get the 1-second outline (`mine`: the person's own undo, in the accent colour)."""
+        self._flash = list(dict.fromkeys(k[0] for k in sorted(doc.history.keys(change), key=str)))
+        self._mine = mine
         self._fade.start()
         self.changed.emit()
 
@@ -76,6 +84,14 @@ class AgentWatch(QObject):
         from rostrum_core import Who
         self._who = self._who or Who.agent("claude-code")
         self._state, self._text, self._message = state, text, text
+        self.changed.emit()
+
+    @Slot("QVariantList")
+    def flashItems(self, ids):
+        """Flash these items once, as the person's own (accent): an app's own edit that a person should see land (a
+        copy made off screen, a track added from the Library). Every view that outlines `flash` shows it."""
+        self._flash, self._mine = [str(i) for i in ids], True
+        self._fade.start()
         self.changed.emit()
 
     # ---- QML ------------------------------------------------------------------------------------------------------
@@ -108,6 +124,11 @@ class AgentWatch(QObject):
     @Property("QVariantList", notify=changed)
     def flash(self):
         return list(self._flash)
+
+    @Property(bool, notify=changed)
+    def flashMine(self):
+        """The flash is the person's own undo / redo (ChangeOutline draws it in the accent colour, not the agent's)."""
+        return self._mine
 
     @Property(str, notify=changed)
     def message(self):

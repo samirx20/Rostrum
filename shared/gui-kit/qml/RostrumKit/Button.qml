@@ -18,6 +18,7 @@ Item {
     property string tip: ""              // the name in the hover help when the text alone doesn't say it
     property string help: ""             // one plain sentence of what it does
     property string job: ""              // its key map job: the key in the hover help (AppShell.keyFor)
+    property bool working: false         // what its click started is still running (ack.py): it stays pressed
     readonly property string keyName: job && Window.window && Window.window.keyFor ? Window.window.keyFor(job) : ""
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool primary: kind === "primary" && !down
@@ -25,19 +26,25 @@ Item {
     implicitHeight: Theme.button
     implicitWidth: label.implicitWidth + (chevron ? 16 : 0) + (hint ? hintBox.width + Theme.gap : 0) + 2 * Theme.pad
     activeFocusOnTab: true
-    Keys.onSpacePressed: clicked()
-    Keys.onReturnPressed: clicked()
+    Keys.onSpacePressed: { if (typeof ack !== "undefined" && ack) ack.by(b); clicked() }
+    Keys.onReturnPressed: { if (typeof ack !== "undefined" && ack) ack.by(b); clicked() }
 
     HoverHandler { id: hoverHandler; cursorShape: Qt.PointingHandCursor }
-    Rectangle {
+    Rectangle {          // at rest and hovered: the hover fades in
         anchors.fill: parent; radius: Theme.radiusCtl
-        color: b.primary ? (b.hovered || area.pressed ? Theme.accentFillHover : Theme.accentFill)
-             : area.pressed || b.down ? Theme.active
+        color: b.primary ? (b.hovered ? Theme.accentFillHover : Theme.accentFill)
              : b.hovered ? Theme.hover
              : b.kind === "ghost" ? "transparent" : Theme.raised
-        border.width: b.activeFocus ? 1 : 0; border.color: b.primary ? "white" : Theme.accent
         Behavior on color { ColorAnimation { duration: Theme.fast } }
     }
+    Rectangle {          // pressed, open or working: drawn in the frame of the press, never faded (INTERACTION principle 1)
+        objectName: "pressLook"
+        anchors.fill: parent; radius: Theme.radiusCtl
+        visible: area.pressed || b.down || b.working
+        color: b.kind === "primary" && !b.down ? Qt.darker(Theme.accentFill, 1.18) : Theme.active
+    }
+    Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: "transparent"; visible: b.activeFocus
+                border.width: 1; border.color: b.primary ? "white" : Theme.accent }
     Text {
         id: label
         x: b.hint || b.flushLeft ? Theme.pad : Math.max(Theme.pad, (b.width - width - (b.chevron ? 16 : 0)) / 2)
@@ -52,7 +59,7 @@ Item {
               color: b.primary ? "white" : Theme.fg2 }
     KeyHint { id: hintBox; visible: b.hint !== ""; text: b.hint
               anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
-    MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
+    MouseArea { id: area; anchors.fill: parent; onClicked: { if (typeof ack !== "undefined" && ack) ack.by(b); b.clicked() } }
     HoverTip { text: b.help || b.keyName && !b.hint || b.tip ? (b.tip || b.text) : ""; help: b.help
                key: b.hint ? "" : b.keyName; hovered: b.hovered; pressed: area.pressed || b.down }
 }

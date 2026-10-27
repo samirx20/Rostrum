@@ -155,7 +155,9 @@ Rectangle {
         width: 1; height: tl.height - y - Theme.gap; color: Theme.accent; opacity: 0.8
     }
     DragLabel {  // "+6 f · drop" beside the dragged edge or key, on its layer's row (time_snap.py); no row shown: under the ruler
-        readonly property real mid: tl.rows && rowsBox.visible && backend.timeSnap.text !== "" ? tl.rows.rowMid(backend.timeSnap.row) : -1
+        id: timeChip
+        beside: true
+        readonly property real mid: tl.rows && rowsBox.visible && timeChip.shownText !== "" ? tl.rows.rowMid(backend.timeSnap.row) : -1
         text: backend.timeSnap.text
         at: Qt.point(ruler.x + ruler.xOf(backend.timeSnap.t), mid >= 0 ? rowsBox.y + mid : ruler.y + ruler.height + 12)
     }

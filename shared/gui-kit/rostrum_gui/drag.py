@@ -11,7 +11,8 @@ cancel = none); this only decides when to open it and when to end or cancel it.
 `Mods.of(event.modifiers)` reads the keys on every move: Ctrl = no snapping (`free`), Alt = drag a copy (`copy`, from
 the centre on a resize handle), Shift = keep it straight (`straight`: one axis, proportions, 15° turns, only in time).
 `DragView` holds what QML shows while a drag runs: the label (DragLabel.qml) and the caught line (SnapLine.qml).
-Screen state only, cleared when the drag ends.
+Screen state only, cleared when the drag ends. Esc during a drag cancels it in one place for every app (drag_esc.py:
+the press holds the window's Esc once it is a drag); `grabbed(x0, y0)` keeps the point grabbed under the pointer.
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ import math
 from dataclasses import dataclass
 
 from PySide6.QtCore import Property, QObject, Qt, Signal
+
+from .drag_esc import ESC
 
 THRESHOLD = 4.0           # screen px: a press that moves less is a click, never a drag (1.10)
 TURN_STEP = 15.0          # degrees: Shift on a turn
@@ -76,6 +79,7 @@ class PointerDrag:
         self.x, self.y, self.mods = float(x), float(y), mods or self.mods
         if self.state == "pressed" and math.hypot(self.dx, self.dy) >= THRESHOLD:
             self._drag, self.state = self._open(), "dragging"
+            ESC.hold(self.cancel)               # Esc now cancels this drag, before anything else hears it (drag_esc.py)
         return self.state == "dragging"
 
     def preview(self, calls):
@@ -86,6 +90,7 @@ class PointerDrag:
 
     def cancel(self) -> None:
         """Esc during the drag: everything goes back, nothing is recorded. The release that follows does nothing."""
+        ESC.let_go(self.cancel)
         if self.state == "dragging":
             self._drag.end(cancel=True)
         if self.state in ("pressed", "dragging"):
@@ -95,7 +100,13 @@ class PointerDrag:
         """The press ends: the drag's one change (None for a click, a cancelled drag, or a drag that changed
         nothing). `clicked` says it was a click."""
         was, self.state = self.state, "done"
+        ESC.let_go(self.cancel)
         return self._drag.end() if was == "dragging" else None
+
+    def grabbed(self, x: float, y: float):
+        """Where the dragged thing goes now, given where it was at the press (`x`, `y`): the pointer's move, so the
+        point grabbed stays under the pointer (no jump on the press; 1.22 canvas rule 4)."""
+        return x + self.dx, y + self.dy
 
     @property
     def clicked(self) -> bool:
@@ -124,8 +135,34 @@ def words_span(start: float, end: float) -> str:
     return f"{_n(start, 2)} s → {_n(end, 2)} s"
 
 
+def words_beats(beats: float, per_bar: int = 4, signed: bool = True) -> str:
+    """A length or a move in musical time for the value chip: "+1 bar 2 beats", "−3 beats", "+½ beat", "2 bars"."""
+    sign = "−" if beats < 0 else "+" if signed and beats > 0 else ""
+    b = abs(beats)
+    bars, rest = divmod(round(b * 4) / 4, per_bar)
+    frac = {0.25: "¼", 0.5: "½", 0.75: "¾"}
+    whole, part = int(rest), rest - int(rest)
+    beat_words = (f"{whole or ''}{frac[part]}" if part else f"{whole}") if rest else ""
+    out = [f"{int(bars)} bar{'s' if bars != 1 else ''}"] if bars else []
+    if beat_words:
+        out.append(f"{beat_words} beat{'s' if rest > 1 else ''}")
+    return sign + (" ".join(out) or "0 beats")
+
+
 def words_db(db: float) -> str:
     return f"{_n(db, 1)} dB"
+
+
+HINTS = {"move": {"straight": "straight line", "copy": "copy", "free": "no snapping"},
+         "resize": {"straight": "keep ratio", "copy": "from centre", "free": "no snapping"},
+         "turn": {"straight": f"{TURN_STEP:g}° steps", "free": "no snapping"},
+         "time": {"straight": "only in time", "copy": "copy", "free": "no snapping"}}
+
+
+def hint_of(mods: Mods, kind: str = "move") -> str:
+    """The chip's second words: what the keys held mean for this drag ("keep ratio · from centre"); "" with none."""
+    said = HINTS[kind]
+    return " · ".join(said[k] for k in ("straight", "copy", "free") if getattr(mods, k) and k in said)
 
 
 class DragView(QObject):
@@ -135,7 +172,7 @@ class DragView(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._s = ("", 0.0, 0.0, None, "", True)
+        self._s = ("", 0.0, 0.0, None, "", True, "")
 
     text = Property(str, lambda self: self._s[0], notify=changed)
     x = Property(float, lambda self: self._s[1], notify=changed)
@@ -144,14 +181,17 @@ class DragView(QObject):
     lineAt = Property(float, lambda self: self._s[3] or 0.0, notify=changed)
     lineName = Property(str, lambda self: self._s[4], notify=changed)
     vertical = Property(bool, lambda self: self._s[5], notify=changed)
+    hint = Property(str, lambda self: self._s[6], notify=changed)     # what a held key does now ("15° steps", "keep ratio")
 
     def show(self, text: str, x: float, y: float, line_at: float | None = None, line_name: str = "",
-             vertical: bool = True):
-        """A drag moved: the label's words and place; the caught line's place and name (None: nothing caught)."""
-        self._set((text, float(x), float(y), None if line_at is None else float(line_at), line_name, bool(vertical)))
+             vertical: bool = True, hint: str = ""):
+        """A drag moved: the chip's words and place (the pointer); the caught line's place and name (None: nothing
+        caught); `hint`: what a held key does now (`hint_of(mods, kind)`)."""
+        self._set((text, float(x), float(y), None if line_at is None else float(line_at), line_name, bool(vertical),
+                   hint))
 
     def clear(self):
-        self._set(("", 0.0, 0.0, None, "", True))
+        self._set(("", 0.0, 0.0, None, "", True, ""))
 
     def _set(self, s):
         if s != self._s:
