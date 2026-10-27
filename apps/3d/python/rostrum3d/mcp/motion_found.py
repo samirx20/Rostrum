@@ -45,8 +45,11 @@ def item_facts(id_: str, rows: list[dict], info: dict) -> dict:
 
 
 def leaving(id_: str, rows: list[dict], info: dict) -> list[dict]:
-    """Frames where a shown shape is partly or wholly outside the camera's picture (by its box's corners)."""
+    """Frames where a shown shape is partly or wholly outside the camera's picture (by its box's corners). Only when that
+    changes during the frames (it leaves or comes in): a ground that is cut by the picture's edge on every frame is framing."""
     out = []
+    if len({x["view"] for x in rows if x["shown"]}) < 2:
+        return out
     for how, word in (("out", "wholly"), ("part", "partly")):
         for a, b in frame_spans([x["frame"] for x in rows if x["shown"] and x["view"] == how]):
             out.append({"kind": "leaves_frame", "item": id_, "how": word, "frames": [a, b],

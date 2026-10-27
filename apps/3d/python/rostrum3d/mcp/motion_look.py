@@ -86,7 +86,7 @@ def look_motion(ctx, args):
     the shot camera's picture in px), its peak speed and the frame of it, and its stops (still stretches between moves,
     at least 0.25 s). Findings, facts only, no scores: two shapes passing through each other (both named, the frame span
     and how deep), sudden jumps (a step at least 1 cm and 4× bigger than the frames either side: a teleport or a snap),
-    and an item partly or wholly outside the picture (frame spans). Overlap test: each shape's own box turned and scaled
+    and an item partly or wholly outside the picture (frame spans; only when that changes: it leaves or comes in). Overlap test: each shape's own box turned and scaled
     with it (oriented boxes; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
     is not overlap. Hidden items are left out. Short by default: a line a moving item, identical findings one line,
     passing through first; `items` for just those, `full` for the speed per frame, `frames` for part of the shot. Fails
