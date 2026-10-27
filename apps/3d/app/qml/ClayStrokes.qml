@@ -38,29 +38,38 @@ Item {
         anchors.fill: parent
         visible: cs.shown
         preferredRendererType: Shape.CurveRenderer
+        // laid out once per ring; a stroke only slides it (ringShift), so no outline is laid out again per dab
+        transform: Translate { x: viewport.clay.ringShift[0] * cs.width; y: viewport.clay.ringShift[1] * cs.height }
         readonly property var outer: cs.shown ? cs.closed(1) : []
         readonly property var inner: cs.shown && !viewport.clay.sizing ? cs.closed(viewport.clay.ringInner) : []
-        readonly property real mx: area.mouseX
-        readonly property real my: area.mouseY
-        readonly property var bar: cs.mark === "" ? [] : [Qt.point(mx - 4, my), Qt.point(mx + 4, my)]
-        readonly property var post: cs.mark === "+" ? [Qt.point(mx, my - 4), Qt.point(mx, my + 4)] : []
         ShapePath {      // a dark edge under everything: readable on light clay
             strokeColor: Qt.rgba(0, 0, 0, 0.45); strokeWidth: 3; fillColor: "transparent"
             joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
             PathPolyline { path: ring.outer }
-            PathPolyline { path: ring.bar }
-            PathPolyline { path: ring.post }
         }
         ShapePath {
             strokeColor: "white"; strokeWidth: 1.5; fillColor: "transparent"
             joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
             PathPolyline { path: ring.outer }
-            PathPolyline { path: ring.bar }
-            PathPolyline { path: ring.post }
         }
         ShapePath {      // half strength (Falloff): faint
             strokeColor: Qt.rgba(1, 1, 1, 0.4); strokeWidth: 1; fillColor: "transparent"
             PathPolyline { path: ring.inner }
+        }
+    }
+    Shape {              // Ctrl's "−" / "+" in the middle: a small fixed shape that follows the pointer
+        x: area.mouseX - 6; y: area.mouseY - 6; width: 12; height: 12
+        visible: cs.shown && cs.mark !== ""
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeColor: Qt.rgba(0, 0, 0, 0.45); strokeWidth: 3; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+            PathPolyline { path: [Qt.point(2, 6), Qt.point(10, 6)] }
+            PathPolyline { path: cs.mark === "+" ? [Qt.point(6, 2), Qt.point(6, 10)] : [] }
+        }
+        ShapePath {
+            strokeColor: "white"; strokeWidth: 1.5; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+            PathPolyline { path: [Qt.point(2, 6), Qt.point(10, 6)] }
+            PathPolyline { path: cs.mark === "+" ? [Qt.point(6, 2), Qt.point(6, 10)] : [] }
         }
     }
     Rectangle {          // the centre dot (no mark, not sizing)

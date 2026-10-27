@@ -109,6 +109,7 @@ class SizeKey(GuiFilter):
 class ClayTool(ClayStroke, QObject):
     changed = Signal()
     ringChanged = Signal()
+    ringShiftChanged = Signal()
     strokeBrushChanged = Signal()
     sculpted = Signal(object)        # (drag number, phase, answer or error line, wall ms, points) from the engine thread
     hovered = Signal(object)         # (hover number, pick answer or error line)
@@ -121,6 +122,8 @@ class ClayTool(ClayStroke, QObject):
         self.b, self.v = bridge, viewport
         self._on, self._make, self._drag, self._hover, self._hover_busy, self._hover_next = False, "", 0, 0, False, None
         self._ring, self._ring_c, self._hit = [], None, None      # _hit: the last hover's (req, scene, point, normal)
+        self._shift = [0.0, 0.0]                                    # how far the ring slid since it was laid (a stroke)
+        self.ringChanged.connect(self._unshift)
         self._sizing, self._size0, self._ring0, self._size_x, self._size_now = False, 0.0, 0.0, None, 0.0
         self._ringer, self._ctrl, self._shift = R.Ringer(), False, False
         self._keys = SizeKey(self)
@@ -155,6 +158,9 @@ class ClayTool(ClayStroke, QObject):
     # a left drag on the viewport goes to the brush (else it falls through: Lump's click, the view's turn)
     sculpts = Property(bool, lambda s: s._on and s._make == "" and s._item() is not None, notify=changed)
     ring = Property("QVariantList", lambda s: s._ring, notify=ringChanged)
+    # during a stroke the ring keeps its shape and slides with the pointer: a move of the drawn ring (a share of the
+    # viewport), not a new outline to lay out at every pointer move (3d-v3: that cost the window ~3 ms a dab)
+    ringShift = Property("QVariantList", lambda s: s._shift, notify=ringShiftChanged)
     # the brush the running stroke uses (Ctrl / Shift change it), "" when no stroke runs
     strokeBrush = Property(str, lambda s: s._stroke["brush"] if s._stroke and s._phase in ("wait", "sculpt") else "",
                            notify=strokeBrushChanged)
@@ -393,9 +399,14 @@ class ClayTool(ClayStroke, QObject):
             return
         w, h = self.v._size
         c = [x * self._dpr * self.v._scale / w, y * self._dpr * self.v._scale / h]
-        dx, dy = c[0] - self._ring_c[0], c[1] - self._ring_c[1]
-        self._ring, self._ring_c = [[p[0] + dx, p[1] + dy] for p in self._ring], c
-        self.ringChanged.emit()
+        self._shift = [c[0] - self._ring_c[0], c[1] - self._ring_c[1]]
+        self.ringShiftChanged.emit()
+
+    def _unshift(self):
+        """A ring laid anew (a hover, F's size, none): it sits where it was laid."""
+        if self._shift != [0.0, 0.0]:
+            self._shift = [0.0, 0.0]
+            self.ringShiftChanged.emit()
 
     # --- F + drag: the brush size (the ring is the only thing drawn; one clay.set when F comes up)
     def sizeBegin(self) -> bool:
