@@ -10,14 +10,14 @@ pieces). The rules themselves are INTERACTION.md 1.1, 1.9, 1.14 and 1.18.*
 | Rows | `rostrum_gui/history_rows.py` | Pure data. `rows(docs, me, show)`: every original change of the document and its partners, newest first. A person's or script's change is one "step"; an agent's changes in one session, one after another, fold into one "run" (its steps inside). Undo / redo steps are not rows; the row they took back says `undone`. `versions(doc)`, `who_name(who, me)` ("You", "Claude", "logo.py"). |
 | Agent watch | `rostrum_gui/agent_watch.py` | `AgentWatch`, owned by the bridge as `bridge.agent`. Fed every change the bridge hears. `chip` (working while changes come less than 5 s apart, then done, gone after Keep or Undo all), `flash` (ids an agent changed in the last second, or that the person's own undo / redo just took back or put again: `flashMine`, so an undo is seen wherever the app already outlines an agent's change), `message`, `keep()`, `askHistory(session)` → `historyAsked(session)`. Never moves the selection, playhead or scroll. |
 | Review slots | `rostrum_gui/bridge_review.py` | On every DocBridge: `historyRows(show)`, `undoRun(session)`, `redoRun(session)`, `undoStep(seq, doc)`, `saveVersion(name)`, `restoreVersion(name)`; properties `undoLabel`, `redoLabel`, `versions`, `agent` (declared in `bridge.py`). Each is one new change by the person; refusals go to the message line. |
-| Top bar | `qml/RostrumKit/TopBar.qml` | One row, fixed order: `menu` · app name · `leading` · tab · message · "Saved · N changes" (click: History; its room held at its widest, so a new change never moves the command box) · `tools` · agent chip + `chips` · ↷ ↶ (Undo never moves) · command box · `actions` · ?. Room by priority, nothing cut: chips (`chipsNarrow`), the message whole, never dropped (the count steps back to "Saved" first; a longer message takes the command box's room, then two lines), command box, tab. |
+| Top bar | `qml/RostrumKit/TopBar.qml` | One row, also the window's title bar, fixed order: app mark ▾ (`appIcon`, opens `menu`) · `leading` · the name (a dot while saving is not happening: `saveState`) · `crumb` · message (fades after 4 s; a failure stays) · `tools` (centred) · agent chip, Problems, job + `chips` · Undo, Redo, History (the clock: opens History; Undo and Redo keep their places) · command box · `actions` · ? · window buttons. Room by priority, nothing cut: chips (`chipsNarrow`), the message whole, never dropped (a longer message takes the command box's room, then two lines), command box, name. |
 | Agent chip | `qml/RostrumKit/AgentChip.qml` | "● Claude is working · 6 changes", then "Claude: 12 changes · Review · Keep · Undo all"; narrow: dot and count. |
 | History sheet | `qml/RostrumKit/HistorySheet.qml` | The right-column sheet: Versions (Restore, Save a version), filter, rows; runs fold with Keep / Undo all / Bring back, steps have Undo this. `focusSession` shows one run. Esc closes. |
 | Outline | `qml/RostrumKit/ChangeOutline.qml` | A 2 px outline that shows whole for 0.25 s (the new picture lands first), then fades over 1 s: `Theme.agent` for an agent's change, `Theme.accent` for the person's own undo / redo (`bridge.agent.flashMine`), or `tint` (an app's own colour). `bridge.agent.flashItems(ids)` flashes items for an app's own edit the person should see land. |
-| Shell | `qml/RostrumKit/AppShell.qml` | Ctrl+H, the sheet over the right column, opens on `bridge.agent.historyAsked`; new aliases `menu`, `chips`, `saveWord`. |
+| Shell | `qml/RostrumKit/AppShell.qml` | Ctrl+H, the sheet over the right column, opens on `bridge.agent.historyAsked`; aliases `menu`, `chips`, `appIcon`, `saveState`, `saveWords` (`saveWord` is kept but no longer shown). |
 | Layout steps | `rostrum_gui/layout_run.kit_step` | `agent-run <n>`, `agent-say <words>`, `history open` (and `say <words>`). |
 
-Test: `tests/test_history_rows.py` (an agent's run is one row; Undo all is one step and shows it taken back; ↶ still
+Test: `tests/test_history_rows.py` (an agent's run is one row; Undo all is one step and shows it taken back; Undo still
 takes back only the person's own step). From a worktree:
 `PYTHONPATH="shared/gui-kit;shared/core" python -m pytest shared/gui-kit/tests/test_history_rows.py -q`.
 Pictures: `C:\Users\Sam\.rostrum\waves\results\kit\s32\kit\` (the kit demo: `demo/main.py --size 1280x720 --step
@@ -25,7 +25,7 @@ Pictures: `C:\Users\Sam\.rostrum\waves\results\kit\s32\kit\` (the kit demo: `dem
 
 ## Plugging in (any app)
 
-Python: nothing to add for History, ↶ ↷ or the chip; every DocBridge has them. Two things to do:
+Python: nothing to add for History, Undo / Redo or the chip; every DocBridge has them. Two things to do:
 
 ```python
 class MyBridge(DocBridge):
@@ -39,11 +39,13 @@ QML, on the kit AppShell (History, Ctrl+H and the chip come with it):
 ```qml
 AppShell {
     bridge: backend
-    saveWord: backend.saved ? "Saved" : "Not saved"     // the app's own save state, in a word
-    menu: IconButton { glyph: "≡"; kind: "ghost"; onClicked: fileMenu.open() }   // optional
+    appIcon: "app-2d"                                  // the app's mark (AppMark.qml), first in the top bar
+    saveState: backend.isLive ? "" : "unsaved"         // "" while every change is saved; "unsaved" / "failed": a dot on the name
+    saveWords: "Changes here are not kept: this file is not in a project folder."
+    menu: FilesMenu { }                                // the app mark opens it
     chips: [LoudnessChip { }]                          // the app's own chips; read `narrow` from TopBar.chipsNarrow if they shrink
     actions: [Button { text: "Export" }]                // after the command box
-    // remove the app's own UndoRedo from `actions`: the kit's ↶ ↷ sit before the command box
+    // remove the app's own UndoRedo from `actions`: the kit's Undo, Redo, History sit before the command box
 }
 KeyMap { hub: backend.actions; skip: ["history", "undo", "redo"] }   // the shell makes Ctrl+H, Ctrl+Z, Ctrl+Shift+Z
 ```
@@ -99,9 +101,9 @@ them instead of beside them:
   screen_seen.state)` in `Bridge2D.__init__`, closed in `close()`. The old `autosave` save in `_on_doc` is gone, and so
   is the `subscribe(... save)` in `python/rostrum2d/mcp/project_tool.py`. Never add a save after a change again. Open
   recent / Save / Save as windows (not live) still keep their unsaved dot; folding them into "always saved" is piece 13.
-- **Undo / redo:** 2D's `UndoRedo.qml` and `undo_state.py`'s labels are gone; the kit's ↶ ↷ in the top bar follow the
+- **Undo / redo:** 2D's `UndoRedo.qml` and `undo_state.py`'s labels are gone; the kit's Undo / Redo in the top bar follow the
   same one-history rule (document + markers). `undo_state.py` keeps only `_marker_saved`. `historyCount` comes from
-  the kit. `Main.qml`: `saveWord: backend.isLive ? "Saved" : ""`.
+  the kit. `Main.qml`: `saveState: backend.isLive ? "" : "unsaved"`.
 - **Outlines:** `screen2d/agent_view.py` (`rectOf(id)`: a layer's canvas box, an effect / mask / key's layer;
   `agent_demo_calls(n)`). `Stage.qml` has a `Repeater` over `backend.agent.flash` inside `marks` (turned like
   `Handles`); `LayerRows.qml` outlines the row. When H29 adds zoom / pan, the outline must sit inside the same

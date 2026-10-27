@@ -18,20 +18,25 @@ QQC.ApplicationWindow {
     id: win
     property var bridge
     property string appName: "Rostrum"
+    property alias appIcon: topBar.appIcon      // the app's mark, first in the top bar ("app-2d", or a picture's address: AppMark.qml)
     property string documentName: ""
     property alias left: leftSlot.data
     property alias rail: railSlot.data          // the app's tool rail: always at the window's left edge (its own width)
     property alias centre: centreSlot.data
     property alias right: rightSlot.data
     property alias bottom: bottomSlot.data
-    property alias leading: topBar.leading      // the app's left top-bar buttons (File), after the wordmark
+    property alias leading: topBar.leading      // the app's left top-bar buttons, after the mark-menu
     property alias crumb: topBar.crumb          // right after the document name (3D: "› Hero 01 ▾")
-    property alias tools: topBar.tools          // the app's own top-bar tools (centred)
+    property alias tools: topBar.tools          // the app's pages (3D: Build / Animate / Render): centred in the bar
     property alias actions: topBar.actions      // the app's action buttons (Export: right, after the command box)
-    property alias menu: topBar.menu            // the ≡ button, first in the top bar (optional)
+    property alias menu: topBar.menu            // the app's menu button (FilesMenu): the app mark first in the top bar opens it
     property alias chips: topBar.chips          // the app's own chips (Sound's loudness), after the agent chip
-    property alias saveWord: topBar.saveWord    // "Saved": the top bar reads "Saved · 14 changes"
-    // History (Ctrl+H, the change count, the agent chip's Review): a sheet over the right column while open.
+    // Saving is automatic, so the bar says nothing while it happens. When it does NOT: "unsaved" (an amber dot on the
+    // name: a sample, a scratch file) or "failed" (red: the disk is full), `saveWords` its hover, "● " before the title.
+    property alias saveState: topBar.saveState
+    property alias saveWords: topBar.saveWords
+    property string saveWord: ""                // no longer shown (the bar has no "Saved"); kept so older apps still load
+    // History (Ctrl+H, the top bar's clock, the agent chip's Review): a sheet over the right column while open.
     // Apps whose KeyMap makes Ctrl+H too put "history" in its `skip`.
     property bool historyOpen: false
     property string historyFocus: ""            // the run it shows ("" = everything)
@@ -39,7 +44,7 @@ QQC.ApplicationWindow {
     function nameVersion(name) { openHistory(""); historySheet.nameVersion(name) }   // Ctrl+S (FilesMenu): History's name field
     // Export (EXPORT.md): the app's rostrum_gui.export_sheet.ExportSheet. Its sheet takes the same column; one sheet at a
     // time (opening one closes the other). Ctrl+E opens / closes it, Ctrl+Shift+E exports again without opening it;
-    // the job chip and "Play · Show in folder" after the message come with it. `exportSettings`: the chosen item's
+    // the job chip comes with it (a finished export: "Exported Main.mp4 ▾", Play and Show in folder in its list). `exportSettings`: the chosen item's
     // own settings rows, inside the sheet.
     property var exporter: null
     property string noExportWhy: ""          // said in plain words when Ctrl+E / Ctrl+Shift+E come while there is nothing to export (no `exporter`)
@@ -138,7 +143,8 @@ QQC.ApplicationWindow {
     visible: !backgroundWindow   // a check's window is shown by rostrum_gui/app.py › show_behind instead
     width: 1600; height: 960
     minimumWidth: 1100; minimumHeight: 680
-    title: (backgroundWindow ? "Test · " : "") + (documentName ? documentName + " — " + appName : appName)   // a check's window says so
+    title: (backgroundWindow ? "Test · " : "") + (topBar.saveState !== "" ? "● " : "")      // a check's window says so; not saved: "● "
+           + (documentName ? documentName + " — " + appName : appName)
     color: Theme.app
 
     function openAbout() { noticesDialog.get().open() }
