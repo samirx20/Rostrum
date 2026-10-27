@@ -20,6 +20,10 @@ using namespace detail;
 
 namespace {
 std::once_flag g_init;
+bool prof_on() {  // ROSTRUM3D_CLAY_PROFILE=1: each dab's stages on stderr (3d-v3, a check's tool)
+  static const bool on = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
+  return on;
+}
 double ms_since(std::chrono::steady_clock::time_point t0) {
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
@@ -304,6 +308,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   const int nch = b.chunks();
   Tree& tree = grid_->tree();
 
+  const double tpA = prof_on() ? ms_since(t0) : 0;
   // A. which chunks hold a leaf (the surface is only ever near one); the others are one value
   std::vector<uint8_t> leaf(nch);
   std::vector<float> uval(nch);
@@ -355,6 +360,8 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   bool needStart = false;
   for (size_t j = 0; j < n && !piece; ++j) needStart |= !steps[j].accumulate;
 
+  const double tpC = prof_on() ? ms_since(t0) : 0;
+  double tpE = 0;
   // C. fill the listed chunks from the grid (and, for strokes without accumulate, where the stroke began: a live
   //    stroke's chunks as they were before its first dab, kept aside)
   par(extList, [&](int ci) {
@@ -460,9 +467,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     u.touched = &touched;
     u.M = M;
     u.maskTouched = &maskTouched;
+    tpE = prof_on() ? ms_since(t0) : 0;
     run_dabs(u);
   }
 
+  const double tpG = prof_on() ? ms_since(t0) : 0;
   // G. write back: worked chunks (uniform ones become tiles), and the chunks a piece filled or emptied
   std::vector<int8_t> cls(nch, 2);  // +1 all outside, -1 all inside, 0 mixed, 2 not written
   std::vector<int> writeList;
@@ -559,6 +568,9 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
 
   StepTiming t;
   t.voxels = writeList.size() * 512;
+  if (prof_on() && !piece)
+    std::fprintf(stderr, "clayprof box=%.2f setup=%.2f fill=%.2f dabs=%.2f write=%.2f nch=%d work=%zu ext=%zu written=%zu\n",
+                 tpA, tpC - tpA, tpE - tpC, tpG - tpE, ms_since(t0) - tpG, nch, workList.size(), extList.size(), writeList.size());
   t.ms = ms_since(t0);
   return t;
 }
