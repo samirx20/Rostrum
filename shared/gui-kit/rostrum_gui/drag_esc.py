@@ -49,7 +49,14 @@ class EscCancels(QObject):
     def let_qml(self):
         self.let_go(self.cancelled.emit)
 
-    holdEsc, letEsc = hold_qml, let_qml
+    # The names DRAG.md gives QML: each its own Slot (an alias of a Slot is not one: QML said "not a function").
+    @Slot()
+    def holdEsc(self):
+        self.hold_qml()
+
+    @Slot()
+    def letEsc(self):
+        self.let_qml()
 
     def press(self) -> bool:
         """Esc pressed: cancel the drag held (True), or nothing held (False). The event filter's work, callable alone."""
