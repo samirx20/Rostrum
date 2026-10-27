@@ -484,9 +484,7 @@ class RenderExport(ExportSheet):
         shown = bool(land) and (land.get("need_db") or 0) > fit.LOT_DB and not self.running()
         return {"shown": shown or self._tame.busy, "busy": self._tame.busy,
                 "said": self._tame.said if self._tame.busy else
-                        f"{land.get('need_db', 0):.1f} dB of limiting flattens the loudest parts. Taming the peaks first "
-                        "(a gentle compressor on the peakiest track, measured) leaves far less; lifting quiet parts would not help: "
-                        "the loudness measure leaves out passages much quieter than the loud ones."}
+                        f"{land.get('need_db', 0):.1f} dB of limiting flattens the loudest parts."}
 
     @Slot()
     def tamePeaks(self):

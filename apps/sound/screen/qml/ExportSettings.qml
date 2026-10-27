@@ -106,8 +106,9 @@ Column {
             readonly property var offer: root.job.tameOffer
             visible: root.target.shown && offer.shown
             width: root.width; spacing: Theme.grid
-            Action { objectName: "exportTamePeaks"; visible: !parent.offer.busy; text: "Tame the peaks first"
-                     font.pixelSize: Theme.body; onClicked: root.job.tamePeaks() }
+            Button { objectName: "exportTamePeaks"; visible: !parent.offer.busy; text: "Tame the peaks first"
+                     help: "Adds a gentle compressor, measured, to the peakiest track (one undo step): the push then needs far less limiting."
+                     onClicked: root.job.tamePeaks() }
             Text { width: parent.width; wrapMode: Text.WordWrap; text: parent.offer.said || ""
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }
