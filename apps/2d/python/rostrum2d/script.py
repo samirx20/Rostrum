@@ -163,6 +163,10 @@ class Item:
         return self.expr(prop, link_source(of, field, scale, offset))
 
     def effect(self, type_: str, id: str | None = None, **values) -> "Item":
+        """Adds an effect and returns it, so it can be keyed: `t.effect("blur", radius=20).key("radius", {...})`.
+        Either order of type and id works: `effect("blur", "soft")` and `effect("soft", "blur")` are the same."""
+        if type_ not in F.EFFECTS and id in F.EFFECTS:
+            type_, id = id, type_
         if type_ not in F.EFFECTS:
             raise ValueError(f'"{type_}" is not an effect; effects: {", ".join(F.EFFECTS)}' + _hint(type_, F.EFFECTS))
         return self._b.add(type_, id, values, self.node["effects"])

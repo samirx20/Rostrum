@@ -20,7 +20,8 @@ the scene's first layer, of type `camera`, id `frame` (in a second scene `<scene
 | `homeX`, `homeY` | Where the frame's centre was when the scene was made. Written with the scene; never keyed. |
 | `locked` | Drags and operations refuse to move the frame until it is unlocked. |
 
-`x`, `y`, `zoom` and `rotation` can be keyed like any field:
+`x`, `y`, `zoom` and `rotation` can be keyed like any field (and `rideAlong` when the frame follows a path). There is
+no `scale` on the frame: closer is `zoom`.
 
 ```python
 f = frame()                                           # the scene's frame, made with comp()

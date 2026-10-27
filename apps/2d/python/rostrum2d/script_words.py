@@ -22,7 +22,7 @@ FIELDS = {
     "strokeColour": ("strokeColor",), "stroke_color": ("strokeColor",), "stroke_width": ("strokeWidth",),
     "offsetX": ("dx",), "offsetY": ("dy",), "url": ("src",), "file": ("src",),
 }
-BY_TYPE = {"shadow": {"blur": "radius"}, "glow": {"blur": "radius"}}   # words that mean a field on one type only
+BY_TYPE = {"shadow": {"blur": "radius"}, "glow": {"blur": "radius"}, "camera": {"scale": "zoom"}}   # words that mean a field on one type only
 ON_WITH_COLOUR = {"stroke": "strokeColor", "background": "bgColor", "bgStroke": "bgStrokeColor"}
 FILL = ("fill", "filled")                      # fill=None / "none" / False -> filled=False
 NO_FILL = (None, False, "none", "transparent")    # and a fully see-through colour, "#rrggbb00" / "#rgb0" (no_fill)
