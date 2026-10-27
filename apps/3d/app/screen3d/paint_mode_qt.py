@@ -1,5 +1,6 @@
-"""Paint mode on screen, for QML as `paintMode` (SPEC §5, mockup 06). With one mesh selected, Paint (B) turns it on;
-a mesh with no unfolded surface is unfolded first (`mesh.unfold`, its own undo step; nothing asked). The settings
+"""Paint mode on screen, for QML as `paintMode` (SPEC §5, mockup 06). With one mesh or clay selected, Paint (B) turns
+it on; a mesh with no unfolded surface is unfolded first (`mesh.unfold`, its own undo step; nothing asked); a clay's
+surface is unfolded by the core for each shape by itself (clay_paint.py), so nothing waits. The settings
 panel becomes Brush (paint_brush_qt.py) and Paint layers (+ new layer; each: name, what it paints, eye). A left drag
 on the viewport paints on the active layer: each point is picked by the engine (its `uv`), the trail is drawn over the
 picture while the drag lasts, and the release is one call list, one undo step (paint_mode.stroke_calls). Middle drag
@@ -27,12 +28,13 @@ class PaintMode(PaintStroke, QObject):
         self._drag, self._pts, self._trail, self._busy, self._next, self._up = 0, [], [], False, None, True
         self._scene = self._cam = None
         self._ratio = 1.0                # screen px per canvas px, from the last two picks (the cursor's size)
+        self._anchors, self._moved, self._mpp, self._mpp_screen = [], [0.0, 0.0], None, None   # a clay's (paint_stroke)
         self.answered.connect(self._on_answer)
         bridge.docChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._on_selection)
 
     on = Property(bool, lambda s: s._on, notify=changed)
-    can = Property(bool, lambda s: s._selected_mesh() is not None, notify=changed)    # Paint (B) is offered
+    can = Property(bool, lambda s: s._selected_canvas() is not None, notify=changed)   # Paint (B) is offered
     itemName = Property(str, lambda s: s._name(), notify=changed)
     layers = Property("QVariantList", lambda s: P.layer_rows(s._item() or {}, s._active), notify=changed)
     channels = Property("QVariantList", lambda s: P.channels(), constant=True)
@@ -46,7 +48,7 @@ class PaintMode(PaintStroke, QObject):
         if not self._id or not self.b.doc.has(self._id):
             return None
         it = self.b.doc.item(self._id)
-        return it if it.get("type") == "mesh" else None
+        return it if it.get("type") in P.CANVASES else None
 
     def _name(self):
         it = self._item()
@@ -69,10 +71,10 @@ class PaintMode(PaintStroke, QObject):
             self.leave()
         self.changed.emit()
 
-    def _selected_mesh(self):
+    def _selected_canvas(self):
         sel = self.b.selection
         it = self.b.doc.item(sel[0]) if len(sel) == 1 and self.b.doc.has(sel[0]) else None
-        return it if it is not None and it.get("type") == "mesh" else None
+        return it if it is not None and it.get("type") in P.CANVASES else None
 
     # --- the mode
     @Slot()
@@ -81,13 +83,14 @@ class PaintMode(PaintStroke, QObject):
 
     @Slot()
     def enter(self):
-        it = self._selected_mesh()
+        it = self._selected_canvas()
         if it is None:
-            return self.b.fail_line("Paint needs one mesh selected.")
+            return self.b.fail_line("Paint needs one mesh or clay selected.")
         self.v.mesh_edit.leave()
+        self.v.clay_tool.leave()
         self._on, self._id = True, it["id"]
         self._refresh()
-        if not it.get("uvs"):                 # no unfolded surface yet: unfold it, nothing asked
+        if it["type"] == "mesh" and not it.get("uvs"):    # no unfolded surface yet: unfold it, nothing asked
             self.b.say(f"Unfolding {self._name()}…")
             QTimer.singleShot(30, self._unfold)          # the line shows before the engine works
 

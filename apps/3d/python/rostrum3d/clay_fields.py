@@ -11,6 +11,7 @@ import dataclasses
 from rostrum_core import Param
 
 from .field_kit import ANY, CH, D, IS, N, S, SCULPTING, T, TRANSFORM, X
+from .paint_fields import SIZE as PAINT_SIZE
 
 BRUSHES = ["add", "carve", "smooth", "pull", "flatten", "crease", "mask"]
 SYMMETRY = ["off", "x"]
@@ -56,6 +57,7 @@ CLAY = [
       help="How fine the clay is when Detail is Fixed: the size of its smallest grain. Smaller = finer, slower and "
            "more memory"),
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
+    PAINT_SIZE,                         # a clay is a paint canvas (paint_fields.py, clay_paint.py)
 ] + TRANSFORM
 
 _V3 = lambda name, label, when, help: Param.list(name, "number", label=label, group="Step data", importance=D,  # noqa: E731
@@ -124,7 +126,7 @@ STEP = [
     _V3("dir", "Direction", STROKE, "The way the path's rays point (towards the clay), e.g. [0, 0, -1]"),
 ]
 
-STILL = {p.name for p in CLAY if p.group in ("Brush", "Clay")}     # settings, never animated
+STILL = {p.name for p in CLAY if p.group in ("Brush", "Clay", "Paint")}     # settings, never animated
 
 
 def _plane(where: str, plane, problems: list):

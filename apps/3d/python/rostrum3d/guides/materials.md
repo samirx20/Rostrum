@@ -88,7 +88,7 @@ Bare metal shows only what it reflects. Metal lettering on a dark face in a dark
 - **`bumpTexture`** with **`bumpStrength`**: a grey height image (white is raised) for small relief that catches light: embossing, brush strokes, grain. Bump doesn't change the outline; the shape itself comes from the mesh.
 - **`metallicTexture`**: a grey image for where the surface is metal (white) or not (black): bare metal where paint wore off.
 - Any image file works. To paint them by hand on the model instead, use Paint (B): its layers paint colour, roughness,
-  height, metal or glow over this material, and the material's own values stay where nothing is painted (guide `painting`).
+  relief, metal or glow over this material, and the material's own values stay where nothing is painted (guide `painting`).
 
 ## Things that glow
 

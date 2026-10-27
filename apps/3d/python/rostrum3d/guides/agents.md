@@ -136,8 +136,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
   they need; `clay.set detailMode=fixed detail=0.001` fixes it (finer is slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
   keeps them. Look with `look_frame` from two sides after each few steps. The person's side: guide `sculpting`.
-- **Paint on a model.** `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height, metal, glow) and
-  `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the `uv` under a pixel.
+- **Paint on a model.** A mesh: `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height (Relief),
+  metal, glow) and `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the
+  `uv` under a pixel. A clay: no unfold; `stroke.add` with `anchors` (from `look_at`'s `local` and `localNormal`) and
+  `reach` (metres), so the paint stays on its spots when the clay is reshaped. Fine detail on clay: a Relief layer.
   Guide `painting`.
 - **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
   lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)

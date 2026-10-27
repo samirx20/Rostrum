@@ -1,17 +1,22 @@
 """Paint mode's rules, no Qt (SPEC §5, mockup 06; paint_mode_qt.py puts them on screen). A brush drag on the viewport
-is picked point by point by the engine (`pick` gives the surface's `uv`); this turns those answers into one call list:
-`stroke.add` with the whole path in canvas pixels (and the layer first when the mesh has none yet), one change, one
-undo step. Where the path jumps across a cut of the unfolded surface (a seam) the stroke stops and a new one starts
-on the far side, still in the same call list.
+is picked point by point by the engine (`pick` gives the surface's `uv`; on a clay its `local` point and normal);
+this turns those answers into one call list: `stroke.add` with the whole path (and the layer first when the item has
+none yet), one change, one undo step. On a mesh the path is in canvas pixels, and where it jumps across a cut of the
+unfolded surface (a seam) the stroke stops and a new one starts on the far side, still in the same call list. On a
+clay it is kept on the surface (`anchors`, `reach`): the clay's surface is unfolded anew with each shape, and the
+stroke is laid on it every time (rostrum3d.clay_paint, which splits it at seams the same way).
 """
 from __future__ import annotations
 
 import re
 
+from rostrum3d import clay_paint, paint_scene
 from rostrum3d.paint_fields import CHANNELS, LAYER
 from rostrum_paint.fields import BAR, BRUSH, brush_defaults
 
 SEAM = 0.08            # a step longer than this share of the canvas (and many tips long) crossed a seam
+CANVASES = ("mesh", "clay")              # what Paint paints on
+GUESS_MPP = 0.001      # metres per brush px on a clay before anything says (a first click on a clay never painted)
 CHANNEL = next(p for p in LAYER if p.name == "channel")
 
 
@@ -36,11 +41,16 @@ def split(points: list, size: int, tip: float) -> list[list]:
     return runs
 
 
-def stroke_calls(item: dict, layer: str, points: list, brush: dict, new_layer: dict | None) -> list[dict]:
-    """The calls for one finished drag: the new layer (when asked) and one stroke.add per run."""
+def stroke_calls(item: dict, layer: str, points: list, brush: dict, new_layer: dict | None,
+                 anchors: list | None = None, reach: float = 0.0) -> list[dict]:
+    """The calls for one finished drag: the new layer (when asked) and one stroke.add per run (a clay: one stroke
+    with its `anchors` and `reach`, laid on the surface whenever its picture is made)."""
     calls = []
     if new_layer is not None:
         calls.append({"op": "paint.add", "target": [item["id"]], "args": new_layer})
+    if item.get("type") == "clay":
+        calls.append({"op": "stroke.add", "target": [layer], "args": {**brush, "anchors": anchors, "reach": reach}})
+        return calls
     for run in split(points, item.get("paintSize", 2048), float(brush.get("size", 12))):
         pts = run if len(run) > 1 else [run[0], [run[0][0] + 0.01, run[0][1], *run[0][2:]]]   # a click: one dab
         calls.append({"op": "stroke.add", "target": [layer], "args": {**brush, "points": pts}})
@@ -60,7 +70,7 @@ def new_layer_args(item: dict, channel: str, skip: str = "") -> dict:
     return {"name": f"{CHANNELS[channel][0]} {n}", "channel": channel}
 
 
-AUTO_NAME = re.compile(r"^(" + "|".join(v[0] for v in CHANNELS.values()) + r") \d+$")
+AUTO_NAME = re.compile(r"^(" + "|".join([v[0] for v in CHANNELS.values()] + ["Height"]) + r") \d+$")   # Height: Relief's old name
 
 
 def channel_args(item: dict, layer: dict, channel: str) -> dict:
@@ -81,3 +91,16 @@ BAR_PARAMS = [next(p for p in BRUSH if p.name == n) for n in BAR]      # the Bru
 def start_brush() -> dict:
     """The brush a session starts with: the kit's defaults, a size that reads on a 2048 picture."""
     return {**{k: v for k, v in brush_defaults().items() if k in BAR}, "size": 24.0, "color": "#ffffff"}
+
+
+def clay_mpp(scene: dict, item_id: str, anchor: list) -> float | None:
+    """Metres per canvas px of the clay's unfolded surface at `anchor` (its local point and normal), or None while the
+    clay has no surface made yet (never painted, or a new shape the engine hasn't unfolded)."""
+    f = paint_scene.surface_of(scene, item_id)
+    return clay_paint.metres_per_px(clay_paint.read(f), anchor[:3], anchor[3:6]) if f else None
+
+
+def clay_reach(size_px: float, mpp_canvas: float | None, mpp_screen: float | None) -> float:
+    """A clay stroke's reach (brush radius, metres): the brush size (canvas px across) on the surface where it landed;
+    with no surface yet, the brush's px are the screen's there."""
+    return round(max(1e-5, size_px / 2 * (mpp_canvas or mpp_screen or GUESS_MPP)), 6)
