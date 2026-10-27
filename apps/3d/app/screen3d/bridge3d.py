@@ -40,6 +40,7 @@ from .materials import Materials3D
 from .key_pick3d import KeyBar3D, KeyPick3D, Multi3D
 from .queue import RenderQueue
 from .render_job import RenderJob
+from .project_qt import Projector
 from .send_qt import Sender
 from .stretch3d import Stretch3D
 from .timeline3d import Mover
@@ -76,6 +77,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
         self.queue = RenderQueue(self, render_engine)     # the Render page's queue (queue.py)
+        self.projector = Projector(self)                  # Project a picture from <shot> (project_qt.py); QML's `projector`
         self.send_to = Sender(self)                       # Send to 2D (send_qt.py); QML's `sender` (not a QObject attribute: sender() is Qt's)
         self.add = Adder(self)
         self._poses = Poses(self)

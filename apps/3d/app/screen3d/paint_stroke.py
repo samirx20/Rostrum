@@ -4,6 +4,11 @@ trail over the picture while the drag lasts; the release is one call list, one u
 A clay stroke's reach (brush radius in metres) is the brush size × the surface's metres per canvas px where it
 landed (paint_mode.clay_reach). One pick at a time: while the engine answers, only the newest position waits, so it
 never falls behind the pointer. The whole drag uses the scene of its press, so the engine loads it once.
+
+From the view (`_where == "view"`, brief 21b): a move only adds the point to the trail (no engine work while the pointer
+moves); the release asks the engine once which items the path crosses (its `texels` picture of this view, kept in the
+shared cache, so making the canvas reads the same one) and stores the stroke as drawn on each (paint_mode.view_calls).
+The trail stays drawn, in the brush's colour and width, until the painted picture is on screen.
 """
 from __future__ import annotations
 
@@ -22,6 +27,8 @@ class PaintStroke:
         self._pts, self._trail, self._busy, self._next, self._up = [], [], False, None, False
         self._anchors, self._moved, self._mpp = [], [0.0, 0.0], None      # a clay's: anchors, 3D / screen run, m per px
         self._scene, self._cam = self.v.sent()        # one scene for the whole drag: the engine loads it once
+        if self._where == "view":
+            self._pose = self.v.drawn_pose()
         self._add(x, y)
 
     @Slot(float, float)
@@ -33,13 +40,75 @@ class PaintStroke:
     @Slot()
     def release(self):
         self._up = True
+        if self._where == "view" and self._scene is not None:
+            return self._finish_view()
         if not self._busy:
             self._finish()
+
+    def _finish_view(self):
+        """(From the view) one texels request for the drawn path's view: the items it crosses, then one change."""
+        pts, scene, drag, geo = self._pts, self._scene, self._drag, self.v._compiled()
+        self._pts, self._scene, self._busy = [], None, True
+        if not pts:
+            return self._clear_trail()
+        view = P.view_pose(**self._pose)
+        req = {k: view[k] for k in ("eye", "target", "fov", "frame", "width", "height")}
+
+        def job(eng):
+            from rostrum3d import paint_scene, texels
+            try:
+                eng.ensure_scene(scene)
+                # keyed as the canvas-making asks for it (the compiled scene's geometry), so the paint is laid at once
+                pic = texels.cached(paint_scene.geometry_scene(geo), req, eng.texels_reply)
+                h, w = pic.item.shape
+
+                def at(x, y):
+                    i = int(pic.item[min(h - 1, max(0, int(y))), min(w - 1, max(0, int(x)))])
+                    return pic.items[i] if i >= 0 else ""
+                self.answered.emit((drag, {"view": P.crossed(at, pts), "points": pts, "pose": view}, 0, 0))
+            except Exception as e:  # noqa: BLE001  said on the status line, never a silent miss
+                self.answered.emit((drag, str(e), 0, 0))
+        self.v._r.call(job)
+
+    def _land_view(self, r):
+        self._busy = False
+        it = self._item()
+        items = [i for i in r["view"] if self.b.doc.has(i) and self.b.doc.item(i).get("type") in P.CANVASES]
+        if it is None or not items:
+            self._clear_trail()
+            return self.b.say("From the view: the stroke crossed nothing paintable.")
+        brush = dict(self.brush.values)
+        channel = (self._layer() or {}).get("channel", "colour")
+        calls = P.view_calls(self.b.doc, items, self._id, self._active if self._layer() else "", channel, brush,
+                             {**r["pose"], "points": r["points"]})
+        names = ", ".join(self.b.label_of(self.b.doc.item(i)) for i in items)
+        self._holding = True                          # the trail stays until the painted picture is on screen
+        ok = self.b._guard(lambda: self.b._apply(calls, f"Paint from the view on {names}"))
+        if ok and not self._layer():
+            mine = next((c for c in calls if c["op"] == "stroke.add" and c["target"][0] and
+                         any(p["id"] == c["target"][0] for p in (self._item() or {}).get("paints", []))), None)
+            self._active = mine["target"][0] if mine else self._active
+        self.changed.emit()
+        if not ok:
+            self._clear_trail()
+
+    def _clear_trail(self):
+        self._holding = False
+        self._trail = []
+        self.trailChanged.emit()
+
+    def picture_came(self, *_):
+        """The viewport drew a picture: a trail held after a release goes now (its paint is in the picture)."""
+        if self._holding and self._up:
+            self._clear_trail()
 
     def _add(self, x, y):
         w, h = self.v._size
         self._trail.append([x * self.v._scale / w, y * self.v._scale / h])
         self.trailChanged.emit()
+        if self._where == "view":                     # kept as drawn: picture px of the view, pressure 1
+            self._pts.append([round(x * self.v._scale, 2), round(y * self.v._scale, 2), 1.0])
+            return
         if self._busy:
             self._next = (x, y)                       # only the newest waits: the engine never falls behind
         else:
@@ -61,6 +130,12 @@ class PaintStroke:
         drag, r, x, y = answer
         if drag != self._drag:
             return
+        if isinstance(r, dict) and "view" in r:
+            return self._land_view(r)
+        if isinstance(r, str) and self._where == "view":
+            self._busy = False
+            self._clear_trail()
+            return self.b.fail_line(f"Error: paint from the view: {r}")
         self._busy = False
         if isinstance(r, str):
             self._up = True
@@ -103,13 +178,12 @@ class PaintStroke:
     def _finish(self):
         pts, self._pts, self._scene = self._pts, [], None
         anchors, self._anchors = self._anchors, []
-        self._trail = []
-        self.trailChanged.emit()
         it = self._item()
         clay = it is not None and it.get("type") == "clay"
         if clay and self._moved[0] > 0:
             self._mpp_screen = self._moved[0] / max(self._moved[1], 1e-9)    # kept for a later click
         if it is None or not (anchors if clay else pts):
+            self._clear_trail()
             return self.b.say(f"Paint lands on {self._name()} only: start the stroke on it." if it else "")
         layer, new = self._active, None
         if self._layer() is None:                 # no layer yet: the stroke makes one (same undo step)
@@ -119,6 +193,9 @@ class PaintStroke:
         brush = dict(self.brush.values)
         reach = P.clay_reach(brush.get("size", 24.0), self._mpp, self._mpp_screen) if clay else 0.0
         calls = P.stroke_calls(it, layer, pts, brush, new, anchors, reach)
+        self._holding = True                          # the trail stays until the painted picture is on screen
         if self.b._guard(lambda: self.b._apply(calls, f"Paint on {self._name()}")):
             self._active = layer
             self.changed.emit()
+        else:
+            self._clear_trail()

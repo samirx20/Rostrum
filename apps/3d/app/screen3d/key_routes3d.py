@@ -233,7 +233,7 @@ class KeyRoutes3D(SlotMixin):
 
     @Slot()
     def paintKey(self):
-        """B: Paint on the selected mesh, in and out (paint_mode_qt.py); not with nothing paintable."""
+        """B: Paint on the selected mesh or clay, in and out (paint_mode_qt.py); not with nothing paintable. (Bones is Shift+B.)"""
         vp = _vp(self)
         if vp is None:
             return
@@ -241,7 +241,7 @@ class KeyRoutes3D(SlotMixin):
             vp.clay_tool.leave()
             vp.paint.toggle()
         else:
-            self._set_status("Paint needs one mesh selected")
+            self._set_status("Paint needs one mesh or clay selected (Bones is Shift+B)")
 
     @Slot()
     def onionKey(self):

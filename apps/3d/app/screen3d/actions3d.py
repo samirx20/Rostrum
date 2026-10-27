@@ -173,6 +173,15 @@ ACTIONS += [
 ]
 # Copies and scatter (brief 24; copies_actions.py): Make copies ›, Scatter on, Change near ›
 ACTIONS += COPIES_ACTIONS
+# Project a picture from <shot> (brief 21b; project_qt.py): onto the selected shapes, from the shown shot's camera.
+# Offered while painting, or with several shapes selected (walls, a set): a single shape's menu is full otherwise
+# (the menu holds seven at most; while painting Make copies steps back for it).
+ACTIONS += [
+    Action("paint:project", lambda f: f'Project a picture from {f.screen.get("shot_name") or "the shot"}…', kinds=("mesh",),
+           min_targets=1, importance="secondary", rank=48, group="paint", panel=False, do="paint-project",
+           valid=lambda f: bool(f.screen.get("shot_id")) and (len(f.ids) > 1 or bool(f.screen.get("paint"))),
+           why="Project a picture works on shapes (meshes) while painting, or on several shapes, with a shot to project from."),
+]
 # Empty space (nothing selected): the view's own
 _NOTHING = dict(min_targets=0, max_targets=0, group="view")
 ACTIONS += [

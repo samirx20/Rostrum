@@ -39,7 +39,10 @@ class ActionPreview3D:
         screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
                   "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False,
                   "camera": self._info.get("camera", ""), "scatter_from": list(self._scatter_from),
-                  "pose": vp is not None and bool(getattr(vp, "pose_tool", None) and vp.pose_tool.on)}
+                  "shot_name": next((sh.get("name") or sh["id"] for sh in self.doc.data.get("shots", [])
+                                     if sh["id"] == self.shot_id), ""),
+                  "pose": vp is not None and bool(getattr(vp, "pose_tool", None) and vp.pose_tool.on),
+                  "paint": vp is not None and bool(getattr(vp, "paint", None) and vp.paint.on)}
         return Facts(self.doc, list(self.selection), self._fits, screen)
 
     def engine_said(self, line: str) -> None:
@@ -77,6 +80,8 @@ class ActionPreview3D:
             p = self.viewport.pose_tool                     # pose_qt.py: one change each
             return p.rest() if name == "pose-rest" else p.findAgain() if name == "pose-find" else p.setNames(
                 "plain" if p.names == "humanoid" else "humanoid")
+        if name == "paint-project":
+            return self.projector.open([i for i in self.selection if self.doc.has(i)])   # project_qt.py: what to project
         if name == "send-2d":
             return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
         if name in ("duplicate", "delete"):

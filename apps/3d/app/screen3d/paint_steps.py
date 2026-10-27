@@ -2,7 +2,8 @@
 
     paint-b (B: Paint in / out; unfolds a mesh with no unfolded surface) | paint-layer (the + of Paint layers)
     paint-channel colour|roughness|height|metal|glow (the active layer's Paints) | paint-brush <setting> <value>
-    (a Brush row: brush, size, color, opacity) | paint-drag <x0> <y0> <x1> <y1> [steps] [<x2> <y2> …] (a real left
+    (a Brush row: brush, size, color, opacity) | paint-where surface|view (On the surface | From the view) |
+    paint-tint (the coverage tint on / off) | paint-drag <x0> <y0> <x1> <y1> [steps] [<x2> <y2> …] (a real left
     drag on the window through those points of the viewport, in parts of it, 0..1; each move waits for its pick)
 """
 from __future__ import annotations
@@ -38,6 +39,10 @@ def do(bridge, win, word, rest):
         QCoreApplication.processEvents()                 # the unfold runs just after the mode opens
     elif word == "paint-layer":
         pm.addLayer()
+    elif word == "paint-where":
+        pm.setWhere(rest[0])
+    elif word == "paint-tint":
+        pm.coverage.toggle()
     elif word == "paint-channel":
         pm.setChannel(rest[0])
     elif word == "paint-brush":
@@ -61,7 +66,7 @@ def do(bridge, win, word, rest):
             QTest.qWait(10)
         _settle(pm)
         QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, at[-1])
-        _settle(pm)
+        _settle(pm, 60.0)
     else:
         raise ValueError(f"unknown step {word!r}")
     if bridge.status.startswith("Error"):
