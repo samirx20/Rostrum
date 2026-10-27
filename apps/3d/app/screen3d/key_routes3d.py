@@ -311,8 +311,9 @@ class KeyRoutes3D(SlotMixin):
 
     @Slot()
     def renderKey(self):
-        """F12: the render sheet; on the Render page, the shown shot's Render (next in the queue)."""
+        """F12: the header's Render (the Final picture of this frame, at once); on the Render page, the shown shot's
+        Render (next in the queue). The render sheet is Ctrl+E or the ▾ beside Render."""
         if self._page == "render":
             self.queue.renderNext(self.shot_id)
         else:
-            self.exporter.openFor()
+            self.render.start()

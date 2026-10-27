@@ -6,6 +6,11 @@ K3's rule: Surface open, changed groups open, the rest a row of names).
 Every click is an operation through the bridge (material.assign / material.from / material.split), one undo step each.
 The inline rows edit the MATERIAL (material.set through the bridge's edit_call), so every item sharing it changes:
 that is what sharing means. InspectorRow talks to this object as its `bridge` (setValue, scrubs, toggleGroup).
+
+A clay holds a material too (SPEC § 1 4:10: Base colour's square beside its Material ▾). New clays share the project's
+"Clay" material without anyone choosing that (ops_clay.clay_material), so the first change to it from a clay's panel
+first gives that clay its own copy (material.split, "Make its own material", its own undo step), then changes the copy:
+colouring one clay never recolours the others. A material the person shared on purpose (assigned, named) stays shared.
 """
 from __future__ import annotations
 
@@ -13,13 +18,13 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum3d import fields as F
 from rostrum3d.material_starts import STARTS
 from rostrum3d.ops_materials import users_of
+from rostrum3d.ops_scene import USERS
 from rostrum_gui import rows, sections
 from rostrum_gui.edits import Scrub
 from rostrum_gui.model import RowsModel
 
 from . import outline, route
 
-USERS = ("mesh", "combine", "import", "part")
 
 
 class Materials3D(QObject):
@@ -133,8 +138,19 @@ class Materials3D(QObject):
             self.model.reset(out) if new else self.model.update(out)
         self.rowsChanged.emit()
 
+    def _own_first(self):
+        """A clay changing the project's shared "Clay" material: give it its own copy first (see the module's words)."""
+        it = self._holder()
+        if (it is None or it.get("type") != "clay" or not self._mat
+                or self.b.doc.item(self._mat).get("name") != STARTS["clay"]["label"]
+                or len(users_of(self.b.doc.data, self._mat)) < 2):
+            return
+        self.split()
+        self._refresh()                                 # self._mat is now the clay's own copy
+
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
+        self._own_first()
         if not self._mat:
             return False
         return self._run(self.b.edit_call(self._mat, param, value), f"Material: {param}")
@@ -142,6 +158,7 @@ class Materials3D(QObject):
     @Slot(str)
     def beginScrub(self, param):
         self.endScrub()
+        self._own_first()
         if self._mat:
             self.b._guard(lambda: setattr(self, "_scrub", Scrub(self.b.doc, self.b.who, [self._mat], param, self.b.edit_call)))
 

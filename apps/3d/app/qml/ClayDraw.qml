@@ -7,7 +7,9 @@ import RostrumCursors 1.0
 // always draws (it never turns the view): the line follows the pointer (a Shape, drawn on the GPU), the pointer is the
 // kit's pen, and a chip 16 px below-right of it says the outline's size. Spin shows its axis, a vertical line at the
 // pointer, before the press. The clay a drag would join is outlined in the picture (the viewport's own outline). The
-// release makes the clay; Esc mid-drag (esc3d.py) drops the line with nothing changed. Other buttons fall through.
+// release makes the clay: until the engine's picture shows it, the outline stays, closed and filled with a clay grey
+// (`landing`; Spin's profile stays as a line), so the release is seen at once. Esc mid-drag (esc3d.py) drops the line
+// with nothing changed. Other buttons fall through.
 Item {
     id: dr
     property QtObject d: null
@@ -45,6 +47,25 @@ Item {
             strokeColor: Theme.accent; strokeWidth: 1.5; fillColor: "transparent"
             strokeStyle: ShapePath.DashLine; dashPattern: [4, 3]
             PathPolyline { path: line.axis }
+        }
+    }
+    Shape {              // released, not yet built: the outline closed and filled, where the clay is about to puff
+        id: landingShape
+        objectName: "clayDrawLanding"
+        anchors.fill: parent
+        visible: dr.d !== null && dr.d.landing.length > 1
+        preferredRendererType: Shape.CurveRenderer
+        readonly property var path: { var p = dr.d ? dr.pts(dr.d.landing) : []; if (p.length > 2 && dr.d.landingFilled) p.push(p[0]); return p }
+        ShapePath {
+            strokeColor: Qt.rgba(0, 0, 0, 0.45); strokeWidth: 3.5
+            fillColor: dr.d && dr.d.landingFilled ? Qt.rgba(0.72, 0.71, 0.69, 0.55) : "transparent"
+            joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
+            PathPolyline { path: landingShape.path }
+        }
+        ShapePath {
+            strokeColor: "white"; strokeWidth: 1.5; fillColor: "transparent"
+            joinStyle: ShapePath.RoundJoin; capStyle: ShapePath.RoundCap
+            PathPolyline { path: landingShape.path }
         }
     }
     Rectangle {          // the outline's size, 16 px below-right of the pointer (flipped near the edges)

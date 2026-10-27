@@ -15,7 +15,7 @@ sits on top of it.
 | **Undo, Redo, History** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z); the clock opens History (Ctrl+H) |
 | **Search** | Ctrl+K: every action and setting by name |
 | **Shot camera · Quick ▾** | How the viewport shows the scene, in one menu. **Camera**: the shot camera, a free camera, or through the selected light (and **Make this the shot** while the view isn't the shot's). \` switches between the shot and the free camera. Turning the view in the shot camera turns it into **Free camera** (the shot's own camera stays where it is). **Look**: Quick is the live view; Final draws the render's own picture in place (Shift+F). In a narrow window it reads **Shot · Quick** |
-| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
+| **Render ▾** | **Render** (F12) makes the final picture of this frame at once: the time so far against the time it will take shows in its place, × cancels, the picture shows when done with Show in folder. **▾** opens the render sheet (Ctrl+E) in the settings panel's place: the shot, other qualities, size, what file. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 | **– ▢ ✕** | Minimise, maximise and close the window. Drag the bar's empty parts to move the window; double-click them to maximise |
 
@@ -201,7 +201,9 @@ shown, so with one thing selected there is no Combine.
 - **Follow** (a bud riding on an opening lid): in the item's **Follow** group, pick the item to ride on with the
   target (click it, then the lid in the viewport or the scene list). From then on it moves and turns with the lid,
   from wherever it stands. **Amount** is 1 while it rides; key it **0** at the moment it should be let go and it stays
-  exactly where it is then, never jumping back. Key 0 first and 1 later to pick it up at a time.
+  exactly where it is then, never jumping back. Key 0 first and 1 later to pick it up at a time. **Follow the pose**
+  (riding a posed clay): it rides the bone nearest it instead, so it bends with the pose there; a shape clicked onto a
+  clay has it on already.
 - **Stick to**: pick a mesh (a floor, a table, a ball) and the item stands on its surface straight below as it moves;
   its **Y** is then its height above that surface. Off the surface's edge it keeps its own Y.
 - **A hinge**: hold **D** and drag the gizmo to the lid's back edge (its pivot), then key **Turn X**: the lid opens
@@ -256,7 +258,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | ` | The shot camera's view, or the free camera from it |
 | Ctrl+Alt+0 | Make this the shot: the shot's camera to this view |
 | Shift+F | Look: Quick or Final |
-| F12 | Render (on the Render page: the shown shot's render, next in the queue) |
+| F12 | Render: the final picture of this frame (on the Render page: the shown shot's render, next in the queue) |
 
 **Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
 newest one); then a gizmo drag, a pose drag (or a hold or joint being moved), a clay stroke or an outline being drawn (Draw, Spin) still under way is cancelled (the item or the clay goes back, nothing
@@ -270,5 +272,5 @@ then several picked keys are let go; then the selection is let go (the Scene pan
 - The mark's menu (top left) and the start screen work the same in every Rostrum app.
 - A new scene is "Untitled scene" in your projects folder. It saves after every change, so there is no Save and no
   question when you close.
-- **Export** (the mark's menu › Export…, or Ctrl+E) opens the render sheet, the same as Render and F12 (see [Rendering](rendering.md)).
+- **Export** (the mark's menu › Export…, or Ctrl+E) opens the render sheet, the same as the ▾ beside Render (see [Rendering](rendering.md)).
   It renders through the same path as agents' renders, so the file matches what you see in Final.

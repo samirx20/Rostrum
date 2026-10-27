@@ -14,7 +14,7 @@
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
-    render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
+    render-sheet (the render sheet: the ▾ beside Render, Ctrl+E) | render-demo <running | done> (the header's Render, never a render) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
     estimate-wait (until its time is measured) | budget <time, e.g. 10 min> | sheet-format png|exr|both (its Save as: a shot edit)
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
     queue add <shot> [first] | move <row> <index> | cancel <row> | show <row> | wait-frames <n> | wait-idle | report | demo
@@ -212,6 +212,8 @@ def do_step(bridge, win, step):
         QCoreApplication.processEvents()          # deliver the job's result to the GUI thread
         if bridge.render.state != "done":
             raise RuntimeError(f"step {step!r}: {bridge.render.note}")
+    elif word == "render-demo":                   # the header's running Render, or its finished picture (never a render)
+        bridge.render.demo(rest[0], recorded_estimate()["picture"])
     elif word == "closerender":
         bridge.render.dismiss()
     elif word == "gizmo-drag":

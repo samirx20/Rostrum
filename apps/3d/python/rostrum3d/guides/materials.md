@@ -24,7 +24,7 @@ The balls are real renders through the same fast view as the viewport, made once
 
 ### Starting points
 
-Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). The rest of this guide explains each setting they use.
+Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). A selected clay shows its **Material ▾** and, under it, the material's settings with **Base colour**'s square, as a mesh does; the first change there gives that clay its own copy of the shared "Clay" (one more undo step, "Make its own material"), so the other clays keep theirs. The rest of this guide explains each setting they use.
 
 ## For agents: the same, as operations
 

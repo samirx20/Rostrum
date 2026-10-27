@@ -2,9 +2,20 @@
 
 Rendering makes the final pictures of a shot with Cycles. The pictures look like the viewport's Look: Final.
 
+## Render: the final picture, one click
+
+Click **Render** at the right of the top bar (or press **F12**). It starts at once and always makes the **final-quality**
+picture of the shot's current frame (the Final preset, whatever Quality the sheet shows; a shot set to Custom samples
+keeps its own). From the click, the button's place shows the seconds so far against the time it will take ("12 / 40 s";
+rest the pointer on it for the whole sentence); the time is the measured one when this scene was measured before, else
+a first guess from how fast this computer drew its last render, said as "a first guess". **×** beside it cancels. When
+it is done the picture shows over the viewport, saved in the project's Renders folder (`renders/<item>/vNNN/`, a PNG
+and an EXR); **Show in folder** opens that folder with the picture selected, **Close** (Esc) goes back to the view.
+
 ## Open the render sheet
 
-Press **F12**, or click **Render** at the right of the top bar. Ctrl+E and the mark's menu › Export… open the same sheet. The sheet
+For anything else (the whole shot as frames, Draft or Good, another size, EXR passes, a file of your own): click the
+**▾** beside Render. Ctrl+E and the mark's menu › Export… open the same sheet. The sheet
 takes the settings panel's place, so the viewport stays in sight. Esc or × closes it.
 
 On the Build page it opens on **This frame**. On the Animate and Render pages it opens on the shot.
@@ -56,7 +67,8 @@ Things to know:
 
 ## The time
 
-The time is **measured, never guessed**. When the sheet opens, the row says **Measuring…** while a short test runs in
+The time is **measured**. When the sheet opens with nothing measured yet, the row says a first guess at once ("About
+40 s, a first guess · measuring…") while a short test runs in
 the background: the shot's middle frame (or the playhead's frame, for This frame) through the same engine and settings
 as the real render, at a quarter of the size and once at the real size with few samples. Then it says, for example:
 

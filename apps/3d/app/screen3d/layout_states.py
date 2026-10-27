@@ -21,7 +21,7 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
-         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished")
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -186,10 +186,13 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # Pose (Shift+P, pose_qt.py): its joints found on the drawn clay, the bones, the panel's three rows; the right-click menu
         ("pose-tool", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled"]),
         ("pose-context", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled", "context buddy"]),
+        ("clay-selected", drawn_clay(), ["select buddy", "settled"]),   # a clay with Select on: Material ▾ with Base colour's square under it
         ("clay-turn-into", s, ["select block", "settled", "press Q", "settled"]),
         ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),
         ("long-status", s, [f"say {LONG_STATUS}"]),
+        ("render-running", s, ["render-demo running"]),       # the header's Render while it runs: the clock against the time it said, ×
+        ("render-done", s, ["render-demo done"]),             # its picture over the viewport, Show in folder
         ("render-failed-line", s, ["say Error: render: the picture was not written"]),
     ]
