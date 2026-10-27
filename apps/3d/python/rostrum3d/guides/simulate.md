@@ -46,7 +46,8 @@ small enough. Pin a side the cloth has an edge on: a sheet lying flat has no top
 fails); pin its `back` instead. Start it just above what it should land on, not touching it.
 
 Cloth plays back from the stored result like a falling thing (Timing and Simplify apply too), but it never becomes keys: its
-folds stay a simulation (`sim.to_keys` leaves it as it is). While it is cloth, keys on its place are not used: it stays where it
+folds stay a simulation (`sim.to_keys` leaves it as it is; on a shot whose only simulated thing is cloth it fails saying
+so, and the window offers no Turn into keys). While it is cloth, keys on its place are not used: it stays where it
 was at the first frame and the cloth moves inside it. Cloths don't touch each other (two sheets pass through each other).
 
 ## Compute it
@@ -57,8 +58,13 @@ and stores it. It reports how many fell, how many came to rest and how many end 
 
 Nothing is computed again on its own. Change something it depends on (move the bowl, change a mass, a key on a falling thing)
 and `inspect_simulation` says **out of date**: the viewport keeps showing the old result, and any render (`render_still`,
-`render_video`, the Render button, the queue) computes it again first. A render never uses an out-of-date result. Put the
-change back and the earlier result is used again without computing.
+`render_video`, the Render button, the queue) computes it again first. A render never uses an out-of-date result. In the
+window, the result a render computed becomes the shot's stored one (the row says Stored, the viewport shows that fall; one
+undo step, "Simulate … (for the render)"). Put the change back and the earlier result is used again without computing.
+
+`look_motion` measures a falling thing where the stored result has it, and checks it for passing through like any shape.
+While the simulation is out of date (it measures the older result) or not computed (the things stay at their keyed
+places) its reply says so first and gives no all-clear: run the simulation, wait for it, look again.
 
 Changing only colours or materials never makes it out of date. A cloth's `clothWeight`, `stiffness`, `pinned` and `friction`
 do.

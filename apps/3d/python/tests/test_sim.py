@@ -130,3 +130,17 @@ def test_on_2s_holds_and_turn_into_keys_keeps_a_nudge(doc):
     doc.apply([{"op": "key.set", "target": [nudged["id"]], "args": {"v": 0.123}}], SAM)          # a person's nudge
     doc.apply([{"op": "sim.to_keys", "target": ["drop"]}, {"op": "sim.run", "target": ["drop"]}], SAM)   # a re-run
     assert doc.item(nudged["id"])["v"] == pytest.approx(0.123)
+
+
+def test_a_result_a_render_computed_is_adopted_as_the_shots_stored_one(doc):
+    from rostrum3d.sim.state import adoptable
+    doc.apply([{"op": "sim.run", "target": ["drop"]}], SAM)
+    assert not adoptable(state(doc.data, "drop"))                          # up to date and recorded: nothing to do
+    doc.apply([{"op": "mesh.set", "target": ["bowl"], "args": {"y": -0.5}}], SAM)
+    assert not adoptable(state(doc.data, "drop"))                          # out of date: nothing to adopt yet
+    ready(doc.data, "drop", engine_factory=FakeEngine)                     # the render computes it
+    st = state(doc.data, "drop")
+    assert st["state"] == "stored" and adoptable(st)
+    doc.apply([{"op": "sim.run", "target": ["drop"]}], SAM)                # what the window does then (SimJob.adopt)
+    assert FakeEngine.calls == 2 and not adoptable(state(doc.data, "drop"))
+    assert bud(describe(doc.data, "drop"))["anim"]["y"][1] == pytest.approx(0.9)

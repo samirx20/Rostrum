@@ -36,7 +36,9 @@ and framed before you add anything; change or delete any of them like any item (
      other (both named, the frames, how deep), sudden jumps (a snap or teleport between two frames), an item partly or
      wholly out of the picture. Overlap is judged by each shape's own box, so a hollow case counts as full: check a
      "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
-     `full` for the speed on every frame.
+     `full` for the speed on every frame. A thing set to Falls is measured where the stored simulation has it; when the
+     simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
+     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured.
    - `look_shots` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
      each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_sheet). Use it to compare the
      framing of a sequence or two ends of a cut; an unknown shot fails and lists the document's shots.

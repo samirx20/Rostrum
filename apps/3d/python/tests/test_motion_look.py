@@ -49,3 +49,46 @@ def test_unknown_item_too_few_frames_and_nothing_moving_fail_with_the_reason():
 def reply_error(reply: dict) -> str:
     assert not reply["ok"], reply
     return reply["error"]["code"]
+
+
+FALL = '''
+camera("cam", z=4, y=0.5)
+shot("drop", camera="cam", fps=10, start=0, end=11)
+mesh("bowl", shape="box", width=1, height=0.1, depth=1).simulate("still")
+mesh("bud", shape="sphere", radius=0.05, y=1).simulate("falls")
+'''
+
+
+def _sim_doc(tmp_path, monkeypatch):
+    from rostrum_core.cache import CACHE
+    from rostrum3d.sim import ops as sim_ops
+    from test_sim import FakeEngine
+    monkeypatch.setattr(CACHE, "root", tmp_path / "cache")
+    sim_ops.use_engine_factory(FakeEngine)
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(FALL, "s.py"))
+    return doc
+
+
+def _look(doc, args=None):
+    return Runtime(App("rostrum-3d", {"scene": doc}), motion_look.tools).call("look_motion", args or {}, AGENT)[0]
+
+
+def test_a_stored_fall_is_travelling_and_its_pass_through_is_found(tmp_path, monkeypatch):
+    from rostrum3d.sim import ops as sim_ops
+    doc = _sim_doc(tmp_path, monkeypatch)
+    try:
+        out = _look(doc)                                   # not computed: said, never an all-clear
+        assert reply_error(out) == "NOT_FOUND" and "NOT COMPUTED" in str(out)
+        doc.apply([{"op": "sim.run", "target": ["drop"]}], Who.person())
+        out = _look(doc)
+        assert out["ok"], out
+        moving = [i["id"] for i in out["data"]["items"] if i["moves"]]
+        assert moving == ["bud"] and out["data"]["simulation"] == "stored"
+        # the stand-in core drops it 0.1 m a frame from y 1: through the bowl (y ±0.05) around frame 10
+        assert any(f["kind"] == "passes_through" and "bud" in f["items"] for f in out["data"]["findings"]), out["summary"]
+        doc.apply([{"op": "mesh.set", "target": ["bowl"], "args": {"x": 0.3}}], Who.person())     # out of date now
+        out = _look(doc)
+        assert out["ok"] and "OUT OF DATE" in out["summary"] and "No findings: nothing" not in out["summary"]
+    finally:
+        sim_ops.use_engine_factory(None)

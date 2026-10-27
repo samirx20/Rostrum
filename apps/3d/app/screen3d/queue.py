@@ -200,6 +200,8 @@ class RenderQueue(QObject):
                         self._b.fail_line(f'Error: render {r["shot"]}: {r["reason"]}')
                     else:
                         self._b.say(f'{r["shot"]}: {r["word"]} · {r["reason"] or r["took"]}')
+            if ended and (sim := getattr(self._b, "_sim", None)) is not None:
+                sim.adopt()                         # a simulation a render computed becomes the shot's stored one
             self.changed.emit()
         if not any(r["status"] in ("queued", "running") for r in rows):
             self._poll.stop()
