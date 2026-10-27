@@ -20,9 +20,12 @@ EXTRA = (("in", "Zoom in", "Ctrl =", "view bigger magnify"), ("out", "Zoom out",
 class ViewCommands(SlotMixin):
     @Slot(result="QVariantList")
     def viewEntries(self):
-        """The view menu's first group: the steps that apply now (Zoom to selection needs a layer picked)."""
-        return [{"value": v, "label": label, "keys": keys, "group": "a"} for v, label, keys, _ in STEPS
-                if v != "sel" or self.selected_layers()]
+        """The view menu's zoom part, under one "Zoom" heading: Zoom in / out, then the steps that apply now (Zoom to
+        selection needs a layer picked); Look through the frame on its own after them (the menu adds the switches)."""
+        zoom = [{"value": v, "label": label, "keys": keys, "group": "a"} for v, label, keys, _ in (*EXTRA, *STEPS)
+                if v != "look" and (v != "sel" or self.selected_layers())]
+        zoom[0]["heading"] = "Zoom"
+        return zoom + [{"value": v, "label": label, "keys": keys, "group": "l"} for v, label, keys, _ in STEPS if v == "look"]
 
     def _commands(self):
         have = {e["value"] for e in self.viewEntries()}

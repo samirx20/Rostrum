@@ -1,9 +1,11 @@
 import QtQuick
 import RostrumKit
 
-// The view controls in the top bar (SPEC 2d-design-v2 §1.1, never on the frame): "Fit · 57 % ▾". The % is a menu with the same steps as the keys
-// (INTERACTION 1.12): Fit the frame (Ctrl+0), Fit everything (Shift+1), 25 – 400 %, 100 % (Ctrl+1), Zoom to selection
-// (F, only with a selection), Look through the frame (Shift+C, a check mark: LookThrough.qml), the Snap switch (INTERACTION 1.11; on by default) and "Show the frame's path" (on at first).
+// The view controls in the top bar (SPEC 2d-design-v2 §1.1, never on the frame): "Fit · 57 % ▾". The % is a menu in parts, each
+// under its own heading: Zoom (the same steps as the keys, INTERACTION 1.12: Zoom in / out (Ctrl+= / Ctrl+−), Fit the
+// frame (Ctrl+0), Fit everything (Shift+1), 25 – 400 %, 100 % (Ctrl+1), Zoom to selection (F, only with a selection)),
+// Look through the frame (Shift+C, a check mark: LookThrough.qml), Guides (the Snap switch, INTERACTION 1.11, on by
+// default; "Show the frame's path", on at first) and, for a large or blurred scene, Preview while playing.
 // The keys live here too: Ctrl+0, Ctrl+1, F / Shift+2 and Shift+C (not while typing), Ctrl+= / Ctrl+−. `view` is the canvas's CanvasView; `fitSelection` comes from Stage (it knows the selection).
 Item {
     id: vc
@@ -32,7 +34,7 @@ Item {
     function entries() {
         const out = backend.viewEntries()                   // the steps Ctrl+K lists too (view_commands.py)
         for (const e of out) if (e.value === "look") e.checked = vc.look.on
-        out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
+        out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b", heading: "Guides" })
         out.push({ value: "framepath", label: "Show the frame's path",            // faint while something else is picked
                    checked: backend.motionPath.framePath, group: "b" })
         if (backend.frameInfo.previewSize === true)     // a large composition: how big playing frames are drawn (paused frames and exports are Full)

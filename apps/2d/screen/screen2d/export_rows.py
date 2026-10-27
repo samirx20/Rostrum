@@ -1,6 +1,7 @@
 """What the Export sheet shows for 2D, as rows (exporter.py holds the job): "What for" in words, the chosen format's
 settings, only the ones that apply to it (from io/formats.py data, nothing placed per format here), and the result read
-back from the file. The range (everything, marker to marker) is the kit sheet's own row."""
+back from the file. The range picker (everything, work area, marker to marker, From – to…) is the kit sheet's own row;
+the typed range's From and To are rows here (`typed_range`)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,6 +23,12 @@ def what_for(formats: list[dict]) -> list[dict]:
 
 
 AREAS = {"frame": "Frame", "items": "Picked layers", "world": "Everything"}
+
+
+def typed_range(a: float, b: float) -> list[dict]:
+    """The From and To rows of the range From – to… (seconds), first under the range picker."""
+    return [{"key": "from", "kind": "number", "label": "From", "value": round(a, 3), "unit": "s"},
+            {"key": "to", "kind": "number", "label": "To", "value": round(b, 3), "unit": "s"}]
 
 
 def settings(row: dict, values: dict, picked: bool = False) -> list[dict]:

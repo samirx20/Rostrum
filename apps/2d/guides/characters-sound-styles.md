@@ -7,7 +7,7 @@ Short how-tos for the parts of the screen that are not on every project.
 A character is a **rig**: its parts (head, arms, legs ...) tied to bones, so you pose it by moving the bones.
 
 1. Draw or import the parts as separate layers. Name them like body parts (for example head, torso, upper arm L, forearm L, hand L, thigh, shin, foot).
-2. Select the parts and click **Make rig** at the top of the settings panel (the buttons there show what you can do with your selection; less common ones are under **…**).
+2. Select the parts and click **Make a puppet (for bones)** at the top of the settings panel (on parts named like a body it is the first button; otherwise it is under **More › Make**). The top bar says what it made and that **J** (the Bone tool) draws its bones (the buttons there show what you can do with your selection; less common ones are under **…**).
 3. Select the rig. If it has no bones yet and its parts are named like a body, **Bones from part names** appears. Click it: bones, arm and leg chains, and the binding of each part are made in one step. Undo takes it all back.
 4. To draw bones yourself, press **J** (the **Bone** tool, there only while a rig exists). Click joint after joint, or drag from a joint to the bone's tip. **Esc** ends the chain.
 5. To attach a part to a bone: select the part, **Ctrl+click** the bone, then click **Attach to bone**.
@@ -23,7 +23,7 @@ Pose the character on the canvas by dragging its bones: press on a bone's middle
 
 ### Lip sync
 
-1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**, which is under **More** at the end of the settings panel's top row). Name them by mouth shape, or name the set "mouth".
+1. Make a swap set of mouth drawings (select the drawings, then **More › Make › Make a set that shows one at a time**; **More** is at the end of the settings panel's top row; a set like this is called a swap set in the agent tools). Name them by mouth shape, or name the set "mouth".
 2. Select the set. **Lip sync…** appears at the top of the settings panel.
 3. In the sheet, click a **Voice line**. Voice lines come from RostrumSound. Check the drawing shown for each mouth shape and change a wrong one in its list.
 4. Click **Apply**. The first time a voice line is used, the sheet listens to it: it shows **Step 1 of 3**, **2 of 3**, **3 of 3** with a moving bar, takes a few seconds (longer on a busy computer), and you can keep working meanwhile. A line heard before applies at once. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.

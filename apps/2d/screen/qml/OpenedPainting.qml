@@ -21,20 +21,7 @@ Item {
     readonly property int j0: seamless ? Math.max(-most, Math.floor(visibleWorld.y / ph)) : 0
     readonly property int j1: seamless ? Math.min(most, Math.ceil((visibleWorld.y + visibleWorld.height) / ph)) : 1
 
-    component Wet: Item {         // the wet ink moved by one repeat (dx, dy world px)
-        property real dx: 0
-        property real dy: 0
-        Image { visible: op.wet.drySerial > 0
-                x: ((op.wet.dryBox.x || 0) + parent.dx) * op.zoom; y: ((op.wet.dryBox.y || 0) + parent.dy) * op.zoom
-                width: (op.wet.dryBox.w || 0) * op.zoom; height: (op.wet.dryBox.h || 0) * op.zoom
-                source: op.wet.drySerial > 0 ? "image://wet/dry-" + op.wet.drySerial : ""
-                cache: false; smooth: true; asynchronous: false }
-        Image { visible: op.wet.serial > 0
-                x: ((op.wet.box.x || 0) + parent.dx) * op.zoom; y: ((op.wet.box.y || 0) + parent.dy) * op.zoom
-                width: (op.wet.box.w || 0) * op.zoom; height: (op.wet.box.h || 0) * op.zoom
-                source: op.wet.serial > 0 ? "image://wet/tip-" + op.wet.serial : ""
-                cache: false; smooth: true; asynchronous: false }
-    }
+    component Wet: WetInk { zoom: op.zoom }     // the wet ink moved by one repeat (dx, dy world px)
 
     Image {         // the painting, and with Seamless its repeats: ONE tiled picture in the painting's own px, scaled
                     // by the zoom (an Image per repeat made up to 625 of them on opening and on every pan: ~60 ms)

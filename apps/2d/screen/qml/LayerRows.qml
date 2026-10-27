@@ -69,8 +69,22 @@ ListView {
     property var dragRow: null          // the pulled row's data (its ghost shows its icon and name)
     property real grabDy: 0             // where in the row it was grabbed: the ghost keeps that point under the pointer
     property real dragY: 0              // the pointer, in the list's content px
+    // The rows part where it would land (Figma's layer list): the pulled row's place closes and a row-high gap opens
+    // before `gapAt` (the list index the row goes in front of), the rows sliding there (Theme.rowEase). The rows' own
+    // places (y) never move, so where the pointer is points at the same row whatever has slid; at the drop the list
+    // takes its new order with nothing sliding. "into" a group: no gap, the group's outline.
+    readonly property int dragIndex: dragId === "" ? -1 : model.indexOf(dragId)
+    readonly property int gapAt: dragId === "" || dropRow === "" || dropWhere === "into" ? -1
+                                 : model.indexOf(dropRow) + (dropWhere === "below" ? 1 : 0)
+    property real dragH: Theme.row      // the pulled row's height: the gap's
+    function partBy(i, h) {          // how far row i slides while a row is pulled
+        if (gapAt < 0 || i === dragIndex) return 0
+        return (i > dragIndex ? -h : 0) + (i >= gapAt ? h : 0)
+    }
     function beginDrag(r, pressY) {
         if (!backend.rowDrag.begin(r.id)) return
+        const it = itemAtIndex(model.indexOf(r.id))
+        dragH = it ? it.height : Theme.row
         dragRow = r; grabDy = pressY; dragId = r.id
     }
     function cancelDrag() { backend.rowDrag.cancelDrag(); dragId = ""; dropRow = ""; dragRow = null }
@@ -134,7 +148,7 @@ ListView {
     Rectangle {  // the drop line (between rows), or an outline round a group the layer would go into. A local stand-in
         objectName: "rowInsertLine"    // for the kit's InsertLine (K5, not in main yet): swap it in here
         readonly property var target: list.dropRow === "" ? null : list.itemAtIndex(list.model.indexOf(list.dropRow))
-        visible: target !== null
+        visible: target !== null && list.dropWhere === "into"      // between rows the opened gap shows the place
         z: 5
         x: Theme.gap; width: list.width - x
         y: !target ? 0 : list.dropWhere === "into" ? target.y : list.dropWhere === "above" ? target.y - 2 : target.y + target.height
@@ -157,11 +171,16 @@ ListView {
     delegate: Item {
         id: row
         required property var modelData
+        required property int index
         width: ListView.view.width
+        transform: Translate {
+            y: list.partBy(row.index, list.dragH)
+            Behavior on y { enabled: list.dragId !== ""; NumberAnimation { duration: Theme.rowEase; easing.type: Theme.revealEasing } }
+        }
         readonly property real own: modelData.row === "layer" || modelData.line ? Theme.row : Theme.rowDense - 2   // a layer's second line: as tall
         readonly property var sound: modelData.row === "layer" ? backend.soundtrack.videos.rows[modelData.id] : undefined
         height: own + (sound ? Theme.rowDense - 2 : 0)     // a video with sound: its sound's row under it (VideoSoundRow)
-        opacity: list.dragId === modelData.id ? 0.45 : 1
+        opacity: list.dragId !== modelData.id ? 1 : list.gapAt >= 0 ? 0 : 0.45     // gone from its place while a gap is open
         property bool parked: false        // kept out of view for the next row (reuseItems): hidden, so no check sees it
         visible: !parked
         ListView.onPooled: { parked = true; rowName.endRename(false); rowTrack.release() }     // nothing of the row it was stays

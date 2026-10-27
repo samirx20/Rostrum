@@ -3,7 +3,7 @@ composition, through the same code as the MCP tool render_export (rostrum2d.mcp.
 same files, the same manifest.
 
 What for, the chosen format's settings (only the ones that apply: export_rows.py, from io/formats.py data), the range
-(everything, or marker to marker), where it goes. A press snapshots the scene: edits made while it runs are not in the
+(everything, the ruler's work area, marker to marker, or a typed From – to), where it goes. A press snapshots the scene: edits made while it runs are not in the
 file. Cancel stops the engine (never restarted); a failed or cancelled run leaves no unfinished file (exporting.run).
 """
 from __future__ import annotations
@@ -52,16 +52,29 @@ class Exporter(ExportSheet):
         return export_rows.what_for(exporting.formats())
 
     def ranges_list(self):
-        """Everything, then marker to marker (the project's markers inside the composition, in time order)."""
+        """Everything, the work area (when the ruler has one: work_area.py), marker to marker (the project's markers
+        inside the composition, in time order), then From – to… (typed: the From and To rows, `typedRange`)."""
         if not self._row()["range"]:
             return []
         d = self._duration()
         out = [{"value": "all", "label": f"Everything · {d:g} s", "start": 0.0, "end": d}]
+        work = self.bridge.workArea.span() if self._comp_id == self.bridge.comp_id else None
+        if work:
+            out.append({"value": "work", "label": f"Work area · {work[0]:g} – {work[1]:g} s", "start": work[0], "end": work[1]})
         times = sorted((t, n) for n, t in (self.bridge.marks.times if self.bridge.doc.folder else {}).items() if 0 <= t <= d)
         for (t0, a), (t1, b) in zip(times, times[1:]):
             if t1 > t0:
                 out.append({"value": f"{a}→{b}", "label": f"{a} → {b} · {t1 - t0:g} s", "start": t0, "end": t1})
+        c0, c1 = self._custom()
+        out.append({"value": "custom", "label": f"From – to… · {c0:g} – {c1:g} s", "start": c0, "end": c1})
         return out
+
+    def _custom(self) -> tuple[float, float]:
+        """The typed range (From, To), kept inside the scene and at least a frame long."""
+        d, fps = self._duration(), float(self._comp().get("fps", 30))
+        a, b = getattr(self, "_typed", (0.0, d))
+        a = max(0.0, min(a, d - 1 / fps))
+        return a, max(a + 1 / fps, min(b, d))
 
     def default_folder(self):
         """The exact folder the file lands in: the next version folder (renders/<item>/v001), else the Videos folder."""
@@ -163,6 +176,11 @@ class Exporter(ExportSheet):
                                                    span[1] - span[0], v, self._gif_bytes(span))}
         return export_rows.settings(self._row(), {**v, **({"area": self._area()} if "area" in v else {})}, bool(self._picked()))
 
+    @Property("QVariantList", notify=own)
+    def typedRange(self):
+        """From and To (seconds) while the range is From – to…, else none: shown right under the range picker."""
+        return export_rows.typed_range(*self._custom()) if self._range == "custom" else []
+
     def _gif_bytes(self, span):
         """The GIF's measured size for the document as it is now and these choices (gif_guess; None while working)."""
         v, doc, comp = dict(self._values), self.bridge.doc, self._comp_id
@@ -202,6 +220,12 @@ class Exporter(ExportSheet):
 
     @Slot(str, "QVariant")
     def setSetting(self, key, value):
+        if key in ("from", "to") and not self.running():             # the typed range (From – to…)
+            a, b = self._custom()
+            self._typed = (float(value), b) if key == "from" else (a, float(value))
+            self.stale()
+            self.changed.emit()
+            return
         if self.running() or key not in self._values:
             return
         self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool, "size": str, "rate": str, "area": str}[key](value)

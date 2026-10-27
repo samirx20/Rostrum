@@ -18,8 +18,9 @@ may be a Future (the paint still being made off the screen's thread: wet.smear_i
 (`ready`), the points that came meanwhile with it, so the press never waits for a drawing's pixels.
 A smear's pictures hold the layer's paint with the smear in it, so they replace that paint rather than lie on it:
 laid on the frame that shows it already, see-through paint would count twice (a brighter box: critic r12). Once its
-layer holds paint (`covers`, set by the screen when it asks for the reveal) a smear shows over the world drawn without
-its layer, as the eraser does, and waits for that picture. Points past a drawing's canvas are fine: a drawing grows
+layer holds paint (`covers`, set by the screen when it asks for the reveal) a smear shows over the world drawn under
+its layer, and waits for that picture (`reveal`; the screen lays it under the wet boxes and the layers above over them:
+wet_layers.py; blending it here cost each tip piece 20-120 ms, so a big smear trailed the pen). Points past a drawing's canvas are fine: a drawing grows
 with the stroke (no `bounds`); what lies outside the paint under it is empty.
 Normal ink has no bounds (None). `reveal`: the eraser. Its ink is the eraser's coverage, and where it lies the picture
 shows the world drawn without the layer being erased (straight RGBA8 at 1 px per world px, its top-left at world px
@@ -95,8 +96,12 @@ class WetInk:
     def _tip(self) -> list:
         return self.points[max(0, self._settled - 1):]
 
-    def _stamp(self, into, origin, pts, carry=None):
-        item = build("stroke", self.sid, {**self.brush, "size": self.size, "seed": seed_of(self.sid),
+    def _stamp(self, into, origin, pts, carry=None, first=True):
+        """`pts` stamped into `into` (its top-left at `origin`). The pen is still down: nothing tapers out yet (the
+        saved stroke's end tapers when it lands), and only the piece from the stroke's `first` point tapers in (each
+        piece tapering in drew a string of beads)."""
+        tapers = {"taper_end": 0.0, **({} if first else {"taper_start": 0.0})}
+        item = build("stroke", self.sid, {**self.brush, "size": self.size, "seed": seed_of(self.sid), **tapers,
                                           "points": [[x - origin[0], y - origin[1], p] for x, y, p in pts]})
         # what is under the stroke, only for a brush that picks it up (a copy of the canvas: a big tip's cost tens of ms)
         under = into.copy()[..., :3] if item["smudge"] and item["pickup"] else None
@@ -197,11 +202,7 @@ class WetInk:
             u8 = self._revealed(at[0], at[1], x1 - x0, y1 - y0)
             u8[..., 3] = np.minimum(u8[..., 3], np.clip(px[y0:y1, x0:x1, 3] * 255 + 0.5, 0, 255).astype(np.uint8))
             return u8
-        if self.covers:                     # a smear: its paint over the world without its layer (premultiplied)
-            part, world = px[y0:y1, x0:x1], self._revealed(at[0], at[1], x1 - x0, y1 - y0).astype(np.float32) / 255
-            world[..., :3] *= world[..., 3:]
-            return compose.straight8(part + (1 - part[..., 3:]) * world)
-        return compose.straight8(px[y0:y1, x0:x1])
+        return compose.straight8(px[y0:y1, x0:x1])     # (a smear's lies on the world under its layer: wet_layers.py)
 
     def moved(self, image: QImage, box: dict, dx: float, dy: float) -> QImage:
         """An eraser's picture (box: where it lies, world px) as it shows moved by dx, dy: the same coverage, and there

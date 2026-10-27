@@ -17,6 +17,7 @@ ToolRail {
     current: backend.tool
     last: ({ shapes: "rect" })
     panelOpen: !!brushes.item && brushes.item.visible
+    readonly property real brushPanelRight: panelOpen ? brushes.item.x + brushes.item.width : 0   // window px (the panel lies in the overlay): Stage's push
     readonly property bool canCue: backend.actions.offered.indexOf("layer:sound_here") >= 0   // allowed now (folded in menus or not); an action's id is always its full form, "layer:<name>"
     onCanCueChanged: if (canCue) backend.cuePick.warm()       // the first search then needn't load Sound's code
     readonly property var renders3d: backend.adder.entries.filter(e => e.type === "render3d")

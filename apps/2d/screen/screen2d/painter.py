@@ -21,8 +21,8 @@ from rostrum_gui.select_soon import SelectSoon
 
 from rostrum2d import painted_fill, paintings
 
-from . import adding, brush_presets, fill_aim, framing, onion, wet_through, wet_uses, wet_wrap
-from .wet import WetView, reveal_rect, smear_ink, without_paint
+from . import adding, brush_presets, fill_aim, framing, onion, wet_layers, wet_through, wet_uses, wet_wrap
+from .wet import WetView, reveal_rect, smear_ink
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -38,8 +38,8 @@ class Painter(BrushPanel):
     targetChanged = Signal()        # what the pen paints on
     _GROUPS = (("framesChanged", ("drawingId", "now", "newHold")),
                ("onionChanged", ("onionOn", "onionReach", "onionSerial", "onionHere")),
-               ("targetChanged", ("targetName", "targetValue", "targetChoices", "canErase", "canNewLayer", "newLayerNext")))
-    _revealed = Signal(object, object, object)     # the eraser's ink, the frame without its layer, an error (worker thread)
+               ("targetChanged", ("targetName", "targetValue", "targetChoices", "canErase", "canNewLayer", "newLayerNext", "blocked")))
+    _revealed = Signal(object, object, object)     # a stroke's ink, its pictures (wet_layers.draw), an error (worker thread)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -214,6 +214,25 @@ class Painter(BrushPanel):
         d = self._aim()
         return bool(d and (d["type"] == "drawing" or d.get("frames")))
 
+    @Property(str, notify=targetChanged)
+    def blocked(self):
+        """Why a stroke can't go on what the pen paints on, in plain words ("" = it can): the layer, or the highlighted
+        paint layer (or all of them) is locked. The pointer shows `no` over the canvas and a press says this instead."""
+        d = self._aim()
+        if not d:
+            return ""
+        if d.get("locked") or (self.through() is None and any(self.b.doc.item(a).get("locked") for a in self.b._above(d["id"]))):
+            return f"“{display_name(d)}” is locked. Turn off its Lock to paint on it."
+        f = self.b._paint_layers._frame() if self.through() is None and not self._new_layer else None
+        paints = f["paints"] if f else []
+        cur = self.b._paint_layers.current()
+        hit = next((p for p in paints if p["id"] == cur), None)
+        if hit is not None and hit.get("locked"):
+            return f"Paint layer “{hit['name']}” is locked. Turn off its Lock to paint on it."
+        if paints and all(p.get("locked") for p in paints):
+            return "Every paint layer on this drawing is locked. Turn off a Lock to paint on it, or add a new paint layer."
+        return ""
+
     @Property(bool, notify=targetChanged)
     def canNewLayer(self):
         d = self._aim()
@@ -261,7 +280,7 @@ class Painter(BrushPanel):
             if smear:                       # a smudge smears the paint it is on (its own, or its painting's: wet.py)
                 self._wet.start(smear, settled=settled)
                 self._wet.add(*s.points[-1][:3])
-                if not make:                # its picture replaces the layer's paint: shown over the world without it
+                if not make:                # its picture replaces the layer's paint: shown over the world under it
                     smear.covers = True
                     self._ask_reveal(smear, d["id"], x, y, fill is not None)
             elif fill is not None and args.get("mode") != "erase" and (uses := wet_uses.uses(
@@ -277,7 +296,7 @@ class Painter(BrushPanel):
                 wraps = fill is not None and paintings.seamless(fill)
                 self._wet.start(ink, (lambda: wet_wrap.copies(s, fill, args.get("size", 10))) if wraps else None, settled)
                 self._wet.add(x, y, pressure)
-                if ink.erasing:
+                if ink.erasing or not make:     # (ink on a layer with layers above shows under them: wet_layers.py)
                     self._ask_reveal(ink, d["id"], x, y, fill is not None)
             self._wet.show()
             if make:
@@ -309,26 +328,32 @@ class Painter(BrushPanel):
     wet = Property(QObject, lambda self: self._wet, constant=True)
 
     def _ask_reveal(self, ink, layer_id, x, y, fill=False):
-        """The eraser's ink (and a smear's) shows the world the canvas shows without the layer it works on: the one
-        drawn ahead when it is still right, else asked of the canvas's engine now, off this thread; its ink shows once
-        it comes (wet.py)."""
+        """The pictures that show the wet ink in its layer's place (wet_layers.py): the eraser's ink shows the world
+        without the layer's paint; a smear's and plain ink's lie on the world under the stroke, under the layers above.
+        The ones drawn ahead when still right, else asked of the canvas's engine now, off this thread; a smear and the
+        eraser show once they come (wet.py), plain ink at once and in its place from then on."""
+        kind = wet_layers.kind_of(ink)
         if self.b.opened.on:                # opened on its own: under the painting is the empty canvas
-            return self._wet.reveal(ink, *wet_through.bare(self.b.world.visible(), x, y))
-        kept = self.ahead and self.ahead.ready(layer_id, fill, x, y)   # drawn before the press (reveal_ahead.py)
+            return kind != "ink" and self._reveal(ink, {"under": wet_through.bare(self.b.world.visible(), x, y)}, None)
+        kept = self.ahead and self.ahead.ready(layer_id, fill, kind, x, y)   # drawn before the press (reveal_ahead.py)
         if kept is not None:
-            return self._wet.reveal(ink, *kept)
-        scene = without_paint(self.b._scene, layer_id, fill) if self.b._scene else None
-        if scene is None:
+            return self._reveal(ink, kept, None)
+        scenes = wet_layers.asks(self.b._scene, layer_id, fill, kind) if self.b._scene else None
+        if scenes is None:
+            if kind == "ink":
+                return
             raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")
-        rect = reveal_rect(self.b.world.visible(), x, y)
-        self.b.frames.still(scene, self.b.time, self.b.play.samples(),
-                            lambda px, e: self._revealed.emit(ink, (px, (rect["x"], rect["y"])), e), rect)
+        wet_layers.draw(self.b.frames, scenes, self.b.time, self.b.play.samples(), reveal_rect(self.b.world.visible(), x, y),
+                        lambda got, e: self._revealed.emit(ink, got, e))
 
     def _reveal(self, ink, got, error):
         if error is not None:
-            self.b._fail(f"Error: the {'eraser' if ink.erasing else 'smudge'} can't show what is under the layer: {error}")
+            if ink.erasing or ink.smears:
+                self.b._fail(f"Error: the {'eraser' if ink.erasing else 'smudge'} can't show what is under the layer: {error}")
+        elif ink.erasing:
+            self._wet.reveal(ink, *got["under"])
         else:
-            self._wet.reveal(ink, *got)
+            self._wet.layer(ink, got)
 
     def _wet_add(self, s, n, x, y, pressure):
         """The move's point to the wet ink: a smudge's in canvas px, as the stroke took it (if it did)."""
