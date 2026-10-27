@@ -23,7 +23,8 @@ def test_the_exact_edit_reaches_the_target_within_the_masters_limit(tmp_path):
     root = run_source(SONG, "fit.py")
     data = getattr(root, "data", root)
     master = (data.get("master") or [{}])[0]
-    master["maxLimit"] = 4                                       # this song needs ~4.7 dB; the master allows 4: a trim can close the rest
+    master["maxLimit"] = 4.4                                     # this song needs ~4.7 dB; the master allows 4.4: a trim can close the rest
+                                                                 # (with the Library's balanced starting levels no one track holds the peaks)
     tracks = {t["id"]: t for t in data["tracks"]}
     with Engine() as e:
         first = e.request("render", schedule=compile(data), out=str(tmp_path / "a.wav"), stems=[])
@@ -39,7 +40,7 @@ def test_the_exact_edit_reaches_the_target_within_the_masters_limit(tmp_path):
     with Engine() as e:
         kept = e.request("render", schedule=compile(data), out=str(tmp_path / "c.wav"), stems=[])
     assert abs(kept["lufs"] - goal) <= 0.5, kept["lufs"]
-    assert abs(after["lufs"] - goal) <= 0.5 and after["master"]["limiterMaxReductionDb"] <= 4.1, after["master"]
+    assert abs(after["lufs"] - goal) <= 0.5 and after["master"]["limiterMaxReductionDb"] <= 4.5, after["master"]
 
 
 def test_taming_the_peaks_reaches_the_target_within_the_limit_with_the_balance_kept(tmp_path):

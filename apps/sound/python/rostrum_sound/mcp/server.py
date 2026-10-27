@@ -17,7 +17,7 @@ from rostrum_core.mcp import Runtime, Tools, build_server
 
 from rostrum_sound.modules import TOOLS
 from . import tool_groups, tools_project
-from .marker_lead import with_marker_lead
+from .marker_lead import with_marker_lead, with_song_markers
 from .song_line import with_song_line
 from .track_line import with_track_feel
 from .app import make_app
@@ -37,6 +37,7 @@ def make_runtime(app) -> Runtime:
     with_song_line(runtime)
     with_track_feel(runtime)
     with_marker_lead(runtime)
+    with_song_markers(runtime)
     return runtime
 
 

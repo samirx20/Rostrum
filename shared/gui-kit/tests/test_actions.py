@@ -58,3 +58,20 @@ def test_the_plus_key_is_one_key():
     """Letting go of "+" (Ctrl + the Plus key) named the key "+" and raised in every app."""
     from rostrum_gui.keymap import normal
     assert normal("+") == "+" and normal("Ctrl++") == "Ctrl++" and normal("ctrl+shift++") == "Ctrl+Shift++"
+
+
+def test_an_app_keeps_its_short_menu_row_in_the_panel():
+    """The settings panel leaves out what right-click has (Group / Ungroup aside); an app's `panel_keeps` keeps its own
+    (2D's Order), and Ctrl+K lists it either way."""
+    from rostrum_gui.action_views import panel
+    from rostrum_gui.actions import SHORT_MENU
+    fwd = Action("forward", "Bring forward", kinds=("shape",), importance="primary", job="forward",
+                 calls=lambda f: [{"op": "layer.order", "target": list(f.ids), "args": {"by": 1}}])
+
+    def ids(acts):
+        return [i["id"] for r in panel(acts.available(_facts(1)), acts.short_menu, acts.panel_keeps)["rows"]
+                for i in r["items"]]
+    plain = ActionList([fwd], KeyMap("test"), short_menu=SHORT_MENU)
+    kept = ActionList([fwd], KeyMap("test"), short_menu=SHORT_MENU, panel_keeps=("forward",))
+    assert ids(plain) == [] and ids(kept) == ["forward"]
+    assert [c["key"] for c in commands(kept.available(_facts(1)), "")] == ["forward"]

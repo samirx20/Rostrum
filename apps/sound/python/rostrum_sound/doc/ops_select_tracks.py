@@ -17,7 +17,7 @@ NAME = Param.text("name", label="Name", help='What the group is called. Left out
 
 @REGISTRY.operation("bus.from_tracks", "Group the selected tracks: a new bus they all play to, made and routed in "
                     "one step. Give it effects or a fader afterwards (bus.set, effect.add).", target="track",
-                    params=[NAME], label="Group tracks", min_targets=2)
+                    params=[NAME], label="Group tracks", min_targets=1)
 def from_tracks(ctx, targets, args):
     tracks = [ctx.item(t) for t in targets]
     names_ = [t.get("name") or t["id"] for t in tracks]

@@ -126,3 +126,18 @@ Dabs are laid by the 2D engine's native stamper (`apps/2d/engine/stamp/`, Hem H8
 as the numpy path, bit for bit, about 10–12× faster. Build it with `cargo build -p rostrum2d-stamp --profile agent`
 in `apps/2d/engine` (or point `ROSTRUM_STAMP_LIB` at the library). Without it the kit still paints, the slow way, and
 says so: `canvas.status()` always, and the first `look_drawing` reply carries the note as a warning.
+
+## A stroke laid in pieces (live ink)
+
+While the pen is down, a live view lays the stroke a piece at a time: `brush.stamp_stroke(..., carry=brush.Carry(),
+piece=(from_t, open))` (or `canvas.stamp(..., carry=, piece=)`), each time with the whole stroke so far and the same
+`Carry` (the coverage laid, the wet reservoir, the next dab). Only the dabs not laid yet are laid, so a piece costs
+its own few dabs plus a plan of the stroke so far (~1.5 ms for 1800 px), and the pieces give the pixels of the whole
+stroke laid at once: no block at each piece's ends, the smear going on. `open=True` holds back the dab at the pen
+(the finished stroke has none there: its next dab comes a spacing on) and leaves out the end's raggedness and taper; the last piece (`open=False`) lays
+the end. The bristles' ragged start is sized by the stroke so far (a share of its length), so near the start the
+live ink differs from the finished stroke until it is laid again whole (`tests/test_pieces.py`).
+
+It needs the stroke's per-dab draws (`by_dab`, a stroke field, on for every new stroke; left out = the older draws,
+so strokes made before keep their pixels): with the older draws every extra dab moved the bristles. `native.straight8`
+turns a box of premultiplied pixels into straight RGBA8 in one call, writing into a box of a bigger picture.

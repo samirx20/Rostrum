@@ -63,7 +63,7 @@ Rectangle {
         PlayButton { objectName: "timelinePlay"; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
                      playing: backend.playing; onClicked: backend.togglePlay() }
         TimeReadout { id: readout; anchors.verticalCenter: parent.verticalCenter }
-        AddMarker { anchors.verticalCenter: parent.verticalCenter }
+        AddMarker { anchors.verticalCenter: parent.verticalCenter; askOn: ruler }
     }
     Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
         id: keysCurves

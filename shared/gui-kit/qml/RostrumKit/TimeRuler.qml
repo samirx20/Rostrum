@@ -5,9 +5,12 @@ import RostrumKit
 // (an app adds what else a scrub does: 2D plays a short burst of the sound there, Main.qml).
 // In a project folder the flags edit: drag = move, double-click = rename, × = delete (one marker operation each).
 // frameTicks: a tick per frame (2D: a frame-by-frame layer selected).
+// newMarker() (Add marker, an app's M key) asks the name under the playhead; Enter adds it on the playhead's frame
+// (one marker operation) when `addsMarkers` is on; off (the default), the app adds them from markerAdded (2D: RulerMenu).
 Ruler {
     property alias time: r.value
     property bool frameTicks: false     // one tick per frame (2D: a frame-by-frame layer selected)
+    property bool addsMarkers: false    // on: the name box's Enter adds the marker itself (markerEdit.addNamed), one marker operation
     property var cuts: []               // times the frame cuts at (2D): a short orange tick through the ruler, on the Frame row's cut keys
     id: r
     objectName: "timeRuler"
@@ -19,6 +22,11 @@ Ruler {
     onMarkerMoved: (id, at) => backend.markerEdit.move(id, at)
     onMarkerRenamed: (id, name) => backend.markerEdit.rename(id, name)
     onMarkerRemoved: (id) => backend.markerEdit.remove(id)
+    nextMarkerName: backend.markerEdit.available ? backend.markerEdit.freeName : "Marker 1"
+    onMarkerAdded: (name, shared, at) => {
+        const fps = backend.frameInfo.fps || 30
+        if (addsMarkers) backend.markerEdit.addNamed(name, Math.round(at * fps) / fps)
+    }
 
     Repeater {   // the frame's cuts: a vertical tick at each, the whole ruler's height
         model: r.cuts

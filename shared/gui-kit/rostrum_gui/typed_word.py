@@ -29,6 +29,7 @@ from PySide6.QtCore import Q_ARG, QEvent, QMetaObject, Qt, QTimer, Slot
 
 from .ack import ACK
 from .gui_filter import GuiFilter
+from .meta import has_method, has_property
 
 WORD_S = 0.3
 COMMAND_MODS = (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier
@@ -47,8 +48,7 @@ def droppable(event) -> bool:
 
 def is_field(item) -> bool:
     """`item` is a text field (the same test as the kit's OpenPopups.typing)."""
-    mo = item.metaObject() if item is not None else None
-    return mo is not None and mo.indexOfProperty("cursorPosition") >= 0 and mo.indexOfProperty("selectByMouse") >= 0
+    return item is not None and has_property(item, "cursorPosition") and has_property(item, "selectByMouse")
 
 
 def typing_in_field(win) -> bool:
@@ -62,13 +62,12 @@ def pass_unusable_key(win, event) -> None:
     """A number box with the caret in it (FieldFrame.numeric) cannot use Delete with nothing after the caret, or a letter: it
     claims every key before shortcuts are tried and QML cannot undo that, so it is asked here, first (FieldFrame.passKey)."""
     item = win.activeFocusItem() if hasattr(win, "activeFocusItem") else None
-    mo = item.metaObject() if item is not None else None
-    if mo is None or mo.indexOfMethod("passKey(QVariant)") < 0 or event.isAutoRepeat():
+    if item is None or not has_method(item, "passKey(QVariant)") or event.isAutoRepeat():
         return
     if event.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.MetaModifier):
         return
     name = "Delete" if event.key() == Qt.Key.Key_Delete else event.text()
-    if name:
+    if name and (name == "Delete" or name.isprintable()):       # (Enter's text is "\r": no letter, so never "type a number" after a typed 90 + Enter)
         QMetaObject.invokeMethod(item, "passKey", Qt.ConnectionType.DirectConnection, Q_ARG("QVariant", name))
         if name != "Delete" and item.property("passing"):     # a letter the box can't hold, on its way to a shortcut:
             return item, name                                 # if none runs, the box says so (TypedWord.unheard)
@@ -79,7 +78,7 @@ def say_unheard(item, name) -> None:
     """No shortcut took the letter a number box passed on: the box says it wants a number (NumberField.saysLetter), so
     the key never vanishes (INTERACTION.md principle 8)."""
     try:
-        while item is not None and item.metaObject().indexOfMethod("saysLetter(QVariant)") < 0:
+        while item is not None and not has_method(item, "saysLetter(QVariant)"):
             item = item.parentItem()            # (the caret is in the box's own text input)
         if item is not None:
             QMetaObject.invokeMethod(item, "saysLetter", Qt.ConnectionType.DirectConnection, Q_ARG("QVariant", name))

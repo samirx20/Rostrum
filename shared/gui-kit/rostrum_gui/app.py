@@ -42,10 +42,15 @@ def background() -> bool:
 
 def show_behind(win):
     """Show a check's window behind the person's work without taking the keyboard: Windows activates a program's first
-    window unless it is shown without activating (Qt's _q_showWithoutActivating), and it stays at the bottom."""
+    window unless it is shown without activating (Qt's _q_showWithoutActivating), and it stays at the bottom.
+
+    It keeps a normal frame (title bar "Test · …", minimise / maximise / close, draggable): the two hints alone made
+    Windows draw a bare popup with no caption, which looked like the app itself and could not be moved or closed."""
     from PySide6.QtCore import Qt
+    W = Qt.WindowType
     win.setProperty("_q_showWithoutActivating", True)
-    win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
+    win.setFlags(win.flags() | W.Window | W.WindowTitleHint | W.WindowSystemMenuHint | W.WindowMinMaxButtonsHint
+                 | W.WindowCloseButtonHint | W.WindowDoesNotAcceptFocus | W.WindowStaysOnBottomHint)
     win.setVisible(True)
     from .laid_out import watch                       # a window that draws no frame is laid out before each press or key
     watch(win)

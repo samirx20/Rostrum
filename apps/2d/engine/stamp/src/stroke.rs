@@ -18,9 +18,11 @@ const BAND: usize = 4;
 const PAR_PIXELS: usize = 64 * 1024;
 const PAR_DAB: usize = 2048;
 
-/// Lays `dabs` into `layer` (H×W×4) and fills `cov` (the stroke's bbox [x0, y0, x1, y1]).
+/// Lays `dabs` into `layer` (H×W×4) and fills `cov` (the stroke's bbox [x0, y0, x1, y1]). `carried`: the reservoir
+/// (D×D×4) written back after the last dab, and whether it is also where it starts (a stroke laid in pieces).
 #[allow(clippy::too_many_arguments)]
-pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], d: usize, layer: &mut [f32], cov: &mut [f32], under: Option<(&[f32], usize)>) -> Result<(), String> {
+pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], d: usize, layer: &mut [f32], cov: &mut [f32], under: Option<(&[f32], usize)>,
+           carried: Option<(&mut [f32], bool)>) -> Result<(), String> {
     let wet = st.wet > 0.0;
     let mut first = None;
     for (i, dab) in dabs.iter().enumerate() {
@@ -49,7 +51,14 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
     } else {
         Vec::new()
     };
+    let res_in = carried.as_ref().is_some_and(|c| c.1);
     let (mut res, mut pick) = if wet { (vec![0f32; d * d * 4], vec![0f32; d * d * 4]) } else { (Vec::new(), Vec::new()) };
+    if let (true, Some((from, true))) = (wet, carried.as_ref()) {
+        if from.len() != d * d * 4 {
+            return Err("the carried reservoir is not D×D×4".into());
+        }
+        res.copy_from_slice(from);
+    }
     let areas: Vec<usize> = dabs.iter().map(|b| ((b.bx[1] - b.bx[0]).max(0) * (b.bx[3] - b.bx[2]).max(0)) as usize).collect();
     let total: usize = areas.iter().sum();
     let lit = areas.iter().filter(|&&a| a > 0).count().max(1);
@@ -59,7 +68,7 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
         std::thread::available_parallelism().map_or(1, |n| n.get()).clamp(1, 8)
     };
     let job = Job {
-        st, dabs, h, w, d, bbox, under, under0: &under0, first, cap: cap(st, bbox, w), threads,
+        st, dabs, h, w, d, bbox, under, under0: &under0, first, res_in, cap: cap(st, bbox, w), threads,
         bar: Bar { n: threads, came: AtomicUsize::new(0), round: AtomicUsize::new(0) },
         layer: Ptr(layer.as_mut_ptr()), cov: Ptr(cov.as_mut_ptr()), res: Ptr(res.as_mut_ptr()), pick: Ptr(pick.as_mut_ptr()),
     };
@@ -73,6 +82,9 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
             }
             job.run(0);
         });
+    }
+    if let (Some(_), Some((to, _))) = (first, carried) {
+        to.copy_from_slice(&res);
     }
     Ok(())
 }
@@ -120,8 +132,9 @@ struct Job<'a> {
     bbox: [usize; 4],
     under: Option<(&'a [f32], usize)>,
     under0: &'a [f32],
-    /// The first dab that picks up (the reservoir starts as its pick-up).
+    /// The first dab that picks up (the reservoir starts as its pick-up, unless it goes on from a carried one).
     first: Option<usize>,
+    res_in: bool,
     /// What bounds every dab's coverage (`cap`).
     cap: (f64, f64),
     threads: usize,
@@ -150,7 +163,7 @@ impl Job<'_> {
             let reservoir = wet && self.first.is_some_and(|f| i >= f);
             if reservoir {
                 if !dab.again {
-                    self.pick_up(t, dab.at, self.first == Some(i));
+                    self.pick_up(t, dab.at, self.first == Some(i) && !self.res_in);
                 }
                 self.bar.wait();
             }

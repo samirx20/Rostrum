@@ -118,11 +118,20 @@ FAMILIES = {"strings": ("strings", "spiccatoStrings", "violins", "violas", "cell
             "brass": ("brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba"),
             "woodwinds": ("flute", "piccolo", "oboe", "clarinet", "bassoon", "saxophone"),
             "percussion": ("marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani")}
-FAMILY_OF = {f"builtIn:{k}": fam for fam, keys in FAMILIES.items() for k in keys}
+# Words every orchestral sound is also found by (critic r12: "orchestra" found nothing though strings, brass, harp and
+# timpani are all there). Saxophone is a woodwind but not an orchestra's.
+ORCHESTRA = "orchestra orchestral cinematic film score symphonic classical"
+FAMILY_OF = {f"builtIn:{k}": fam + ("" if k in ("saxophone", "classic.analogStrings") else f" {ORCHESTRA}")
+             for fam, keys in FAMILIES.items() for k in keys}
+FAMILY_OF["builtIn:classic.cinematicBrass"] = "brass cinematic film"
 # Other words people search a sound by (found, never shown).
 ALSO = {"builtIn:vibraphone": "vibes", "model:vibraphone": "vibes", "builtIn:saxophone": "tenor sax",
         "builtIn:electricPiano": "wurlitzer", "builtIn:piano": "grand", "builtIn:uprightBass": "double jazz",
         "kit:jazz": "brush swing"}
+
+
+# What an unmatched search offers when no name is spelled close to it: one sound from each main family.
+TRY = ("builtIn:piano", "builtIn:strings", "builtIn:brass", "builtIn:flute", "builtIn:acousticGuitar", "kit:drums")
 
 
 def _holds(text: str, word: str) -> bool:
@@ -161,7 +170,8 @@ def missed(text: str, kind: str) -> dict:
     best = max(score.values(), default=0)          # the nearest words only: a far third guess is noise
     near = list(dict.fromkeys(n for w in sorted(score, key=score.get, reverse=True)
                               if score[w] >= max(0.5, best - 0.1) for n in words[w]))[:3]
-    return {"say": f"No “{text}” here." + (f" Closest: {', '.join(near)}" if near else ""), "chip": ""}
+    near = near or [e["label"] for e in ENTRIES if e["key"] in TRY]   # nothing spelled close: the main families
+    return {"say": f"No “{text}” here. " + ("Closest: " if score and best >= 0.5 else "Try: ") + ", ".join(near), "chip": ""}
 
 
 def _entry_of(key: str) -> dict | None:

@@ -151,11 +151,12 @@ Column {
 
     Column {   // the project's swatches
         spacing: Theme.grid + 2; width: parent.width
-        Text { visible: p.project.length > 0; text: "Project colours"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
+        // the heading always shows and the + comes first, so keeping a colour moves nothing under the pointer (a new
+        // swatch lands after the +; the heading appearing with the first one pushed the row down)
+        Text { text: "Project colours"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
         Flow {
             width: parent.width; spacing: Theme.grid + 2
-            Repeater { model: p.project; delegate: Swatch { required property string modelData; hex: modelData } }
-            Rectangle {     // an empty swatch's place: + keeps this colour here
+            Rectangle {     // + keeps this colour here
                 objectName: "swatchAdd"; width: 20; height: 20; radius: 4
                 color: addHover.hovered ? Theme.hover : "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
                 Text { anchors.centerIn: parent; text: "+"; color: addHover.hovered ? Theme.fg : Theme.fg2
@@ -164,7 +165,8 @@ Column {
                 TapHandler { id: addTap; onTapped: p.swatchAdd(p.current) }
                 HoverTip { text: "Add this colour to the project"; hovered: addHover.hovered; pressed: addTap.pressed }
             }
-            Text {      // none kept yet: the + says what it is for, in place of a heading over nothing
+            Repeater { model: p.project; delegate: Swatch { required property string modelData; hex: modelData } }
+            Text {      // none kept yet: the + says what it is for
                 visible: p.project.length === 0; height: 20; verticalAlignment: Text.AlignVCenter
                 text: "Keep this colour in the project"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
             }

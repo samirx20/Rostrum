@@ -1,15 +1,15 @@
 {
- "about": "A starting-balance offset in dB per preset, on top of its measured loudness match (preset_levels.json): drums and bass sit under, brass is not louder than strings in a full chord. Measured on a fresh 8-bar song at the default volumes through the master's -14 LUFS (devtools/level_match.py applies these when it writes the table).",
+ "about": "A starting-balance offset in dB per preset, on top of its measured loudness match (preset_levels.json): drums and bass sit a little under, brass a little under strings. Kept within 2.5 dB so every plain instrument still starts within about 3 LU of the others (2026-10-27, critic r12; devtools/level_match.py applies these when it writes the table).",
  "offsetsDb": {
-  "kit:studio": -4.5,
-  "kit:drums": -3,
-  "builtIn:bass": -2,
-  "builtIn:brass": -8,
-  "builtIn:trombone": -5,
-  "builtIn:horn": -3,
-  "builtIn:trumpet": -3,
-  "builtIn:strings": 3,
-  "kit:jazz": -3,
-  "builtIn:mutedTrumpet": -3
+  "kit:studio": -2.5,
+  "kit:drums": -2,
+  "kit:jazz": -2,
+  "builtIn:bass": -1.5,
+  "builtIn:brass": -2,
+  "builtIn:trombone": -1.5,
+  "builtIn:horn": -1,
+  "builtIn:trumpet": -1,
+  "builtIn:mutedTrumpet": -1,
+  "builtIn:strings": 1
  }
 }

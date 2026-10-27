@@ -45,7 +45,6 @@ MouseArea {
     readonly property string chip: mode === "drag" ? moveChip() : mode === "handle" ? chipNow() : mode === "point" && holding ? pointChip() : ""
     property string chipHint: ""
     property string pointTrack: ""      // an automation point drag's row
-    property var boxWas: []             // the selection when a box started (Esc gives it back)
     property bool holding: false        // this drag holds Esc (dragEsc)
     property int row0: -1
     // "press" (on an item) | "hpress" (on a handle) | "drag" | "handle" | "empty" | "box" | "point" | "gone" (Esc'd, until the release)
@@ -73,7 +72,7 @@ MouseArea {
             if (!m.holding) return
             m.holding = false
             if (m.mode === "drag" || m.mode === "point" || m.mode === "handle") backend.cancelDrag()
-            else if (m.mode === "box") { backend.endBox(); backend.pickMany(m.boxWas) }
+            else if (m.mode === "box") backend.cancelBox()          // the selection as before the box
             m.mode = "gone"; m.chipHint = ""
         }
     }
@@ -219,7 +218,6 @@ MouseArea {
         } else if (mode === "hpress" && far(e)) {
             mode = backend.beginHandle(hit, handle) ? "handle" : ""
         } else if (mode === "empty" && far(e)) {
-            boxWas = Object.keys(Picks.all(backend, backend.pickStamp))
             mode = "box"
         }
         if (mode === "drag" || mode === "handle" || mode === "box" || (mode === "point" && far(e))) hold()   // Esc is the drag's now

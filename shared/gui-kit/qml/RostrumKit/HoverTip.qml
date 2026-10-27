@@ -56,7 +56,9 @@ Item {
         ignoreUnknownSignals: true
         function onVisibleChanged() { if (tip.parent && !tip.parent.visible) { rest.stop(); tip.close(); tip.clicked = false; tip.held = false } }
     }
-    Component.onDestruction: tip.close()
+    // the line itself, not tip.close(): a tip going with its panel may have lost its own functions already
+    // (Sound's grid menu closing: "Property 'close' … is not a function", a Qt fault in a scripted run)
+    Component.onDestruction: if (line && line.item) line.item.close()
     onPressedChanged: if (pressed) { rest.stop(); tip.close() }
     Component.onCompleted: if (hovered) { watch(); if (!pressed) rest.restart() }     // made already hovered (a tip loaded on hover)
 }

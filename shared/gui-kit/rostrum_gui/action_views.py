@@ -143,16 +143,17 @@ def _bar_menu(items: list[dict]) -> list[dict]:
     return out
 
 
-def panel(entries: list[dict], short: tuple | None = None) -> dict:
-    """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
-    ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
-    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks.
+def panel(entries: list[dict], short: tuple | None = None, keeps: tuple = ()) -> dict:
+    """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's (save
+    KEEP and the app's own `keeps`: ActionList.panel_keeps) and the ones marked `panel: False`. The primary ones are
+    buttons, in order; actions sharing a `bar` are one titled row ("Combine": Union, Subtract …), the others one
+    untitled row where its first one ranks.
     Fixed slots (F11): what applies to ONE item comes first, then what needs two or more, each by rank; so selecting
     one more item only adds actions after the ones already there (Align keeps its place on a text, two shapes or a
     mix). The secondary ones are one "⋯" menu at the very end of the row (folded like right-click); with no main
     action at all there is no row (a lone "⋯" is never shown: those actions stay on right-click and in Ctrl+K).
     {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
-    menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
+    menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP) - set(keeps)
     mine = [e for e in off_rows(entries) if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
     rows, by = [], {}
     for e in (e for e in mine if e["importance"] == "primary"):

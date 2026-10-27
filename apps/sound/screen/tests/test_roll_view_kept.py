@@ -95,3 +95,22 @@ def test_a_reopened_song_shows_the_roll_where_it_was_left(tmp_path, monkeypatch)
         assert (_middle(screen.win), round(b.viewStart, 3), round(b.viewSpan, 3)) == left
     finally:
         screen.close()
+
+
+def test_an_open_automation_lane_is_open_again_after_a_reopen(tmp_path, monkeypatch):
+    """Lanes left open come back with the song (view_kept `lanes`); a lane of a track that is gone is dropped."""
+    QGuiApplication.instance() or QGuiApplication([])
+    monkeypatch.setattr(playback, "open_engine", FakeEngine)
+    doc = Document.new(KIND, folder=tmp_path / "S", item=ITEM)
+    doc.run_script("song.py", run_source(SRC, "song.py"))
+    doc.save()
+    b = _open(tmp_path / "S")
+    lead = next(r["id"] for r in b.tracks if r["name"] == "lead")
+    b.toggleLanes(lead)
+    assert lead in b._open
+    b._close_view()
+    b.close()
+    again = _open(tmp_path / "S")
+    again._rebuild()
+    assert again._open.get(lead) == (lead, "volume")
+    again.close()

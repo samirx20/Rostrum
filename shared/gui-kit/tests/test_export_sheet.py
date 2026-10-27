@@ -96,3 +96,16 @@ def test_the_name_typed_in_the_sheet_is_the_file_written(tmp_path):
     assert (tmp_path / "my film v2.txt").is_file()
     sheet.setNameStem("")                                 # empty = the app's own name again
     assert sheet.fileName == "Main.txt"
+
+
+def test_a_typed_folder_is_made_and_written_into_or_says_why_not(tmp_path):
+    sheet = Sheet(Bridge())
+    new = tmp_path / "renders" / "today"
+    assert sheet.typeFolder(f'"{new}"') == "" and sheet.folder == str(new) and new.is_dir()   # made, quotes dropped
+    export(sheet)
+    assert (new / "Main.txt").read_text(encoding="utf-8") == "new"
+    (tmp_path / "a file").write_text("x", encoding="utf-8")
+    for refused in (str(tmp_path / "a file"), str(tmp_path / "a file" / "inside"), "only/relative"):
+        assert sheet.typeFolder(refused) != "", refused                                  # said, in a sentence
+        assert sheet.folder == str(new)                                                  # the old folder kept
+    assert sheet.typeFolder("") == "" and sheet.folder == ""                             # empty: the default again

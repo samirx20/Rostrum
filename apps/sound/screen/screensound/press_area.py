@@ -16,6 +16,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QPointF, QRectF
 from PySide6.QtQuick import QQuickItem
 from rostrum_gui.gui_filter import GuiFilter
+from rostrum_gui.meta import class_name
 
 AREAS = (("soundDock", "roll"), ("soundArrangement", "arrange"))
 
@@ -37,7 +38,7 @@ class PressArea(GuiFilter):
         ov = self.items.get("overlay")
         if ov is None:
             ov = next((c for c in self.win.contentItem().childItems()
-                       if c.metaObject().className() == "QQuickOverlay"), None)
+                       if class_name(c) == "QQuickOverlay"), None)
             if ov is not None:
                 self.items["overlay"] = ov
         return ov

@@ -17,7 +17,9 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from .history_rows import who_name
 
 QUIET_MS = 5000      # no change for this long: the run has ended (or paused) and the chip offers Review
-FLASH_MS = 1000      # how long a changed item's outline shows
+FLASH_MS = 1000      # how long a changed item's outline fades (ChangeOutline.qml)
+HOLD_MS = 250        # it shows whole this long first: the new picture lands after the change is heard (2D's engine frame)
+KEEP_MS = HOLD_MS + FLASH_MS + 250      # the ids stay this long, so the outline is never taken away mid-fade
 
 
 class AgentWatch(QObject):
@@ -30,7 +32,7 @@ class AgentWatch(QObject):
         self._flash, self._message, self._text, self._mine = [], "", "", False
         self._seen: dict[int, int] = {}          # per document: the newest step already counted
         self._quiet = self._timer(QUIET_MS, self._rest)
-        self._fade = self._timer(FLASH_MS, self._unflash)
+        self._fade = self._timer(KEEP_MS, self._unflash)
 
     def _timer(self, ms, fn):
         t = QTimer(self)

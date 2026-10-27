@@ -122,9 +122,10 @@ def _paper(w, h, picture="tooth", scale=1.0, at=(0, 0), wrap=False):
         return _PAPER[key]
 
 
-def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0), carry=None):
+def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0), carry=None, piece=None):
     """Paint one stroke (or fill) item into a layer (in place); its Coverage or None. The one place a stroke item
-    becomes brush-engine arguments. `at`: where the paper starts (`origin`). `carry`: brush.stamp_stroke's."""
+    becomes brush-engine arguments. `at`: where the paper starts (`origin`). `carry`, `piece`: brush.stamp_stroke's
+    (a stroke laid in pieces while the pen draws it)."""
     rgb = [int(s["color"][i:i + 2], 16) / 255 for i in (1, 3, 5)]
     mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
     if s["type"] == "fill":
@@ -135,10 +136,12 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0), carry=Non
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
                   sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS},
                   even=s.get("even", False), texture=s.get("texture", "none"),   # absent: made before they were
-                  wrap=bool(s.get("wrap")))     # seamless: the canvas's edges joined (wrap.py)
+                  wrap=bool(s.get("wrap")),     # seamless: the canvas's edges joined (wrap.py)
+                  by_dab=bool(s.get("by_dab")))     # absent: made before per-dab draws, its older draws kept
     paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0), at, params["wrap"])
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
-                              under=under if params["sample_all"] else None, paper=paper, lay=LAY, carry=carry, **params)
+                              under=under if params["sample_all"] else None, paper=paper, lay=LAY, carry=carry,
+                              piece=piece, **params)
 
 
 _CHAINS: OrderedDict = OrderedDict()     # (paint id, w, h) -> (its strokes, what they read, their chain keys)

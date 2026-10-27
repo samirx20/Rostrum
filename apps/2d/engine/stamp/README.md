@@ -17,10 +17,17 @@ says which (`take_weak`).
 
 | File | Job |
 |---|---|
-| `src/lib.rs` | the C entry `rostrum2d_stamp_dabs`, the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
+| `src/lib.rs` | the C entries `rostrum2d_stamp_dabs` and `rostrum2d_stamp_straight8` (premultiplied float -> straight RGBA8 for a box, `compose.straight8`'s bytes), the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
 | `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`); the fast paths below |
 | `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask; `reach`, the columns of a row the tip's shape can cover |
 | `src/paint.rs` | paint meets the layer (normal, multiply, erase, screen, add) |
+
+## A stroke in pieces (layout 5)
+
+The kit lays a live stroke a piece at a time (`brush.stamp_stroke`'s `piece`): each call gets only that piece's dabs,
+and the wet reservoir as the last piece left it (`res`, D×D×4, with `P_RES_IN`); it is written back after the last
+dab. The stroke's ends (a block's ragged ends) come from the whole stroke in `P_R0`, `P_RL`, `P_LENGTH`, not from the
+piece's first and last dab.
 
 ## Build
 

@@ -24,6 +24,7 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QRectF
 
+from .meta import class_chain, class_name
 from .settle import live
 
 MIN_CLICK = 16            # px (logical): smaller than this is hard to hit with a mouse
@@ -64,18 +65,13 @@ class Node:
 
 
 def cls(o) -> str:
-    return o.metaObject().className()
+    return class_name(o)
 
 
 def scrolls(o) -> bool:
     """A scrolling list or area, including an app's own QML type built on one (its class is "LayerRows_QMLTYPE_7",
     a ListView underneath): a half-scrolled row in it is not cut text."""
-    m = o.metaObject()
-    while m is not None:
-        if m.className().startswith(FLICK):
-            return True
-        m = m.superClass()
-    return False
+    return any(c.startswith(FLICK) for c in class_chain(o))
 
 
 def short(o) -> str:

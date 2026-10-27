@@ -15,6 +15,7 @@ from rostrum_core import Document  # noqa: E402
 from rostrum_gui.pointer import wait_until  # noqa: E402
 from rostrum_sound import KIND, run_source  # noqa: E402
 from screensound import playback  # noqa: E402
+from rostrum_gui.meta import class_name  # noqa: E402
 from screensound.files_sound import ITEM  # noqa: E402
 from test_amounts_popover import click, items, shown  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
@@ -56,7 +57,7 @@ def open_box(screen, entry_text=None):
     QTest.qWait(300)
     if entry_text:
         click(win, shown(win, "amount_until"))
-        click(win, next(it for it in items(win) if it.isVisible() and it.metaObject().className().startswith("QQuickText")
+        click(win, next(it for it in items(win) if it.isVisible() and class_name(it).startswith("QQuickText")
                         and str(it.property("text")).startswith(entry_text)))
 
 

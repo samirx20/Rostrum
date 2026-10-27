@@ -61,30 +61,18 @@ Rectangle {
                     MixRoutes { id: routes; width: parent.width; strip: s }
                 }
             }
-            Item {   // the Master: "+ Group", level with the other strips' output line
-                visible: s.isMaster
-                Layout.fillWidth: true; Layout.preferredHeight: 20
-                MixChip { objectName: "addGroup"; text: "+ Group"; row: true; flat: true; width: parent.width; anchors.verticalCenter: parent.verticalCenter
-                          tip: "New group: a shared channel several tracks play into"; onClicked: mixer.addBus() }
-            }
-            Item {   // where it plays to: a pick when there is a bus to choose, plain words when the master is the only place
+            Item {   // where it plays to: a list on every track and group (critic r12: "→ Master" showed nothing on a click)
                 visible: s.routed
                 Layout.fillWidth: true; Layout.preferredHeight: 20
-                MixPick {
-                    visible: s.routed && s.model.outputs.length > 1
+                MixPick {   // always a list: Master, the groups it can play into, and a new group holding this track
+                    objectName: "output:" + s.model.id
                     anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.shown ? sendsBtn.left : parent.right
                               rightMargin: sendsBtn.shown ? Theme.grid : 0 }
                     row: true
-                    text: s.model.output; choices: s.model.outputs
+                    text: s.model.output
+                    choices: s.model.canSolo ? s.model.outputs.concat([{ id: "+new", label: "New group" }]) : s.model.outputs
                     tip: "Plays to " + s.model.output.replace(/^→\s*/, "") + ". Click to pick the master or a group"
-                    onPicked: (id) => mixer.setOutput(s.model.id, id)
-                }
-                Text {
-                    visible: s.routed && s.model.outputs.length <= 1
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.shown ? sendsBtn.left : parent.right }
-                    leftPadding: Theme.gap; verticalAlignment: Text.AlignVCenter
-                    text: s.model.output; color: Theme.fg2; elide: Text.ElideRight
-                    font.family: uiFont; font.pixelSize: Theme.label
+                    onPicked: (id) => id === "+new" ? mixer.newGroupFor(s.model.id) : mixer.setOutput(s.model.id, id)
                 }
                 MixChip {   // a low dock: the sends and ducks open from here, so they stay one click away
                     id: sendsBtn
@@ -93,8 +81,8 @@ Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     readonly property bool open: !!sendsPop.item && sendsPop.item.opened
                     height: 20; selected: open
-                    text: "…"   // the same on every strip: the output's name keeps the room
-                    tip: open ? "" : "Reverb send, sends to groups and dips"
+                    text: "Sends"   // the same on every strip
+                    tip: open ? "" : "Sends: the reverb send, sends to groups and dips"
                     onClicked: { sendsPop.active = true; open ? sendsPop.item.close() : sendsPop.item.open() }
                     Loader {   // made on the first click: every strip has one, and a closed one made its sends and picks anyway
                         id: sendsPop

@@ -42,6 +42,7 @@ from PySide6.QtCore import Property, QEvent, QObject, QPointF, QRectF, QTimer, S
 from . import qt_faults
 from .after_frame import AfterFrame
 from .gui_filter import GuiFilter
+from .meta import class_name, has_property
 
 LINE_MS = 200       # the working line and note show this long into a run
 CHIP_MS = 1000      # the job chip (with Cancel, or "can't be stopped part-way") this long in
@@ -88,7 +89,7 @@ class _Run:
 def _mark(item, on: bool):
     """The control's working look (a kit control with a `working` property); a freed one is left alone."""
     try:
-        if item is not None and item.metaObject().indexOfProperty("working") >= 0:
+        if item is not None and has_property(item, "working"):
             item.setProperty("working", on)
     except RuntimeError:        # its QML item went away meanwhile (a row rebuilt by the action)
         pass
@@ -293,14 +294,14 @@ class PopupPresses(GuiFilter):
         if obj is not self.win or event.type() != QEvent.Type.MouseButtonPress:
             return False
         area = opener_area(self.win, event.position())
-        if area and self.win.metaObject().indexOfProperty("focusArea") >= 0 and self.win.property("focusArea") != area:
+        if area and has_property(self.win, "focusArea") and self.win.property("focusArea") != area:
             self.win.setProperty("focusArea", area)
         return False
 
 
 def opener_area(win, at) -> str:
     """The area that opened the newest open kit popup under the window point `at` ("" when none is there)."""
-    ov = next((c for c in win.contentItem().childItems() if c.metaObject().className() == "QQuickOverlay"), None)
+    ov = next((c for c in win.contentItem().childItems() if class_name(c) == "QQuickOverlay"), None)
     if ov is None:
         return ""
     p = QPointF(at.x(), at.y())

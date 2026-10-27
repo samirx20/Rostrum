@@ -11,13 +11,14 @@ The script API is in inspect_guide `script`; instruments in `library`.
   `{"beat": n}` (or `bar(n)` in a script).
 - **Volume:** a bare number is gain 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB). The screen shows dB; agents may give dB too:
   `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master. **Every plain-named
-  instrument, modelled instrument, synth wave and drum kit is level-matched** (measured: a typical comp, bass, lead
-  line, pad or groove for each comes out equally loud), and on top of that each starts at a rough-mix level: the
-  recorded drum kits and the bass sit a few dB under, brass is no louder than strings in a full chord, strings a little
-  up. So tracks written as the part each suits (the table below) at the same volume are roughly balanced: a piano comp
-  at 0 dB sits over the bass and drums at 0 dB. The master's gentle limiting keeps its limiter to 2 dB at most (it turns
-the whole mix down instead: guides/mixing-to-delivery.md). Roughly, not exactly:
-  the same chord on every sound spreads about 11 dB, so check with `look_sound` (`what: "levels"`) after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
+  instrument, modelled instrument, synth wave and drum kit is level-matched** (measured on three phrases each: a typical comp, bass, lead line, pad or groove as agents write it, the same notes
+  at the Editor's velocity 0.8, and a held line of one note a bar; their mean comes out equally loud, so every one
+  starts within about 3 LU of the others), and on top of that each starts at a rough-mix level: the recorded drum
+  kits, the bass and the brass sit up to 2.5 dB under, strings 1 dB up. So tracks at the same volume are roughly
+  balanced: a piano comp at 0 dB sits over the bass and drums at 0 dB. The master's gentle limiting keeps its limiter
+  to 2 dB at most (it turns the whole mix down instead: guides/mixing-to-delivery.md). Roughly, not exactly: recorded
+  instruments answer velocity very differently (string sections and brass get much louder when played hard), and a
+  sound played outside its part (one loud chord on a glockenspiel) can be several dB off, so check with `look_sound` (`what: "levels"`) after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
   is quieter than a bass note at 0.9. Sampled (SFZ) files you point at, plug-in instruments and recorded clips are not matched (their level is the file's).
 - **The song's length** (`length`) is where it ends, a time: `bar(9)` is where bar 9 starts, so `length(bar(9))` is an
   8-bar song. For N bars write `length(bar(N+1))`. `run_script` and `inspect_item` (the song) end with the length in

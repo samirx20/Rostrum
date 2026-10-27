@@ -101,19 +101,38 @@ class RenderExport(ExportSheet):
         self._watching = on
 
     def _seed(self):
-        """The first time the sheet shows a song in this window, its choices start from the song's last export
-        (export_versions.last_choices), so they are what the person chose last time; later in the window they are
-        kept as the person leaves them."""
+        """The first time the sheet shows a song in this window, its choices start from the song's own: the ones the
+        person left in the sheet, kept with the song's view (view_kept.py `export`: closing the sheet without exporting,
+        a restart or cleaning the renders folder loses nothing), else the ones its last export was made with
+        (export_versions.last_choices: a song exported by an agent). Later in the window they are kept as the person
+        leaves them."""
         doc = self.bridge.doc
         key = (str(doc.folder or ""), doc.item_id or "")
         if key == getattr(self, "_seeded", None):
             return
-        self._seeded, last = key, last_choices(doc.folder, doc.item_id)
-        if last is None or self.running():
+        self._seeded = key
+        kept = self._kept()
+        last = (kept.export if kept is not None else None) or last_choices(doc.folder, doc.item_id)
+        if not last or self.running():
             return
-        self._format = last["format"] if last["format"] in deliver.BY_FORMAT else self._format
-        self._trim, self._stems, self._markers = last["trim"], last["stems"], last["markers"]
+        self._format = last.get("format") if last.get("format") in deliver.BY_FORMAT else self._format
+        self._rate = last["rate"] if isinstance(last.get("rate"), int) else self._rate
+        self._stems = last.get("stems") if last.get("stems") in export_stems.MODES else self._stems
+        self._trim, self._markers = bool(last.get("trim", True)), bool(last.get("markers"))
         self.changed.emit()
+
+    def _kept(self):
+        """The song's kept view (view_kept.py), where the sheet's choices are kept; None for a bridge without one."""
+        kept = getattr(self.bridge, "_kept_view", None)
+        return kept() if callable(kept) else None
+
+    def _keep(self):
+        """The person changed a choice: it is kept with the song at once (written like the view, within WRITE_S)."""
+        self.changed.emit()
+        kept = self._kept()
+        if kept is not None:
+            kept.keep_export({"format": self._format, "rate": self._rate, "trim": self._trim, "stems": self._stems,
+                              "markers": self._markers})
 
     def _news(self, *_):
         if self._watching:
@@ -332,23 +351,23 @@ class RenderExport(ExportSheet):
     @Slot(str)
     def setFormat(self, value):
         self._format = value
-        self.changed.emit()
+        self._keep()
 
     @Slot(str)
     def setRate(self, value):
         self._rate = int(value)
-        self.changed.emit()
+        self._keep()
 
     @Slot(str)
     def setStemsMode(self, value):
         if value in export_stems.MODES:
             self._stems = value
-            self.changed.emit()
+            self._keep()
 
     @Slot(bool)
     def setMarkers(self, on):
         self._markers = bool(on)
-        self.changed.emit()
+        self._keep()
 
     @Slot(str)
     def usePreset(self, name):
@@ -360,7 +379,7 @@ class RenderExport(ExportSheet):
         if self.running():
             return
         self._format, self._rate, self._trim, self._stems, self._markers = p["format"], p["sampleRate"], p["trim"], p["stems"], p["markers"]
-        self.changed.emit()
+        self._keep()
 
     @Slot(str, bool)
     def setPreset(self, name, on):
@@ -369,7 +388,7 @@ class RenderExport(ExportSheet):
             return self.usePreset(name)
         if not self.running():
             self._format, self._rate, self._trim, self._stems, self._markers = deliver.DEFAULT_FORMAT, 0, True, "off", False
-            self.changed.emit()
+            self._keep()
 
     @Property(bool, notify=own)
     def canTakeBack(self):
@@ -383,7 +402,7 @@ class RenderExport(ExportSheet):
     @Slot(bool)
     def setTrim(self, on):
         self._trim = bool(on)
-        self.changed.emit()
+        self._keep()
 
     def _measured(self) -> dict:
         """The render that plays now, with the loudness and peak of the exported range alone when one is chosen (the file

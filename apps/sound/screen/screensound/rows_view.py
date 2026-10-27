@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer
 
-from . import lanes, stepped, timeline, voice_card, voice_takes
+from . import lanes, stepped, timeline, view_kept, voice_card, voice_takes
 from .block_memo import BlockMemo
 from .roll_view import RollView, shape
 
@@ -84,6 +84,9 @@ class RowsView(RollView):
         change to the document, a row whose track is the same object in the same place with the same lane open is
         taken as it was (as a drag's step does). A rebuild with the document as it was (a lane opened, a take made,
         a line spoken) makes every row again: what they show changed outside the song."""
+        if "_lanes_back" not in self.__dict__:      # the song's first build: the lanes left open come back (view_kept.py)
+            self.__dict__["_lanes_back"] = True
+            self._open.update(view_kept.lanes_of(view_kept.read(self.doc.folder, self.doc.item_id)))
         root, was, old = self.doc.data, self._open, self._view
         if "_rest_" in self.__dict__:
             self._rest.stop()

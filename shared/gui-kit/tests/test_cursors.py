@@ -1,5 +1,6 @@
 """The canvas pointers (CURSORS.md): a turned pointer keeps its hotspot exact, angles snap to 5° steps, each pointer is
-made once, an unknown name fails loudly, and a held key changes the pointer with the mouse still (CANVAS 1.1).
+made once, an unknown name fails loudly, a pointer in a Repeater's delegate that goes never takes the window's Python
+handle with it, and a held key changes the pointer with the mouse still (CANVAS 1.1).
 
 The held-key check runs a real window behind the person's work on Windows' own screen platform, in its own process:
 an offscreen window has no real pointer to set."""
@@ -60,6 +61,36 @@ def test_an_unknown_name_fails_loudly(qt):
     with pytest.raises(ValueError):
         item.kind = "arow"
     assert item.kind == "pick"
+
+
+SHRINKS = b"""
+import QtQuick
+import RostrumCursors
+Window { width: 300; height: 200
+  property var pts: [1, 2, 3, 4, 5]
+  Repeater { model: pts.length
+    delegate: Item { required property int index
+      Rectangle { x: index * 20; width: 9; height: 9
+        MouseArea { anchors.fill: parent; anchors.margins: -4; CanvasCursor { kind: "pick"; badge: "point" } } } } } }
+"""
+
+
+def test_a_shrinking_repeater_keeps_the_window_alive(qt):
+    """2D's path points: a plain Repeater's model shrinks (Esc ends editing) and its delegates go, parent first; the
+    window's Python handle must still work afterwards (before 5e063ebf it died on the first shrink)."""
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtQml import QQmlApplicationEngine
+    import rostrum_gui.cursor_item  # noqa: F401 (registers RostrumCursors)
+    engine = QQmlApplicationEngine()
+    engine.loadData(SHRINKS)
+    win = engine.rootObjects()[0]
+    for pts in ([1, 2, 3], [1], [], [1, 2], []):
+        win.setProperty("pts", pts)
+        for _ in range(3):
+            qt.processEvents()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        assert win.width() == 300 and win.property("pts") == pts
+    win.close()
 
 
 def test_theme_names_match():

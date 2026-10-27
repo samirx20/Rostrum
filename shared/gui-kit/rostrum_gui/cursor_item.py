@@ -17,13 +17,21 @@ window hears Alt / Ctrl / Shift and pokes every CanvasCursor; QQuickItem.setCurs
 when the mouse's last position is inside the item (Qt re-picks the window's pointer there), so no hover is needed.
 The held state is read again from each mouse move and when the app comes back to the front (Alt+Tab never leaves
 a stale copy badge). An unknown kind or badge raises (the scripted run fails) and the pointer shows `no` meanwhile.
+
+It never calls its own `window()` or `parentItem()`: PySide makes what a getter like those returns a Python child of
+the caller, so when the cursor went away (an automation lane closed, a song swapped in) the window's Python object went
+with it, and the app's own handle on its window was dead ("Internal C++ object already deleted"; the window could no
+longer close first at quit, and every binding then read the freed song). The window and parent come from their
+change signals, or from lookups that tie nothing (`_window_now`, the `parent` property). It keeps no Python handle on
+its parent either: a delegate whose Repeater's model shrinks is torn down parent first, and the parent's size links are
+dropped by their own handles, never by calling into the half-destroyed parent.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QEvent, QPointF, Qt, Signal
+from PySide6.QtCore import Property, QEvent, QObject, QPointF, Qt, Signal
 from PySide6.QtGui import QCursor, QGuiApplication
 from PySide6.QtQml import QmlElement
-from PySide6.QtQuick import QQuickItem
+from PySide6.QtQuick import QQuickItem, QQuickWindow
 
 from .cursors import check, cursor, scale_for, snap, STEP
 from .gui_filter import GuiFilter
@@ -106,7 +114,7 @@ class CanvasCursor(QQuickItem):
         super().__init__(parent)
         self._kind, self._angle, self._badge = "pick", 0.0, ""
         self._altBadge = self._ctrlBadge = self._shiftBadge = ""
-        self._shown, self._parent = "", None
+        self._shown, self._links, self._win = "", (), None
         self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         self.setAcceptHoverEvents(False)
         self.parentChanged.connect(self._follow)
@@ -144,7 +152,7 @@ class CanvasCursor(QQuickItem):
     def _apply(self):
         kind, badge = self.showing()
         check(kind, badge)
-        win = self.window()
+        win = self._win
         scale = scale_for(win)
         self.setCursor(cursor(kind, self._angle, badge, scale, win.devicePixelRatio() if win else 1.0))
         shown = f"{kind}{'+' + badge if badge else ''}@{snap(self._angle) * STEP}"
@@ -157,30 +165,37 @@ class CanvasCursor(QQuickItem):
         roll) the parent was set before the parentChanged link or the window came first, which left the item 0×0
         and `shown` empty until some value changed."""
         super().componentComplete()
-        if self.parentItem() is not self._parent:
-            self._follow(self.parentItem())
-        if self.window() is not None:
-            self._window(self.window())
+        self._follow(self.property("parent"))
+        if self._win is None and (win := self._window_now()) is not None:
+            self._window(win)
+
+    def _window_now(self):
+        """The window showing this item, found without `self.window()` (see the module's note)."""
+        for w in QGuiApplication.topLevelWindows():
+            if isinstance(w, QQuickWindow) and w.contentItem().isAncestorOf(self):
+                return w
+        return None
 
     def _held(self):
         self.heldChanged.emit()             # bindings on altHeld … may change kind first
         self._apply()
 
     def _window(self, win):
+        self._win = win
         HELD.watch_window(win)
         if win is not None:
             self._apply()
 
     def _follow(self, parent):
-        if self._parent is not None:
-            self._parent.widthChanged.disconnect(self._fit)
-            self._parent.heightChanged.disconnect(self._fit)
-        self._parent = parent
+        for link in self._links:
+            QObject.disconnect(link)
+        self._links = ()
         if parent is not None:
-            parent.widthChanged.connect(self._fit)
-            parent.heightChanged.connect(self._fit)
+            self._links = (parent.widthChanged.connect(self._fit), parent.heightChanged.connect(self._fit))
             self._fit()
 
     def _fit(self):
-        self.setPosition(QPointF(0, 0))
-        self.setSize(self._parent.size())
+        parent = self.property("parent")
+        if parent is not None:
+            self.setPosition(QPointF(0, 0))
+            self.setSize(parent.size())

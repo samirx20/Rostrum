@@ -72,13 +72,14 @@ The range is read as the song was before the call. Operations' own arguments: `i
    with the song).
 5. **Render.** `render_mix` with `stems: true`, then `inspect_job` until it is done.
 6. **Look at the result.** `look_sound` (`what`: `loudness` by default, `levels`, `low_end`, `clash`, `spectrum`, `stereo`) and
-   `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` (with `track`) checks a chord part note by note; the loudness summary names the loudest moment and its time and has an `ending` line (see 8). Which tool answers which question: `listening`. Whether it is musical is
+   `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` (with `track`) checks a chord part note by note; the loudness summary names the loudest moment and its time, the loudness of each section (`data.sections`), and has an `ending` line (see 8); `start` / `end` (seconds, `{"beat": n}` or `"#marker"`) measure one stretch only. Which tool answers which question: `listening`. Whether it is musical is
    for a person to hear; say so in your report.
 7. **Fix, render again.** Change one thing at a time. To change a value a script made, edit the script and run it again under
    the same `name`; to change one value, use `edit_document`.
 8. **End it cleanly** (`topic: "script"`, section "Ending a song") and render the last version. Check the end with
    `look_sound` (`what: "loudness"`): its `ending` line gives the level of the last 0.5 s, whether the file still sounds above
-   -50 dBFS at its end, and whether the last 50 ms drop faster than the fade. Still above -50 dBFS with a fast last-50-ms drop is a cut: lengthen
+   -50 dBFS at its end, whether the last 50 ms drop faster than the fade, and the **audible end** (`audible_end_s`: where the sound falls under
+   -60 dBFS for good, so "it rings out by 52 s" can be checked). Still above -50 dBFS with a fast last-50-ms drop is a cut: lengthen
    the song or add `master(fadeOut=...)`. Below -50 dBFS (or no fast drop) is a clean end.
 
 ## Rules that save a render
