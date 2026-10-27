@@ -1,0 +1,411 @@
+<?xml version="1.0"?>
+<materialx version="1.39">
+  <!-- Rostrum blocks: written by apps/3d/tools/make_blocks_mtlx.py from the blocks catalogue; don't edit -->
+  <nodedef name="ND_rostrum_image_color3" node="rostrum_image" nodegroup="rostrum">
+    <input name="file" type="filename" value="" uniform="true"/>
+    <input name="colourData" type="string" value="colour" uniform="true"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_image_color3" nodedef="ND_rostrum_image_color3">
+    <image name="img" type="color3"><input name="file" type="filename" interfacename="file"/></image>
+    <output name="colour" type="color3" nodename="img"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_image_float" node="rostrum_image" nodegroup="rostrum">
+    <input name="file" type="filename" value="" uniform="true"/>
+    <input name="colourData" type="string" value="colour" uniform="true"/>
+    <output name="value" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_image_float" nodedef="ND_rostrum_image_float">
+    <image name="img" type="color3"><input name="file" type="filename" interfacename="file"/></image>
+    <luminance name="lum" type="color3"><input name="in" type="color3" nodename="img"/><input name="lumacoeffs" type="color3" value="0.2126, 0.7152, 0.0722"/></luminance>
+    <extract name="grey" type="float"><input name="in" type="color3" nodename="lum"/><input name="index" type="integer" value="0"/></extract>
+    <output name="value" type="float" nodename="grey"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_noise_float" node="rostrum_noise" nodegroup="rostrum">
+    <input name="scale" type="float" value="5"/>
+    <input name="detail" type="integer" value="2"/>
+    <input name="roughness" type="float" value="0.5"/>
+    <input name="distortion" type="float" value="0"/>
+    <output name="value" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_noise_float" nodedef="ND_rostrum_noise_float">
+    <position name="pos" type="vector3"><input name="space" type="string" value="object"/></position>
+    <multiply name="scaled" type="vector3"><input name="in1" type="vector3" nodename="pos"/><input name="in2" type="float" interfacename="scale"/></multiply>
+    <noise3d name="warp" type="vector3"><input name="position" type="vector3" nodename="scaled"/><input name="pivot" type="float" value="0"/></noise3d>
+    <multiply name="warped" type="vector3"><input name="in1" type="vector3" nodename="warp"/><input name="in2" type="float" interfacename="distortion"/></multiply>
+    <add name="p" type="vector3"><input name="in1" type="vector3" nodename="scaled"/><input name="in2" type="vector3" nodename="warped"/></add>
+    <add name="octaves" type="integer"><input name="in1" type="integer" interfacename="detail"/><input name="in2" type="integer" value="1"/></add>
+    <fractal3d name="f" type="float"><input name="position" type="vector3" nodename="p"/><input name="octaves" type="integer" nodename="octaves"/><input name="lacunarity" type="float" value="2"/><input name="diminish" type="float" interfacename="roughness"/></fractal3d>
+    <multiply name="half" type="float"><input name="in1" type="float" nodename="f"/><input name="in2" type="float" value="0.5"/></multiply>
+    <add name="mid" type="float"><input name="in1" type="float" nodename="half"/><input name="in2" type="float" value="0.5"/></add>
+    <output name="value" type="float" nodename="mid"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_noise_color3" node="rostrum_noise" nodegroup="rostrum">
+    <input name="scale" type="float" value="5"/>
+    <input name="detail" type="integer" value="2"/>
+    <input name="roughness" type="float" value="0.5"/>
+    <input name="distortion" type="float" value="0"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_noise_color3" nodedef="ND_rostrum_noise_color3">
+    <position name="pos" type="vector3"><input name="space" type="string" value="object"/></position>
+    <multiply name="scaled" type="vector3"><input name="in1" type="vector3" nodename="pos"/><input name="in2" type="float" interfacename="scale"/></multiply>
+    <noise3d name="warp" type="vector3"><input name="position" type="vector3" nodename="scaled"/><input name="pivot" type="float" value="0"/></noise3d>
+    <multiply name="warped" type="vector3"><input name="in1" type="vector3" nodename="warp"/><input name="in2" type="float" interfacename="distortion"/></multiply>
+    <add name="p" type="vector3"><input name="in1" type="vector3" nodename="scaled"/><input name="in2" type="vector3" nodename="warped"/></add>
+    <add name="octaves" type="integer"><input name="in1" type="integer" interfacename="detail"/><input name="in2" type="integer" value="1"/></add>
+    <fractal3d name="f" type="color3"><input name="position" type="vector3" nodename="p"/><input name="octaves" type="integer" nodename="octaves"/><input name="lacunarity" type="float" value="2"/><input name="diminish" type="float" interfacename="roughness"/></fractal3d>
+    <multiply name="half" type="color3"><input name="in1" type="color3" nodename="f"/><input name="in2" type="float" value="0.5"/></multiply>
+    <add name="mid" type="color3"><input name="in1" type="color3" nodename="half"/><input name="in2" type="float" value="0.5"/></add>
+    <output name="colour" type="color3" nodename="mid"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_mix_color3" node="rostrum_mix" nodegroup="rostrum">
+    <input name="factor" type="float" value="0.5"/>
+    <input name="a" type="color3" value="0, 0, 0"/>
+    <input name="b" type="color3" value="1, 1, 1"/>
+    <input name="blend" type="string" value="mix" uniform="true"/>
+    <input name="blendIndex" type="integer" value="0" uniform="true"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_mix_color3" nodedef="ND_rostrum_mix_color3">
+    <multiply name="mul" type="color3"><input name="in1" type="color3" interfacename="a"/><input name="in2" type="color3" interfacename="b"/></multiply>
+    <add name="sum" type="color3"><input name="in1" type="color3" interfacename="a"/><input name="in2" type="color3" interfacename="b"/></add>
+    <min name="dark" type="color3"><input name="in1" type="color3" interfacename="a"/><input name="in2" type="color3" interfacename="b"/></min>
+    <max name="light" type="color3"><input name="in1" type="color3" interfacename="a"/><input name="in2" type="color3" interfacename="b"/></max>
+    <mix name="b_mix" type="color3"><input name="fg" type="color3" interfacename="b"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></mix>
+    <mix name="b_multiply" type="color3"><input name="fg" type="color3" nodename="mul"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></mix>
+    <mix name="b_add" type="color3"><input name="fg" type="color3" nodename="sum"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></mix>
+    <mix name="b_darken" type="color3"><input name="fg" type="color3" nodename="dark"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></mix>
+    <mix name="b_lighten" type="color3"><input name="fg" type="color3" nodename="light"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></mix>
+    <screen name="b_screen" type="color3"><input name="fg" type="color3" interfacename="b"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></screen>
+    <overlay name="b_overlay" type="color3"><input name="fg" type="color3" interfacename="b"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" interfacename="factor"/></overlay>
+    <switch name="out" type="color3"><input name="in1" type="color3" nodename="b_mix"/><input name="in2" type="color3" nodename="b_multiply"/><input name="in3" type="color3" nodename="b_add"/><input name="in4" type="color3" nodename="b_screen"/><input name="in5" type="color3" nodename="b_overlay"/><input name="in6" type="color3" nodename="b_darken"/><input name="in7" type="color3" nodename="b_lighten"/><input name="which" type="integer" interfacename="blendIndex"/></switch>
+    <output name="colour" type="color3" nodename="out"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_ramp_color3" node="rostrum_ramp" nodegroup="rostrum">
+    <input name="factor" type="float" value="0.5"/>
+    <input name="count" type="integer" value="2" uniform="true"/>
+    <input name="pos1" type="float" value="0"/>
+    <input name="pos2" type="float" value="1"/>
+    <input name="pos3" type="float" value="1"/>
+    <input name="pos4" type="float" value="1"/>
+    <input name="pos5" type="float" value="1"/>
+    <input name="pos6" type="float" value="1"/>
+    <input name="pos7" type="float" value="1"/>
+    <input name="pos8" type="float" value="1"/>
+    <input name="col1" type="color3" value="0, 0, 0"/>
+    <input name="col2" type="color3" value="1, 1, 1"/>
+    <input name="col3" type="color3" value="1, 1, 1"/>
+    <input name="col4" type="color3" value="1, 1, 1"/>
+    <input name="col5" type="color3" value="1, 1, 1"/>
+    <input name="col6" type="color3" value="1, 1, 1"/>
+    <input name="col7" type="color3" value="1, 1, 1"/>
+    <input name="col8" type="color3" value="1, 1, 1"/>
+    <input name="interpolate" type="string" value="linear" uniform="true"/>
+    <input name="interpolateIndex" type="integer" value="0" uniform="true"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_ramp_color3" nodedef="ND_rostrum_ramp_color3">
+    <subtract name="s2_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <subtract name="s2_w" type="float"><input name="in1" type="float" interfacename="pos2"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <max name="s2_wm" type="float"><input name="in1" type="float" nodename="s2_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s2_r" type="float"><input name="in1" type="float" nodename="s2_d"/><input name="in2" type="float" nodename="s2_wm"/></divide>
+    <clamp name="s2_t" type="float"><input name="in" type="float" nodename="s2_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s2_sm" type="float"><input name="in" type="float" nodename="s2_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s2_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos2"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s2_how" type="float"><input name="in1" type="float" nodename="s2_t"/><input name="in2" type="float" nodename="s2_st"/><input name="in3" type="float" nodename="s2_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s2_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="2"/><input name="in1" type="float" nodename="s2_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s2_c" type="color3"><input name="fg" type="color3" interfacename="col2"/><input name="bg" type="color3" interfacename="col1"/><input name="mix" type="float" nodename="s2_on"/></mix>
+    <subtract name="s3_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <subtract name="s3_w" type="float"><input name="in1" type="float" interfacename="pos3"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <max name="s3_wm" type="float"><input name="in1" type="float" nodename="s3_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s3_r" type="float"><input name="in1" type="float" nodename="s3_d"/><input name="in2" type="float" nodename="s3_wm"/></divide>
+    <clamp name="s3_t" type="float"><input name="in" type="float" nodename="s3_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s3_sm" type="float"><input name="in" type="float" nodename="s3_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s3_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos3"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s3_how" type="float"><input name="in1" type="float" nodename="s3_t"/><input name="in2" type="float" nodename="s3_st"/><input name="in3" type="float" nodename="s3_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s3_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="3"/><input name="in1" type="float" nodename="s3_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s3_c" type="color3"><input name="fg" type="color3" interfacename="col3"/><input name="bg" type="color3" nodename="s2_c"/><input name="mix" type="float" nodename="s3_on"/></mix>
+    <subtract name="s4_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <subtract name="s4_w" type="float"><input name="in1" type="float" interfacename="pos4"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <max name="s4_wm" type="float"><input name="in1" type="float" nodename="s4_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s4_r" type="float"><input name="in1" type="float" nodename="s4_d"/><input name="in2" type="float" nodename="s4_wm"/></divide>
+    <clamp name="s4_t" type="float"><input name="in" type="float" nodename="s4_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s4_sm" type="float"><input name="in" type="float" nodename="s4_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s4_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos4"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s4_how" type="float"><input name="in1" type="float" nodename="s4_t"/><input name="in2" type="float" nodename="s4_st"/><input name="in3" type="float" nodename="s4_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s4_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="4"/><input name="in1" type="float" nodename="s4_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s4_c" type="color3"><input name="fg" type="color3" interfacename="col4"/><input name="bg" type="color3" nodename="s3_c"/><input name="mix" type="float" nodename="s4_on"/></mix>
+    <subtract name="s5_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <subtract name="s5_w" type="float"><input name="in1" type="float" interfacename="pos5"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <max name="s5_wm" type="float"><input name="in1" type="float" nodename="s5_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s5_r" type="float"><input name="in1" type="float" nodename="s5_d"/><input name="in2" type="float" nodename="s5_wm"/></divide>
+    <clamp name="s5_t" type="float"><input name="in" type="float" nodename="s5_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s5_sm" type="float"><input name="in" type="float" nodename="s5_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s5_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos5"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s5_how" type="float"><input name="in1" type="float" nodename="s5_t"/><input name="in2" type="float" nodename="s5_st"/><input name="in3" type="float" nodename="s5_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s5_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="5"/><input name="in1" type="float" nodename="s5_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s5_c" type="color3"><input name="fg" type="color3" interfacename="col5"/><input name="bg" type="color3" nodename="s4_c"/><input name="mix" type="float" nodename="s5_on"/></mix>
+    <subtract name="s6_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <subtract name="s6_w" type="float"><input name="in1" type="float" interfacename="pos6"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <max name="s6_wm" type="float"><input name="in1" type="float" nodename="s6_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s6_r" type="float"><input name="in1" type="float" nodename="s6_d"/><input name="in2" type="float" nodename="s6_wm"/></divide>
+    <clamp name="s6_t" type="float"><input name="in" type="float" nodename="s6_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s6_sm" type="float"><input name="in" type="float" nodename="s6_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s6_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos6"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s6_how" type="float"><input name="in1" type="float" nodename="s6_t"/><input name="in2" type="float" nodename="s6_st"/><input name="in3" type="float" nodename="s6_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s6_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="6"/><input name="in1" type="float" nodename="s6_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s6_c" type="color3"><input name="fg" type="color3" interfacename="col6"/><input name="bg" type="color3" nodename="s5_c"/><input name="mix" type="float" nodename="s6_on"/></mix>
+    <subtract name="s7_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <subtract name="s7_w" type="float"><input name="in1" type="float" interfacename="pos7"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <max name="s7_wm" type="float"><input name="in1" type="float" nodename="s7_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s7_r" type="float"><input name="in1" type="float" nodename="s7_d"/><input name="in2" type="float" nodename="s7_wm"/></divide>
+    <clamp name="s7_t" type="float"><input name="in" type="float" nodename="s7_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s7_sm" type="float"><input name="in" type="float" nodename="s7_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s7_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos7"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s7_how" type="float"><input name="in1" type="float" nodename="s7_t"/><input name="in2" type="float" nodename="s7_st"/><input name="in3" type="float" nodename="s7_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s7_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="7"/><input name="in1" type="float" nodename="s7_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s7_c" type="color3"><input name="fg" type="color3" interfacename="col7"/><input name="bg" type="color3" nodename="s6_c"/><input name="mix" type="float" nodename="s7_on"/></mix>
+    <subtract name="s8_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <subtract name="s8_w" type="float"><input name="in1" type="float" interfacename="pos8"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <max name="s8_wm" type="float"><input name="in1" type="float" nodename="s8_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s8_r" type="float"><input name="in1" type="float" nodename="s8_d"/><input name="in2" type="float" nodename="s8_wm"/></divide>
+    <clamp name="s8_t" type="float"><input name="in" type="float" nodename="s8_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s8_sm" type="float"><input name="in" type="float" nodename="s8_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s8_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos8"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s8_how" type="float"><input name="in1" type="float" nodename="s8_t"/><input name="in2" type="float" nodename="s8_st"/><input name="in3" type="float" nodename="s8_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s8_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="8"/><input name="in1" type="float" nodename="s8_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s8_c" type="color3"><input name="fg" type="color3" interfacename="col8"/><input name="bg" type="color3" nodename="s7_c"/><input name="mix" type="float" nodename="s8_on"/></mix>
+    <output name="colour" type="color3" nodename="s8_c"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_ramp_float" node="rostrum_ramp" nodegroup="rostrum">
+    <input name="factor" type="float" value="0.5"/>
+    <input name="count" type="integer" value="2" uniform="true"/>
+    <input name="pos1" type="float" value="0"/>
+    <input name="pos2" type="float" value="1"/>
+    <input name="pos3" type="float" value="1"/>
+    <input name="pos4" type="float" value="1"/>
+    <input name="pos5" type="float" value="1"/>
+    <input name="pos6" type="float" value="1"/>
+    <input name="pos7" type="float" value="1"/>
+    <input name="pos8" type="float" value="1"/>
+    <input name="col1" type="color3" value="0, 0, 0"/>
+    <input name="col2" type="color3" value="1, 1, 1"/>
+    <input name="col3" type="color3" value="1, 1, 1"/>
+    <input name="col4" type="color3" value="1, 1, 1"/>
+    <input name="col5" type="color3" value="1, 1, 1"/>
+    <input name="col6" type="color3" value="1, 1, 1"/>
+    <input name="col7" type="color3" value="1, 1, 1"/>
+    <input name="col8" type="color3" value="1, 1, 1"/>
+    <input name="interpolate" type="string" value="linear" uniform="true"/>
+    <input name="interpolateIndex" type="integer" value="0" uniform="true"/>
+    <output name="value" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_ramp_float" nodedef="ND_rostrum_ramp_float">
+    <subtract name="s2_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <subtract name="s2_w" type="float"><input name="in1" type="float" interfacename="pos2"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <max name="s2_wm" type="float"><input name="in1" type="float" nodename="s2_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s2_r" type="float"><input name="in1" type="float" nodename="s2_d"/><input name="in2" type="float" nodename="s2_wm"/></divide>
+    <clamp name="s2_t" type="float"><input name="in" type="float" nodename="s2_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s2_sm" type="float"><input name="in" type="float" nodename="s2_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s2_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos2"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s2_how" type="float"><input name="in1" type="float" nodename="s2_t"/><input name="in2" type="float" nodename="s2_st"/><input name="in3" type="float" nodename="s2_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s2_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="2"/><input name="in1" type="float" nodename="s2_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s2_c" type="color3"><input name="fg" type="color3" interfacename="col2"/><input name="bg" type="color3" interfacename="col1"/><input name="mix" type="float" nodename="s2_on"/></mix>
+    <subtract name="s3_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <subtract name="s3_w" type="float"><input name="in1" type="float" interfacename="pos3"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <max name="s3_wm" type="float"><input name="in1" type="float" nodename="s3_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s3_r" type="float"><input name="in1" type="float" nodename="s3_d"/><input name="in2" type="float" nodename="s3_wm"/></divide>
+    <clamp name="s3_t" type="float"><input name="in" type="float" nodename="s3_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s3_sm" type="float"><input name="in" type="float" nodename="s3_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s3_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos3"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s3_how" type="float"><input name="in1" type="float" nodename="s3_t"/><input name="in2" type="float" nodename="s3_st"/><input name="in3" type="float" nodename="s3_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s3_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="3"/><input name="in1" type="float" nodename="s3_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s3_c" type="color3"><input name="fg" type="color3" interfacename="col3"/><input name="bg" type="color3" nodename="s2_c"/><input name="mix" type="float" nodename="s3_on"/></mix>
+    <subtract name="s4_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <subtract name="s4_w" type="float"><input name="in1" type="float" interfacename="pos4"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <max name="s4_wm" type="float"><input name="in1" type="float" nodename="s4_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s4_r" type="float"><input name="in1" type="float" nodename="s4_d"/><input name="in2" type="float" nodename="s4_wm"/></divide>
+    <clamp name="s4_t" type="float"><input name="in" type="float" nodename="s4_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s4_sm" type="float"><input name="in" type="float" nodename="s4_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s4_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos4"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s4_how" type="float"><input name="in1" type="float" nodename="s4_t"/><input name="in2" type="float" nodename="s4_st"/><input name="in3" type="float" nodename="s4_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s4_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="4"/><input name="in1" type="float" nodename="s4_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s4_c" type="color3"><input name="fg" type="color3" interfacename="col4"/><input name="bg" type="color3" nodename="s3_c"/><input name="mix" type="float" nodename="s4_on"/></mix>
+    <subtract name="s5_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <subtract name="s5_w" type="float"><input name="in1" type="float" interfacename="pos5"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <max name="s5_wm" type="float"><input name="in1" type="float" nodename="s5_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s5_r" type="float"><input name="in1" type="float" nodename="s5_d"/><input name="in2" type="float" nodename="s5_wm"/></divide>
+    <clamp name="s5_t" type="float"><input name="in" type="float" nodename="s5_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s5_sm" type="float"><input name="in" type="float" nodename="s5_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s5_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos5"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s5_how" type="float"><input name="in1" type="float" nodename="s5_t"/><input name="in2" type="float" nodename="s5_st"/><input name="in3" type="float" nodename="s5_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s5_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="5"/><input name="in1" type="float" nodename="s5_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s5_c" type="color3"><input name="fg" type="color3" interfacename="col5"/><input name="bg" type="color3" nodename="s4_c"/><input name="mix" type="float" nodename="s5_on"/></mix>
+    <subtract name="s6_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <subtract name="s6_w" type="float"><input name="in1" type="float" interfacename="pos6"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <max name="s6_wm" type="float"><input name="in1" type="float" nodename="s6_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s6_r" type="float"><input name="in1" type="float" nodename="s6_d"/><input name="in2" type="float" nodename="s6_wm"/></divide>
+    <clamp name="s6_t" type="float"><input name="in" type="float" nodename="s6_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s6_sm" type="float"><input name="in" type="float" nodename="s6_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s6_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos6"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s6_how" type="float"><input name="in1" type="float" nodename="s6_t"/><input name="in2" type="float" nodename="s6_st"/><input name="in3" type="float" nodename="s6_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s6_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="6"/><input name="in1" type="float" nodename="s6_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s6_c" type="color3"><input name="fg" type="color3" interfacename="col6"/><input name="bg" type="color3" nodename="s5_c"/><input name="mix" type="float" nodename="s6_on"/></mix>
+    <subtract name="s7_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <subtract name="s7_w" type="float"><input name="in1" type="float" interfacename="pos7"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <max name="s7_wm" type="float"><input name="in1" type="float" nodename="s7_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s7_r" type="float"><input name="in1" type="float" nodename="s7_d"/><input name="in2" type="float" nodename="s7_wm"/></divide>
+    <clamp name="s7_t" type="float"><input name="in" type="float" nodename="s7_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s7_sm" type="float"><input name="in" type="float" nodename="s7_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s7_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos7"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s7_how" type="float"><input name="in1" type="float" nodename="s7_t"/><input name="in2" type="float" nodename="s7_st"/><input name="in3" type="float" nodename="s7_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s7_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="7"/><input name="in1" type="float" nodename="s7_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s7_c" type="color3"><input name="fg" type="color3" interfacename="col7"/><input name="bg" type="color3" nodename="s6_c"/><input name="mix" type="float" nodename="s7_on"/></mix>
+    <subtract name="s8_d" type="float"><input name="in1" type="float" interfacename="factor"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <subtract name="s8_w" type="float"><input name="in1" type="float" interfacename="pos8"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <max name="s8_wm" type="float"><input name="in1" type="float" nodename="s8_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s8_r" type="float"><input name="in1" type="float" nodename="s8_d"/><input name="in2" type="float" nodename="s8_wm"/></divide>
+    <clamp name="s8_t" type="float"><input name="in" type="float" nodename="s8_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <smoothstep name="s8_sm" type="float"><input name="in" type="float" nodename="s8_t"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></smoothstep>
+    <ifgreatereq name="s8_st" type="float"><input name="value1" type="float" interfacename="factor"/><input name="value2" type="float" interfacename="pos8"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <switch name="s8_how" type="float"><input name="in1" type="float" nodename="s8_t"/><input name="in2" type="float" nodename="s8_st"/><input name="in3" type="float" nodename="s8_sm"/><input name="which" type="integer" interfacename="interpolateIndex"/></switch>
+    <ifgreatereq name="s8_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="8"/><input name="in1" type="float" nodename="s8_how"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s8_c" type="color3"><input name="fg" type="color3" interfacename="col8"/><input name="bg" type="color3" nodename="s7_c"/><input name="mix" type="float" nodename="s8_on"/></mix>
+    <luminance name="lum" type="color3"><input name="in" type="color3" nodename="s8_c"/><input name="lumacoeffs" type="color3" value="0.2126, 0.7152, 0.0722"/></luminance>
+    <extract name="grey" type="float"><input name="in" type="color3" nodename="lum"/><input name="index" type="integer" value="0"/></extract>
+    <output name="value" type="float" nodename="grey"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_curve_float" node="rostrum_curve" nodegroup="rostrum">
+    <input name="value" type="float" value="0.5"/>
+    <input name="count" type="integer" value="2" uniform="true"/>
+    <input name="pos1" type="float" value="0"/>
+    <input name="pos2" type="float" value="1"/>
+    <input name="pos3" type="float" value="1"/>
+    <input name="pos4" type="float" value="1"/>
+    <input name="pos5" type="float" value="1"/>
+    <input name="pos6" type="float" value="1"/>
+    <input name="pos7" type="float" value="1"/>
+    <input name="pos8" type="float" value="1"/>
+    <input name="val1" type="float" value="0"/>
+    <input name="val2" type="float" value="1"/>
+    <input name="val3" type="float" value="1"/>
+    <input name="val4" type="float" value="1"/>
+    <input name="val5" type="float" value="1"/>
+    <input name="val6" type="float" value="1"/>
+    <input name="val7" type="float" value="1"/>
+    <input name="val8" type="float" value="1"/>
+    <output name="out" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_curve_float" nodedef="ND_rostrum_curve_float">
+    <subtract name="s2_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <subtract name="s2_w" type="float"><input name="in1" type="float" interfacename="pos2"/><input name="in2" type="float" interfacename="pos1"/></subtract>
+    <max name="s2_wm" type="float"><input name="in1" type="float" nodename="s2_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s2_r" type="float"><input name="in1" type="float" nodename="s2_d"/><input name="in2" type="float" nodename="s2_wm"/></divide>
+    <clamp name="s2_t" type="float"><input name="in" type="float" nodename="s2_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s2_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="2"/><input name="in1" type="float" nodename="s2_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s2_c" type="float"><input name="fg" type="float" interfacename="val2"/><input name="bg" type="float" interfacename="val1"/><input name="mix" type="float" nodename="s2_on"/></mix>
+    <subtract name="s3_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <subtract name="s3_w" type="float"><input name="in1" type="float" interfacename="pos3"/><input name="in2" type="float" interfacename="pos2"/></subtract>
+    <max name="s3_wm" type="float"><input name="in1" type="float" nodename="s3_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s3_r" type="float"><input name="in1" type="float" nodename="s3_d"/><input name="in2" type="float" nodename="s3_wm"/></divide>
+    <clamp name="s3_t" type="float"><input name="in" type="float" nodename="s3_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s3_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="3"/><input name="in1" type="float" nodename="s3_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s3_c" type="float"><input name="fg" type="float" interfacename="val3"/><input name="bg" type="float" nodename="s2_c"/><input name="mix" type="float" nodename="s3_on"/></mix>
+    <subtract name="s4_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <subtract name="s4_w" type="float"><input name="in1" type="float" interfacename="pos4"/><input name="in2" type="float" interfacename="pos3"/></subtract>
+    <max name="s4_wm" type="float"><input name="in1" type="float" nodename="s4_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s4_r" type="float"><input name="in1" type="float" nodename="s4_d"/><input name="in2" type="float" nodename="s4_wm"/></divide>
+    <clamp name="s4_t" type="float"><input name="in" type="float" nodename="s4_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s4_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="4"/><input name="in1" type="float" nodename="s4_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s4_c" type="float"><input name="fg" type="float" interfacename="val4"/><input name="bg" type="float" nodename="s3_c"/><input name="mix" type="float" nodename="s4_on"/></mix>
+    <subtract name="s5_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <subtract name="s5_w" type="float"><input name="in1" type="float" interfacename="pos5"/><input name="in2" type="float" interfacename="pos4"/></subtract>
+    <max name="s5_wm" type="float"><input name="in1" type="float" nodename="s5_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s5_r" type="float"><input name="in1" type="float" nodename="s5_d"/><input name="in2" type="float" nodename="s5_wm"/></divide>
+    <clamp name="s5_t" type="float"><input name="in" type="float" nodename="s5_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s5_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="5"/><input name="in1" type="float" nodename="s5_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s5_c" type="float"><input name="fg" type="float" interfacename="val5"/><input name="bg" type="float" nodename="s4_c"/><input name="mix" type="float" nodename="s5_on"/></mix>
+    <subtract name="s6_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <subtract name="s6_w" type="float"><input name="in1" type="float" interfacename="pos6"/><input name="in2" type="float" interfacename="pos5"/></subtract>
+    <max name="s6_wm" type="float"><input name="in1" type="float" nodename="s6_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s6_r" type="float"><input name="in1" type="float" nodename="s6_d"/><input name="in2" type="float" nodename="s6_wm"/></divide>
+    <clamp name="s6_t" type="float"><input name="in" type="float" nodename="s6_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s6_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="6"/><input name="in1" type="float" nodename="s6_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s6_c" type="float"><input name="fg" type="float" interfacename="val6"/><input name="bg" type="float" nodename="s5_c"/><input name="mix" type="float" nodename="s6_on"/></mix>
+    <subtract name="s7_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <subtract name="s7_w" type="float"><input name="in1" type="float" interfacename="pos7"/><input name="in2" type="float" interfacename="pos6"/></subtract>
+    <max name="s7_wm" type="float"><input name="in1" type="float" nodename="s7_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s7_r" type="float"><input name="in1" type="float" nodename="s7_d"/><input name="in2" type="float" nodename="s7_wm"/></divide>
+    <clamp name="s7_t" type="float"><input name="in" type="float" nodename="s7_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s7_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="7"/><input name="in1" type="float" nodename="s7_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s7_c" type="float"><input name="fg" type="float" interfacename="val7"/><input name="bg" type="float" nodename="s6_c"/><input name="mix" type="float" nodename="s7_on"/></mix>
+    <subtract name="s8_d" type="float"><input name="in1" type="float" interfacename="value"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <subtract name="s8_w" type="float"><input name="in1" type="float" interfacename="pos8"/><input name="in2" type="float" interfacename="pos7"/></subtract>
+    <max name="s8_wm" type="float"><input name="in1" type="float" nodename="s8_w"/><input name="in2" type="float" value="1e-05"/></max>
+    <divide name="s8_r" type="float"><input name="in1" type="float" nodename="s8_d"/><input name="in2" type="float" nodename="s8_wm"/></divide>
+    <clamp name="s8_t" type="float"><input name="in" type="float" nodename="s8_r"/><input name="low" type="float" value="0"/><input name="high" type="float" value="1"/></clamp>
+    <ifgreatereq name="s8_on" type="float"><input name="value1" type="integer" interfacename="count"/><input name="value2" type="integer" value="8"/><input name="in1" type="float" nodename="s8_t"/><input name="in2" type="float" value="0"/></ifgreatereq>
+    <mix name="s8_c" type="float"><input name="fg" type="float" interfacename="val8"/><input name="bg" type="float" nodename="s7_c"/><input name="mix" type="float" nodename="s8_on"/></mix>
+    <output name="out" type="float" nodename="s8_c"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_colour_adjust_color3" node="rostrum_colour_adjust" nodegroup="rostrum">
+    <input name="colour" type="color3" value="0.215861, 0.215861, 0.215861"/>
+    <input name="hue" type="float" value="0"/>
+    <input name="saturation" type="float" value="1"/>
+    <input name="brightness" type="float" value="1"/>
+    <input name="contrast" type="float" value="0"/>
+    <output name="out" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_colour_adjust_color3" nodedef="ND_rostrum_colour_adjust_color3">
+    <combine3 name="amt" type="vector3"><input name="in1" type="float" interfacename="hue"/><input name="in2" type="float" interfacename="saturation"/><input name="in3" type="float" interfacename="brightness"/></combine3>
+    <hsvadjust name="hsv" type="color3"><input name="in" type="color3" interfacename="colour"/><input name="amount" type="vector3" nodename="amt"/></hsvadjust>
+    <add name="c" type="float"><input name="in1" type="float" interfacename="contrast"/><input name="in2" type="float" value="1"/></add>
+    <contrast name="adj" type="color3"><input name="in" type="color3" nodename="hsv"/><input name="amount" type="float" nodename="c"/><input name="pivot" type="float" value="0.5"/></contrast>
+    <output name="out" type="color3" nodename="adj"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_bevel_vector3" node="rostrum_bevel" nodegroup="rostrum">
+    <input name="radius" type="float" value="0.005"/>
+    <input name="samples" type="integer" value="8"/>
+    <output name="normal" type="vector3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_bevel_vector3" nodedef="ND_rostrum_bevel_vector3">
+    <constant name="flat" type="vector3"><input name="value" type="vector3" value="0, 0, 1"/></constant>
+    <output name="normal" type="vector3" nodename="flat"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_occlusion_float" node="rostrum_occlusion" nodegroup="rostrum">
+    <input name="distance" type="float" value="0.2"/>
+    <input name="colour" type="color3" value="1, 1, 1"/>
+    <output name="value" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_occlusion_float" nodedef="ND_rostrum_occlusion_float">
+    <constant name="one" type="float"><input name="value" type="float" value="1"/></constant>
+    <output name="value" type="float" nodename="one"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_occlusion_color3" node="rostrum_occlusion" nodegroup="rostrum">
+    <input name="distance" type="float" value="0.2"/>
+    <input name="colour" type="color3" value="1, 1, 1"/>
+    <output name="out" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_occlusion_color3" nodedef="ND_rostrum_occlusion_color3">
+    <dot name="col" type="color3"><input name="in" type="color3" interfacename="colour"/></dot>
+    <output name="out" type="color3" nodename="col"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_grey_color3" node="rostrum_grey" nodegroup="rostrum">
+    <input name="in" type="float" value="0"/>
+    <output name="out" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_grey_color3" nodedef="ND_rostrum_grey_color3">
+    <convert name="c" type="color3"><input name="in" type="float" interfacename="in"/></convert>
+    <output name="out" type="color3" nodename="c"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_brightness_float" node="rostrum_brightness" nodegroup="rostrum">
+    <input name="in" type="color3" value="0, 0, 0"/>
+    <output name="out" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_brightness_float" nodedef="ND_rostrum_brightness_float">
+    <luminance name="lum" type="color3"><input name="in" type="color3" interfacename="in"/><input name="lumacoeffs" type="color3" value="0.2126, 0.7152, 0.0722"/></luminance>
+    <extract name="grey" type="float"><input name="in" type="color3" nodename="lum"/><input name="index" type="integer" value="0"/></extract>
+    <output name="out" type="float" nodename="grey"/>
+  </nodegraph>
+</materialx>

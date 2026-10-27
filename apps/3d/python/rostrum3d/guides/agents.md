@@ -145,6 +145,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   move or brighten a light to move the lit / shadow edges, or change `shadowBelow` / `litFrom`. For the finished pictures,
   `render_still` / `render_video` with `renderer: "stylized"` (drawn at twice the size and smoothed down), or set the shot's
   `renderQuality` to `stylized` so the person's Render button and render sheet use it too.
+- **Patterns and variation come from blocks.** A material's Blocks view is open to you as operations: `graph.add`
+  (a Noise, Image, Ramp, Mix …), `graph.connect` (`from: "noise_1.value", to: "surface.roughness"`), `graph.set`,
+  `graph.remove` (materials.md › For agents). A worn metal: Noise into a Ramp into Roughness; a printed label: an Image
+  into Base colour. Check with `look_material`: it draws the blocks and lists them and their wires in the reply.
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
   it from `look_at` (its `distance`) instead of measuring by eye. Or name what must stay sharp: `camera.set focusItem=<item id>`
   (with `dof` on); the distance then follows that item's origin every frame, along the way the camera looks. `focusItem=""`

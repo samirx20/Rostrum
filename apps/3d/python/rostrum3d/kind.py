@@ -22,7 +22,7 @@ from rostrum_core.tree import walk
 
 from rostrum_core.errors import codes
 
-from . import clay_dabs, clay_fields, copies_fields, fields as F, mirror, paint_fields, paint_view
+from . import clay_dabs, clay_fields, copies_fields, fields as F, graph, mirror, paint_fields, paint_view
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",),
@@ -100,6 +100,7 @@ def _ref(problems, item, field, value, ids, what):
 _MESH_DEFAULTS = F.defaults("mesh")
 _KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
           for t, ps in F.FIELDS.items()}
+_KNOWN["material"].add(graph.FIELD)                  # its blocks graph (graph.py): data the graph.* ops write, never a row
 
 
 def check(data: dict) -> list[str]:
@@ -156,6 +157,8 @@ def check(data: dict) -> list[str]:
             if stray := mirror.stray(item, _MESH_DEFAULTS):          # only the original holds these (mirror.py)
                 problems.append(f'{item["id"]} is the mirrored copy of {item["mirror"]}: change {item["mirror"]} instead '
                                 f'(its copy follows); {", ".join(stray)} belong to the original, not the copy')
+        if t == "material":
+            problems += graph.problems(item)
         if t in ("mesh", "combine", "import", "part", "clay"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":

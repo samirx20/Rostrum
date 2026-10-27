@@ -16,6 +16,8 @@ Two clicks, one undo step.
 - **The settings under the Material row are the material's own:** Surface (colour, metallic, roughness) always open; Glass, Coat, Under the surface, Sheen, Brushed, Relief, Glow open once changed, the rest as one row of names you click to open.
 - **Shared materials.** When other items use the same material, a grey line says **Used by 3 items**: changing a setting changes every one of them (that is what sharing is). **Make its own** gives this item its own copy in one click; the others keep the original.
 - **Edit** opens the material alone in the settings panel.
+- **Edit as blocks** (the material's last settings row, under an item or with the material itself selected) shows the
+  material as **blocks** in the bottom panel: see "Blocks" below.
 - **Drag a ball** (from the picker or the Materials list) onto an item in the viewport or the scene list to give it that material.
 - **The Materials ball** at the bottom of the tool rail (or Ctrl+K › Materials) lists the project's materials (ball, name, how many items use each). Click one to edit it; **+ New material** makes one.
 - **Colours** are a swatch and a hex code: type the hex, or click the swatch for the colour picker.
@@ -26,10 +28,54 @@ The balls are real renders through the same fast view as the viewport, made once
 
 Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Painted (ramp), Ink & flat, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). A selected clay shows its **Material ▾** and, under it, the material's settings with **Base colour**'s square, as a mesh does; the first change there gives that clay its own copy of the shared "Clay" (one more undo step, "Make its own material"), so the other clays keep theirs. The rest of this guide explains each setting they use.
 
+### Blocks (on the screen)
+
+The bottom panel shows the material as blocks joined by wires, in the timeline's place; its header reads **‹ Back ·
+Brass blocks**. Today's settings are one **Surface** block; its ports on the left are what a wire may set: Base colour,
+Roughness, Metallic, Glow colour, Normal, Style.
+
+- **Add a block:** **+ Add block**, Tab, a double-click or a right-click on empty space opens the list; type to filter
+  ("noi" finds Noise), then Enter or a click. Image, Noise, Mix, Ramp, Curve, Colour adjust, Bevel shading, Ambient
+  occlusion, and the stylized Lines, Light to colour and Halftone.
+- **Wire:** drag from a block's output (right side) to an input (left side). The ports a wire may reach light up; colour
+  and number join either way (a number as grey, a colour as its brightness), a normal and a style only their own kind.
+  An input takes one wire: a new one replaces it. Drop a wire on empty space to add a block it feeds.
+- **Unwire:** drag a wired input's end away (drop it on another input to move it). **Delete** removes the picked block
+  (Surface stays: it is the material).
+- **Move and look around:** drag a block by its title; drag empty space (or middle-drag, or Space + drag) to pan; the
+  wheel zooms; F fits every block.
+- **Settings:** click a block and its settings show in the settings panel: Surface's are the material's own rows (as
+  under the item); Noise has Scale, Detail, Roughness, Distortion; Ramp its colour stops; Curve its points. A setting a
+  wire feeds says **Set by a wire**. Lines, Light to colour and Halftone carry the material's own fields of that name:
+  wiring one into Surface's **Style** switches it on, taking it out switches it off.
+- Each add, wire, move or change is one undo step. **‹ Back** or **Esc** goes back to the timeline; the blocks stay.
+- A block marked **Final only** (Bevel shading, Ambient occlusion) shows in the Final look and renders, not in Quick.
+
 ## For agents: the same, as operations
 
 - **`material.from`** `start` (one of the starting points above, e.g. `"brushed metal"`), optional `name`, `id`, any material field to override, and `to` (a list of item ids): makes one new material from the start's values and gives it to those items, as one undo step. In a script: `material("alu", start="brushed metal", baseColor="#c9ccd1")`.
 - **`material.split`** on items: each gets its own copy of the material it shares ("<item> material"); the other users keep the original. It refuses loudly when the item has no material or is already its only user.
+- **Blocks** (the Blocks view above, as operations; each one undo step, target = the material):
+  - `graph.add` `type` (`image`, `noise`, `mix`, `ramp`, `curve`, `colourAdjust`, `bevel`, `occlusion`, `lines`,
+    `lightToColour`, `halftone`), optional `id` (else `noise_1`, `noise_2` …), `x`, `y` (its place in the view) and
+    `values` (`{"scale": 8}`). Returns the block.
+  - `graph.connect` `from: "noise_1.value"`, `to: "surface.roughness"`. Surface's inputs: `baseColor`, `roughness`,
+    `metallic`, `emissionColor`, `normal`, `style`. A new wire into an input replaces its old one. Refused: a wire between
+    kinds that don't join (a normal or style into a colour), a loop, a name that isn't there (the reply lists the right ones).
+  - `graph.set` `block`, then `values` and / or `x`, `y`. `block: "surface"` changes the material's own fields.
+  - `graph.remove` `blocks: ["noise_1"]` (their wires go too) and / or `wires: ["surface.roughness"]` (the input whose wire goes).
+  - What each block offers: Image (`file`, `colourData` colour / data → `colour`, `value`), Noise (`scale`, `detail`,
+    `roughness`, `distortion` → `value`, `colour`), Mix (`factor`, `a`, `b`, `blend` mix / multiply / add / screen /
+    overlay / darken / lighten → `colour`), Ramp (`factor`, `stops` `[[0, "#000000"], [1, "#ffffff"]]` 2 to 8,
+    `interpolate` linear / constant / smooth → `colour`, `value`), Curve (`value`, `points` `[[0, 0], [1, 1]]` 2 to 8 →
+    `value`), Colour adjust (`colour`, `hue`, `saturation`, `brightness`, `contrast` → `colour`), Bevel shading (`radius`,
+    `samples` → `normal`, Final only), Ambient occlusion (`distance`, `colour` → `value`, `colour`, Final only).
+  - Lines, Light to colour and Halftone take the material's own fields as `values` (`linesWidth`, `litColor`,
+    `halftoneSize` …) and output `style`: wired into `surface.style` the setting is on. To use two or three at once, chain
+    them: each has a `then` input taking another one (`halftone_1.style` → `lines_1.then`, `lines_1.style` →
+    `surface.style`). Taking one out (or its wire) switches it off.
+  - `look_material` draws the material with its blocks and lists them in its reply (blocks, settings, wires), so check
+    the result there. In Python, `graph.describe(material)` gives every block with its ports, what is wired and its values.
 - `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat); to judge one material on its own, `look_material` shows it on a ball in a strip of angles under the scene's lights and picks Final for you when it needs it.
 
 ## The four fields that decide most surfaces

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -39,7 +40,9 @@ std::string squash(const std::string& s) {
   return out;
 }
 
-const char* kTypes[] = {"colouradjust", "occlusion", "bevel", "image", "noise", "mix", "ramp", "curve"};
+// grey / brightness: the document's number <-> colour conversions; Cycles converts by itself, so they pass through.
+const char* kTypes[] = {"colouradjust", "occlusion", "bevel", "image", "noise", "mix", "ramp", "curve", "grey",
+                        "brightness"};
 
 std::string block_type(const std::string& shader_id) {
   const std::string s = squash(shader_id);
@@ -94,6 +97,7 @@ struct Socket {
 struct Block {
   std::string id, type;
   std::map<std::string, Socket> ins, outs;   // the document's names -> Cycles sockets
+  bool pass = false;                         // a conversion: its output is what feeds its "in"
 };
 
 // A ramp's / curve's stops (pos1..posN with col1..colN or val1..valN, `count`), sorted by position.
@@ -131,8 +135,13 @@ float read_val(const Values& b, const std::string& n) { return b.num(n.c_str(), 
 constexpr int kTable = 256;  // Cycles' own ramp / curve table size
 
 Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::string& id, const std::string& type,
-                   const Values& b, const std::string& where) {
+                   const std::string& shader_id, const Values& b, const std::string& where) {
   Block k{id, type, {}, {}};
+  const bool colour_out = squash(shader_id).size() >= 6 && squash(shader_id).substr(squash(shader_id).size() - 6) == "color3";
+  if (type == "grey" || type == "brightness") {
+    k.pass = true;
+    return k;
+  }
   const std::string pre = "Block_" + id;
   auto node = [&](const char* suffix, const char* cid) {
     return shader(stage, mat, (pre + suffix).c_str(), cid);
@@ -147,8 +156,9 @@ Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     set(n, "distortion", kFloat, b.num("distortion", 0));
     link(n, "vector", SdfValueTypeNames->Vector3f, coords, "object", SdfValueTypeNames->Vector3f);
     for (const char* in : {"scale", "detail", "roughness", "distortion"}) k.ins[in] = {n, in, kFloat};
-    k.outs["value"] = k.outs["out"] = {n, "fac", kFloat};
+    k.outs["value"] = {n, "fac", kFloat};
     k.outs["colour"] = {n, "color", kColor};
+    k.outs["out"] = colour_out ? k.outs["colour"] : k.outs["value"];
   } else if (type == "image") {
     const std::string file = b.text("file", "");
     check_file(file, where + "." + id + ".file", "an image");
@@ -221,8 +231,9 @@ Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     set(a, "samples", SdfValueTypeNames->Int, 16);
     k.ins["distance"] = {a, "distance", kFloat};
     k.ins["colour"] = {a, "color", kColor};
-    k.outs["value"] = k.outs["out"] = {a, "ao", kFloat};
+    k.outs["value"] = {a, "ao", kFloat};
     k.outs["colour"] = {a, "color", kColor};
+    k.outs["out"] = colour_out ? k.outs["colour"] : k.outs["value"];   // "out" is its colour when it gives a colour
   }
   return k;
 }
@@ -323,27 +334,46 @@ void author_blocks(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     if (type.empty())
       fail(where + "." + name, "is a \"" + sid.GetString() + "\" block, which Final can't draw",
            "the Rostrum blocks (ND_rostrum_<type>: image, noise, mix, ramp, curve, colour adjust, bevel, occlusion)");
-    blocks[name] = cycles_block(stage, mat, name, type, Values{s}, where);
+    blocks[name] = cycles_block(stage, mat, name, type, sid.GetString(), Values{s}, where);
     order.emplace_back(s, name);
   }
+  // what feeds through an output: a conversion passes on whatever feeds its "in" (nothing: no wire)
+  std::map<std::string, UsdShadeShader> by_name;
+  for (auto& [s, name] : order) by_name[name] = s;
+  std::function<Socket*(const std::string&, const std::string&, int)> resolve =
+      [&](const std::string& from, const std::string& out, int depth) -> Socket* {
+    auto fb = blocks.find(from);
+    if (fb == blocks.end() || depth > 16) return nullptr;
+    if (fb->second.pass) {
+      UsdShadeConnectableAPI src;
+      TfToken o;
+      UsdShadeAttributeType kind;
+      UsdShadeInput in = by_name[from].GetInput(TfToken("in"));
+      if (!in || !UsdShadeConnectableAPI::GetConnectedSource(in, &src, &o, &kind)) return nullptr;
+      return resolve(src.GetPrim().GetName().GetString(), o.GetString(), depth + 1);
+    }
+    auto o = fb->second.outs.find(out);
+    if (o == fb->second.outs.end())
+      fail(where + "." + from, "has no output \"" + out + "\"", "its outputs (out, value, colour, normal)");
+    return &o->second;
+  };
   for (auto& [s, name] : order) {
     Block& to = blocks[name];
+    if (to.pass) continue;
     for (const UsdShadeInput& in : s.GetInputs()) {
       UsdShadeConnectableAPI src;
       TfToken out;
       UsdShadeAttributeType kind;
       if (!UsdShadeConnectableAPI::GetConnectedSource(in, &src, &out, &kind)) continue;
       const std::string from = src.GetPrim().GetName().GetString(), input = in.GetBaseName().GetString();
-      auto fb = blocks.find(from);
-      if (fb == blocks.end()) continue;   // the graph's own inputs: none are written
-      auto o = fb->second.outs.find(out.GetString());
+      if (!blocks.count(from)) continue;   // the graph's own inputs: none are written
+      Socket* o = resolve(from, out.GetString(), 0);
+      if (!o) continue;
       auto i = to.ins.find(input);
-      if (o == fb->second.outs.end())
-        fail(where + "." + from, "has no output \"" + out.GetString() + "\"", "its outputs (value, colour, normal)");
       if (i == to.ins.end())
         fail(where + "." + name + "." + input, "can't take a wire", "a wire into one of the block's number or colour inputs");
       i->second.node.CreateInput(TfToken(i->second.name), i->second.type)
-          .ConnectToSource(o->second.node.CreateOutput(TfToken(o->second.name), o->second.type));
+          .ConnectToSource(o->node.CreateOutput(TfToken(o->name), o->type));
     }
   }
 
@@ -364,14 +394,11 @@ void author_blocks(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     UsdShadeAttributeType kind;
     if (!UsdShadeConnectableAPI::GetConnectedSource(out, &src, &src_out, &kind)) continue;
     const std::string from = src.GetPrim().GetName().GetString();
-    auto fb = blocks.find(from);
-    if (fb == blocks.end()) fail(where + ".NG_blocks." + feed_name, "comes from \"" + from + "\", which is no block", "a block's output");
-    auto o = fb->second.outs.find(src_out.GetString());
-    if (o == fb->second.outs.end())
-      fail(where + "." + from, "has no output \"" + src_out.GetString() + "\"", "its outputs (value, colour, normal)");
+    if (!blocks.count(from))
+      fail(where + ".NG_blocks." + feed_name, "comes from \"" + from + "\", which is no block", "a block's output");
     const Feed& fd = f->second;
-    bsdf.CreateInput(TfToken(fd.cycles), fd.ctype)
-        .ConnectToSource(o->second.node.CreateOutput(TfToken(o->second.name), o->second.type));
+    if (Socket* o = resolve(from, src_out.GetString(), 0))
+      bsdf.CreateInput(TfToken(fd.cycles), fd.ctype).ConnectToSource(o->node.CreateOutput(TfToken(o->name), o->type));
     if (!fd.storm) continue;
     UsdShadeOutput mine = here.CreateOutput(TfToken(feed_name), out.GetTypeName());
     UsdShadeInput si = storm.CreateInput(TfToken(fd.storm), fd.stype);

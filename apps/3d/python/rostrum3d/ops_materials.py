@@ -10,6 +10,7 @@ from rostrum_core.errors import codes
 from rostrum_core.tree import walk
 
 from . import fields as F
+from .graph import FIELD as GRAPH
 from .kind import KIND, REGISTRY as R
 from .material_starts import STARTS, start_values
 from .ops_items import ID, NAME, new_item
@@ -74,6 +75,8 @@ def material_split(ctx, targets, args):
         mat = ctx.item(mat_id)
         copy = new_item(ctx, "material", {"name": f'{item.get("name") or t} material'}, {})
         copy.update(_copy.deepcopy(_fields(mat)))           # already checked values, copied as they are
+        if mat.get(GRAPH):
+            copy[GRAPH] = _copy.deepcopy(mat[GRAPH])        # its blocks graph too (graph.py)
         ctx.insert("root", "materials", copy)
         ctx.set(t, "material", copy["id"])
         made.append(copy)
