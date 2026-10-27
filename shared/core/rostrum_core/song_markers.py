@@ -83,6 +83,27 @@ def times(folder) -> dict[str, float]:
     return out
 
 
+def stamp(folder) -> tuple:
+    """A value that changes when any song's markers may have changed (the song list, a song's file or history)."""
+    if folder is None:
+        return ()
+    return tuple((i, *(filestamps.stamp(f) for f in files)) for i, _, files in _songs(folder))
+
+
+def listing(folder) -> list[dict]:
+    """[{name, at, item, song}] of every song's own markers, by time: the ruler's read-only flags."""
+    if folder is None or not _songs(folder):
+        return []
+    try:
+        import rostrum_sound  # noqa: F401
+    except ImportError:
+        return []
+    out = []
+    for item_id, name, files in _songs(folder):
+        out += [{"name": n, "at": t, "item": item_id, "song": name} for n, t in _read(folder, item_id, files).items()]
+    return sorted(out, key=lambda m: m["at"])
+
+
 def conflicts(project_times: dict[str, float], song_times: dict[str, float]) -> list[tuple[str, float, float]]:
     """[(name, project seconds, song seconds)] for names in both at different times (case and outer spaces ignored)."""
     from .marker_times import lookup

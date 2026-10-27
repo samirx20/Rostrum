@@ -13,7 +13,7 @@ import traceback
 import uuid
 from typing import Callable, Protocol
 
-from .. import bug
+from .. import bug, memory
 from ..errors import RostrumError, codes
 from . import job_files
 from .reply import Reply
@@ -142,7 +142,8 @@ class InProcessJobs:
 
     def _run(self, job: Job, fn):
         try:
-            job.result = fn(job)
+            with memory.reporting(lambda words: job.progress(job.done, job.total, note=words)):   # "waiting for memory …"
+                job.result = fn(job)
             job.status = "done"                           # it finished its work (a stop asked for too late changes nothing)
         except Exception as e:                            # noqa: BLE001  every way out is named, never a quiet "done"
             if job.cancel_requested.is_set():             # stopped on purpose (its stop hook ended its process): not a failure

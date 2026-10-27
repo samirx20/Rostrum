@@ -43,3 +43,18 @@ def test_turn_waits_for_the_other_job_then_fails_plainly(tmp_path):
         assert "another model job" in str(e.value) and c.t >= 6
     with memory.turn("b", "voice generation", 0.1, wait=1, lock_file=lock, free=lambda: 9.0):
         pass                                     # free again once the first job is done
+
+
+def test_an_agent_job_shows_the_wait_in_its_progress():
+    """inspect_job shows "waiting for memory (… GB free …)" while a model job waits, not only stderr."""
+    from rostrum_core.mcp.jobs import InProcessJobs
+    frees, seen = iter([1.0, 1.0, 9.0]), []
+
+    def work(job):
+        job.changed = lambda j: seen.append(j.note)
+        memory.gate("voice", "voice generation", 2.5, wait=30, free=lambda: next(frees), sleep=lambda s: None)
+        return "made"
+    jobs = InProcessJobs(shared=False)
+    job = jobs.submit("voice", work)
+    jobs.wait(job.id, 10)
+    assert job.status == "done" and any(n.startswith("waiting for memory (1.0 GB free") for n in seen), seen

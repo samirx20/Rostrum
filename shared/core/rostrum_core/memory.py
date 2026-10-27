@@ -10,6 +10,7 @@ refuse a voice outright when memory was short for a moment (2D final critic, F5-
 """
 from __future__ import annotations
 
+import contextvars
 import os
 import sys
 import time
@@ -19,6 +20,7 @@ from pathlib import Path
 from .errors import RostrumError, codes
 
 POLL_S = 2.0
+_SINK: contextvars.ContextVar = contextvars.ContextVar("rostrum_memory_sink", default=None)
 
 
 def wait_s() -> float:
@@ -40,7 +42,21 @@ def free_gb() -> float | None:
     return m.avail / 2 ** 30
 
 
+@contextmanager
+def reporting(fn):
+    """While the block runs (on this thread), waiting notes go to `fn(words)`: an agent job's progress (mcp/jobs.py), so
+    inspect_job shows "waiting for memory …" instead of a silent job."""
+    token = _SINK.set(fn)
+    try:
+        yield
+    finally:
+        _SINK.reset(token)
+
+
 def _say(words):
+    sink = _SINK.get()
+    if sink is not None:
+        return sink(words)
     print(f"rostrum: {words}", file=sys.stderr, flush=True)     # stderr: an MCP server's stdout is its protocol
 
 
@@ -60,8 +76,8 @@ def gate(where: str, what: str, need_gb: float, wait: float | None = None, waiti
                                f"needs about {need_gb} GB of free memory; {f:.1f} GB was still free after waiting "
                                f"{waited:.0f} s", hint="Close other programs (or wait for other work to finish) and try "
                                "again; ROSTRUM_MODEL_WAIT_S sets how long a job waits.")
-        if told is None or clock() - told >= 10 or waiting:
-            say(f"waiting for memory: {what} needs about {need_gb} GB, {f:.1f} GB is free ({waited:.0f} s)")
+        if told is None or clock() - told >= 10 or waiting or _SINK.get() is not None:
+            say(f"waiting for memory ({f:.1f} GB free, {what} needs {need_gb} GB; {waited:.0f} s so far)")
             told = clock()
         sleep(max(0.01, min(POLL_S, limit - waited)))
 
@@ -114,8 +130,8 @@ def turn(where: str, what: str, need_gb: float, wait: float | None = None, waiti
             raise RostrumError(codes.NO_MEMORY, where, what,
                                f"waited {waited:.0f} s for another model job on this computer to finish",
                                hint="Try again when it is done; ROSTRUM_MODEL_WAIT_S sets how long a job waits.")
-        if told is None or clock() - told >= 10 or waiting:
-            say(f"waiting for its turn: another model job is running ({waited:.0f} s)")
+        if told is None or clock() - told >= 10 or waiting or _SINK.get() is not None:
+            say(f"waiting for another model job to finish ({what} goes next; {waited:.0f} s so far)")
             told = clock()
         sleep(max(0.01, min(POLL_S, limit - waited)))
     try:

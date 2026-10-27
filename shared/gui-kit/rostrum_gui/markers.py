@@ -16,7 +16,7 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum_core import RostrumError, Who
-from rostrum_core import filestamps, live
+from rostrum_core import filestamps, live, song_markers
 from rostrum_core.markers import current, edit, listing, open_markers, refresh, times, version, watch
 
 from . import marker_menu
@@ -48,7 +48,9 @@ class MarkerWatch(QObject):
             self.changed.emit()
 
     def rows(self) -> list[dict]:
-        """[{id, name, at, colour}] by time, for the ruler's flags."""
+        """[{id, name, at, colour}] by time, for the ruler's flags; outside RostrumSound's own screen, then each song's
+        own markers as read-only flags ({…, shared: False, song: its song's name}: the same markers inspect_markers
+        and timing read, rostrum_core.song_markers), one that a project marker repeats at the same time left out."""
         return self._rows
 
     def snap(self, t: float, within: float) -> float:
@@ -151,17 +153,29 @@ class MarkerWatch(QObject):
     # ---- inside -----------------------------------------------------------------------------------------------
     def _read(self) -> bool:
         """Re-read when the marker file changed (any edit: time, name, colour); True when it did."""
-        stamp = version(self.folder) if self.folder is not None else 0
+        stamp = (version(self.folder) if self.folder is not None else 0, self._song_stamp())
         if stamp == self._stamp:
             return False
         if self.folder is not None:
             refresh(self.folder)                        # the shared copy takes in the new lines (or is read again)
         self._stamp, self.times, self._empty = stamp, times(self.folder), None
-        doc = current(self.folder) if stamp else None
+        doc = current(self.folder) if stamp[0] else None
         self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder)] if doc else []
+        self._rows = sorted(self._rows + self._song_rows(), key=lambda m: m["at"])
         changes = doc.history.changes if doc else []
         self._last = changes[-1] if changes else None
         return True
+
+    def _song_stamp(self):
+        return song_markers.stamp(self.folder) if self.owner != "sound" and self.folder is not None else ()
+
+    def _song_rows(self) -> list[dict]:
+        if self.owner == "sound" or self.folder is None:
+            return []                                   # Sound's screen draws its songs' markers itself
+        mine = {(m["name"].strip().lower(), round(m["at"], 3)) for m in self._rows}
+        return [{"id": f'song:{m["item"]}:{m["name"]}', "name": m["name"], "at": m["at"], "colour": "", "shared": False,
+                 "song": m["song"]} for m in song_markers.listing(self.folder)
+                if (m["name"].strip().lower(), round(m["at"], 3)) not in mine]
 
     def _edit(self, calls, label) -> bool:
         if self.folder is None:
