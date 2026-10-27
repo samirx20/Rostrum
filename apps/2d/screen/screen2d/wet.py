@@ -31,7 +31,7 @@ MOST_REVEAL = 8192           # the engine's largest picture side
 
 
 class WetProvider(ScreenImages):
-    """image://wet/dry-<n> (the stroke's settled part) and image://wet/tip-<n> (its newest points)."""
+    """image://wet/tip-<n> (the stroke drawn so far) and image://wet/dry-<n> (a Fill's or a paste's flat colour)."""
 
     def __init__(self):
         super().__init__()
@@ -47,10 +47,10 @@ class WetProvider(ScreenImages):
 
 
 class WetView(QObject):
-    """The screen's wet ink, read in QML as `painter.wet`: the tip's `serial` (0: none showing) and `box`, the dry
-    part's `drySerial` and `dryBox` (world px)."""
+    """The screen's wet ink, read in QML as `painter.wet`: the stroke's `serial` (0: none showing) and `box`, a flat
+    colour's `drySerial` and `dryBox` (world px)."""
     changed = Signal()
-    _dried = Signal()            # a dry part was stamped on the worker thread: take it in (on the screen's thread)
+    _dried = Signal()            # a piece was stamped on the ink's thread: take it in (on the screen's thread)
 
     def __init__(self, frame_changed, parent=None):
         super().__init__(parent)
@@ -64,7 +64,7 @@ class WetView(QObject):
         self._dried.connect(self.show)
 
     def ink(self, brush: dict, sid: str, scale: float, bounds=None, under=None, place=(0.0, 0.0, 1.0, 1.0)) -> WetInk:
-        """A stroke's ink, telling this view when a dry part is ready (from the worker thread). `bounds`: a smear's
+        """A stroke's ink, telling this view when a piece is ready (from the ink's thread). `bounds`: a smear's
         canvas size (normal ink has none: it goes anywhere in the world)."""
         return WetInk(brush, sid, scale, bounds, under, place, brush.get("mode") == "erase", self._dried.emit)
 
@@ -134,11 +134,6 @@ class WetView(QObject):
         ink = self._ink or self._ending
         if ink is None or not ink.ready:
             return
-        if ink.settle(more=ink is self._ink):
-            got = ink.dry()
-            if got is not None:
-                self.provider.put("dry", got[0])
-                self._dry_serial, self._dry_box = self._dry_serial + 1, got[1]
         got = ink.tip()
         if got is not None and got[0] is not self.provider.picture("tip"):     # (unchanged: the same picture)
             self.provider.put("tip", got[0])
@@ -158,13 +153,14 @@ class WetView(QObject):
 
     def lift(self, saved: bool):
         """The pen is up: the wet picture stays until the frame with the saved stroke lands (or goes now, if the
-        stroke wasn't saved). Meanwhile the ink draws the points it hadn't yet (`_ending`), so the whole stroke shows
-        within a piece of the release, not when the saved stroke's frame lands (a big brush's pieces trail the pen)."""
+        stroke wasn't saved). Meanwhile the ink draws the points it hadn't yet and the stroke's end (`_ending`), so the
+        whole stroke shows within a piece of the release, not when the saved stroke's frame lands."""
         ink, self._ink, self._lifted = self._ink, None, True
         if not saved:
             self._clear()
         elif ink is not None:
             self._ending = ink
+            ink.lift()
             self.show()
 
     def flat(self, got, settled=lambda: True):

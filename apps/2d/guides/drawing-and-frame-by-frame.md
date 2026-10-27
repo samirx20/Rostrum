@@ -95,7 +95,7 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 
 | Setting | Use |
 |---|---|
-| `brush` | `round` soft dab · `bristle` dry brush with streaks · `chalk` broken by paper grain · `flat` wide flat brush · `block` square-ended block-in · `line` crisp thin line |
+| `brush` | `round` soft dab · `bristle` dry brush with streaks · `chalk` broken by paper grain · `flat` wide flat brush · `block` square-ended block-in · `line` crisp thin line. A `bristle` or `flat` stroke's start and end fray over about one brush size (a stroke shorter than two sizes frays less) |
 | `size`, `opacity`, `hardness` | width in px; 0..1; soft to hard edge |
 | `mode` | `normal`, `multiply` (glaze), `erase`, `screen` / `add` (light that builds up), `overlay`, `soft_light`, `color`. A paint layer's own `mode` is `normal`, `multiply`, `screen` or `add` |
 | `smudge` + `wet` (+ `pickup`) | the brush drags the paint under it (and from the layers below). `smudge` is on / off; `wet` 1 only drags (a blender), lower also lays that share of the brush's colour; a soft `round` tip blends, a `bristle` tip streaks |
