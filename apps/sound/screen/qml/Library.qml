@@ -100,7 +100,7 @@ Panel {
             width: list.width; height: list.rowH; radius: Theme.radiusCtl
             color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: p.toggle(row.index); onDoubleTapped: p.use(row.index) }
+            TapHandler { onPressedChanged: if (pressed) p.toggle(row.index); onDoubleTapped: p.use(row.index) }   // plays on the press itself, not after the release
             readonly property bool heard: p.shownAt === index && soundLibrary.auditioning !== ""
             Rectangle { visible: row.heard; width: 3; radius: 1; color: Theme.accent   // the press is answered at once: this row is the one playing
                         anchors { left: parent.left; top: parent.top; bottom: parent.bottom; topMargin: 6; bottomMargin: 6 } }
