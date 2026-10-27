@@ -29,11 +29,30 @@ Rectangle {
     readonly property real rowGap: 2
     readonly property real laneH: 76         // an open automation lane
     readonly property real laneGap: 2
-    readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end (the picture corner floats below)
+    readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
               (list.height - slack - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
+    // A track just added (Library Add or double-click, + Track, an undo bringing one back): its row flashes once and
+    // the rows scroll just enough to show it (PLAN S3). Seen as one new track while every track before stays, so
+    // opening another song never flashes.
+    property var knownIds: null              // the tracks shown before this change (null: none read yet)
+    property string arrived: ""              // the row flashing now
+    onRowsChanged: {
+        var ids = rows.filter(r => !r.mix).map(r => r.id), was = knownIds
+        knownIds = ids.reduce((o, i) => { o[i] = true; return o }, {})
+        if (was === null) return
+        var fresh = ids.filter(i => !was[i]), kept = Object.keys(was).every(i => knownIds[i])
+        if (fresh.length === 1 && kept) { arrived = fresh[0]; Qt.callLater(reveal, fresh[0]) }
+    }
+    function reveal(id) {   // scroll the rows just enough that this one is wholly in view (nothing moves when it is)
+        var s = rowSpan(id)
+        if (!s) return
+        var top = list.y, bottom = list.y + list.height, most = Math.max(0, list.contentHeight - list.height)
+        if (s.bottom > bottom) list.contentY = Math.min(most, list.contentY + s.bottom - bottom + Theme.grid)
+        else if (s.top < top) list.contentY = Math.max(0, list.contentY - (top - s.top) - Theme.grid)
+    }
     // Dragging a track header: where it would land is asked of the backend (group_drag.py), the one rule.
     property string dragId: ""
     property string dropOver: ""            // the row under the pointer
@@ -102,9 +121,11 @@ Rectangle {
             z: 1      // above the lanes' mouse area: the chips and headers take their own clicks, the rest falls through
             width: list.width; spacing: tl.rowGap
             Repeater {   // keyed by track id (backend.trackRows): a change redraws a row in place, never makes every row again
+                id: rowItems
                 model: backend.trackRows
                 delegate: Item {
                     id: row
+                    readonly property alias lane: laneBlocks
                     required property var track
                     required property var blocks
                     required property int index
@@ -113,6 +134,18 @@ Rectangle {
                     readonly property real h: tl.hOf(modelData)
                     readonly property real top0: tl.addAbove(index)
                     width: column.width; height: top0 + h + (auto ? tl.laneGap + tl.laneH : 0)
+                    Loader {   // just added: the row (header and lane) flashes once in the accent and fades over a second
+                        active: tl.arrived !== "" && tl.arrived === row.modelData.id
+                        y: row.top0; width: parent.width; height: row.h; z: 2
+                        sourceComponent: Rectangle {
+                            objectName: "arrivedFlash"
+                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18); radius: Theme.radiusCtl
+                            border.width: 2; border.color: Theme.accent
+                            enabled: false
+                            NumberAnimation on opacity { from: 1; to: 0; duration: 1000; easing.type: Easing.InQuad
+                                                         onFinished: if (tl.arrived === row.modelData.id) tl.arrived = "" }
+                        }
+                    }
                     Loader {   // + Track: made only in the rows that show it
                         active: row.top0 > 0 && backend.tracks.some(r => !r.mix)
                         x: Theme.grid; y: item ? (row.top0 - item.height) / 2 - tl.rowGap / 2 : 0
@@ -151,7 +184,24 @@ Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
                         BeatGrid { anchors.fill: parent; ruler: bars; slot: row.index }
-                        LaneBlocks { anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars; slot: row.index }
+                        LaneBlocks { id: laneBlocks; anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars; slot: row.index }
+                        Loader {   // a section being dragged (SectionBand.shift): its stretch of this lane, taken once at the press,
+                            // rides the pointer; the place it leaves is dimmed. Pictures only: the notes are written on release
+                            id: slice
+                            readonly property var sh: sectionBand.shift
+                            active: !!sh && !row.modelData.mix
+                            anchors.fill: parent
+                            sourceComponent: Item {
+                                readonly property real x0: slice.sh ? Math.max(0, slice.sh.x0) : 0
+                                readonly property real w: Math.max(1, Math.min(width, slice.sh ? slice.sh.x1 : 0) - x0)
+                                Rectangle { x: parent.x0; width: parent.w; height: parent.height; color: Theme.sunken; opacity: 0.7 }
+                                ShaderEffectSource {
+                                    sourceItem: laneBlocks; live: false; hideSource: false
+                                    sourceRect: Qt.rect(parent.x0, 0, parent.w, parent.height)
+                                    x: parent.x0 + sectionBand.dx; width: parent.w; height: parent.height
+                                }
+                            }
+                        }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                         Loader {   // the take growing while this track records (made only on the armed row)
                             anchors.fill: parent; active: recorder.take.track === row.modelData.id
@@ -220,6 +270,13 @@ Rectangle {
             var h = hOf(rows[i]), lane = autoOf(rows[i]) ? laneGap + laneH : 0
             if (rows[i].id === id) return { top: list.y + top - list.contentY, bottom: list.y + top + h - list.contentY }
             top += h + lane + rowGap
+        }
+        return null
+    }
+    function blockOf(trackId, id) {   // a block as its lane draws it now (a handle drag's chip reads what is shown)
+        for (var i = 0; i < rowItems.count; i++) {
+            var r = rowItems.itemAt(i)
+            if (r && r.track.id === trackId) return r.lane.shown.find(b => b.id === id) || null
         }
         return null
     }

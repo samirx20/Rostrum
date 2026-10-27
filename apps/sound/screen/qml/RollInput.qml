@@ -1,6 +1,7 @@
 import QtQuick
 import RostrumKit
 import "Picks.js" as Picks
+import "Pointers.js" as Pointers
 
 // Every click and drag on the Editor's piano roll / drum rows, in one place (the same rules as LaneInput):
 // click selects alone, Ctrl+click adds / removes, Shift+click the run between; a press that moves 4 px or more
@@ -11,9 +12,14 @@ import "Picks.js" as Picks
 // a click on a hit removes it, a drag along a row paints (or, from a hit, erases) every grid step it passes (Shift+click an accent,
 // Alt+click soft; one undo step per stroke: backend.stepPress / stepTo / stepEnd). A new note or hit goes in the grid cell under the pointer (timing.snap). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
 // just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
-// step; the pointer shows ↔ over it); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
+// step; a chip beside the pointer says the length, "1/8"); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
 // Right-click: the item's actions (the kit's short menu, then Quantise, Humanise, Transpose ▸), or on empty space what
 // belongs there (Add note here, Paste here, Select all on this track, Select every C4: backend.rollMenu).
+// The pointer says what a press does there (CANVAS.md §4, Pointers.js): a note's body `pick` (Alt: `copy`; `moving` while
+// it moves), its ends `trim`, empty space with Draw `draw`, and what a Draw click would remove `erase`, lit red (a hit; a
+// note with Alt: Draw+Alt click erases it, Draw+Alt drag still copies). With Draw, a faint note or hit sits where a click
+// would put it (backend.rollHover: the click's own snap, key lock and length), its key lit on the keyboard (PLAN S1).
+// A drum hit is caught only on the diamond you see (tol), never on the empty step beside it.
 MouseArea {
     id: m
     property var grid
@@ -26,12 +32,44 @@ MouseArea {
     hoverEnabled: true
     enabled: !!bars && !!grid            // no pointer before its ruler and rows are linked (a roll being made or freed)
     readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11); a note's end handle is its last 6 px
-    property string hover: ""
-    cursorShape: mode === "handle" || hover !== "" ? Qt.SizeHorCursor : backend.tool === "draw" ? Qt.CrossCursor : Qt.ArrowCursor
-    // How near (seconds) a click must be to catch an item: the snapping 6 px, and on the drum rows the whole diamond
-    // (RollGrid.hitHalf) either side of the hit's time. Every press and double-click asks with this one tolerance.
-    function tol() { return (kind === "drums" ? Math.max(snapPx, grid.hitHalf + 1) : snapPx) / bars.perSec }
+    property var over: ({})             // what is under the pointer, or the ghost a Draw click would make (backend.rollHover)
+    property bool altHeld: false        // Alt, as the pointer last moved
+    property bool copying: false        // a drag with Alt: a copy
+    property bool erasing: false        // the drum stroke began on a hit: it erases
+    readonly property bool drawTool: backend.tool === "draw"
+    onDrawToolChanged: over = ({})
+    readonly property bool onEnd: over.part === "length" || over.part === "noteStart"
+    // a Draw click here removes what is under the pointer: a hit (the step tool), a note's body with Alt
+    readonly property bool removes: drawTool && !!over.id && (kind === "drums" || (over.part === "body" && altHeld))
+    readonly property string pointer: mode === "drag" ? (copying ? "copy" : "moving")
+                                    : mode === "handle" || mode === "hpress" ? "trim"
+                                    : mode === "steps" ? (erasing ? "erase" : "draw")
+                                    : mode === "erase" ? "erase"
+                                    : mode !== "" ? ""
+                                    : removes ? "erase" : onEnd ? "trim" : over.part === "body" ? (altHeld ? "copy" : "pick")
+                                    : drawTool ? "draw" : ""
+    cursorShape: Pointers.of(pointer)
+    // How near (seconds) a click must be to catch an item: the snapping 6 px; on the drum rows the diamond as drawn
+    // (RollGrid.hitHalf, 1 px round it): as wide either side of the hit's time as the diamond is at the pointer's height,
+    // -1 off it. Every press, hover and double-click asks with this one tolerance.
+    function tol(y) {
+        if (kind !== "drums") return snapPx / bars.perSec
+        var half = grid.hitHalf + 1 - Math.abs(y - (Math.floor(y / grid.rowH) + 0.5) * grid.rowH)
+        return half > 0 ? half / bars.perSec : -1
+    }
     function endUnder(e) { return kind === "notes" ? backend.rollHandleAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec) : ({}) }
+    function hoverAt(x, y, e) {         // one answer a move; the ghost's key lit on the keyboard
+        altHeld = !!e && alt(e)
+        over = backend.rollHover(bars.tOf(x), grid.rowAt(y), tol(y), 1 / bars.perSec, drawTool)
+        var g = over.ghost
+        grid.hoverKey = g && g.keys ? g.keys[0] : -1
+    }
+    function leave() { over = ({}); grid.hoverKey = -1 }
+    Connections {   // Alt pressed or let go with the pointer still: the pointer and the red light follow at once
+        target: backend.altWatch
+        function onChanged(held) { if (m.containsMouse && !m.pressed) m.altHeld = held }
+    }
+    onExited: leave()
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     property real x0: 0
     property real y0: 0
@@ -40,7 +78,7 @@ MouseArea {
     property string hit: ""
     property string handle: ""          // the note end pressed: "length" (right) or "noteStart" (left)
     property bool drawn: false          // the press drew the note(s) under it (Draw): the release keeps what it selected
-    property string mode: ""            // "press" | "hpress" (a note's end) | "drag" | "handle" | "empty" | "box" | "steps" (Draw on a drum row)
+    property string mode: ""            // "press" | "hpress" (a note's end) | "drag" | "handle" | "empty" | "box" | "steps" (Draw on a drum row) | "erase" (Draw+Alt on a note)
     property real lastT: 0              // where the pointer last was over the roll (seconds): the bar a drum row's Fill acts on
     readonly property bool busy: mode === "drag" || mode === "box" || mode === "handle"
     function ctrl(e) { return (e.modifiers & Qt.ControlModifier) !== 0 }
@@ -49,6 +87,7 @@ MouseArea {
     function far(e) { return Math.abs(e.x - x0) >= 4 || Math.abs(e.y - y0) >= 4 }
 
     onWheel: (w) => {   // Ctrl zooms, Shift / sideways scrolls in time (the Timeline's view); else up and down
+        leave()                          // the view moves under a still pointer: no ghost left behind
         if (!backend.viewWheel(w.angleDelta.x, w.angleDelta.y, ctrl(w), shift(w), w.x / width, true))
             flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, flick.contentY - w.angleDelta.y / 2))
     }
@@ -56,19 +95,22 @@ MouseArea {
     onPressed: (e) => {
         backend.focusArea("roll")
         x0 = x1 = e.x; y0 = y1 = e.y
-        hit = backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol())
+        copying = false
+        hit = backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol(e.y))
         if (e.button === Qt.RightButton) {
             mode = ""
             m.menuAt(hit !== "" ? backend.blockMenu(hit, bars.tOf(e.x)) : backend.rollMenu(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec), e.x, e.y)
             return
         }
         if (backend.tool === "draw" && kind === "drums") {   // the step tool: a click adds / removes a hit, a drag paints / erases along the row
-            mode = backend.stepPress(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec, tol(), (shift(e) ? 1 : 0) | (alt(e) ? 2 : 0)) ? "steps" : ""
+            erasing = hit !== ""
+            mode = backend.stepPress(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec, tol(e.y), (shift(e) ? 1 : 0) | (alt(e) ? 2 : 0)) ? "steps" : ""
             return
         }
         var h = endUnder(e)
         drawn = false
         if (h.id) { hit = h.id; handle = h.handle; mode = "hpress"; return }
+        if (hit !== "" && backend.tool === "draw" && kind === "notes" && alt(e)) { mode = "erase"; return }   // a click erases, a drag copies
         if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
             hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
@@ -82,8 +124,9 @@ MouseArea {
     onPositionChanged: (e) => {
         x1 = e.x; y1 = e.y
         lastT = bars.tOf(e.x)
-        if (!pressed) { hover = endUnder(e).handle || ""; return }
+        if (!pressed) { hoverAt(e.x, e.y, e); return }
         if (mode === "steps") { backend.stepTo(bars.tOf(e.x), 1 / bars.perSec); return }
+        if (mode === "erase" && far(e)) mode = "press"                 // Draw+Alt dragged on: a copy, as with Select
         if (mode === "hpress" && far(e)) mode = backend.beginHandle(hit, handle) ? "handle" : ""
         if (mode === "handle") { backend.handleTo((e.x - x0) / bars.perSec, 0, ctrl(e)); return }
         if (mode === "press" && far(e)) {
@@ -92,27 +135,75 @@ MouseArea {
         } else if (mode === "empty" && far(e)) {
             mode = "box"
         }
-        if (mode === "drag")
+        if (mode === "drag") {
+            copying = alt(e)
             backend.dragTo((e.x - x0) / bars.perSec, kind === "notes" ? grid.rowAt(e.y) - grid.rowAt(y0) : kind === "drums" ? Math.round((e.y - y0) / grid.rowH) : 0,
                            ctrl(e), shift(e), alt(e), bars.perSec)
-        else if (mode === "box")
+        } else if (mode === "box")
             backend.boxRoll(bars.tOf(x0), bars.tOf(x1), grid.rowAt(y0), grid.rowAt(y1), ctrl(e))
     }
     onReleased: (e) => {
-        if (mode === "steps") { backend.stepEnd(); mode = ""; return }          // the stroke's one step ends here
-        if (mode === "hpress") backend.endDrag()          // a note just drawn: its one step ends here
-        if (mode === "press" || (mode === "hpress" && !drawn)) backend.clickSelect(hit, ctrl(e), shift(e))   // drawn: it picked what it made (a stamped chord: all of it)
-        else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]) }     // only the ruler moves the playhead
-        else if (mode === "drag" || mode === "handle") backend.endDrag()
-        else if (mode === "box") backend.endBox()
+        if (mode === "steps") backend.stepEnd()          // the stroke's one step ends here
+        else if (mode === "erase") backend.eraseNote(hit)
+        else {
+            if (mode === "hpress") backend.endDrag()          // a note just drawn: its one step ends here
+            if (mode === "press" || (mode === "hpress" && !drawn)) backend.clickSelect(hit, ctrl(e), shift(e))   // drawn: it picked what it made (a stamped chord: all of it)
+            else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]) }     // only the ruler moves the playhead
+            else if (mode === "drag" || mode === "handle") backend.endDrag()
+            else if (mode === "box") backend.endBox()
+        }
         mode = ""
+        if (e.button === Qt.LeftButton) hoverAt(e.x, e.y, e)     // what is under the pointer now (the note just drawn there)
     }
     onCanceled: { if (mode === "drag" || mode === "handle" || mode === "hpress" || mode === "steps") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
     onDoubleClicked: (e) => {   // empty space: a note on that key, or a hit on that drum (Select tool; Draw adds on a click)
-        if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol()) !== "") return
+        if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol(e.y)) !== "") return
         mode = ""                  // the release that follows must not clear the new note's selection
         if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)), 1 / bars.perSec)
         else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
+    }
+
+    // What a Draw click would make (faint) or remove (lit red): one small item each, moved with the pointer.
+    readonly property var ghost: !pressed && drawTool && over.ghost ? over.ghost : null
+    readonly property bool lit: removes && mode === ""
+    Repeater {   // a note, or each key of the chord Note ▾ › Draw stamps (by count: a move re-places the same items)
+        model: m.ghost && m.ghost.keys ? m.ghost.keys.length : 0
+        Rectangle {
+            required property int index
+            readonly property int key: m.ghost ? m.ghost.keys[index] : 0
+            visible: !!m.ghost && m.grid.shows(key)
+            x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
+            width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
+            color: m.grid.roll.hue; opacity: 0.55       // faint, still seen on the dark rows (real-window check)
+        }
+    }
+    Diamond {   // a hit
+        shown: !!m.ghost && m.ghost.row !== undefined
+        at: shown ? Qt.point(m.bars.xOf(m.ghost.t), (m.ghost.row + 0.5) * m.grid.rowH) : Qt.point(0, 0)
+        color: m.grid ? m.grid.roll.hue : "transparent"; opacity: 0.55; side: m.grid ? m.grid.hitHalf * Math.SQRT2 : 0
+    }
+    Repeater {   // a note a click would remove (each of its keys)
+        model: m.lit && m.over.keys ? m.over.keys : []
+        Rectangle { required property var modelData
+                    x: m.bars.xOf(m.over.t); y: m.grid.rowOf(modelData) * m.grid.rowH + 1
+                    width: Math.max(4, m.bars.wOf(m.over.dur) - 1); height: m.grid.rowH - 2; radius: 3
+                    color: Theme.danger; opacity: 0.75 }
+    }
+    Diamond {   // a hit a click would remove
+        shown: m.lit && m.over.row !== undefined && m.over.row >= 0
+        at: shown ? Qt.point(m.bars.xOf(m.over.t), (m.over.row + 0.5) * m.grid.rowH) : Qt.point(0, 0)
+        color: Theme.danger; side: m.grid ? m.grid.hitHalf * Math.SQRT2 : 0
+    }
+    component Diamond: Rectangle {   // the roll's hit diamond (Marks.js: its corners hitHalf from its centre)
+        property bool shown: false
+        property point at
+        visible: shown
+        property real side: 0                                // (an inline component can't read `m`: set where used)
+        x: at.x - side / 2; y: at.y - side / 2; width: side; height: side; rotation: 45; antialiasing: true
+    }
+    DragLabel {   // a note's length while its end is dragged ("1/8")
+        text: m.mode === "handle" && m.grid ? backend.lengthWords(m.hit, m.grid.blocks) : ""
+        at: Qt.point(m.x1, m.y1)
     }
 
     Rectangle {   // the box being dragged

@@ -231,8 +231,11 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   `"markers": true` to move the song's own markers inside the section too. Each time keeps its form; a time on a
   marker that stays keeps the marker with a new offset. Effect envelopes inside effects don't move.
   A time signature change must stay on a bar line, so a section holding one moves by whole bars only (a move that
-  puts it off a bar line is refused and names the nearest bar lines). In the arrangement: drag the section's bar (Ctrl = off the grid);
-  it carries what was inside it when you pressed, never what it passes over, and lets go as one `section.move`.
+  puts it off a bar line is refused and names the nearest bar lines). In the arrangement: drag the section's bar. While
+  you drag, the bar and a picture of the notes and clips inside it move with the pointer and nothing in the song
+  changes; it lands on the nearest beat (Ctrl = exactly where you let go) and the chip names where ("bar 9.3"). It
+  carries what was inside it when you pressed, never what it passes over, and lets go as one `section.move` (one
+  undo step); Esc before letting go puts it back.
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on

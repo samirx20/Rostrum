@@ -40,8 +40,9 @@ you close the window and every 20 changes; the change log beside it always has t
    **Voice**, **My sounds**. The Library always opens on **All**. A word that finds nothing names the closest sounds ("No “clr”
    here. Closest: Clarinet, Cello"); when the lit chip hides what you typed, one button takes you there (**Show “brass” in
    Instruments**).
-3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
-   sound appears, selected, the preview stops and the **Editor** opens under the arrangement. The Library stays open on the same search, so the next sound is one click away.
+3. Click a row to hear it: the row lights at once and plays a short phrase in the song's key and tempo (a drum kit plays a
+   one-bar pattern); click the same row again to stop it, or another row to hear that one instead. A click only previews and never changes a track. Then press that row's **Add**, double-click it, or select it and press **Enter**. A new track with that
+   sound appears, selected, the preview stops and the **Editor** opens under the arrangement. The Library stays open on the same search and place in the list, so the next sound is one click away.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
      type a line, then press Play. Voice rows have no preview.
@@ -98,8 +99,8 @@ The **Colour** row shows the colour the track is drawn in.
    **Keep notes in the key** makes new notes, drags and ↑ / ↓ land only on the key's notes (↑ / ↓ move a step of the key,
    Shift an octave; **Ctrl** while dragging: any note); **Only the key's rows** hides the others (a note that is outside
    the key keeps its row). Both are only how this window looks and works: they are not saved and never an undo step.
-   **Fit to key** (on a selection with notes outside the key; it leads the settings panel's actions then, and is in
-   **Ctrl+K** otherwise) moves them to the nearest note of the key. A note outside the key has a small dot.
+   **Fit to key** (a button in the settings panel's actions on any selection with notes, in a song with a key; it never
+   comes and goes, so the fields under it stay where they are) moves the notes outside the key to the nearest note of the key. A note outside the key has a small dot.
 4. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all of where you last clicked: in the Editor (its notes, its buttons, its header) every note or hit of the Editor's track, in the arrangement everything on the selected tracks (every track when none is). The Editor stays on its track while you work: a selection that still holds something of it never switches it to another track. **Esc** clears.
    A key on a mixed selection acts on the part it can: after Ctrl+A, **Q** quantises the notes and drum hits, ↑ / ↓
@@ -115,7 +116,7 @@ The **Colour** row shows the colour the track is drawn in.
    of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
    **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
    chord on that note; only when the song has a key), In key with 7th, Major, Minor, Sus2, Sus4, Power (5th) or Octave.
-   Each new tone is its own note you can move or delete (while nothing else applies, **Chord ▾** shows that list of shapes directly, with no
+   Each new tone is its own note you can move or delete; the whole chords stay selected, so Arpeggio… is offered at once (while nothing else applies, **Chord ▾** shows that list of shapes directly, with no
    **Make a chord** step in between). When the selection holds a chord (notes that start together),
    the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
    **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
@@ -128,7 +129,7 @@ The **Colour** row shows the colour the track is drawn in.
    name, every key on the Keys list (Ctrl+/; "nudge" finds the arrow keys): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid;
    a setting of what is selected by its name ("velocity", "volume": Enter jumps to its field in the settings panel) and the selected track's lanes
    ("automation", "sustain": Show the Volume lane, Playing lane: Sustain). An action that can't run right now says why instead ("paste" before a copy:
-   "Nothing to paste yet: copy something first"). The same keys
+   "Nothing copied yet: select notes and press Ctrl+C"). The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 6. **Keys on the selection:**
@@ -153,7 +154,7 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 5. Play it
 
-- **Space** plays and stops. **Home** (or ⏮) goes to the start.
+- **Space** plays and stops (the Play button shows it in the same instant, and the playhead moves from the press; Space twice quickly stops). **Home** (or ⏮) goes to the start.
 - The **metronome icon** beside play turns the click on and off (**Shift+K**); it is lit while on. It is only for you while you work; it is never in an export.
 - The **loop button** (**Shift+L**) is always there. It loops the time range on the ruler; with no range drawn it
   makes one first: the selection's span, else the bar at the playhead and the next three. The loop shows as a solid

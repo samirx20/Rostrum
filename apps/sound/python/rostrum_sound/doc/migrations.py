@@ -22,11 +22,14 @@ means adding its step here (the kind refuses to start without it).
             sounds, so `bass` (`electricBass`, `bassGuitar`) played every note an octave below the one written. The
             engine now plays it as written; a saved song's notes on those tracks move down an octave (spelling kept),
             so it sounds exactly as before. The names are frozen here: they are what format 6 played low.
+    7 → 8   sections on their bars (2026-10-27): a section made from a time range kept its start and end in seconds, so
+            a tempo change left it behind its notes (critic r12). Such a time is now kept as the beat it falls on; a
+            saved song's plain-seconds section times become those beats (same place today), marker references stay.
 """
 from __future__ import annotations
 
 from .. import names
-from . import keys, preset_level
+from . import keys, preset_level, tempo
 
 VOLUME_MAX = 4.0        # the fader's top (and the engine's)
 
@@ -123,12 +126,25 @@ def bass_true_pitch(data: dict, lists: dict):
                   "an octave, so the song sounds as before") if moved else "Bass pitch: nothing to change"
 
 
+def sections_on_bars(data: dict, lists: dict):
+    moved = 0
+    for sec in data.get("sections", []):
+        for k in ("at", "end"):
+            v = sec.get(k)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                sec[k] = {"beat": round(tempo.beat_at(data, float(v)), 6)}
+                moved += 1
+    return data, ("Sections now stay on their bars when the tempo changes: "
+                  f"{moved} section time{'s' * (moved != 1)} kept as beats, in the same place") if moved else "Sections on bars: nothing to change"
+
+
 # What each step's label starts with or holds, for upgrade steps written before steps carried their formats
 # (rostrum_core formats.py; frozen: the labels those builds wrote).
 _SAID = {1: ("Level matching:",), 2: ('The drum kit "synth" is now', "moved to the new instruments' level matching",
                                       "Instrument names:"),
          3: ("moved to the new starting balance", "Starting balance:"), 4: ("(Gentle limiting off)",),
-         5: ("(Ring out and Even kit off)",), 6: ("The bass now plays at the written pitch", "Bass pitch:")}
+         5: ("(Ring out and Even kit off)",), 6: ("The bass now plays at the written pitch", "Bass pitch:"),
+         7: ("Sections now stay on their bars", "Sections on bars:")}
 
 
 def upgraded(label: str):
@@ -137,5 +153,5 @@ def upgraded(label: str):
     return (min(ran), max(ran) + 1) if ran else None
 
 
-STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch}
+STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch, 7: sections_on_bars}
 FORMAT = len(STEPS) + 1

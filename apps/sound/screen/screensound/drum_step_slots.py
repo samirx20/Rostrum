@@ -28,7 +28,11 @@ class DrumStepSlots:
         drum, grid, root = drums[i], self._grid_now, self.doc.data
         under = pick.roll_at(roll, t, row, tol)
         erase = bool(under) and self.doc.has(under) and self.doc.item(under)["type"] == "hit"
-        stroke = D.Stroke(drum, erase, D.LEVELS.get(int(mods) & 3), D.cell_of(t, root, grid, px))
+        # erasing starts in the hit's own step, never the one under the pointer: a press on a diamond's left half sits in
+        # the step before, and removed that step's hit too (critic: lost hats and a tom)
+        here = next((b["t"] for b in roll.get("blocks", []) if b["id"] == under), t) if erase else None
+        stroke = D.Stroke(drum, erase, D.LEVELS.get(int(mods) & 3),      # (a humanised hit: the step it was played on)
+                          timing.snap(here, root, False, grid) if erase else D.cell_of(t, root, grid, px))
         self.endDrag()
 
         def go():

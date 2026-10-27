@@ -60,4 +60,8 @@ FILES_SOUND = AppFiles(
     app="sound", title="RostrumSound", noun="song", ext=KIND.ext, untitled="Untitled song", folder=settings.projects_dir,
     blank=blank, open=opening.open_whole, resolve=resolve, sample="lull",
     guides=[(GUIDES / "first-song.md", "Making your first song"), (GUIDES / "recording.md", "Recording"),
-            (GUIDES / "exporting.md", "Exporting")])
+            (GUIDES / "exporting.md", "Exporting")],
+    # a rename reopens the song: the Editor, its track, the selection, the playhead come back (song_slots.place); the
+    # imports wait for the call (no Qt here, and song_slots needs the bridge first)
+    place=lambda b: __import__("screensound.song_slots", fromlist=["place"]).place(b),
+    restore_place=lambda b, p: __import__("screensound.song_slots", fromlist=["restore_place"]).restore_place(b, p))

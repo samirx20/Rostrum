@@ -28,7 +28,7 @@ peaked when one is not enough; a track's own compressor is set instead of adding
 so each tamed track keeps its loudness against the mix: the target inside the master's own `maxLimit`, the balance as written)
 and `trim_track` (the smallest cut, at most 12 dB, to the most peaked track, found by re-rendering, that reaches the target inside the master's
 own `maxLimit`; the balance moves; if no cut of that track is enough it says so, and `track` tries another). One call applies one:
-`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. The
+`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. An option that can't be worked out on a song says why and the others still come back; `{"apply": "keep_balance"}` needs no search renders. The
 trade-off is **tamed** (`tame_peaks`: only the peaky track is squeezed, the master stays transparent, the balance does not move), **cleaner** (`trim_track`: nothing is squeezed, the balance moves) or **louder** (`keep_balance`: the balance does not move, the whole master is squeezed). With the master's
 loudness target off, `edit_loudness` answers the `master.set` that turns it on.
 Songs saved before 2026-10-25 open with it
