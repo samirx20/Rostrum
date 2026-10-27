@@ -184,31 +184,55 @@ def coverage(points, w: int, h: int) -> np.ndarray:
     """A fill's outline ([[x, y, ring], …]) as HxW float32 0..1, antialiased (4×4 samples a pixel); holes cut out. A
     ring wound like ring 0 is another outside (an area cut by a seamless canvas's edges is in pieces), one wound the
     other way a hole: outsides first, then holes."""
+    a = np.zeros((h, w), np.float32)
+    got = coverage_box(points, w, h)
+    if got is not None:
+        c, (x0, y0, x1, y1) = got
+        a[y0:y1, x0:x1] = c
+    return a
+
+
+def coverage_box(points, w: int, h: int):
+    """`coverage` drawn only over the outline's own whole-pixel box on the canvas: (HxW of that box, (x0, y0, x1, y1)),
+    or None when it misses the canvas. The same samples as the whole canvas (the box starts on a pixel), without a
+    4x-size picture of a big canvas for every fill (production round: a painted look took ~19 s a moment)."""
     from PIL import Image, ImageDraw
     ss = 4
-    im = Image.new("L", (w * ss, h * ss), 0)
-    draw = ImageDraw.Draw(im)
     rings: dict[int, list] = {}
     for q in points:
-        rings.setdefault(int(q[2]) if len(q) > 2 else 0, []).append((q[0] * ss, q[1] * ss))
+        rings.setdefault(int(q[2]) if len(q) > 2 else 0, []).append((q[0], q[1]))
     rings = {k: v for k, v in rings.items() if len(v) >= 3}
+    if not rings:
+        return None
+    xs = [x for v in rings.values() for x, _ in v]
+    ys = [y for v in rings.values() for _, y in v]
+    x0, y0 = max(0, int(np.floor(min(xs))) - 1), max(0, int(np.floor(min(ys))) - 1)
+    x1, y1 = min(w, int(np.ceil(max(xs))) + 2), min(h, int(np.ceil(max(ys))) + 2)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    im = Image.new("L", ((x1 - x0) * ss, (y1 - y0) * ss), 0)
+    draw = ImageDraw.Draw(im)
     wound = {k: _area(v) > 0 for k, v in rings.items()}
     outside = wound.get(0)
     for ring in sorted(rings, key=lambda k: (wound[k] != outside, k)):
-        draw.polygon(rings[ring], fill=255 if wound[ring] == outside else 0)
-    return np.asarray(im.reduce(ss), np.float32) / 255
+        draw.polygon([((x - x0) * ss, (y - y0) * ss) for x, y in rings[ring]], fill=255 if wound[ring] == outside else 0)
+    return np.asarray(im.reduce(ss), np.float32) / 255, (x0, y0, x1, y1)
 
 
 def lay(layer_px, s: dict, rgb, mask=None):
     """A fill item laid like one stroke of the normal mode: its outline's coverage times its opacity (and mask)."""
     h, w = layer_px.shape[:2]
-    a = coverage(s["points"], w, h) * np.float32(s["opacity"])
+    got = coverage_box(s["points"], w, h)
+    if got is None:
+        return None
+    a, (bx, by, bx1, by1) = got
+    a = a * np.float32(s["opacity"])
     if mask is not None:
-        a = a * mask
+        a = a * mask[by:by1, bx:bx1]
     ys, xs = np.nonzero(a > 0)
     if not len(ys):
         return None
-    x0, y0, x1, y1 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
-    c1 = np.ascontiguousarray(a[y0:y1, x0:x1])
+    x0, y0, x1, y1 = bx + int(xs.min()), by + int(ys.min()), bx + int(xs.max()) + 1, by + int(ys.max()) + 1
+    c1 = np.ascontiguousarray(a[y0 - by:y1 - by, x0 - bx:x1 - bx])
     apply_paint(layer_px[y0:y1, x0:x1], np.zeros_like(c1), c1, np.asarray(rgb, np.float32), "normal")
     return Coverage(c1, (x0, y0, x1, y1))
