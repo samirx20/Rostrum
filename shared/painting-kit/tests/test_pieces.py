@@ -11,30 +11,46 @@ PTS = [[130 + 45 * i, 210 + 40 * np.sin(i / 5), 0.7 + 0.3 * np.sin(i / 3)] for i
 LAYS = [B.dabs] + ([native.lay] if native.available() else [])
 
 
-def _laid(tip, size, s, lay, pieces):
+def _laid(tip, size, s, lay, pieces, close=False):
     layer = np.zeros((H, W, 4), np.float32)
     layer[150:270] = (0.1, 0.3, 0.5, 1.0)                                    # paint for a wet brush to smear
     carry = B.Carry()
     for k in (range(2, len(PTS) + 1) if pieces else [len(PTS)]):
         B.stamp_stroke(layer, PTS[:k], (0.8, 0.3, 0.2), size, tip, lay=lay, carry=carry, piece=(0, True), seed=3,
                        by_dab=True, **s)
+    if close:                                            # the pen lifts: the closing piece
+        B.stamp_stroke(layer, PTS, (0.8, 0.3, 0.2), size, tip, lay=lay, carry=carry, piece=(0, False), seed=3,
+                       by_dab=True, **s)
     return layer
+
+
+WET = dict(hardness=0.6, wet=0.35, color_jitter=0.08, size_pressure=0.5)
 
 
 @pytest.mark.parametrize("lay", LAYS, ids=lambda f: f.__module__.split(".")[-1])
 def test_a_stroke_laid_in_pieces_is_the_stroke_laid_at_once(lay):
     """A piece a point (15 pieces). Round: the same bytes. Wet bristle 260 px: the reservoir goes on from piece to
-    piece; the same pixels except where the bristles' ragged start lies (sized as a share of the stroke so far, which
-    an open stroke can't know yet: the first ~18 % of it), whose difference the smear carries a brush width on."""
+    piece and the ragged start is sized in brush sizes (not by the stroke so far): the same pixels, start included."""
     assert np.array_equal(_laid("round", 60, dict(hardness=0.9, opacity=0.6), lay, True),
                           _laid("round", 60, dict(hardness=0.9, opacity=0.6), lay, False))
-    s = dict(hardness=0.6, wet=0.35, color_jitter=0.08, size_pressure=0.5)
-    whole, parts = _laid("bristle", 260, s, lay, False), _laid("bristle", 260, s, lay, True)
-    past_start = 130 + int(0.18 * 680) + 260
-    assert np.abs(whole[:, past_start:] - parts[:, past_start:]).max() < 1 / 255
-    assert np.abs(whole - parts).max() > 0.05            # (the start does differ: the check above is not empty)
+    whole, parts = _laid("bristle", 260, WET, lay, False), _laid("bristle", 260, WET, lay, True)
+    assert np.abs(whole - parts).max() < 1 / 255
     if lay is not B.dabs:                                # and native's pieces are numpy's, bit for bit
-        assert parts.tobytes() == _laid("bristle", 260, s, B.dabs, True).tobytes()
+        assert parts.tobytes() == _laid("bristle", 260, WET, B.dabs, True).tobytes()
+
+
+@pytest.mark.parametrize("tip, size", [("bristle", 260), ("flat", 120)])
+def test_the_finished_stroke_is_the_live_one_but_its_end(tip, size):
+    """What the live ink shows is what lands: the finished stroke (laid at once, closed: its taper and ragged end)
+    is the pieces plus the closing piece, except over its last ~1.2 brush sizes, where the end frays."""
+    lay = LAYS[-1]
+    finished = np.zeros((H, W, 4), np.float32)
+    finished[150:270] = (0.1, 0.3, 0.5, 1.0)
+    B.stamp_stroke(finished, PTS, (0.8, 0.3, 0.2), size, tip, lay=lay, seed=3, by_dab=True, **WET)
+    live = _laid(tip, size, WET, lay, True, close=True)
+    end = int(PTS[-1][0] - 1.25 * size)
+    assert np.abs(finished[:, :end] - live[:, :end]).max() < 1 / 255
+    assert np.abs(finished - live).max() > 0.05          # (the end does differ: the check above is not empty)
 
 
 def test_straight8_box_is_compose_straight8():

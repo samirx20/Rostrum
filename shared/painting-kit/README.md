@@ -135,8 +135,10 @@ piece=(from_t, open))` (or `canvas.stamp(..., carry=, piece=)`), each time with 
 its own few dabs plus a plan of the stroke so far (~1.5 ms for 1800 px), and the pieces give the pixels of the whole
 stroke laid at once: no block at each piece's ends, the smear going on. `open=True` holds back the dab at the pen
 (the finished stroke has none there: its next dab comes a spacing on) and leaves out the end's raggedness and taper; the last piece (`open=False`) lays
-the end. The bristles' ragged start is sized by the stroke so far (a share of its length), so near the start the
-live ink differs from the finished stroke until it is laid again whole (`tests/test_pieces.py`).
+the end. A bristle or flat tip's ragged start and end reach about one brush size into the stroke (`shape.fray`),
+whatever its length, so the live pieces are the finished stroke's pixels except over its last ~1.2 brush sizes,
+where the end frays and tapers once the pen lifts: a live view needs no second, whole-stroke stamp
+(`tests/test_pieces.py`). A stroke shorter than about two brush sizes shortens its frayed end, then both ends, to fit.
 
 It needs the stroke's per-dab draws (`by_dab`, a stroke field, on for every new stroke; left out = the older draws,
 so strokes made before keep their pixels): with the older draws every extra dab moved the bristles. `native.straight8`
