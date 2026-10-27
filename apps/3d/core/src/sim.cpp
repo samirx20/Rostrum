@@ -248,9 +248,23 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::funct
     if (!worst) continue;
     const auto other = which.find(worst->mBodyID2);
     const std::string into = other == which.end() ? "the ground" : bodies[other->second].name();
+    // what a person does: lift it. The least lift that clears it (a few hundred tests at most), else the way out
+    const auto clear_at = [&](double up) {
+      JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> again;
+      const JPH::RMat44 at = bi.GetCenterOfMassTransform(ids[size_t(r)]).PostTranslated(JPH::Vec3(0, float(up), 0));
+      physics.GetNarrowPhaseQuery().CollideShape(bi.GetShape(ids[size_t(r)]), JPH::Vec3::sReplicate(1.0f), at, cs,
+                                                 JPH::RVec3::sZero(), again, {}, {}, self);
+      for (const auto& h : again.mHits)
+        if (h.mPenetrationDepth > tolerance) return false;
+      return true;
+    };
+    const double step = std::max(0.001 * k, sizes[sizes.size() / 2] * k / 100), reach = 3 * span(b.points) * k;
+    double lift = -1;
+    for (double up = step; up <= reach && lift < 0; up += step)
+      if (clear_at(up)) lift = up;
     const JPH::Vec3 away = -worst->mPenetrationAxis.Normalized();  // moves this body out
     const std::string by = mm(worst->mPenetrationDepth / k + 0.001);
-    const std::string move = away.GetY() > 0.7f ? "move it up " + by
+    const std::string move = lift > 0 ? "move it up " + mm(lift / k + 0.001)
                              : away.GetY() < -0.7f ? "move it down " + by
                                                    : "move it " + by + " away from " + into;
     throw Failure(b, setup.start, "starts inside " + into, move + " or set Starts: Asleep until hit");
