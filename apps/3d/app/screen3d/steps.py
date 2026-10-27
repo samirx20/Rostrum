@@ -15,6 +15,7 @@
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
+    sim-demo <not computed | running | stored | out of date | failed> (the timeline's Simulate row, never a simulation)
     render-sheet (the render sheet: the ▾ beside Render, Ctrl+E) | render-demo <running | done> (the header's Render, never a render) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
     estimate-wait (until its time is measured) | budget <time, e.g. 10 min> | sheet-format png|exr|both (its Save as: a shot edit)
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
@@ -220,6 +221,8 @@ def do_step(bridge, win, step):
             raise RuntimeError(f"step {step!r}: {bridge.render.note}")
     elif word == "render-demo":                   # the header's running Render, or its finished picture (never a render)
         bridge.render.demo(rest[0], recorded_estimate()["picture"])
+    elif word == "sim-demo":                      # the Simulate row in a fixed state (sim_qt.ROW_STATES; never a simulation)
+        bridge.sim.demo(" ".join(rest))
     elif word == "closerender":
         bridge.render.dismiss()
     elif word == "gizmo-drag":

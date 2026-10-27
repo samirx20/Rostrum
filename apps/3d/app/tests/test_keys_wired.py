@@ -69,11 +69,11 @@ def bridge():
     b.close()
 
 
-def test_right_click_is_the_hub_list_seven_at_most_with_the_real_keys(bridge):
+def test_right_click_is_the_hub_list_eight_at_most_with_the_real_keys(bridge):
     for pick in ([], ["box"], ["cam"], ["lamp"], ["s"], ["box", "ball"]):
         bridge.selectMany(pick) if pick else bridge.select("")
         menu = bridge.actions.menu()
-        assert len(menu) <= 7, (pick, menu)      # six, and Make copies (brief 24; the lead may drop one of the others)
+        assert len(menu) <= 8, (pick, menu)      # six, Make copies › (brief 24) and Simulate › (brief 25), one row each
         offered = {e["value"] for e in menu}
         assert offered <= set(bridge.actions.offered) | {e["value"] for e in menu if e["sub"]}, pick
     bridge.select("box")

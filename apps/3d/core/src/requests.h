@@ -46,6 +46,8 @@ class Core {
   PXR_NS::JsObject material(const PXR_NS::JsObject& a);    // material_request.cpp (a material field's drag, live)
   PXR_NS::JsObject sees(const PXR_NS::JsObject& a);        // copies_request.cpp (which points a camera sees)
   PXR_NS::JsObject texels(const PXR_NS::JsObject& a);      // texels_request.cpp (which texel each pixel sees)
+  // sim_request.cpp (brief 25): rigid bodies with Jolt, written to <folder>/bodies.bin
+  PXR_NS::JsObject simulate(const PXR_NS::JsObject& a, const std::function<void(const PXR_NS::JsObject&)>& progress);
   PXR_NS::JsObject info();
 
   // A live stroke's dab, its clay work started early (clay_requests.cpp). The window (view/viewport_item.cpp) calls

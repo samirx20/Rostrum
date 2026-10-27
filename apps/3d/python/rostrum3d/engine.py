@@ -165,6 +165,18 @@ class Engine:
             raise EngineError(f"3D engine said done but wrote no file: {missing[0]}; log {self.log_path}")
         return out
 
+    def simulate(self, progress=None, timeout_s: float = 900.0, **req) -> dict:
+        """Rigid bodies (brief 25): `start`, `end`, `fps`, `folder` (where it writes bodies.bin), `ground`, `bodies`; the
+        held scene must be the one without a stored result laid over it (sim/compute.py). `progress(i, of, line)` per
+        frame. A refusal raises EngineError with the core's own words only (which thing, which frame, what to do)."""
+        try:
+            return self._request({"simulate": {**req, "progress": progress is not None}}, timeout_s, progress)
+        except EngineError as e:
+            said = "3D engine refused simulate: "
+            if str(e).startswith(said):
+                raise EngineError(str(e)[len(said):]) from None
+            raise
+
     def pick(self, **req) -> dict:
         """`camera`, or a free camera `eye` + `target` + `fov` (§ 4)."""
         return self._request({"pick": req})

@@ -1,6 +1,6 @@
 # Rostrum3D engine contract — the scene description
 
-*Team Hem, brief H12, 2026-10-21. Version **1.23** (§ 5). Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
+*Team Hem, brief H12, 2026-10-21. Version **1.24** (§ 5). Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
 
 ## 0. The document and USD: who owns what
 
@@ -305,6 +305,33 @@ so its pixels get u v. An instance of a native USD instance or a point instancer
 own transform isn't known from the prim id). A skinned clay is seen as drawn at `frame`. Python:
 `rostrum3d.texels` (`read`, `Picture`, `geometry_key`, `cached`), `Engine.texels`.
 
+## Simulation (v1.24, Sam brief 25; core/src/sim*.cpp, Jolt Physics 5.6.0)
+
+`{"simulate": {"start", "end", "fps", "folder", "progress"?, "ground": {"y"} | null, "bodies": [{"item", "kind": "falls" | "still",
+"mass" (kg, 0 = from its size as solid plastic, 1100 kg/m³), "bounce", "friction", "starts": "moving" | "asleep", "shape": "exact" |
+"box" | "sphere", "velocity"?: [vx, vy, vz]}, …]}}` runs rigid bodies on the **held stage** (send the scene without a stored
+result first: the start poses are read at `start`). A body is a top-level item (all its visible meshes, one body) or a
+`copies` item (every copy is a body; a copies item that itself moves can't fall). `exact` is the convex hull for a falling
+body and the exact triangles for a still one; `box` / `sphere` wrap the points. One thread and Jolt's cross-platform
+determinism: the same request always gives the same file. With `progress` a line `{"progress": i, "of": n, "frame": f}`
+comes after each frame.
+
+Reply: `{"ok": true, "jolt": "5.6.0", "sim": 1, "frames": [start, end], "rows": n, "file": "<folder>/bodies.bin", "bodies":
+[{"item", "copy" (-1 for a plain item), "row"}, …], "atRest", "ms", "frameMs"}`. `bodies.bin`: float32 little-endian,
+frames × rows × [x y z qx qy qz qw], one row per falling body: a plain item's translate and turn (world = its own, it is
+top-level; its scale is kept), a copy's position and orientation in its copies item's space. `info` gives `jolt` and `sim`
+(the version of this behaviour: part of the stored result's key).
+
+A failure stops the run: `{"ok": false, "error": "bud_copies copy 7 starts inside bowl at frame 0: move it up 4 mm or set
+Starts: Asleep until hit", "item", "copy", "frame", "fix"}`; also a body that flies away (over 200 m/s or 1 km) and one
+that falls past everything (nothing under it).
+
+**Reading a stored result.** A plain item gets its poses as ordinary `anim` x y z rx ry rz (the Python side). A `copies`
+node may carry `"sim": {"file", "row", "rows", "of", "start", "end", "step": 1..3, "smooth": 1..100}`: copy *c* < `rows`
+takes row `row + c` of each frame (frames outside `start..end` hold the ends; `step` holds each pose 2 or 3 frames from
+the shot's start, On 2s / On 3s; `smooth` keeps every nth pose and blends between, Simplify). The copies' sizes stay as
+laid out; effectors don't move simulated copies.
+
 ## 5. Change log
 
 - **v1** (H12): first version.
@@ -332,3 +359,4 @@ own transform isn't known from the prim id). A skinned clay is seen as drawn at 
 - **v1.23** (Sam brief 22): material Stylized blocks (`lines*`, `lightToColor` + band colours and thresholds, `halftone*`); the `rostrum_stylized` shader on `outputs:rostrum:surface` for every material; Light to colour in Cycles (a raycast node graph from the scene's real lights); "how lit" defined once from the lights' real intensity; request `material` (a material field's drag, live); `render.stylized.supersample`; domes carry `primvars:rostrum:domeLevel`; the stylized renderer reads the scene's dome itself and gets `rostrum:studio:level`.
 - **v1.22** (Hem brief 21): request `texels` (§ Texels: which texel of which item each pixel of a camera's picture sees, a float file); `sees` draws through the same Storm id + depth pass.
 - **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).
+- **v1.24** (Sam brief 25): request `simulate` (§ Simulation: rigid bodies with Jolt Physics 5.6.0, `bodies.bin`, loud failures with `item`, `copy`, `frame`, `fix`); a `copies` node's `sim` (a stored fall); `info` gives `jolt` and `sim`.

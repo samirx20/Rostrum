@@ -24,6 +24,7 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_cache_folder
 
 from ..render_fields import QUALITIES, STYLIZED
+from ..sim.compute import ready_for_render
 from . import draw, estimate, layers
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
@@ -132,6 +133,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
     Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial
     (`stopped()`: the caller cancelled it, so not even that)."""
     doc = DocView.of(doc)
+    scene = ready_for_render(where, doc.data, info["id"], folder, scene)     # a falling thing: its simulation, computed first if needed
     partial, is_version = _folder(folder, doc, info)
     item, (w, h) = doc.item_id, size
     name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
@@ -196,13 +198,14 @@ def video_job(ctx, args):
                            hint="Install FFmpeg (LGPL build) and put it on the PATH, or render_still for single pictures.")
     w, h = size_of(info, args, s["width"])
     w, h = w - w % 2, h - h % 2                # H.264 needs even sizes
-    scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
+    scene0, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
 
     def job_fn(job):
         t_start = time.perf_counter()
+        scene = ready_for_render(ctx.tool, doc.data, info["id"], ctx.app.folder, scene0)   # its simulation, computed first if needed
         probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args, s)
         if "shadow" in passes:                     # the Shadow pass draws every frame twice (core passes.h); the probe draws once
             probe_ms, probe_note = probe_ms * 2, probe_note + ", doubled for the Shadow pass"

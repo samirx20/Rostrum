@@ -10,6 +10,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
 
+from ..sim.compute import ready_for_render
 from . import draw
 from .render import FIRST, _finish, _folder, _manifest, _renumber, kept_unless_stopped
 
@@ -21,6 +22,7 @@ def sequence(where: str, doc, info: dict, scene: dict, engine, size: tuple[int, 
     renderer's request settings, render_fields.engine_fields). `progress(done, total)` is called
     as frames land (it may raise to stop). `passes`: the EXR's extra layers (render_fields.PASSES; only with an exr),
     listed in the manifest's `exr`. Blocking: call it from a job. Returns (the finished folder, its files)."""
+    scene = ready_for_render(where, doc.data, info["id"], folder, scene)     # a falling thing: its simulation, computed first if needed
     f0, f1, (w, h) = info["start"], info["end"], size
     name = stem or f'{doc.item_id or "doc"}_{info["id"]}'
     partial, is_version = _folder(folder, doc, info)

@@ -189,7 +189,8 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   if (type == "light") build_light(it, path);
   if (type == "camera") build_camera(it, path);
   if (type == "clay") ctx.clays.push_back(build_clay(it, r, path));
-  if (type == "copies") copies::build(it, r.list("children"), r.list("held"), r.list("effectors"), path);
+  if (type == "copies") copies::build(it, r.list("children"), r.list("held"), r.list("effectors"),
+                                        r.has("sim") ? &r.object("sim") : nullptr, path);
   if ((type == "group" || type == "import") && r.has("children"))
     build_items(ctx, r.list("children"), path, id + ".children");
   // shape / kind fields the chosen shape or kind doesn't use (the compiler sends every field)

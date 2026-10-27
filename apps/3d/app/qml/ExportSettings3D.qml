@@ -3,6 +3,7 @@ import RostrumKit
 
 // Rostrum3D's rows in the render sheet (AppShell.exportSettings; screen3d/export3d.py): Quality and Size are the shot's
 // own render settings (a change is a shot edit, saved on the shot), then what file it saves as and, for an EXR, its passes.
+// First, while the shot's simulation is not up to date, the line saying the render computes it first.
 Column {
     id: root
     readonly property var job: backend.exporter
@@ -21,6 +22,10 @@ Column {
     }
     component Gap: Item { width: 1; height: Theme.grid }
 
+    // the shot's simulation isn't up to date: the render computes it first (sim_qt.py renderLine; never a stale one)
+    Text { objectName: "sheetSimLine"; visible: text !== ""; width: parent.width; wrapMode: Text.WordWrap
+           text: backend.sim.renderLine; color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.body }
+    Gap { visible: backend.sim.renderLine !== "" }
     Head { objectName: "sheetQualityHead"; name: "Quality"; note: (root.job.quality === "custom" ? "Custom · " : "") + root.job.qualityText }
     Segmented { objectName: "sheetQuality"; width: parent.width; options: root.job.qualities; current: root.job.quality
                 onPicked: (v) => root.job.setShot("renderQuality", v) }

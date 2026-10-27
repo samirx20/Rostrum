@@ -61,6 +61,8 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
 - **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
 - **copies** `layout count columns spacingX spacingY spacingZ radius faceOut surface amountBy density minSpacing alongSurface onlySeen seed varyMove varyTurn varyScale` (guide `copies`); **effector** `kind near radius falloff amount axis colour`.
 - **import** `file prim material`; **part** `path material visible`.
+- **Simulation** (mesh, combine, import, group, clay, copies, directly in the scene only) `simulate` (`off falls still`) `massFromSize mass bounce friction starts simShape`,
+  or `item.simulate("falls", bounce=0.4)`; on a shot `simGround simTiming simSimplify`. A script never computes it: the `run_simulation` tool does (guide `simulate`).
 - **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd motionBlur shutter` (motion blur: camera-rigs.md)
   (`inspect_guide` `agents`, "Render settings and the time estimate").
 - Every item also takes `name="…"` (what screens show). Left out, the name is the id.
