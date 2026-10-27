@@ -12,6 +12,7 @@ from rostrum_core.storage import paths
 from rostrum_core.who import UPGRADE
 
 from rostrum_sound import KIND, run_source
+from rostrum_sound.doc import migrations
 
 A = Who.agent("t")
 SONG = """
@@ -60,7 +61,7 @@ def test_open_edit_reopen_three_times_keeps_the_notes(tmp_path):
     doc.save()
     assert _bass(Document.open(folder, "s", KIND)) == NOW
     ups = [c for c in doc.history.changes if c.format]
-    assert [c.format for c in ups] == [[6, 7]]
+    assert [c.format for c in ups] == [[6, migrations.FORMAT]]     # one upgrade step, to the newest format
 
 
 def test_undo_redo_around_the_step_is_exact_and_the_step_itself_stays(tmp_path):
