@@ -4,11 +4,15 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <optional>
 
 #include "clay_box.h"
 #include "clay_coarse.h"
+#include "clay_shapes.h"
 
 namespace r3d::clay {
 
@@ -16,6 +20,10 @@ using namespace detail;
 
 namespace {
 std::once_flag g_init;
+bool prof_on() {  // ROSTRUM3D_CLAY_PROFILE=1: each dab's stages on stderr (3d-v3, a check's tool)
+  static const bool on = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
+  return on;
+}
 double ms_since(std::chrono::steady_clock::time_point t0) {
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
@@ -121,9 +129,19 @@ StepTiming Volume::dab(const Step& s) { return run(&s, 1); }
 StepTiming Volume::end_stroke(const std::vector<Step>& dabs) {
   const auto t0 = std::chrono::steady_clock::now();
   live_.on = false;
-  put_back(live_);  // the clay as it was before the stroke (the record, if one is on, already holds these chunks)
+  // 3d-v3: the live clay IS the stroke applied as one unit (units() runs the same dabs one by one from the same start,
+  // CL2b), so letting go keeps it: no put-back and no second pass over every dab (the release pause), and no block
+  // is re-meshed. ROSTRUM3D_CLAY_VERIFY=1 still does both and says on stderr when the two clays differ.
+  static const bool verify = std::getenv("ROSTRUM3D_CLAY_VERIFY") != nullptr;
+  StepTiming t;
+  if (verify) {
+    const uint64_t liveHash = hash();
+    put_back(live_);  // the clay as it was before the stroke (the record, if one is on, already holds these chunks)
+    live_.clear();
+    t = apply_stroke(dabs);
+    if (hash() != liveHash) std::fprintf(stderr, "clay: live stroke != replay (%zu dabs)\n", dabs.size());
+  }
   live_.clear();
-  StepTiming t = apply_stroke(dabs);
   t.ms = ms_since(t0);
   return t;
 }
@@ -149,7 +167,6 @@ void Volume::keep(const Coord& o) {
 void Volume::put_back(const ChunkRecord& rec) {
   Tree& tree = grid_->tree();
   Tree& maskTree = mask_->tree();
-  int lo[3] = {1 << 30, 1 << 30, 1 << 30}, hi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
   for (const ChunkRecord::Chunk& c : rec.chunks()) {
     if (c.leaf) {
       Leaf* l = tree.touchLeaf(c.o);
@@ -167,9 +184,9 @@ void Volume::put_back(const ChunkRecord& rec) {
         maskTree.addTile(1, c.o, 0.0f, false);
       }
     }
-    for (int a = 0; a < 3; ++a) lo[a] = std::min(lo[a], c.o[a]), hi[a] = std::max(hi[a], c.o[a] + 7);
+    const int lo[3] = {c.o[0], c.o[1], c.o[2]}, hi[3] = {c.o[0] + 7, c.o[1] + 7, c.o[2] + 7};
+    mark_dirty(lo, hi);  // chunk by chunk, as a step marks them
   }
-  if (lo[0] <= hi[0]) mark_dirty(lo, hi);
 }
 
 void Volume::mark_dirty(const int lo[3], const int hi[3]) {
@@ -201,9 +218,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   std::vector<float> shift(n, 0), reachOf(n, 0);
   float k = 0;
   if (piece) {
-    const float r = s0.radius * iv;
-    pieceShapes.push_back({vox(s0.a), vox(s0.b), r});
-    if (s0.mirror) pieceShapes.push_back({vox(mirror_x(s0.a)), vox(mirror_x(s0.b)), r});
+    if (!s0.field) {
+      const float r = s0.radius * iv;
+      pieceShapes.push_back({vox(s0.a), vox(s0.b), r});
+      if (s0.mirror) pieceShapes.push_back({vox(mirror_x(s0.a)), vox(mirror_x(s0.b)), r});
+    }
     // a blend joins the piece to clay already there; on an empty clay (a new clay's first ball) there is nothing to
     // join, so none: the ball is its exact size, and only its thin shell is worked (CL1b: with the blend, a new 10 cm
     // clay widened and re-levelled a 30-million-voxel box and took 5 s to appear)
@@ -251,7 +270,15 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     lo[0] = std::min(lo[0], p.x - r), lo[1] = std::min(lo[1], p.y - r), lo[2] = std::min(lo[2], p.z - r);
     hi[0] = std::max(hi[0], p.x + r), hi[1] = std::max(hi[1], p.y + r), hi[2] = std::max(hi[2], p.z + r);
   };
-  if (piece) {
+  if (piece && s0.field) {  // CL3: a drawn / spun / item shape (clay_shapes.h), and its mirrored copy
+    const Field& f = *s0.field;
+    grow(f.lo, k + kBand + 1);
+    grow(f.hi, k + kBand + 1);
+    if (s0.mirror) {
+      grow(V3{-f.hi.x, f.lo.y, f.lo.z}, k + kBand + 1);
+      grow(V3{-f.lo.x, f.hi.y, f.hi.z}, k + kBand + 1);
+    }
+  } else if (piece) {
     for (const Shape& sh : pieceShapes) {
       grow(sh.a, sh.r + k + kBand + 1);
       grow(sh.b, sh.r + k + kBand + 1);
@@ -281,6 +308,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   const int nch = b.chunks();
   Tree& tree = grid_->tree();
 
+  const double tpA = prof_on() ? ms_since(t0) : 0;
   // A. which chunks hold a leaf (the surface is only ever near one); the others are one value
   std::vector<uint8_t> leaf(nch);
   std::vector<float> uval(nch);
@@ -304,6 +332,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     const V3 c{b.lo.x() + 8.0f * cx + 3.5f, b.lo.y() + 8.0f * cy + 3.5f, b.lo.z() + 8.0f * cz + 3.5f};
     if (piece) {
       float d = 1e30f;
+      if (s0.field) d = FieldEval(*s0.field, s0.mirror)(c);
       for (const Shape& sh : pieceShapes) d = std::min(d, seg_dist(c, sh.a, sh.b) - sh.r);
       if (d < -(hd + kBand + 1)) {
         const float target = s0.op == Op::Add ? -kBand : kBand;
@@ -331,6 +360,8 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   bool needStart = false;
   for (size_t j = 0; j < n && !piece; ++j) needStart |= !steps[j].accumulate;
 
+  const double tpC = prof_on() ? ms_since(t0) : 0;
+  double tpE = 0;
   // C. fill the listed chunks from the grid (and, for strokes without accumulate, where the stroke began: a live
   //    stroke's chunks as they were before its first dab, kept aside)
   par(extList, [&](int ci) {
@@ -364,9 +395,12 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     const auto P = [&](int x, int y, int z) { return V3{float(b.lo.x() + x), float(b.lo.y() + y), float(b.lo.z() + z)}; };
     par(extList, [&](int ci) { b.copy(ci, V, O); });
     par(extList, [&](int ci) {
+      std::optional<FieldEval> fe;  // CL3: one reader per chunk (an item's caches the grid's nodes)
+      if (s0.field) fe.emplace(*s0.field, s0.mirror);
       b.each(ci, [&](int x, int y, int z, size_t i) {
         const V3 p = P(x, y, z);
         float d = 1e30f;
+        if (fe) d = (*fe)(p);
         for (const Shape& sh : pieceShapes) d = std::min(d, seg_dist(p, sh.a, sh.b) - sh.r);
         if (s0.op == Op::Add) V[i] = smin(O[i], d, k);
         else if (s0.op == Op::Carve) V[i] = -smin(-O[i], d, k);
@@ -433,9 +467,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     u.touched = &touched;
     u.M = M;
     u.maskTouched = &maskTouched;
+    tpE = prof_on() ? ms_since(t0) : 0;
     run_dabs(u);
   }
 
+  const double tpG = prof_on() ? ms_since(t0) : 0;
   // G. write back: worked chunks (uniform ones become tiles), and the chunks a piece filled or emptied
   std::vector<int8_t> cls(nch, 2);  // +1 all outside, -1 all inside, 0 mixed, 2 not written
   std::vector<int> writeList;
@@ -456,7 +492,12 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   GridLock<false> writeLock(lock);
   std::vector<Leaf*> leaves(nch, nullptr);
   std::vector<int> mixed;
-  int wlo[3] = {1 << 30, 1 << 30, 1 << 30}, whi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
+  // the blocks whose surface may have changed are marked chunk by chunk (3d-v3: a mirrored dab's bounding box marked
+  // every block between its two sides, 54 a dab)
+  auto dirty_chunk = [&](const Coord& o) {
+    const int lo[3] = {o[0], o[1], o[2]}, hi[3] = {o[0] + 7, o[1] + 7, o[2] + 7};
+    mark_dirty(lo, hi);
+  };
   for (int ci = 0; ci < nch; ++ci) {
     if (cls[ci] == 2) continue;
     int x, y, z;
@@ -472,7 +513,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
       keep(o);
       tree.addTile(1, o, val, false);
     }
-    for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+    dirty_chunk(o);
   }
   par(mixed, [&](int ci) {
     Leaf* lf = leaves[ci];
@@ -512,7 +553,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
         mleaves[ci] = mt.touchLeaf(o);
         mfill.push_back(ci);
       }
-      for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+      dirty_chunk(o);
     }
     par(mfill, [&](int ci) {
       Leaf* lf = mleaves[ci];
@@ -520,8 +561,6 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     });
   }
 
-  // H. the blocks whose surface may have changed
-  if (wlo[0] <= whi[0]) mark_dirty(wlo, whi);
   writeLock.unlock();
 
   // a piece's buffers (a big box, wide blends) can be hundreds of MB: give them back rather than keep them for the dabs
@@ -529,6 +568,9 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
 
   StepTiming t;
   t.voxels = writeList.size() * 512;
+  if (prof_on() && !piece)
+    std::fprintf(stderr, "clayprof box=%.2f setup=%.2f fill=%.2f dabs=%.2f write=%.2f nch=%d work=%zu ext=%zu written=%zu\n",
+                 tpA, tpC - tpA, tpE - tpC, tpG - tpE, ms_since(t0) - tpG, nch, workList.size(), extList.size(), writeList.size());
   t.ms = ms_since(t0);
   return t;
 }

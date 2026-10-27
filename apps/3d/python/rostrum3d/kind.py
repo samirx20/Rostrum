@@ -128,8 +128,9 @@ def check(data: dict) -> list[str]:
         if t == "combine":
             _check_combine(item, problems)
         if t == "clay":
+            by_id = {i["id"]: i for i in everything}               # a step made from an item names it (CL3)
             for step in item.get("steps", []):
-                clay_fields.check_step(item, step, problems)
+                clay_fields.check_step(item, step, problems, by_id)
         if t in ("mesh", "combine", "import", "part", "clay"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":

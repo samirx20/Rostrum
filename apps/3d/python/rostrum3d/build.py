@@ -16,7 +16,9 @@ HINTS = {"rx": _AIMED, "ry": _AIMED, "rz": _AIMED,
 
 
 def make(type_: str, id_: str, values: dict, where: str) -> dict:
-    item = {"id": id_, "type": type_, "name": str(values.get("name") or id_), **F.defaults(type_, values)}
+    own = F.param(type_, "name") is not None        # a clay step's name is one of its fields: "" (none) is a value
+    name = values.get("name", "") if own else values.get("name") or id_
+    item = {"id": id_, "type": type_, **F.defaults(type_, values), "name": str(name)}
     for key in F.LISTS.get(type_, []):
         item[key] = []
     fill(item, {k: v for k, v in values.items() if k != "name"}, where)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 
 from rostrum3d import fields as F, mouths
+from rostrum3d.clay_fields import SOURCES
 from rostrum3d.kind import KIND
 from rostrum_core import ids
 from rostrum_core.tree import index
@@ -87,6 +88,9 @@ ACTIONS.append(Action(
     valid=lambda f: f.ids[0] in f.fits,
     calls=lambda f: [{"op": "mesh.set", "target": [f.ids[0]], "args": {"bevel": round(f.fits[f.ids[0]], 6)}}],
     why="Offered when the engine refused a text's or logo's bevel as too big for its outline."))
+ACTIONS.append(Action(
+    "clay:from", "Turn into clay", kinds=SOURCES, importance="secondary", rank=9, group="shape",
+    do="clay-from", why="Turn into clay works on shapes, combines, imports and their parts: a clay copy to sculpt, the original hidden."))
 ACTIONS.append(Action(
     "mesh:edit", "Edit mesh", kinds=F.SOLIDS, max_targets=1, importance="primary", rank=8, group="shape", do="edit-mesh",
     job="go_in", icon="", why="Edit mesh works on one shape or combine (Enter): its points, edges and faces."))

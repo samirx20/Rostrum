@@ -119,8 +119,11 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
   guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
-- **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` (`at`, `radius`) makes a lump; its shape is its
-  list of steps, applied in order. `clay.lump` joins a sphere (or a capsule, with `to`) or carves one out (`mode: "carve"`),
+- **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` makes a clay from a drawn outline
+  (`draw`: scene points, `facing` the plane's normal towards the viewer, `puff` 1 = round), a spun profile (`spin`,
+  `axis`) or a ball (`at`, `radius`); its shape is its list of steps, applied in order. `clay.draw` (`outline`) and
+  `clay.spin` (`profile`) join more, in the clay's own space: start the outline on the surface where it should join.
+  `clay.from_item` turns an exact part or import into clay (the original hidden). `clay.lump` joins a sphere (or a capsule, with `to`) or carves one out (`mode: "carve"`),
   `blend` = how softly it joins; `clay.shape` is the same with every setting spelled out. `clay.stroke` sculpts:
   `path` (points `[x, y, z]`) and `dir` (the way the rays point): each dab lands where a ray from a point along `dir` meets
   the clay, `brush` add, carve, smooth, pull, flatten, crease or mask (paints a mask that protects the clay from every
@@ -129,7 +132,7 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   pinches to a ridge, mask takes the mask away). Left out, they are the clay's brush settings (`clay.set brush brushSize
   brushStrength brushFalloff brushSpacing frontOnly symmetry accumulate`). Positions are in the clay's
   own space; `symmetry: "x"` (the default) mirrors across its X = 0. Each step is one undo step; `claystep.remove` takes
-  one out, `claystep.set` renames it (`name`) or changes its numbers. Detail (the smallest grain) follows the shot cameras:
+  one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
   they need; `clay.set detailMode=fixed detail=0.001` fixes it (finer is slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
   keeps them. Look with `look_frame` from two sides after each few steps. The person's side: guide `sculpting`.

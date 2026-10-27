@@ -1,6 +1,8 @@
 // Clay items of the scene (clay_scene.h): the Xform, and the steps read loudly for the clay store.
 #include "clay_scene.h"
 
+#include <array>
+#include <cmath>
 #include <filesystem>
 
 #include <pxr/usd/usdGeom/xform.h>
@@ -29,6 +31,82 @@ double positive(Reader& s, const char* key) {
   return d;
 }
 
+// a list of [x, y] number pairs, at least `least`
+std::vector<std::array<float, 2>> pairs(Reader& s, const char* key, size_t least, const char* what) {
+  const JsArray& list = s.list(key);
+  if (list.size() < least)
+    fail(s.at(key), std::to_string(list.size()) + " points", "at least " + std::to_string(least) + " " + what);
+  std::vector<std::array<float, 2>> out;
+  for (size_t i = 0; i < list.size(); ++i) {
+    const std::string at = s.at(key) + "[" + std::to_string(i) + "]";
+    if (!list[i].IsArray() || list[i].GetJsArray().size() != 2) fail(at, "is not a list of 2", what);
+    std::array<float, 2> q;
+    for (int k = 0; k < 2; ++k) {
+      const JsValue& x = list[i].GetJsArray()[k];
+      if (!is_number(x) || !std::isfinite(to_number(x))) fail(at, "holds " + x.GetTypeName(), what);
+      q[k] = float(to_number(x));
+    }
+    out.push_back(q);
+  }
+  return out;
+}
+
+// twice the signed area of the closed polygon (shoelace)
+double area2(const std::vector<std::array<float, 2>>& p) {
+  double a = 0;
+  for (size_t i = 0, j = p.size() - 1; i < p.size(); j = i++) a += double(p[j][0]) * p[i][1] - double(p[i][0]) * p[j][1];
+  return a;
+}
+
+// CL3: a drawn (outline), spun (spin) or item piece (CL3-CONTRACT § 2), checked here; its field is made when it is applied
+void read_shape(Reader& s, const std::string& shape, clay::ShapeSpec& spec) {
+  using K = clay::ShapeSpec::Kind;
+  if (shape == "item") {
+    spec.kind = K::Item;
+    spec.source = s.str("source");
+    if (spec.source.empty()) fail(s.at("source"), "is empty", "the id of the part or import the clay was made from");
+    if (s.has("sourceKey")) s.str("sourceKey");  // Python's hash of the source: in the key, not used here
+    return;
+  }
+  const JsArray& plane = s.list("plane");
+  const char* planeWhat = "9 numbers [ox, oy, oz, ux, uy, uz, vx, vy, vz]: an origin and two unit, perpendicular axes";
+  if (plane.size() != 9) fail(s.at("plane"), std::to_string(plane.size()) + " numbers", planeWhat);
+  float q[9];
+  for (int i = 0; i < 9; ++i) {
+    if (!is_number(plane[i]) || !std::isfinite(to_number(plane[i])))
+      fail(s.at("plane"), "holds " + plane[i].GetTypeName(), planeWhat);
+    q[i] = float(to_number(plane[i]));
+  }
+  spec.o = {q[0], q[1], q[2]};
+  spec.u = {q[3], q[4], q[5]};
+  spec.v = {q[6], q[7], q[8]};
+  if (std::fabs(clay::len(spec.u) - 1) > 1e-3f || std::fabs(clay::len(spec.v) - 1) > 1e-3f ||
+      std::fabs(clay::dot(spec.u, spec.v)) > 1e-3f)
+    fail(s.at("plane"), "the axes are not unit length and perpendicular", planeWhat);
+  spec.u = clay::unit(spec.u);
+  spec.v = clay::unit(spec.v);
+  if (shape == "outline") {
+    spec.kind = K::Outline;
+    spec.pts = pairs(s, "outline", 3, "[u, v] points in the plane (metres)");
+    if (!(std::fabs(area2(spec.pts)) > 1e-12)) fail(s.at("outline"), "encloses no area", "an outline round an area");
+    spec.puff = 1.0f;
+    if (s.has("puff")) {
+      spec.puff = float(s.num("puff"));
+      if (!(spec.puff >= 0.1f && spec.puff <= 3.0f)) fail(s.at("puff"), std::to_string(spec.puff), "0.1 .. 3");
+    }
+  } else {
+    spec.kind = K::Spin;
+    spec.pts = pairs(s, "profile", 2, "[r, h] points: distance from the axis (>= 0) and height along it (metres)");
+    for (size_t i = 0; i < spec.pts.size(); ++i)
+      if (spec.pts[i][0] < 0)
+        fail(s.at("profile") + "[" + std::to_string(i) + "]", "r " + std::to_string(spec.pts[i][0]), "r >= 0");
+    std::vector<std::array<float, 2>> closed = spec.pts;  // closed by the axis
+    closed.insert(closed.begin(), std::array<float, 2>{0.0f, spec.pts.front()[1]});
+    closed.push_back(std::array<float, 2>{0.0f, spec.pts.back()[1]});
+    if (!(std::fabs(area2(closed)) > 1e-12)) fail(s.at("profile"), "encloses no area with the axis", "a profile reaching out from the axis");
+  }
+}
+
 clay::StepNode read_step(const JsValue& value, const std::string& where) {
   if (!value.IsObject()) fail(where, "is " + value.GetTypeName(), "a step object {\"key\", \"kind\", …}");
   Reader s(value.GetJsObject(), where);
@@ -41,9 +119,14 @@ clay::StepNode read_step(const JsValue& value, const std::string& where) {
     clay::Step& p = st.shape;
     p.kind = clay::Kind::Piece;
     p.op = op_of(s, {"add", "carve"});
-    p.a = v3(s.vec3("a"));
-    p.b = v3(s.vec3("b"));
-    p.radius = float(positive(s, "radius"));
+    const std::string shape = s.has("shape") ? s.one_of("shape", {"sphere", "capsule", "outline", "spin", "item"}) : "";
+    if (shape.empty() || shape == "sphere" || shape == "capsule") {
+      p.a = v3(s.vec3("a"));
+      p.b = v3(s.vec3("b"));
+      p.radius = float(positive(s, "radius"));
+    } else {
+      read_shape(s, shape, st.spec);
+    }
     p.blend = float(s.num_min("blend", 0.0, true));
     p.mirror = s.flag("mirror");
   } else {

@@ -120,6 +120,7 @@ Rectangle {
     // takes every hover move under it (so the ring never showed and F had nothing to size), and while Clay is on the
     // gizmo has no handles; Clay off, this layer is hidden
     ClayStrokes { anchors.fill: parent; z: 11.2 }
+    ClayDraw { anchors.fill: parent; z: 11.3; d: viewport.clay.drawObj }   // Clay's Draw, Spin: a left drag draws
     MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
     Bones { anchors.fill: parent; z: 10.5 }  // a mesh's bone chain (Animate) and the points Bones is placing; draws only
     Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above

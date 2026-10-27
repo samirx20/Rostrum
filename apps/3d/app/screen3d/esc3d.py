@@ -12,6 +12,8 @@ ORDER = (
      lambda b, v: v is not None and v.gizmo.dragging, lambda b, v: v.gizmo.cancel()),
     ("stroke", "a clay stroke in progress: cancel it (the clay goes back, no history step)",
      lambda b, v: v is not None and v.clay_tool._phase in ("wait", "sculpt"), lambda b, v: v.clay_tool.cancel()),
+    ("draw", "a clay outline being drawn (Draw, Spin): drop it (nothing changes, no history step)",
+     lambda b, v: v is not None and v.clay_tool.drawer.drawing, lambda b, v: v.clay_tool.drawer.cancel()),
     ("render", "a render running: cancel it",
      lambda b, v: b.render.state == "running", lambda b, v: b.render.cancel()),
     ("result", "a render shown over the viewport: put it away",
