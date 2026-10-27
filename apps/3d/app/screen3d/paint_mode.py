@@ -112,3 +112,50 @@ def clay_reach(size_px: float, mpp_canvas: float | None, mpp_screen: float | Non
     """A clay stroke's reach (brush radius, metres): the brush size (canvas px across) on the surface where it landed;
     with no surface yet, the brush's px are the screen's there."""
     return round(max(1e-5, size_px / 2 * (mpp_canvas or mpp_screen or GUESS_MPP)), 6)
+
+
+# --- From the view (brief 21b): the drag is stored as drawn (screen points of the view it was drawn in) on each
+# paintable item it crosses; the canvas lays it when it is made (rostrum3d.paint_view), so it stays editable.
+WHERE = [{"value": "surface", "label": "On the surface"}, {"value": "view", "label": "From the view"}]
+
+
+def view_pose(eye, target, fov, frame: int, width: int, height: int) -> dict:
+    """A stroke's `view` without its points: the camera it was drawn through and the picture's size (device px)."""
+    return {"eye": [round(v, 6) for v in eye], "target": [round(v, 6) for v in target], "fov": round(fov, 4),
+            "frame": int(frame), "width": int(width), "height": int(height)}
+
+
+def crossed(item_at, points: list) -> list[str]:
+    """The items under the drawn path, in the order it reaches them (`item_at(x, y)` -> item id or "")."""
+    out: list[str] = []
+    for x, y, *_ in points:
+        it = item_at(x, y)
+        if it and it not in out:
+            out.append(it)
+    return out
+
+
+def view_calls(doc, items: list[str], paint_item: str, active: str, channel: str, brush: dict, view: dict,
+               taken=()) -> list[dict]:
+    """One drawn stroke From the view as one call list: on every paintable item it crosses, a stroke.add with `view`
+    (the item being painted on its active layer; any other on its top layer of the same channel, made when it has
+    none; a mesh with no unfolded surface is unfolded first)."""
+    calls, used = [], set(taken)
+
+    def fresh():
+        n = next(n for n in range(1, 10**6) if not doc.has(f"paint_{n}") and f"paint_{n}" not in used)
+        used.add(f"paint_{n}")
+        return f"paint_{n}"
+    for iid in items:
+        it = doc.item(iid)
+        if it.get("type") not in CANVASES:
+            continue
+        if it["type"] == "mesh" and not it.get("uvs"):
+            calls.append({"op": "mesh.unfold", "target": [iid], "args": {}})
+        layer = active if iid == paint_item and active else next(
+            (p["id"] for p in reversed(it.get("paints", [])) if p.get("channel", "colour") == channel), "")
+        if not layer:
+            layer = fresh()
+            calls.append({"op": "paint.add", "target": [iid], "args": {**new_layer_args(it, channel), "id": layer}})
+        calls.append({"op": "stroke.add", "target": [layer], "args": {**brush, "view": view}})
+    return calls

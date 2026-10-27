@@ -10,7 +10,7 @@ from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
 
-from . import draw, onion_look, picture_facts, step_look
+from . import draw, onion_look, paint_canvas, picture_facts, step_look
 from .shape_look import length
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
@@ -136,6 +136,10 @@ def look_sheet(ctx, args):
     return ctx.long(f'look_sheet {info["id"]}', job_fn)
 
 
+def _painted_words(p: dict | None) -> str:
+    return (f', painted {p["colour"]} at {p["alpha"] * 100:.0f} % by layer {p["name"]} ({p["channelLabel"]})' if p else "")
+
+
 @tools.tool("look_at", {"properties": {**ITEM_SHOT, **TIME, "x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture."},
                                         "y": {"type": "number", "minimum": 0, "description": "Pixels from the top of the picture."},
                                         "points": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 2, "maxItems": 2},
@@ -144,14 +148,17 @@ def look_sheet(ctx, args):
                                         "height": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Height of that picture. Default: follows the shot's shape."}}})
 def look_at(ctx, args):
     """What is at a pixel (x, y) of a picture from the shot camera at a frame: the item id, the part (prim), its material, the point in the
-    world (metres) and the distance from the camera; on a mesh also `uv`, the spot on its unfolded surface (paint canvas pixel
-    x = u × paintSize, y = (1 − v) × paintSize; guide `painting`); on a clay `local` and `localNormal`, the point and the surface's
+    world (metres), the distance from the camera and `normal`, the surface direction there (world, unit length: "facing [0, 1, 0]" is a
+    top); on a mesh with face materials `faceSet`, that face's own material; on a mesh also `uv`, the spot on its unfolded surface (paint canvas pixel
+    x = u × paintSize, y = (1 − v) × paintSize; guide `painting`; look_where is the reverse) and, where it is painted, `painted`
+    {layer, name, channel, colour, alpha}: the topmost shown paint layer with paint there; on a clay `local` and `localNormal`, the point and the surface's
     normal in the clay's own space (a clay paint stroke's `anchors`: [x, y, z, nx, ny, nz, pressure]; guide `painting`); on a posed
     clay also `rest`, the same spot on its rest shape: anchor paint there, as the screen does. On a clay also `step`, the step that made
     the surface there ({id, name, kind, label "arm, drawn"}; a mirrored step counts on both sides) and, once its joints are found,
     `joint` ({joint "elbow.R"-style name, distance in metres to that bone}): name parts by them in clay.step.set, look_frame
     highlight="steps:<name>" and pose.drag. Counted from the top-left of a width×height picture, the same whatever
-    renderer drew it."""
+    renderer drew it. `view` in the reply: this picture's camera as stroke.add's From the view fields (viewEye, viewTarget,
+    viewFov, viewSize, viewFrame, viewShot): add `viewPoints` [[x, y, pressure], …] in this picture's px to paint from the view."""
     doc, info = doc_and_shot(ctx, args)
     points = args.get("points") or ([[args["x"], args["y"]]] if "x" in args and "y" in args else None)
     if not points or ("points" in args and ("x" in args or "y" in args)):
@@ -162,21 +169,26 @@ def look_at(ctx, args):
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
 
     def job_fn(job):
-        rows = []
+        rows, kept = [], {}
         for x, y in points:                                # the engine's `point` is the world point; the pixel is kept as `pixel`
             r = draw.call(ctx.tool, f"point ({x:g}, {y:g})", engine, scene, "pick", camera=info["camera"], frame=frame, width=w, height=h, x=x, y=y)
-            rows.append({"pixel": [x, y], **{k: v for k, v in r.items() if k not in ("ok", "ms")}, **step_look.about(doc, ctx.app.folder, r)})
+            rows.append({"pixel": [x, y], **{k: v for k, v in r.items() if k not in ("ok", "ms")}, **step_look.about(doc, ctx.app.folder, r),
+                         **paint_canvas.about(ctx, doc, scene, r, kept)})
         lines = [f'({r["pixel"][0]:g}, {r["pixel"][1]:g}): ' + (f'{r["item"]} ({r["prim"]}), material {r.get("material") or "none"}, '
                                                               f'{r["distance"]:.3g} m away at {[round(c, 3) for c in r["point"]]}'
+                                                              + (f', facing {[round(c, 2) for c in r["normal"]]}' if r.get("normal") else "")
+                                                              + (f', face set {r["faceSet"] or "(its own material)"}' if "faceSet" in r else "")
                                                               + (f', uv {[round(c, 4) for c in r["uv"]]}' if r.get("uv") else "")
+                                                              + _painted_words(r.get("painted"))
                                                               + (f', local {[round(c, 5) for c in r["local"]]} normal '
                                                                  f'{[round(c, 3) for c in r.get("localNormal") or []]}' if r.get("local") else "")
                                                               + (f', rest {[round(c, 5) for c in r["rest"]]}' if r.get("rest") else "")
                                                               + step_look.words(r, length)
                                                               if r.get("hit") else "nothing (background)") for r in rows]
         t = seconds(info, frame)
+        view = paint_canvas.shot_view(doc, info, frame, w, h)
         return Reply(f'At frame {frame} ({t:.3f} s) of {info["id"]}, picture {w}×{h}: ' + "; ".join(lines) + ".",
-                     {"time": t, "frame": frame, "width": w, "height": h, "hits": rows}, warnings=engine.take_notices())
+                     {"time": t, "frame": frame, "width": w, "height": h, "hits": rows, "view": view}, warnings=engine.take_notices())
 
     return ctx.long(f'look_at {info["id"]} f{frame}', job_fn)
 

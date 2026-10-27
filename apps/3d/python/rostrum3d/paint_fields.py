@@ -7,12 +7,37 @@ a square `paintSize` picture laid on its unfolded surface (a mesh's `uvs`, mesh.
 each shape: clay_paint.py). Each paint layer paints one surface channel (`channel`, shown as "Paints"); paint_scene.py
 lays each channel's layers over the material's own value into a picture for both renderers. A clay's strokes are kept
 on its surface (`anchors`, `reach`), so they stay on the same spots when the clay is reshaped and unfolded anew.
+
+Painting **from the view** (paint_view.py): a stroke may be kept as drawn through a camera (`viewPoints` in the
+pixels of a `viewSize` picture from `viewEye` looking at `viewTarget` with `viewFov`, at `viewFrame`; its `size` in
+screen px), laid on the canvas each time the canvas is made. A layer may hold a picture projected from a camera
+(`projectSource`, a file or "2d:<2D item id>", with the same camera fields `project…`). The core has no field kind for
+a nested object, so each is flat fields; paint_view.view_of / projected_of give them as one dict.
 """
 from __future__ import annotations
 
 from rostrum_core import Param
 
 from .field_kit import D, S
+
+XYZ = dict(min_items=3, max_items=3, unit="m", importance=D, default=None, nullable=True)
+WH = dict(min_items=2, max_items=2, unit="px", importance=D, default=None, nullable=True, integer=True)
+
+
+def _camera(prefix: str, group: str, what: str) -> list:
+    """The camera fields a view stroke or a projected picture keeps: where it looked from, at, how wide, how big."""
+    return [
+        Param.list(f"{prefix}Eye", "number", label="Camera at", group=group, **XYZ,
+                   help=f"Where the camera stood when {what} (world x y z, metres)"),
+        Param.list(f"{prefix}Target", "number", label="Looking at", group=group, **XYZ,
+                   help=f"The point in the middle of that picture (world x y z, metres)"),
+        Param.number(f"{prefix}Fov", label="Field of view", group=group, min=0.1, max=179, unit="°", importance=D,
+                     default=None, nullable=True, help="The picture's height as an angle (degrees, vertical)"),
+        Param.list(f"{prefix}Size", "number", label="Picture size", group=group, **WH,
+                   help="[width, height] of that picture in px"),
+        Param.number(f"{prefix}Frame", label="Frame", group=group, min=0, max=10_000_000, integer=True, importance=D,
+                     default=None, nullable=True, help="The scene frame the camera saw (the surfaces as they were then)"),
+    ]
 
 PAINTED = {"fact": "painted"}          # the mesh or clay holds paint layers (kind.facts)
 
@@ -26,6 +51,11 @@ CHANNELS = {
 }
 
 LAYER = [
+    Param.text("projectSource", label="Projected picture", group="Projected", importance=D, default=None, nullable=True,
+               help="A picture projected onto the item from a camera (paint.project): a picture file, or \"2d:<2D item "
+                    "id>\" for that 2D item's newest pictures render (repainting it in 2D updates it). Laid on the "
+                    "texels the camera sees (paint_view.py); the layer's own strokes paint over it. \"\" = none"),
+    *_camera("project", "Projected", "the picture was projected"),
     Param.choice("channel", list(CHANNELS), label="Paints", default="colour", importance=S,
                  labels={k: v[0] for k, v in CHANNELS.items()},
                  help="What the layer paints on the surface: Colour; Roughness (white = rough, black = mirror); Relief "
@@ -49,6 +79,15 @@ STROKE = [
                  default=None, nullable=True,
                  help="A clay stroke's brush radius on the surface, in metres (with `anchors`): its `size` in pixels "
                       "is worked out from it where the stroke lands"),
+    Param.points("viewPoints", label="From the view", min=2, max=3, importance=D, group="Path", default=None,
+                 nullable=True,
+                 help="A stroke from the view: its path as drawn, [[x, y, pressure], …] in px of the `viewSize` picture "
+                      "through the camera `viewEye` → `viewTarget` (`viewFov`, `viewFrame`); its `size` is in screen "
+                      "px. Laid on the surface the camera sees there each time the paint is made (moving the item "
+                      "re-lands it); `points` may be left out. Drawn across several items it is kept on each"),
+    *_camera("view", "Path", "the stroke was drawn"),
+    Param.text("viewShot", label="Drawn through", group="Path", importance=D, default=None, nullable=True,
+               help="The shot whose camera the stroke was drawn through, when it was (for reports)"),
 ]
 
 MESH = [
@@ -60,7 +99,7 @@ MESH = [
 
 
 def check_strokes(canvas: dict, problems: list):
-    """A mesh's strokes have `points`; a clay's have `points` or `anchors` with `reach`."""
+    """A mesh's strokes have `points` or a view (`viewPoints` with its camera); a clay's also `anchors` with `reach`."""
     clay = canvas.get("type") == "clay"
     for layer in canvas.get("paints", []):
         for s in layer.get("strokes", []):
@@ -71,6 +110,13 @@ def check_strokes(canvas: dict, problems: list):
                 problems.append(f"{where}: `anchors` are for a clay's strokes; a mesh's stroke is laid by `points`")
             elif s.get("anchors") and not s.get("reach"):
                 problems.append(f"{where}: a stroke with `anchors` needs `reach` (its brush radius in metres)")
-            elif not s.get("points") and not s.get("anchors"):
-                problems.append(f"{where}: has no path: give `points` (canvas px)"
+            elif s.get("viewPoints") and any(s.get(f"view{k}") is None for k in ("Eye", "Target", "Fov", "Size")):
+                problems.append(f"{where}: a stroke from the view needs its camera: viewEye, viewTarget, viewFov, "
+                                "viewSize (and viewFrame)")
+            elif not s.get("points") and not s.get("anchors") and not s.get("viewPoints"):
+                problems.append(f"{where}: has no path: give `points` (canvas px) or `viewPoints` (from the view)"
                                 + (" or `anchors` (on the clay's surface) and `reach`" if clay else ""))
+    for layer in canvas.get("paints", []):
+        if layer.get("projectSource") and any(layer.get(f"project{k}") is None for k in ("Eye", "Target", "Fov", "Size")):
+            problems.append(f'{canvas["id"]} layer {layer["id"]}: a projected picture needs its camera: projectEye, '
+                            "projectTarget, projectFov, projectSize (paint.project sets them)")

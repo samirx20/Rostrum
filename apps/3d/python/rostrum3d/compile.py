@@ -200,5 +200,5 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
         "materials": material_scene.materials(data, frames, info["fps"], folder, _out),
         "items": [_node(i, fr) for i in data.get("items", [])],
     }
-    paint_scene.paint(scene, data, _out)          # painted meshes get their own material with the painted pictures
+    paint_scene.paint(scene, data, _out, folder)          # painted meshes get their own material with the painted pictures
     return scene
