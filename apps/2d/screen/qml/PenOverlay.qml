@@ -87,9 +87,14 @@ Item {
             required property int index
             visible: index < ov.pts.length
             readonly property var p: ov.pts[index] || ({})
-            Knob { i: knobs.index; part: "in"; px: knobs.p.inX; py: knobs.p.inY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
-            Knob { i: knobs.index; part: "out"; px: knobs.p.outX; py: knobs.p.outY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
-            Knob { i: knobs.index; part: "point"; px: knobs.p.x; py: knobs.p.y; round: knobs.p.smooth === true }
+            // a sharp point has no handles, a kept knob past the end no point: their place falls back (never undefined)
+            readonly property real x0: knobs.p.x !== undefined ? knobs.p.x : 0
+            readonly property real y0: knobs.p.y !== undefined ? knobs.p.y : 0
+            Knob { i: knobs.index; part: "in"; px: knobs.p.inX !== undefined ? knobs.p.inX : knobs.x0; py: knobs.p.inY !== undefined ? knobs.p.inY : knobs.y0
+                   visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
+            Knob { i: knobs.index; part: "out"; px: knobs.p.outX !== undefined ? knobs.p.outX : knobs.x0; py: knobs.p.outY !== undefined ? knobs.p.outY : knobs.y0
+                   visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
+            Knob { i: knobs.index; part: "point"; px: knobs.x0; py: knobs.y0; round: knobs.p.smooth === true }
         }
     }
 
