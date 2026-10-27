@@ -9,8 +9,7 @@ paint pictures are made, `laid` turns those into the kit's stroke on this surfac
 or sinks into a carve, instead of sliding to the nearest rim), then to the nearest point of the surface on its side
 (a triangle and where in it), that point's
 (u, v) to canvas pixels, the brush size from `reach` and the surface's metres per pixel there; where the path crosses
-a cut of the unfolded surface (a seam) the stroke is split, each half reaching one sample past the cut, so it crosses
-cleanly. Strokes with `points` and no anchors are used as they are (pixels). A brush near a cut spills past its own
+a cut of the unfolded surface (a seam) the stroke is split there; each stretch's round end covers the cut. Strokes with `points` and no anchors are used as they are (pixels). A brush near a cut spills past its own
 piece into the picture's neighbouring pieces, which are other places on the clay: `trim` keeps a layer's paint only
 on texels whose spot on the clay is within the brush's reach of its strokes.
 
@@ -26,7 +25,7 @@ from pathlib import Path
 import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 
-VERSION = "rostrum3d-claysurf@3"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it
+VERSION = "rostrum3d-claysurf@4"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it
 MAGIC, FORMAT = b"CLS1", 1
 STEP = 0.25                          # resample the path every STEP × reach in 3D ...
 MOST = 4000                          # ... and at most this many samples a stroke
@@ -237,11 +236,10 @@ def lay(surface: Surface, stroke: dict) -> list[dict]:
     base = {k: v for k, v in stroke.items() if k not in ("anchors", "reach")}
     out = []
     for k, (i, j) in enumerate(zip(bounds[:-1], bounds[1:])):
+        # a stretch ends at its last sample before the cut: the brush's round end (a quarter reach on) covers the
+        # cut, and `trim` keeps what spills past it off other places. (A point extrapolated past the cut in the
+        # stretch's own plane made blots where small, curved pieces meet.)
         pts = [[*px[q], a[q, 6]] for q in range(i, j)]
-        if j < len(a):                                       # one step past the cut, in this stretch's own plane
-            pts.append([*surface.canvas_px(tri[j - 1:j], surface.at(tri[j - 1:j], a[j:j + 1, :3]))[0], a[j, 6]])
-        if i > 0:
-            pts.insert(0, [*surface.canvas_px(tri[i:i + 1], surface.at(tri[i:i + 1], a[i - 1:i, :3]))[0], a[i - 1, 6]])
         if len(pts) == 1:                                    # a click: one dab
             pts.append([pts[0][0] + 0.01, *pts[0][1:]])
         size = max(0.5, 2 * float(stroke["reach"]) / float(np.median(mpp[i:j])))

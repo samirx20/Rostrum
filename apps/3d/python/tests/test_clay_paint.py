@@ -74,8 +74,9 @@ def test_a_stroke_stays_on_the_same_spot_after_a_reshape(tmp_path):
     end = _two_charts([0.08, 0.03], False)
     assert right["points"][-1][:2] == pytest.approx([end[0] * SIZE, (1 - end[1]) * SIZE], abs=0.05)
     assert right["id"] == "s1.1" and left["size"] == pytest.approx(2 * 0.004 * SIZE * (0.8 / W * 0.9 / W) ** 0.5, rel=1e-3)   # px per m: by area
-    seam = _two_charts([W / 2, 0.03], True)[0] * SIZE                     # each half reaches just past the cut
-    assert left["points"][-1][0] > seam >= left["points"][-2][0]
+    seam = _two_charts([W / 2, 0.03], True)[0] * SIZE                     # the left half ends at the cut, within
+    step = 0.25 * 0.004 * (0.8 * SIZE / W)                                  # one sample (a quarter reach) of it
+    assert seam - step - 0.5 <= left["points"][-1][0] <= seam + 0.5
 
 
 def _lid(tmp_path, monkeypatch):
