@@ -148,7 +148,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("open-path-picked", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move"]),
         ("path-points", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "canvasclick 600 400 double"]),   # its points, not its box
         ("picture-picked", ["--sample"], [f"drop {picture()} 900 500", "select image_1"]),
-        ("fill-picker-solid", ["--sample"], ["select card", "clickobj swatch"]),
+        ("fill-picker-solid", ["--sample"], ["select card", "clickobj row:paint/swatch"]),
         ("frame-world-panned", ["--sample"], ["select title", "zoom fit", "pan -1800 0 hold"]),
         ("frame-off-view-long", long(), [*busy, "zoom fit", "pan -1800 0 hold"]),
         ("rig-make-first", with_character(), ["select max"]),                # H32: parts named like a body: Make rig first
@@ -327,10 +327,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                f"picturefile {PICTURE}", "clickobj paintFit 0.55 0.5"]),
         # painted fill P3: the picker's Painted (a new painting in two clicks; the paintings to choose from; Tile with every
         # row: Scale, Offset, Rotation, Drift, Colour under it, Blend, Opacity); right-click › Make painted fill
-        ("fill-painted-new", ["--sample"], ["select card", "clickobj swatch", "clickobj fillType:painted"]),
+        ("fill-painted-new", ["--sample"], ["select card", "clickobj row:paint/swatch", "clickobj fillType:painted"]),
         ("fill-painted-choose", ["--sample"], ["select card", "run layer:painted_new", "shape rect 300 700 600 850",
                                                "clickobj swatch", "clickobj fillType:painted"]),
-        ("fill-painted-tile-rows", ["--sample"], ["select card", "run layer:painted_new", "clickobj swatch", "clickobj paintFit 0.55 0.5"]),
+        ("fill-painted-tile-rows", ["--sample"], ["select card", "run layer:painted_new", "clickobj row:paint/swatch", "clickobj paintFit 0.55 0.5"]),
         ("make-painted-fill-menu", ["--sample"], [*PAINTED, "tool move", "canvasmenu"]),
         # painted fill P4: painting a shared painting in place (the other user dotted, the panel's words), Layer ▾ with the
         # element's own paint and its painted fill
@@ -349,7 +349,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                 "draw 20 90 60 120", "newframe", "draw 30 20 90 40", "onion on"]),
         ("paint-in-place-select", ["--sample"], [*IN_PLACE, "draw 900 500 1000 560 1100 500", "painttool select",
                                                  "lasso 880,470 1120,470 1120,590 880,590"]),
-        ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
+        ("fill-solid-opacity", ["--sample"], ["select card", "clickobj row:paint/swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
         # H52 (painting phase 2): Draw each frame on, three drawings on twos, the onion skin's Before / After rows, the

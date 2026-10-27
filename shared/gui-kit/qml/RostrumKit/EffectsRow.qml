@@ -52,6 +52,7 @@ Item {
                 id: grp
                 required property var modelData
                 readonly property var g: modelData
+                property bool folding: false     // the person folded or opened it: only then does its height ease
                 width: col.width
                 Item {  // the group's header
                     width: parent.width; height: Theme.row
@@ -62,7 +63,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter; text: grp.g.label
                                 color: head.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
                     MouseArea { id: head; anchors.left: parent.left; anchors.right: gone.left; height: parent.height
-                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: grp.g.toggle() }
+                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { grp.folding = true; grp.g.toggle() } }
                     IconButton { id: gone; objectName: "removeEffect"; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                                  implicitWidth: Theme.field; implicitHeight: Theme.field; kind: "ghost"; glyph: "×"
                                  tip: "Remove"; help: "Remove this effect from the layer."; onClicked: grp.g.remove() }
@@ -73,11 +74,12 @@ Item {
                     width: parent.width; clip: true
                     height: grp.g.open ? inner.height : 0
                     visible: height > 0
-                    Behavior on height { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
+                    // eased only on a fold / open: a card shown open (a pick, a new effect) is whole at once, never half
+                    Behavior on height { enabled: grp.folding; NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
                     Column {
                         id: inner
                         width: parent.width
-                        Repeater { model: grp.g.open || body.height > 0 ? grp.g.rows : null; delegate: InspectorRow { bridge: grp.g; keyMarks: fx.keyMarks } }
+                        Repeater { model: grp.g.open || body.height > 0 ? grp.g.rows : null; delegate: InspectorRow { bridge: grp.g; keyMarks: fx.keyMarks; instant: !grp.folding } }   // shown open: whole at once
                     }
                 }
             }
