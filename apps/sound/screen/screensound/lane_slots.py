@@ -39,6 +39,7 @@ class LaneSlots:
             self._open[track_id] = (target, lane)
         else:
             return self._fail(f'Error: lane: "{lane}" of "{target}" is not a lane on {track_id}.')
+        self._kept_view().keep_lanes(self._open)       # open lanes survive a reopen (view_kept.py)
         self._rebuild()
 
     @Slot(str)

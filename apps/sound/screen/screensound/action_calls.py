@@ -123,8 +123,9 @@ def duplicate(f, **repeat):
     """Ctrl+D (one copy); `repeat`: Repeat…'s `times` or `until` (amount_actions.py)."""
     if f.one == "track":
         return [call("track.duplicate", f.ids)]
-    if f.one == "section":                    # a section with everything in it, right after it (the panel's Duplicate section)
-        return [call("section.duplicate", f.ids)]
+    if f.one == "section":                    # a section with everything in it, right after it (the panel's Duplicate section);
+        # what follows moves later to make room (critic r12: a middle section was refused); Repeat…: `times` copies
+        return [call("section.duplicate", f.ids, make_room=True, **({"times": repeat["times"]} if "times" in repeat else {}))]
     by = span_by(f)
     return [call(f"{k}.duplicate", ids, by=by, **repeat) for k, ids in f.by_kind().items()]
 

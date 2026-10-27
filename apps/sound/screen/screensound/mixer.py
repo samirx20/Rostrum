@@ -139,11 +139,16 @@ class MixPage(QObject):
         return b._guard(lambda: b._apply(moves.remove_calls(self.doc, self.doc.item(item_id)["type"], [item_id]),
                                          "Remove " + self.doc.item(item_id)["type"]))
 
-    @Slot(result=bool)
-    def addBus(self):
-        """bus.add (one change), then select the new bus so the inspector can name it."""
+    @Slot(str, result=bool)
+    def newGroupFor(self, track_id):
+        """A track's output list › New group: a group holding that track (never an empty one)."""
+        return self._group([track_id])
+
+    def _group(self, ids) -> bool:
+        """bus.from_tracks (one change: the group made and the tracks routed to it), then select the new group so the
+        inspector can name it."""
         before = {b["id"] for b in self._bus_items()}
-        if not self._call({"op": "bus.add", "args": {}}, "Add group"):
+        if not ids or not self._call({"op": "bus.from_tracks", "target": ids, "args": {}}, "Group tracks"):
             return False
         self.bridge.select(next(b["id"] for b in self._bus_items() if b["id"] not in before))
         return True

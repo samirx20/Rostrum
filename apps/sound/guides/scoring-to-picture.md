@@ -38,7 +38,7 @@ follows. **A lead-in is tied to the cut it builds to, not to where it was writte
 On the screen, **right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it. One spot holds one marker: `marker.add` at a time that already has one fails and names it (rename or move that one instead), and **M** there selects it and opens its name.
 
 Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`
-lists them; a project marker shows dashed on the marker band). Drag one there and it moves for every app, as one undo
+lists them after the song's own markers, which it lists first as `song_markers`; a project marker shows dashed on the marker band). Drag one there and it moves for every app, as one undo
 step in the project's marker list; a local marker named like a project one is refused, and a MIDI import leaves out (with a warning) file markers named like a project marker.
 
 ### Held parts: tie both ends

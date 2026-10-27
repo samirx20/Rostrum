@@ -1,336 +1,336 @@
 {
  "about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's loudness: equal track volumes sound balanced. Measured, then moved by mix_offsets.json (mixDb) to a sensible starting balance.",
- "referenceLufs": -20.44,
+ "referenceLufs": -19.67,
  "presets": {
   "builtIn:acousticGuitar": {
    "role": "comp",
-   "lufs": -15.85,
-   "gain": 0.5897
+   "lufs": -18.98,
+   "gain": 0.9236
   },
   "builtIn:bass": {
    "role": "bass",
-   "lufs": -21.95,
-   "gain": 0.9447,
-   "mixDb": -2
+   "lufs": -21.8,
+   "gain": 1.0747,
+   "mixDb": -1.5
   },
   "builtIn:basses": {
    "role": "bass",
-   "lufs": -18.54,
-   "gain": 0.8038
+   "lufs": -17.92,
+   "gain": 0.8173
   },
   "builtIn:bassoon": {
    "role": "lead",
-   "lufs": -17.01,
-   "gain": 0.674
+   "lufs": -15.54,
+   "gain": 0.6215
   },
   "builtIn:brass": {
    "role": "pad",
-   "lufs": -24.26,
-   "gain": 0.6183,
-   "mixDb": -8
+   "lufs": -20.94,
+   "gain": 0.9198,
+   "mixDb": -2
   },
   "builtIn:cello": {
    "role": "lead",
-   "lufs": -23.89,
-   "gain": 1.4877
+   "lufs": -22.05,
+   "gain": 1.3155
   },
   "builtIn:cellos": {
    "role": "pad",
-   "lufs": -17.06,
-   "gain": 0.6775
+   "lufs": -13.76,
+   "gain": 0.5066
   },
   "builtIn:choirPad": {
    "role": "pad",
-   "lufs": -26.92,
-   "gain": 2.1092
+   "lufs": -23.98,
+   "gain": 1.6423
   },
   "builtIn:clarinet": {
    "role": "lead",
-   "lufs": -21.16,
-   "gain": 1.0867
+   "lufs": -18.42,
+   "gain": 0.8661
   },
   "builtIn:classic.analogStrings": {
    "role": "pad",
-   "lufs": -24.57,
-   "gain": 1.608
+   "lufs": -21.71,
+   "gain": 1.2653
   },
   "builtIn:classic.choirPad": {
    "role": "pad",
-   "lufs": -26.85,
-   "gain": 2.091
+   "lufs": -23.88,
+   "gain": 1.6236
   },
   "builtIn:classic.cinematicBrass": {
    "role": "pad",
-   "lufs": -21.72,
-   "gain": 1.1588
+   "lufs": -18.84,
+   "gain": 0.909
   },
   "builtIn:classic.feltPiano": {
    "role": "comp",
-   "lufs": -24.37,
-   "gain": 1.5725
+   "lufs": -23.33,
+   "gain": 1.5249
   },
   "builtIn:classic.glassMarimba": {
    "role": "lead",
-   "lufs": -22.93,
-   "gain": 1.3322
+   "lufs": -22.68,
+   "gain": 1.4143
   },
   "builtIn:classic.grandPiano": {
    "role": "comp",
-   "lufs": -24.29,
-   "gain": 1.5572
+   "lufs": -23.18,
+   "gain": 1.4984
   },
   "builtIn:classic.spiccatoStrings": {
    "role": "comp",
-   "lufs": -32.59,
-   "gain": 4.0492
+   "lufs": -30.64,
+   "gain": 3.5344
   },
   "builtIn:classic.subBass": {
    "role": "bass",
-   "lufs": -17.84,
-   "gain": 0.7416
+   "lufs": -18.41,
+   "gain": 0.8648
   },
   "builtIn:classic.warmPad": {
    "role": "pad",
-   "lufs": -24.56,
-   "gain": 1.6078
+   "lufs": -21.77,
+   "gain": 1.2741
   },
   "builtIn:electricGuitar": {
    "role": "comp",
-   "lufs": -9.47,
-   "gain": 0.2828
+   "lufs": -9.82,
+   "gain": 0.3217
   },
   "builtIn:electricPiano": {
    "role": "comp",
-   "lufs": -19.56,
-   "gain": 0.9041
+   "lufs": -19.38,
+   "gain": 0.9675
   },
   "builtIn:flute": {
    "role": "lead",
-   "lufs": -26.18,
-   "gain": 1.9361
+   "lufs": -23.88,
+   "gain": 1.623
   },
   "builtIn:glockenspiel": {
    "role": "lead",
-   "lufs": -23.88,
-   "gain": 1.486
+   "lufs": -22.89,
+   "gain": 1.4481
   },
   "builtIn:guitar": {
    "role": "comp",
-   "lufs": -21.72,
-   "gain": 1.1594
+   "lufs": -20.94,
+   "gain": 1.1574
   },
   "builtIn:harp": {
    "role": "comp",
-   "lufs": -27.54,
-   "gain": 2.2647
+   "lufs": -27.02,
+   "gain": 2.3305
   },
   "builtIn:horn": {
    "role": "pad",
-   "lufs": -20.99,
-   "gain": 0.7545,
-   "mixDb": -3
+   "lufs": -17.42,
+   "gain": 0.6876,
+   "mixDb": -1
   },
   "builtIn:marimba": {
    "role": "lead",
-   "lufs": -18.63,
-   "gain": 0.8114
+   "lufs": -19.96,
+   "gain": 1.0335
   },
   "builtIn:mutedTrumpet": {
    "role": "lead",
-   "lufs": -19.51,
-   "gain": 0.6361,
-   "mixDb": -3
+   "lufs": -18.09,
+   "gain": 0.7428,
+   "mixDb": -1
   },
   "builtIn:oboe": {
    "role": "lead",
-   "lufs": -24.41,
-   "gain": 1.5795
+   "lufs": -23.42,
+   "gain": 1.5404
   },
   "builtIn:organ": {
    "role": "pad",
-   "lufs": -13.41,
-   "gain": 0.445
+   "lufs": -9.68,
+   "gain": 0.3167
   },
   "builtIn:piano": {
    "role": "comp",
-   "lufs": -19.86,
-   "gain": 0.9349
+   "lufs": -18.84,
+   "gain": 0.9089
   },
   "builtIn:piccolo": {
    "role": "lead",
-   "lufs": -16.21,
-   "gain": 0.6147
+   "lufs": -13.3,
+   "gain": 0.4801
   },
   "builtIn:pipeOrgan": {
    "role": "pad",
-   "lufs": -7.62,
-   "gain": 0.2286
+   "lufs": -9.73,
+   "gain": 0.3183
   },
   "builtIn:pluck": {
    "role": "lead",
-   "lufs": -21.87,
-   "gain": 1.1784
+   "lufs": -21.76,
+   "gain": 1.2725
   },
   "builtIn:saxophone": {
    "role": "lead",
-   "lufs": -13.06,
-   "gain": 0.4275
+   "lufs": -11.3,
+   "gain": 0.3817
   },
   "builtIn:spiccatoStrings": {
    "role": "comp",
-   "lufs": -21.96,
-   "gain": 1.1909
+   "lufs": -20.8,
+   "gain": 1.1384
   },
   "builtIn:strings": {
    "role": "pad",
-   "lufs": -19.26,
-   "gain": 1.2329,
-   "mixDb": 3
+   "lufs": -16.87,
+   "gain": 0.8132,
+   "mixDb": 1
   },
   "builtIn:subBass": {
    "role": "bass",
-   "lufs": -15.21,
-   "gain": 0.5477
+   "lufs": -14.67,
+   "gain": 0.5623
   },
   "builtIn:timpani": {
    "role": "bass",
-   "lufs": -28.49,
-   "gain": 2.5263
+   "lufs": -28.79,
+   "gain": 2.8562
   },
   "builtIn:trombone": {
    "role": "pad",
-   "lufs": -25.74,
-   "gain": 1.0352,
-   "mixDb": -5
+   "lufs": -21.69,
+   "gain": 1.0615,
+   "mixDb": -1.5
   },
   "builtIn:trumpet": {
    "role": "lead",
-   "lufs": -13.02,
-   "gain": 0.3013,
-   "mixDb": -3
+   "lufs": -11.26,
+   "gain": 0.3384,
+   "mixDb": -1
   },
   "builtIn:tuba": {
    "role": "bass",
-   "lufs": -20.5,
-   "gain": 1.0072
+   "lufs": -20.44,
+   "gain": 1.0931
   },
   "builtIn:tubularBells": {
    "role": "lead",
-   "lufs": -13.96,
-   "gain": 0.4745
+   "lufs": -14.35,
+   "gain": 0.542
   },
   "builtIn:uprightBass": {
    "role": "bass",
-   "lufs": -21.4,
-   "gain": 1.1165
+   "lufs": -21.5,
+   "gain": 1.2341
   },
   "builtIn:vibraphone": {
    "role": "lead",
-   "lufs": -15.13,
-   "gain": 0.5428
+   "lufs": -16.2,
+   "gain": 0.6705
   },
   "builtIn:violas": {
    "role": "pad",
-   "lufs": -16.14,
-   "gain": 0.6093
+   "lufs": -12.86,
+   "gain": 0.4566
   },
   "builtIn:violin": {
    "role": "lead",
-   "lufs": -18.64,
-   "gain": 0.8125
+   "lufs": -17.77,
+   "gain": 0.8034
   },
   "builtIn:violins": {
    "role": "pad",
-   "lufs": -24.28,
-   "gain": 1.5552
+   "lufs": -20.81,
+   "gain": 1.1402
   },
   "builtIn:warmPad": {
    "role": "pad",
-   "lufs": -22.18,
-   "gain": 1.2211
+   "lufs": -19.22,
+   "gain": 0.9495
   },
   "builtIn:xylophone": {
    "role": "lead",
-   "lufs": -23.32,
-   "gain": 1.3932
+   "lufs": -22.5,
+   "gain": 1.3845
   },
   "kit:classic": {
    "role": "groove",
-   "lufs": -18.1,
-   "gain": 0.7641
+   "lufs": -18.05,
+   "gain": 0.8301
   },
   "kit:drums": {
    "role": "groove",
-   "lufs": -19.54,
-   "gain": 0.6383,
-   "mixDb": -3
+   "lufs": -18.82,
+   "gain": 0.7205,
+   "mixDb": -2
   },
   "kit:jazz": {
    "role": "groove",
-   "lufs": -24.01,
-   "gain": 1.0678,
-   "mixDb": -3
+   "lufs": -22.1,
+   "gain": 1.0502,
+   "mixDb": -2
   },
   "kit:studio": {
    "role": "groove",
-   "lufs": -22.72,
-   "gain": 0.7744,
-   "mixDb": -4.5
+   "lufs": -22.66,
+   "gain": 1.0582,
+   "mixDb": -2.5
   },
   "model:glockenspiel": {
    "role": "lead",
-   "lufs": -20.38,
-   "gain": 0.9934
+   "lufs": -23.9,
+   "gain": 1.6276
   },
   "model:guitar": {
    "role": "comp",
-   "lufs": -20.18,
-   "gain": 0.9704
+   "lufs": -21.38,
+   "gain": 1.2183
   },
   "model:marimba": {
    "role": "lead",
-   "lufs": -20.22,
-   "gain": 0.975
+   "lufs": -20.47,
+   "gain": 1.0958
   },
   "model:nylonGuitar": {
    "role": "comp",
-   "lufs": -22.06,
-   "gain": 1.2045
+   "lufs": -23.77,
+   "gain": 1.6036
   },
   "model:tubularBell": {
    "role": "lead",
-   "lufs": -11.18,
-   "gain": 0.3442
+   "lufs": -12.68,
+   "gain": 0.4474
   },
   "model:vibraphone": {
    "role": "lead",
-   "lufs": -17.44,
-   "gain": 0.7077
+   "lufs": -17.69,
+   "gain": 0.7962
   },
   "model:violin": {
    "role": "lead",
-   "lufs": -19.24,
-   "gain": 0.8706
+   "lufs": -18.78,
+   "gain": 0.9027
   },
   "synth:saw": {
    "role": "pad",
-   "lufs": -23.94,
-   "gain": 1.4962
+   "lufs": -21.06,
+   "gain": 1.1738
   },
   "synth:sine": {
    "role": "lead",
-   "lufs": -18.13,
-   "gain": 0.7666
+   "lufs": -17.51,
+   "gain": 0.7798
   },
   "synth:square": {
    "role": "pad",
-   "lufs": -19.39,
-   "gain": 0.886
+   "lufs": -16.5,
+   "gain": 0.6944
   },
   "synth:triangle": {
    "role": "lead",
-   "lufs": -19.88,
-   "gain": 0.9378
+   "lufs": -19.39,
+   "gain": 0.9682
   }
  }
 }

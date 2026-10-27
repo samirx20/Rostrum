@@ -15,7 +15,8 @@ Steps: see screensound/steps.py, plus the file steps here (`new [name]`, `openpr
 itself once the sound has rendered; a failed step or render exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
     python apps/sound/screen/main.py --check-layout <folder>          # the layout check: every screen state at every
-                                                                      # real window size (rostrum_gui/layout_run.py)
+                                                                      # real window size (rostrum_gui/layout_run.py), with
+                                                                      # the stability pass strict (ROSTRUM_CHECK_STABLE)
 """
 import argparse
 import os
@@ -206,6 +207,8 @@ def main():
     a.add_argument("--check-batch", metavar="STATES.JSON", help="with --check-layout: the states a parent run hands this process")
     a.add_argument("--quick", action="store_true", help="with --check-layout: the QUICK states, at 1646x900 only")
     args = a.parse_args()
+    if args.check_layout:                          # Sound's check runs the stability pass, its finds failing it, unless
+        os.environ.setdefault("ROSTRUM_CHECK_STABLE", "strict")   # the env says otherwise (=0 off, =1 report only)
     if args.check_layout and not (args.check_name or args.check_batch):
         from screensound.layout_states import states
         sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only, args.quick))

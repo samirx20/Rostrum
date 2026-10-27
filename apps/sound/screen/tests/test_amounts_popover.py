@@ -14,6 +14,7 @@ import shiboken6  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_gui import laid_out  # noqa: E402
 from rostrum_gui.pointer import wait_until  # noqa: E402
+from rostrum_gui.meta import class_name  # noqa: E402
 from screensound import playback  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
 from test_song_swap import song  # noqa: E402
@@ -65,7 +66,7 @@ def click(win, it):
 
 def drag_slider(win, row):
     """Press on the row's slider, move along it, let go (the real slider, by the pointer)."""
-    slider = next(it for it in items(win) if "Slider" in type(it).__name__ + it.metaObject().className()
+    slider = next(it for it in items(win) if "Slider" in type(it).__name__ + class_name(it)
                   and _inside(it, row) and it.isVisible())
     a, b = centre(slider, 0.2), centre(slider, 0.8)
     QTest.mouseMove(win, a)

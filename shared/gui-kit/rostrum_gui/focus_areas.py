@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QMetaObject, Q_ARG
 
 from .gui_filter import GuiFilter
+from .meta import has_method
 
 PRESSES = (QEvent.Type.MouseButtonPress, QEvent.Type.TabletPress, QEvent.Type.TouchBegin)
 
@@ -25,6 +26,6 @@ class FocusAreas(GuiFilter):
 
 def watch(win):
     """Install the watcher on an AppShell window (one with pressedAt); other windows are left alone."""
-    if win.metaObject().indexOfMethod("pressedAt(QVariant,QVariant)") >= 0:
+    if has_method(win, "pressedAt(QVariant,QVariant)"):
         return FocusAreas(win)
     return None

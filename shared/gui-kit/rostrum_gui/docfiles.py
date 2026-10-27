@@ -152,6 +152,17 @@ def rename(folder, name: str) -> Path:
     return dest
 
 
+def clear_leftover(folder) -> None:
+    """The folder a rename moved away from: when it is only lock files (a window's lock on the history, touched as the
+    project closed there) or empty, it goes; a folder with anything of a person's in it stays."""
+    folder = Path(folder)
+    try:
+        if folder.is_dir() and all(p.name.endswith(".lock") for p in folder.rglob("*") if p.is_file()):
+            shutil.rmtree(folder)               # (empty folders, e.g. an empty .rostrum, count as nothing)
+    except OSError:
+        pass                                                   # a lock still held: left for the next open to find
+
+
 def version_name(now: datetime | None = None) -> str:
     now = now or datetime.now()
     return f"{now.day} {now:%b} {now:%H:%M}"

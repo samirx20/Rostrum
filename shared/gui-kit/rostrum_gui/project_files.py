@@ -15,7 +15,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from rostrum_core import RostrumError, codes, live, plugin_parts, samples
 
@@ -158,7 +158,9 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
                 return
             self._fresh = None                    # a project someone named is kept, even with no change in it
             self.places.save(self.doc, self.host.bridge, new)     # it reopens where it was, under its new name
+            gone = Path(self.doc.folder).resolve()
             self._open(new, self.doc.item_id, quiet=False)
+            QTimer.singleShot(300, lambda: F.clear_leftover(gone))   # the folder it left: the closing window touches its lock a moment after the swap, then nothing is in it
             self._say(f'Renamed "{old}" to "{self._name()}".')
         return self.has_project() and self._try(go)
 

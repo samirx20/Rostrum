@@ -82,6 +82,22 @@ def clip_moments(y, sr):
 
 
 @remembered
+def by_section(wav, spans) -> list[dict]:
+    """[{name, from_s, to_s, integrated_lufs, true_peak_dbtp}] for each (name, from_s, to_s) inside the file: how loud
+    each section is, so "the build is louder than the verse" is a number. A stretch under 0.4 s has no loudness (None)."""
+    y, sr = load(wav)
+    dur, out = duration(y, sr), []
+    for name, a, b in spans:
+        a, b = max(0.0, a), min(dur, b)
+        if b <= a:
+            continue
+        cut = y[int(a * sr):int(b * sr)]
+        lufs = bs1770.integrated(cut, sr) if b - a >= 0.4 else None
+        out.append({"name": name, "from_s": num(a, 2), "to_s": num(b, 2),
+                    "integrated_lufs": num(lufs) if lufs is not None and lufs > -70 else None, "true_peak_dbtp": num(true_peak_db(cut))})
+    return out
+
+
 def loudness(wav, out_png=None, step=1.0, series=None, limiter=None, range=None):
     """Facts about how loud `wav` is. `series` = the engine's own short-term values
     [(time_s, lufs)] (e.g. its 100 ms series), used for the curve instead of computing one.
@@ -126,6 +142,8 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None, range=None)
                 if k in v:
                     v[k] = num(v[k] + t0, 2)
         out["short_term_start_s"] = num(t0, 3)
+        if out["ending"]:
+            out["ending"]["audible_end_s"] = num(out["ending"]["audible_end_s"] + t0, 2)
     panel = None
     if limiter:
         from .limiter import HOP_S, limiter as measure

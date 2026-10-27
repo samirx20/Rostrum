@@ -14,7 +14,7 @@ Row {
     // and the key's Minor box ran under the Picture button (critic r9 + r10). Full while everything fits, then short
     // (bar.beat only, "Min"), then the key fields step aside.
     readonly property real tonicW: key !== "" ? 56 : 84
-    function needs(short) { return (short ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4 + Theme.gap
+    function needs(short) { return (short ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4 + Theme.grid
                                    + 76 + 56 + tonicW + 2 * Theme.grid + (key !== "" ? (short ? 64 : 92) + Theme.grid : 0) }
     readonly property bool isCompact: compact || (room >= 0 && room < needs(false))
     readonly property bool isTight: tight || (room >= 0 && room < needs(true))
@@ -85,9 +85,11 @@ Row {
             onPicked: (v) => songPanel.setKey(ro.tonic, v)
         }
     }
-    Text { visible: text !== "" && (ro.room < 0 || width > 0); text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
+    // "Updating the sound…" / "No sound output…"; a failed render is not repeated here: the Problems chip keeps it
+    Text { visible: text !== "" && (ro.room < 0 || width > 0); anchors.verticalCenter: parent.verticalCenter
+           text: /^Can't make the sound/.test(backend.soundState) ? "" : backend.soundState
            elide: Text.ElideRight; width: ro.room < 0 ? implicitWidth : Math.max(0, Math.min(implicitWidth, ro.room - x))
-           color: /^Can't make the sound/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
            MouseArea { id: stateHover; anchors.fill: parent; hoverEnabled: true }
            HoverTip { text: parent.truncated ? backend.soundState : ""; hovered: stateHover.containsMouse } }
 }

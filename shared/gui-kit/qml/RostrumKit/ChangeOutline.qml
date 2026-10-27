@@ -2,7 +2,8 @@ import QtQuick
 import "."
 
 // A 2 px outline round something an agent just changed (the agent colour), or that the person's own undo / redo just
-// took back or put again (the accent colour: `bridge.agent.flashMine`); it fades out over 1 s and is gone
+// took back or put again (the accent colour: `bridge.agent.flashMine`); it shows whole for a moment (the new picture
+// lands after the change: 2D's engine frame), then fades out over 1 s and is gone (agent_watch.HOLD_MS, FLASH_MS)
 // (INTERACTION.md 1.18, 1.21 rule 9: undo you can see). Place one per id in `bridge.agent.flash` over that item's rect on screen, in this item's
 // parent's coordinates: ChangeOutline { x: r.x; y: r.y; width: r.width; height: r.height }. `again()` shows it anew.
 Item {
@@ -18,8 +19,10 @@ Item {
         anchors.fill: parent; anchors.margins: -o.pad
         color: "transparent"; border.width: 2; border.color: o.tint.a > 0 ? o.tint : o.mine ? Theme.accent : Theme.agent; radius: Theme.radiusCtl - 2
     }
-    NumberAnimation { id: fade; target: o; property: "opacity"; from: 1; to: 0; duration: 1000
-                      easing.type: Easing.InQuad
-                      onStarted: o.visible = true
-                      onFinished: o.visible = false }
+    SequentialAnimation { id: fade
+        onStarted: { o.opacity = 1; o.visible = true }
+        onFinished: o.visible = false
+        PauseAnimation { duration: 250 }
+        NumberAnimation { target: o; property: "opacity"; from: 1; to: 0; duration: 1000; easing.type: Easing.InQuad }
+    }
 }

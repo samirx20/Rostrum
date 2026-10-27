@@ -88,7 +88,7 @@ ACTIONS = [
         amounts=("timing", "velocity", "length", "seed")),
     act("repeat", "Repeat…", A.repeat_valid, A.repeat_calls, "Ctrl+R", group="time", asks=True,
         amounts=("times", A.UNTIL), fit=A.repeat_fit,
-        needs="Repeat needs notes, hits, clips or a time range"),     # short: the top bar shows a message whole or not at all
+        needs="Repeat needs notes, hits, clips, a section or a time range"),     # short: the top bar shows a message whole or not at all
     # a drum row's Fill row… (its menu sets the target; keys and Ctrl+K only while it is open: drum_step_slots.py)
     act("fill_row", "Fill row…", lambda f: f.fill is not None, A.fill_calls, group="fill", asks=True, panel=False,
         amounts=("every", "offset", "vel", "accentEvery"), fit=A.fill_fit),
@@ -127,7 +127,7 @@ ACTIONS = [
         group="clip", needs="Layer together needs two or more clips selected", min_targets=2),
     act("stems", "Split into parts (stems)", lambda f: CLIP(f) and f.count == 1,
         lambda f: [C.call("clip.split_stems", f.ids)], group="clip"),
-    act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
+    act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: C.duplicate(f),
         importance="primary", group="section"),        # (Ctrl+D on a section: the edit block's Duplicate, below)
     act("section_inside", "Select inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
         group="section", do="inside_section"),

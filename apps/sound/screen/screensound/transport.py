@@ -152,8 +152,11 @@ class Transport(QObject):
         self._show_state()
 
     def _failed(self, line):
+        """A render failed. Its words go to the status line once, when the problem is new (critic r12 should-fix 8: one
+        error in one place); while it stands each edit's own words stay there, and the Problems chip keeps it."""
         self.stale = False
-        self.failed.emit(line)
+        if line != self.failure:
+            self.failed.emit(line)
         self._set_failure(line)
         self._show_state()
         if self._want and self.last:

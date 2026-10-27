@@ -9,6 +9,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import listen, roles
+from ..doc.markers import seconds_of
 from ..doc.times import seconds
 from ..ears.written import instrument_spec
 from ..listen.loudness import loudest_line
@@ -44,6 +45,17 @@ def _window(doc, args, where):
     return a, b
 
 
+def _section_spans(doc) -> list[tuple[str, float, float]]:
+    """[(name, start s, end s)] of the song's sections (their times as the document resolves them), by start."""
+    rows = []
+    for sec in doc.data.get("sections", []):
+        try:
+            rows.append((sec.get("name") or sec["id"], seconds_of(doc.data, sec["at"]), seconds_of(doc.data, sec["end"])))
+        except (KeyError, ValueError):
+            continue                    # a section whose time no longer resolves is the checks' business, not a look's
+    return sorted(rows, key=lambda r: r[1])
+
+
 def _limiter_inputs(ctx, doc):
     """What the limiter look needs from the last render: the engine's reduction curve, and the stems that add up to the
     mix (the tracks that feed it directly, plus its bus stems) to name who drove it."""
@@ -72,7 +84,7 @@ def _resolve(doc, t, where):
 def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV, **WINDOW}})
     def look_loudness(ctx, args):
-        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished) and whether the file is cut off (the last 50 ms fall faster than the fade before them). Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz."""
+        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished), whether the file is cut off (the last 50 ms fall faster than the fade before them) and the audible end (data.ending.audible_end_s: where the sound falls under -60 dBFS for good, so "it rings out by 52 s" can be checked). For the whole song with sections, the loudness of each section (data.sections: name, from_s, to_s, integrated_lufs, true_peak_dbtp; in the summary), so "the build is louder than the verse" is a number. Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
@@ -83,6 +95,10 @@ def register(tools: Tools):
         said += loudest_line(r["loudest"])
         if r.get("ending"):
             said += " " + r["ending"]["words"]
+        if win is None and not args.get("wav") and (spans := _section_spans(doc)):
+            r["sections"] = listen.by_section(wav, spans)
+            said += " By section: " + "; ".join(f"{s['name']} {s['integrated_lufs']:.1f}" if s["integrated_lufs"] is not None
+                                                 else f"{s['name']} silent" for s in r["sections"]) + " LUFS."
         said += f" {r['speech_room']['words']}."
         if "limiter" in r:
             w = r["limiter"]["worst"]

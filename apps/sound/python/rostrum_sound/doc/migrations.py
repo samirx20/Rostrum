@@ -25,6 +25,11 @@ means adding its step here (the kind refuses to start without it).
     7 → 8   sections on their bars (2026-10-27): a section made from a time range kept its start and end in seconds, so
             a tempo change left it behind its notes (critic r12). Such a time is now kept as the beat it falls on; a
             saved song's plain-seconds section times become those beats (same place today), marker references stay.
+    8 → 9   starting levels on three phrases (2026-10-27, critic r12): each instrument is level-matched on its role's
+            part, the same notes at the Editor's velocity and a held line, so plain instruments start within about 3 LU
+            of each other however they are written (double basses were 14 LU under a clarinet). Each track's volume is
+            moved from the old table's gain to the new one (`preset_levels_format8.json` is the old table, frozen), so a
+            saved song sounds exactly as before.
 """
 from __future__ import annotations
 
@@ -32,6 +37,7 @@ from .. import names
 from . import keys, preset_level, tempo
 
 VOLUME_MAX = 4.0        # the fader's top (and the engine's)
+FORMAT4_TABLE = preset_level.FORMAT8    # the table format 4 moved songs to (unchanged until format 8; frozen)
 
 
 def level_matched(data: dict, lists: dict):
@@ -73,10 +79,12 @@ def plain_names(data: dict, lists: dict):
     return data, "; ".join(w for w in (said, lev) if w) or "Instrument names: nothing to change"
 
 
-def balance(data: dict, lists: dict):
+def _rebalanced(data: dict, old, new) -> int:
+    """Each track's volume (and volume lane) moved from the `old` table's gain to the `new` one's: the song sounds as
+    before. The number of tracks moved."""
     moved = 0
     for t in data.get("tracks", []):
-        g = preset_level.gain(t, preset_level.FORMAT3) / preset_level.gain(t)
+        g = preset_level.gain(t, old) / preset_level.gain(t, new)
         if abs(g - 1) < 1e-6:
             continue
         moved += 1
@@ -85,7 +93,18 @@ def balance(data: dict, lists: dict):
         for lane in t.get("automation", []):
             if lane.get("lane") == "volume":
                 lane["points"] = preset_level.scaled(lane["points"], g, cap=VOLUME_MAX)
+    return moved
+
+
+def balance(data: dict, lists: dict):
+    moved = _rebalanced(data, preset_level.FORMAT3, FORMAT4_TABLE)
     return data, f"{moved} track volume{'s' * (moved != 1)} moved to the new starting balance, so the song sounds as before" if moved else "Starting balance: nothing to change"
+
+
+def three_phrase_levels(data: dict, lists: dict):
+    moved = _rebalanced(data, preset_level.FORMAT8, preset_level.TABLE)
+    return data, (f"Starting levels re-measured: {moved} track volume{'s' * (moved != 1)} moved so the song sounds as before"
+                  if moved else "Starting levels re-measured: nothing to change")
 
 
 def gentle_limiting(data: dict, lists: dict):
@@ -144,7 +163,7 @@ _SAID = {1: ("Level matching:",), 2: ('The drum kit "synth" is now', "moved to t
                                       "Instrument names:"),
          3: ("moved to the new starting balance", "Starting balance:"), 4: ("(Gentle limiting off)",),
          5: ("(Ring out and Even kit off)",), 6: ("The bass now plays at the written pitch", "Bass pitch:"),
-         7: ("Sections now stay on their bars", "Sections on bars:")}
+         7: ("Sections now stay on their bars", "Sections on bars:"), 8: ("Starting levels re-measured",)}
 
 
 def upgraded(label: str):
@@ -153,5 +172,5 @@ def upgraded(label: str):
     return (min(ran), max(ran) + 1) if ran else None
 
 
-STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch, 7: sections_on_bars}
+STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch, 7: sections_on_bars, 8: three_phrase_levels}
 FORMAT = len(STEPS) + 1

@@ -26,7 +26,7 @@ import "Pointers.js" as Pointers
 // own snap, key lock and length), its key lit on the keyboard (PLAN S1). Locked during a drag (the mode says it).
 // A drag shows the kit's value chip by the pointer: a move "+1 bar 2 beats · +3 semitones" (what the dragged note
 // moved, snap included), a length "1/8". Esc during a drag (after the 4 px) puts everything back, no undo step
-// (dragEsc; the drum stroke and a note's end too). A box has no chip; Esc leaves it to the window.
+// (dragEsc; the drum stroke and a note's end too). A box has no chip; Esc gives back the selection as it was before the box.
 // A drum hit is caught only on the diamond you see (tol), never on the empty step beside it.
 MouseArea {
     id: m
@@ -110,11 +110,11 @@ MouseArea {
     }
     PinchGrow {}
     // Esc while a drag runs: everything back as it was, no undo step; the release that follows does nothing
-    function holds(md) { return md === "drag" || md === "handle" || md === "steps" }
+    function holds(md) { return md === "drag" || md === "handle" || md === "steps" || md === "box" }
     onModeChanged: { if (holds(mode)) dragEsc.holdEsc(); else dragEsc.letEsc() }
     Connections {
         target: dragEsc
-        function onCancelled() { if (m.holds(m.mode)) { backend.cancelDrag(); m.mode = "" } }
+        function onCancelled() { if (m.mode === "box") backend.cancelBox(); else if (m.holds(m.mode)) backend.cancelDrag(); else return; m.mode = "" }
     }
     // The move chip: where the dragged note (hit) was at the press, and how far it is now, in bars and beats (and keys)
     property var moveFrom: null

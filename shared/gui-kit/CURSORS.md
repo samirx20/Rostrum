@@ -57,6 +57,8 @@ Item {                                     // a corner's turn zone
 CanvasCursor { kind: altHeld ? "dropper" : "none" }     // a held key can change the kind too
 ```
 - It fills its parent (from the moment it is made, a Loader's or a delegate's item too) and never takes a press or hover: the zone's own MouseArea / handlers work as before. The topmost item with a pointer under the mouse wins (Qt Quick's rule), so put one inside each zone instead of one big item on top.
+- **Every mouse area over a canvas needs its own CanvasCursor.** A MouseArea (or a handler's item) lying over the canvas covers the pointer of the canvas below it, even when it takes no press there: put a CanvasCursor inside that area too, with the kind a press there does.
+- A CanvasCursor declared in a QML file of its own (a QML type built on it with its own properties) works the same: it fills its parent, and the layout checker reads it (the kit reads class names through `rostrum_gui/meta.py`, never `metaObject()` straight).
 - `badge` is the badge with no key held. `altBadge`, `ctrlBadge`, `shiftBadge` replace it while that key is held (the first held of Alt, Ctrl, Shift with a badge wins). `altHeld`, `ctrlHeld`, `shiftHeld` are there for bindings. `shown` says what it shows now (`"pick+copy@0"`), for checks.
 - An unknown `kind` or `badge` raises (a scripted run fails) and the pointer shows Qt's "forbidden" shape meanwhile; it never quietly shows nothing.
 - From Python: `cursors.cursor(kind, angle, badge, scale, dpr)` gives the `QCursor` (made once, kept); `cursors.picture(...)` the image and hotspot.

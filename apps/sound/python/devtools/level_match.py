@@ -3,10 +3,13 @@ the level-match table (`rostrum_sound/library_data/preset_levels.json`, read by 
 
     python devtools/level_match.py [--engine <rostrum-sound.exe>] [--check]
 
-Each preset plays the phrase of its first part in rostrum_sound/roles.py (the phrases: how the six trial sketches of agents wrote a comp, a bass, a lead line, a
-pad and a groove: their notes, lengths and velocities) at the track's volume 1, in a home octave, all in one render;
-the engine reports each track's integrated loudness (LUFS). The median is the reference; every preset gets the gain
-that brings its phrase to it, so equal track volumes sound balanced for parts written like that. `--check` measures
+Each preset plays three typical phrases at the track's volume 1, in a home octave, one render per phrase: the phrase of
+its first part in rostrum_sound/roles.py (how the six trial sketches of agents wrote a comp, a bass, a lead line, a pad
+and a groove: their notes, lengths and velocities), the same notes at the Editor's default velocity (a person drawing
+them), and a held line of one note a bar (2026-10-27, critic r12: velocity curves differ a lot between recorded
+instruments, so one velocity left the double basses 14 LU under a clarinet). The engine reports each track's
+integrated loudness (LUFS); a preset's loudness is the mean of its three. The median is the reference; every preset
+gets the gain that brings it there, so equal track volumes start roughly balanced however the part is written. `--check` measures
 again with the table applied and prints the spread instead of writing. The table is part of the file format: songs
 already saved hold volumes offset by it (doc/migrations.py), so changing a number needs a new format step there,
 never just a new table.
@@ -104,13 +107,55 @@ def phrases() -> dict[str, tuple[str, str]]:
     return out
 
 
-def measure(engine: Engine, out: Path, apply_table: bool) -> dict[str, float]:
-    """{preset key: LUFS of its reference phrase}, all in one render (the table applied or not)."""
+# The Editor's default velocities (a person drawing notes and hits; doc/ops_thin.py DEFAULT_VEL).
+HAND = {"note": 0.8, "hit": 0.85}
+
+
+def by_hand(code: str) -> str:
+    """The same part at the Editor's default velocity."""
+    code = re.sub(r"(\.(?:note|chord)\(.*?vel=)[0-9.]+", lambda m: m.group(1) + str(HAND["note"]), code)
+    return re.sub(r"(\.hit\(.*?vel=)[0-9.]+", lambda m: m.group(1) + str(HAND["hit"]), code)
+
+
+def held_line(key: str, code: str) -> str:
+    """One held note a bar (the chord's root, inside the instrument's range) at the Editor's velocity: a line drawn by
+    hand, the way low strings hold a part under a cue (critic r12: double basses on a held D measured -31 LUFS). A kit
+    plays its groove by hand."""
+    if key.startswith("kit:"):
+        return by_hand(code)
+    head, *body = code.splitlines()
+    o = int(re.findall(r"[A-G][b#]?(\d)", "\n".join(body))[0])
+    r = roles.ROLES.get(key)
+    lo, hi = (midi(r.low), midi(r.high)) if r and r.low else (0, 127)
+    while min(midi(f"{v[0]}{o}") for v in BARS) < lo and o < 8:
+        o += 1
+    while max(midi(f"{v[0]}{o}") for v in BARS) > hi and o > 0:
+        o -= 1
+    return "\n".join([head] + [f"s.note('{v[0]}{o}', at=bar({b + 1}), dur=beats(4), vel={HAND['note']})"
+                               for b, v in enumerate(BARS)]) + "\n"
+
+
+PHRASES = {"agent": lambda k, c: c, "hand": lambda k, c: by_hand(c), "line": held_line}
+
+
+def measure_each(engine: Engine, out: Path, apply_table: bool) -> dict[str, dict[str, float]]:
+    """{phrase ("agent" / "hand" / "line"): {preset key: LUFS}}, one render per phrase (the table applied or not)."""
     ph = phrases()
-    doc = run_source("tempo(120); length(bar(5))\n" + "\n".join(code for _, code in ph.values()), "level_match.py")
-    got = engine.request("render", schedule=compile(doc, matched=apply_table), out=str(out), stems=[])
-    heard = {t["id"]: t["lufs"] for t in got["tracks"]}
-    return {k: heard[k.replace(":", "_").replace(".", "_")] for k in ph}
+    got = {}
+    for name, make in PHRASES.items():
+        code = "\n".join(make(k, c) for k, (_, c) in ph.items())
+        doc = run_source("tempo(120); length(bar(5))\n" + code, "level_match.py")
+        r = engine.request("render", schedule=compile(doc, matched=apply_table), out=str(out), stems=[])
+        heard = {t["id"]: t["lufs"] for t in r["tracks"]}
+        got[name] = {k: heard[k.replace(":", "_").replace(".", "_")] for k in ph}
+    return got
+
+
+def measure(engine: Engine, out: Path, apply_table: bool) -> dict[str, float]:
+    """{preset key: LUFS}: the mean (in dB) of its three typical phrases, the role's part as agents write it, the same
+    notes at the Editor's velocity, and a held line, so a plain track starts balanced however it is written."""
+    each = measure_each(engine, out, apply_table)
+    return {k: statistics.fmean(each[p][k] for p in PHRASES) for k in each["agent"]}
 
 
 def main():

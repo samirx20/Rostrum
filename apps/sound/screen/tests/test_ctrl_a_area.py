@@ -16,6 +16,7 @@ from rostrum_core import Document  # noqa: E402
 from rostrum_sound import KIND, run_source  # noqa: E402
 from screensound import playback  # noqa: E402
 from screensound.files_sound import ITEM  # noqa: E402
+from rostrum_gui.meta import class_name  # noqa: E402
 from test_amounts_popover import click, items, shown  # noqa: E402
 from test_plugin_items import header  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
@@ -41,7 +42,11 @@ def _opened(tmp_path, monkeypatch):
     assert screen.files.openPath(str(tmp_path / "S"))
     QTest.qWait(400)
     b, win = screen.bridge, screen.win
-    click(win, header(win, "piano"))                      # the track's name: selected, the Editor shows it
+    hdr = header(win, "piano")
+    box = hdr.mapRectToScene(hdr.boundingRect())
+    click(win, next(i for i in items(win) if i.isVisible() and i.property("text") == "piano"            # the track's name (the
+                    and box.contains(i.mapRectToScene(i.boundingRect()).center())))                     # header's middle is a
+                                                                    # button in a tall row): selected, the Editor shows it
     b.workspace.setDock("editor")
     QTest.qWait(300)
     select = next(i for i in items(win) if i.isVisible() and i.property("text") == "Select")
@@ -76,7 +81,7 @@ def test_a_pick_in_repeats_until_list_keeps_ctrl_a_in_the_editor(tmp_path, monke
         QTest.keyClick(win, Qt.Key_R, Qt.ControlModifier)
         QTest.qWait(300)
         click(win, shown(win, "amount_until"))            # the Until list, then its entry, with the mouse
-        click(win, next(it for it in items(win) if it.isVisible() and it.metaObject().className().startswith("QQuickText")
+        click(win, next(it for it in items(win) if it.isVisible() and class_name(it).startswith("QQuickText")
                         and str(it.property("text")).startswith("Next marker")))
         QTest.keyClick(win, Qt.Key_Return)
         QTest.qWait(400)

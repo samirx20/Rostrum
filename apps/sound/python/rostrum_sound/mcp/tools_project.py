@@ -52,7 +52,7 @@ EDIT_DOCUMENT = (
     "an empty range fails and says where the track's notes are; the range reads the song as it was before this call). "
     "A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
     "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\", \"by\"). A volume is gain 0 … 4 as a bare number, or in dB as "
-    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), and start at a rough-mix level (kits and bass a few dB under, brass no louder than strings), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
+    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), and start within about 3 LU of each other (kits, bass and brass up to 2.5 dB under), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
     "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter. "
     "Complete calls (the whole arguments), each tried on a real song:\n" + edit_examples.as_text())
