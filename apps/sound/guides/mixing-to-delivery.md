@@ -43,7 +43,7 @@ off, so they sound as they did.
   `inspect_engine`, and the table in `inspect_guide 'script'` ("Effects and the master"). On screen an effect's amounts (mix,
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_engine (what "plugins")).
-- **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
+- **Ducks (sidechain):** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue; for a dance track's pumping, a bass or pad under the kick), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
 - **A bed under a voice:** `look_sound` (`what: "loudness"` or `"levels"`) gives the **room for speech**: how many dB a
   voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a

@@ -53,6 +53,8 @@ or `{"beat": n}`, a length `{"beats": n}`. Each line below is the complete `argu
   `{"ops": [{"op": "section.add", "args": {"name": "verse", "at": {"beat": 0}, "end": {"beat": 32}}}, {"op": "marker.add", "args": {"name": "drop", "at": {"beat": 32}}}]}`
 - Set a track's volume in dB:
   `{"ops": [{"op": "track.set", "target": ["drums"], "args": {"volume": {"db": -4}}}]}`
+- Sidechain (a duck): the bass dips on every kick, quick in and out, for a dance track's pump:
+  `{"ops": [{"op": "duck.add", "target": ["bass"], "args": {"under": ["kick"], "depth": 0.5, "attack": 0.005, "release": 0.15}}]}`
 
 The range is read as the song was before the call. Operations' own arguments: `inspect_operations` with `name`.
 
