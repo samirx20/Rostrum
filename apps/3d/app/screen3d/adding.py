@@ -11,6 +11,7 @@ viewport places it on the surface under the pointer (`place_at`, maths in placin
 Esc or a right-click lets go (`disarm`). Agents place with `mesh.add`'s x y z rx ry rz, or `place_on` in a script.
 The Type & logo flyout's outlines (text, svg, path2d; SPEC §4.4) are armed with their source (`armWith`: the SVG file,
 the 2D item and path layer) and stand upright facing the shot camera; 3D text then takes typing in place (type_in_place.py).
+A shape placed on a clay whose Mirror is on (off its middle) gets its mirrored copy in the same step (mesh.mirror).
 """
 from __future__ import annotations
 
@@ -25,7 +26,9 @@ from rostrum3d.outline_fields import OUTLINE_SHAPES
 from . import placing, rigging
 from .type_in_place import Typer
 
-LIGHT_NAMES = {"rect": "Softbox", "disk": "Round softbox", "strip": "Strip", "sphere": "Bulb", "spot": "Spot", "distant": "Sun", "dome": "Sky"}
+LIGHT_NAMES = {"rect": "Soft light", "disk": "Round soft light", "strip": "Strip", "sphere": "Bulb", "spot": "Spot", "distant": "Sun", "dome": "Sky"}
+LIGHT_TIPS = {"rect": "A big soft panel: what photographers call a softbox", "disk": "A round soft panel: a round softbox, an octabox",
+              "strip": "A long thin panel: a strip softbox"}         # the photographers' word, in the hover only
 RAIL_SHAPES = ("box", "sphere", "cylinder", "cone", "torus", "capsule", "plane", "disc")   # SPEC §2's order
 RAIL_TYPE = (("text", "3D text"), ("svg", "SVG logo"), ("path2d", "2D drawing"))   # Type & logo (T)
 OUTLINE_NAMES = {"text": "Text", "svg": "Logo", "path2d": "Drawing"}          # a new outline's name (and the hint's word)
@@ -46,8 +49,8 @@ def _rail(rigs: list[dict]) -> dict:
     flyout's rigs put the camera on one (rigging.py)."""
     return {"shapes": [{"value": f"mesh:{s}", "name": s.capitalize(), "icon": s} for s in RAIL_SHAPES if s in F.SHAPES],
             "type": [{"value": f"mesh:{s}", "name": n, "icon": s} for s, n in RAIL_TYPE if s in F.SHAPES],
-            "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}"}
-                       for k in F.LIGHT_KINDS],
+            "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}",
+                        **({"help": LIGHT_TIPS[k]} if k in LIGHT_TIPS else {})} for k in F.LIGHT_KINDS],
             "camera": [{"value": "camera", "name": "Camera", "icon": "camera"}, *rigs]}
 
 
@@ -140,7 +143,9 @@ class Adder(QObject):
             return rigging.wrap(self, choice, hit)
         size = placing.size_class(*on) if on else placing.PRODUCT
         if shape not in OUTLINE_SHAPES:
-            return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size))
+            clay = self.b.doc.item(hit["item"]) if on and hit.get("item") and self.b.doc.has(hit["item"]) else None
+            across = hit["item"] if placing.mirrors(clay, on and on[0], hit["point"], size) else ""
+            return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size), across)
         f = {**extra, **placing.outline_fields(shape, size)}
         if (below := self._below(shape, f)) is None:
             return
@@ -166,9 +171,10 @@ class Adder(QObject):
             self.armedChanged.emit()
 
     @Slot(str)
-    def add(self, choice, at: dict | None = None):
+    def add(self, choice, at: dict | None = None, mirror_on: str = ""):
         """Add `choice` (an entries value); `at` = fields of where it goes (world space; placing.placed's). A rig choice
-        puts the camera on that rig (an orbit waits for the click on what it circles)."""
+        puts the camera on that rig (an orbit waits for the click on what it circles). `mirror_on`: a mirrored clay the
+        new mesh sits on; its mirrored copy is made in the same step (mesh.mirror)."""
         if choice in rigging.RIGS:
             if not rigging.needs_click(choice):
                 return rigging.wrap(self, choice)
@@ -193,7 +199,10 @@ class Adder(QObject):
             args["into"] = into
         if at:
             args.update(placing.into_parent(at, self._world(args.get("into", ""))))
-        self._apply([{"op": f"{type_}.add", "args": args}], f"Add {F.LABELS[type_].lower()}", new)
+        calls = [{"op": f"{type_}.add", "args": args}]
+        if mirror_on and type_ == "mesh":
+            calls.append({"op": "mesh.mirror", "target": [new], "args": {"on": mirror_on}})
+        self._apply(calls, f"Add {F.LABELS[type_].lower()}", new)
         return new if self.b.doc.has(new) else ""
 
     @Slot()

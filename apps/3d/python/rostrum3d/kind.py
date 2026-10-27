@@ -19,7 +19,9 @@ import rostrum_paint
 from rostrum_core import DocKind, Registry, plugin_parts
 from rostrum_core.tree import walk
 
-from . import clay_dabs, clay_fields, fields as F, paint_fields
+from rostrum_core.errors import codes
+
+from . import clay_dabs, clay_fields, fields as F, mirror, paint_fields
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
@@ -31,8 +33,14 @@ REGISTRY = Registry()
 
 def _set_fields(ctx, targets, args):
     for t in targets:
-        for k, v in args.items():
-            ctx.set(t, k, v)
+        writes = [(t, k, v) for k, v in args.items()]
+        if ctx.item(t).get("mirror"):                  # a mirrored copy: its edits go to its original (mirror.py)
+            try:
+                writes = mirror.redirect(ctx.doc, t, args)
+            except ValueError as e:
+                ctx.fail(codes.BAD_ARGUMENT, t, str(e).removeprefix(f"{t} "))
+        for target, k, v in writes:
+            ctx.set(target, k, v)
 
 
 for _type, _params in F.FIELDS.items():
@@ -88,6 +96,7 @@ def _ref(problems, item, field, value, ids, what):
         problems.append(f'{item["id"]}.{field}: no {what} "{value}" (there are: {", ".join(sorted(ids)) or "none"})')
 
 
+_MESH_DEFAULTS = F.defaults("mesh")
 _KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
           for t, ps in F.FIELDS.items()}
 
@@ -134,6 +143,14 @@ def check(data: dict) -> list[str]:
                 clay_fields.check_step(item, step, problems, by_id)
         if t in ("mesh", "clay"):
             paint_fields.check_strokes(item, problems)
+        if t == "mesh" and item.get("mirror"):
+            try:
+                mirror.targets({i["id"]: i for i in everything}, item["id"])
+            except ValueError as e:
+                problems.append(f"{e} (mesh.mirror makes a copy; delete it to unlink)")
+            if stray := mirror.stray(item, _MESH_DEFAULTS):          # only the original holds these (mirror.py)
+                problems.append(f'{item["id"]} is the mirrored copy of {item["mirror"]}: change {item["mirror"]} instead '
+                                f'(its copy follows); {", ".join(stray)} belong to the original, not the copy')
         if t in ("mesh", "combine", "import", "part", "clay"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":
@@ -156,3 +173,6 @@ rostrum_paint.register(REGISTRY, canvas_types=("mesh", "clay"), layer_fields=pai
 
 from .modules import OPS  # noqa: E402
 OPS.load()  # noqa: E402  (they register on REGISTRY: rostrum3d/modules.py)
+for _op in REGISTRY.ops():      # aimed at a mirrored copy, the material and paint operations act on its original
+    if _op.name in mirror.REDIRECTED:
+        _op.fn = mirror.redirected(_op.fn)

@@ -1,7 +1,7 @@
 """Lights placed and linked by clicking in the viewport (SPEC §7), through the operations agents use.
 
 - **Place by highlight:** Alt+click a surface with a light selected: `light.place_highlight` moves and aims it so its
-  highlight lands on the spot, seen from the viewport's camera. Right after Lights › Softbox (or any light) the next
+  highlight lands on the spot, seen from the viewport's camera. Right after Lights › Soft light (or any light) the next
   plain click does it too, at 4 × the item's size with the starting brightness (`brightness`).
 - **Lights only:** "Pick what it lights" (right-click on a light): each click on an item adds it to the light's
   `lightsOnly`, a second click takes it out; Esc, or selecting something else, ends it.
@@ -59,7 +59,7 @@ class PlaceLight(QObject):
         sel = self.b.selected
         item = self.b.doc.item(sel) if sel else None
         if not item or item["type"] != "light" or item.get("kind", "rect") not in H.PLACEABLE:
-            return self.b.fail_line("Error: place highlight: select a softbox, strip, bulb, spot or sun first, then Alt+click a surface.")
+            return self.b.fail_line("Error: place highlight: select a soft light, strip, bulb, spot or sun first, then Alt+click a surface.")
         self.light = sel
         self._pick(x, y, "move", neighbours=True)
 
