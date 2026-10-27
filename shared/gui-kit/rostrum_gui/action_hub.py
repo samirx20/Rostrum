@@ -116,7 +116,7 @@ class ActionHub(QObject):
         self._refreshed = True
         self._later.cancel()
         facts, entries = self._now(shown=True)
-        bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
+        bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu, self.list.panel_keeps)
         if bar != self._bar:
             self._bar = bar
             self.barChanged.emit()

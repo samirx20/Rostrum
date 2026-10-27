@@ -20,7 +20,7 @@ def test_out_of_date_stamper_refused():
         rostrum2d_stamp_layout = staticmethod(lambda: 7.0)
 
     for lib, built in ((Old(), "2 or older"), (Other(), "7.0")):
-        with pytest.raises(native.OutOfDate, match=f"built for layout {built}, this code needs 4.0.*cargo build --profile agent -p "
+        with pytest.raises(native.OutOfDate, match=f"built for layout {built}, this code needs {native.LAYOUT}.*cargo build --profile agent -p "
                                                      f"rostrum2d-stamp"):
             native.check_layout(lib, "x.dll")
 

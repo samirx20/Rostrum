@@ -14,7 +14,8 @@ ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
               size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
-              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none", wrap=False)
+              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none", wrap=False,
+              by_dab=False)
 EVEN = 0.13   # even soft edge: a dab every EVEN * sqrt(radius * edge width) px at most (ridges under ~1.5/255)
 
 
@@ -67,6 +68,13 @@ def _noise(h, w, cell, seed, salt, origin=(0, 0), wrap=False):
 def _noise1(n, cell, rng):
     knots = rng.random(int(n / cell) + 2)
     return np.interp(np.linspace(0, len(knots) - 1, n), np.arange(len(knots)), knots)
+
+
+def _noise1_by_dab(n, cell, rng):
+    """`_noise1` with a knot every `cell` samples, wherever the sequence ends: sample i is the same however long it
+    is (a stroke's `by_dab` draws; `_noise1` stretches its knots over the whole length)."""
+    knots = rng.random(int(n / cell) + 2)
+    return np.interp(np.arange(n) / cell, np.arange(len(knots)), knots)
 
 
 def _up(p, n):

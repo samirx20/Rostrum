@@ -299,6 +299,31 @@ class ExportSheet(QObject):
             self._folder = QUrl(path).toLocalFile() if path.startswith("file:") else path
             self.changed.emit()
 
+    @Slot(str, result=str)
+    def typeFolder(self, text):
+        """A folder typed in the sheet's folder box (Enter): made if it isn't there yet, then used. Returns "" when it
+        took, else the sentence that says why not (the box shows it red and keeps the typing; Esc puts the old one back).
+        Empty, or the default folder itself, goes back to the default."""
+        if self.running():
+            return "An export is running: the folder can change when it is done."
+        typed = text.strip().strip('"').strip()
+        if not typed or typed == self.default_folder():
+            self.setFolder("")
+            return ""
+        path = Path(os.path.expandvars(os.path.expanduser(typed)))
+        if not path.is_absolute():
+            return "Type the whole folder, from the drive: like C:\\Users\\me\\Videos" if sys.platform == "win32" \
+                else "Type the whole folder, from the top: like ~/Videos"
+        there = next((p for p in (path, *path.parents) if p.exists()), None)     # the part that is there already
+        if there is not None and not there.is_dir():
+            return f"{there.name} is a file, not a folder"
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            return f"Can't make that folder: {e.strerror or e}"
+        self.setFolder(str(path))
+        return ""
+
     def planned(self) -> Path | None:
         """The exact path that will be written (None: a new version folder, which can't clash)."""
         return Path(self._folder) / self.file_name() if self._folder else None
