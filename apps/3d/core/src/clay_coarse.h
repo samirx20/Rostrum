@@ -19,13 +19,17 @@
 
 namespace r3d::clay::detail {
 
-// A dab this many grains across its radius or more goes coarse. 1/8 of a clay about 400 grains across (the bench
-// clay is 530: its quarter-size dab, radius 66, goes coarse; its random strokes, radius 5-24, never). Grains, not the
-// clay's size: the size changes as it is sculpted and a parallel replay's stroke doesn't see the whole clay.
-constexpr float kCoarseFrom = 48.0f;
+// A dab this many grains across its radius or more goes coarse. Grains, not the clay's size: the size changes as it is
+// sculpted and a parallel replay's stroke doesn't see the whole clay. 3d-v3: 24 (was 48): a quarter-size brush on a clay
+// whose grain follows the camera is ~25 grains (the sample's lump at 1 mm), and on the fine band its dab took 8 ms
+// (Add) to 24 ms (Pull) of a 16 ms frame; coarse, about half. A brush that wide spreads its change over many grains,
+// so working it on 2-grain steps loses no visible detail. Crease keeps the fine band up to 48: its line is the detail.
+constexpr float kCoarseFrom = 24.0f;
+constexpr float kCoarseCreaseFrom = 48.0f;
 
 inline bool coarse_dab(const Step& s, float iv) {
-  return s.kind == Kind::Stamp && s.op != Op::Mask && s.radius * iv >= kCoarseFrom;
+  return s.kind == Kind::Stamp && s.op != Op::Mask &&
+         s.radius * iv >= (s.op == Op::Crease ? kCoarseCreaseFrom : kCoarseFrom);
 }
 
 // What a coarse unit may touch, for the parallel replay's footprint (clay_replay.cpp), in fine grains. It writes only
