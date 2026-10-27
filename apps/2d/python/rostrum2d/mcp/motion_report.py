@@ -2,15 +2,12 @@
 with a count and examples, the ones that matter first, capped with a note on how to ask for the rest."""
 from __future__ import annotations
 
-import re
+from rostrum_core.motion import report as shared
+from rostrum_core.motion.report import LIMIT, stem          # LIMIT: motion.py's default
 
-LIMIT = 20          # lines of each kind (layers, findings) a reply lists before "N more"
 _ORDER = {"never_shown": 0, "not_showing": 1, "key_after_end": 2, "key_does_nothing": 3, "nothing_moves": 4, "entrances_overlap": 5}
-
-
-def stem(name: str) -> str:
-    """mote_12 -> mote_# : layers made in a loop share one."""
-    return re.sub(r"\d+", "#", name)
+_examples = shared.examples
+_ASK = "ask with `all: true`, a bigger `limit`, or `layers` for the ones you are tuning."
 
 
 def _key(f: dict) -> tuple:
@@ -26,10 +23,6 @@ def _key(f: dict) -> tuple:
 
 def _who(f: dict) -> list[str]:
     return f.get("layers") or [f.get("layer") or f.get("owner", "")]
-
-
-def _examples(ids: list[str], n: int = 3) -> str:
-    return ", ".join(ids[:n]) + (" …" if len(ids) > n else "")
 
 
 def _text(kind: str, members: list[dict]) -> str:
@@ -68,9 +61,4 @@ def grouped(findings: list[dict]) -> list[dict]:
 
 def capped(groups: list[dict], limit: int) -> tuple[list[dict], str]:
     """The first `limit` groups and the sentence about the rest ("" when none left out)."""
-    if len(groups) <= limit:
-        return groups, ""
-    left = groups[limit:]
-    items = sum(g.get("count", 1) for g in left)
-    return groups[:limit], (f"{len(left)} more finding line{'s' * (len(left) != 1)} ({items} findings) not listed: "
-                            "ask with `all: true`, a bigger `limit`, or `layers` for the ones you are tuning.")
+    return shared.capped(groups, limit, _ASK)

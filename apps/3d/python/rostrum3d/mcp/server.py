@@ -5,7 +5,7 @@
 
 Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
 look_frame, look_sheet, look_shots, look_material, look_at, look_paint, inspect_paint_strokes, look_coverage, look_where, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
-inspect_animations. One engine process (`rostrum3d-core
+inspect_animations, look_motion. One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
 """
 from __future__ import annotations
