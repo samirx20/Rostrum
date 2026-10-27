@@ -229,7 +229,7 @@ session into an in-memory USD layer (converted again when the file's size or tim
 file; the file is never rewritten. The layer: a default prim named after the file holding the file's node tree as Xforms
 and Meshes (points, polygons, normals, `st`), its materials as UsdPreviewSurface under `<default>/Materials` (colour,
 metallic, roughness, emission, opacity, a base-colour picture; pictures stored inside a file are written once to
-`%LOCALAPPDATA%\Rostrumd-import-cache\`), upAxis Y (Z-up sources turned upright), `metersPerUnit` the file's own
+`%LOCALAPPDATA%\Rostrum\3d-import-cache\`), upAxis Y (Z-up sources turned upright), `metersPerUnit` the file's own
 unit (geometry never rescaled: the Python side scales the import, `import.add`), and an Alembic file's animation (moving
 transforms, moving points) as time samples, one time code per source frame at the file's own rate (USD maps it onto the
 shot's frames). glTF and FBX come in their rest pose (skins and animations are not read). `save` without `flatten`
