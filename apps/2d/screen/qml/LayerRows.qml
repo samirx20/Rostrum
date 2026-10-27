@@ -25,6 +25,7 @@ ListView {
                                         // far down the list made every row there (~3 ms each), more the further the list had
                                         // scrolled (a grab among 200 layers grew 70 -> 230 ms over 17 picks; now flat)
     boundsBehavior: Flickable.StopAtBounds
+    WheelScroll { flick: list }         // the first click after a wheel scroll lands on its row (WheelScroll.qml)
 
     // Right-click menu of a layer: what applies to the selection (backend.layerMenu: an unselected layer is selected
     // alone first), the same list as Ctrl+K and the context bar. (px, py) in the list's px; the kit menu opens in the window's.
@@ -53,6 +54,18 @@ ListView {
     // With the pick's panel, not the pick: a press that picks and drags a layer scrolls the list at the drop (or a
     // 0.1 s rest), never in the drag's first frames (panel_hold.py).
     Connections { target: backend; function onPanelShown() { Qt.callLater(list.follow) } }
+    // F2 (Ctrl+K "Rename layer", a menu's Rename): the row's name box opens at once, with the keys. A layer made just now
+    // (Ctrl+G, a drawn shape) or scrolled out of view has no row item yet, and the name box never opened: the name typed
+    // next ran as shortcuts (Shift+H mirrored the group, M made markers; critic 2d-final row 1). So the list lays out now
+    // and brings the row into view first.
+    function rename(id) {
+        const i = list.model.indexOf(id)
+        if (i < 0) return
+        list.forceLayout(); list.positionViewAtIndex(i, ListView.Contain)
+        const item = list.itemAtIndex(i)
+        if (item) item.beginRename()
+    }
+    Connections { target: backend; function onRenameRequested(id) { list.rename(id) } }
     function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
         for (let i = 0; i < count; i++) {
             const item = itemAtIndex(i)
@@ -185,6 +198,7 @@ ListView {
         visible: !parked
         ListView.onPooled: { parked = true; rowName.endRename(false); rowTrack.release() }     // nothing of the row it was stays
         ListView.onReused: parked = false
+        function beginRename() { rowName.beginRename() }
         LayerName {
             id: rowName
             x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own

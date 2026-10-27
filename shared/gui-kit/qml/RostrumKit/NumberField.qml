@@ -22,7 +22,8 @@ FieldFrame {
     property real from: -1e9
     property real to: 1e9
     property real step: 1
-    property real typeStep: step                               // a typed value keeps this much (a tempo scrubs in 1 bpm but keeps a typed 99.5)
+    property real typeStep: step                               // a typed value keeps this much (a tempo scrubs in 1 bpm but keeps a typed 99.5);
+                                                               // 0: all of it (a counter typed 1420.4057 with step 1 was stored 1420, critic 2d-final row 10)
     property string unit: ""
     property var words: []
     property bool expressions: false
@@ -121,7 +122,7 @@ FieldFrame {
             problem = (label ? label + " is " : "Allowed: ") + refusalRange()
             return
         }
-        f.edited(clamp(n, VK.step(display, typeStep)))
+        f.edited(typeStep > 0 ? clamp(n, VK.step(display, typeStep)) : clamp(Number(n.toPrecision(12)), 1e-12))
     }
     function refusalRange() {
         const u = unitShown ? (unitFirst ? "" : " ") + unitShown : ""

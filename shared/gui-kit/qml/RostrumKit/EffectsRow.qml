@@ -8,6 +8,7 @@ import "."
 Item {
     id: fx
     property var part: null
+    property bool keyMarks: false       // an app with keys: each effect setting has its key mark (EffectGroup.toggleAnimate)
     readonly property bool on: !!fx.part && fx.part.shown
     width: parent ? parent.width : 0
     height: on ? col.height : 0
@@ -76,7 +77,7 @@ Item {
                     Column {
                         id: inner
                         width: parent.width
-                        Repeater { model: grp.g.open || body.height > 0 ? grp.g.rows : null; delegate: InspectorRow { bridge: grp.g } }
+                        Repeater { model: grp.g.open || body.height > 0 ? grp.g.rows : null; delegate: InspectorRow { bridge: grp.g; keyMarks: fx.keyMarks } }
                     }
                 }
             }

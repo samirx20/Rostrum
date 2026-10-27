@@ -78,6 +78,7 @@ Panel {
                   bottomMargin: panel.hasLast ? Theme.gap : 0                                     // ... and of the last line
                   rightMargin: Theme.padRight - panel.bodyPad }   // wider than the header: rows end 4 px from the panel's edge (grid)
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+        WheelScroll { flick: scroller }     // the first click after a wheel scroll lands (WheelScroll.qml)
         Column {
             id: list
             width: parent.width
@@ -128,7 +129,7 @@ Panel {
                     }
                 }
             }
-            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
+            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null; keyMarks: panel.keyMarks }   // "Effects (n) +" (effects.attach)
             Column { id: belowSlot; width: parent.width }
         }
         Text { visible: panel.finds && panel.bridge.nothingFound; text: "No setting matches"; y: Theme.grid

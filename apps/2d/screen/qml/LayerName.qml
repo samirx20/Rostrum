@@ -29,7 +29,7 @@ Rectangle {
     property bool renaming: false
     function beginRename() { if (isLayer && !isFrame) { renaming = true } }     // (the box takes its text and the keys as it shows)
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
-    Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }   // menus run a choice once closed (ActionMenu)
+    // (F2 and the menus' Rename reach it through the list, LayerRows.rename: the row may not be built yet)
 
     HoverHandler { id: rowHover }   // passive: stays on while a child area (the lock, the eye) has the pointer, so a switch never blinks out under it and loses the first click
     MouseArea {

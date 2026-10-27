@@ -151,7 +151,14 @@ class Hooks2D:
         if every is None:
             every = made[(parent, key, param)] = [{"value": s["id"], "label": outline.label_of(s, None)}
                                                   for s in self.doc.item(parent).get(key, []) if SIBLING_PICKS[param](s)]
-        return [c for c in every if c["value"] != item["id"]]
+        # nearest first, the layers above it before those under it (the one just above is a track matte's usual pick):
+        # in the document's order the layer just above came last, out of the list's view (critic 2d-final row 9)
+        place = made.get((parent, key, "place"))
+        if place is None:
+            place = made[(parent, key, "place")] = {s["id"]: i for i, s in enumerate(self.doc.item(parent).get(key, []))}
+        mine = place.get(item["id"], -1)
+        return sorted((c for c in every if c["value"] != item["id"]),
+                      key=lambda c: (place[c["value"]] < mine, abs(place[c["value"]] - mine)))
 
     def expr_state(self, item, param):
         return exprs.state(item, param)

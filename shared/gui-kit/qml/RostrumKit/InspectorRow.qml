@@ -384,6 +384,8 @@ Item {
                 from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
                 to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
                 step: row.model.step ? row.model.step : 1
+                commitSame: row.model.anim === "keyed"       // animated, no key here: the same value typed keys a hold (route.edit_call)
+                typeStep: row.model.integer ? step : 0       // a typed value is kept as typed (1420.4057), a whole-number setting's rounded
                 unit: row.model.mixed ? "" : row.model.unit || ""
                 atRest: row.mixed
                 words: row.model.words || []

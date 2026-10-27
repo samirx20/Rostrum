@@ -16,7 +16,9 @@ Instantiator {
     // (a panel's own toggle key: Ctrl+L must close the Library whose search box has the keyboard).
     // In a kit field (FieldFrame: a number or a setting, in a panel or a popover) only the keys a text box uses itself wait:
     // a Ctrl command it has no use for (Ctrl+G, Ctrl+D, F2 …) lets the field go, which keeps what was typed, then runs
-    // (critic 2d-r11: Ctrl+G with Stagger's number in edit did nothing, without a word).
+    // (critic 2d-r11: Ctrl+G with Stagger's number in edit did nothing, without a word). A key that types (a letter, Space,
+    // Delete, Home) never leaves a box for the window, a number box's included: a letter it can't hold is said there
+    // ("Type a number", NumberField.saysLetter), never run as M (a marker) or Delete (the layer) (critic 2d-final row 1).
     property bool typing: false
     property var whileTyping: []
     readonly property bool inField: typing && !!OpenPopups.focused && OpenPopups.focused.pending !== undefined
@@ -39,7 +41,7 @@ Instantiator {
         sequences: modelData.sequences || modelData.keys      // every spelling a key may arrive in (keymap.typed: Ctrl+Shift+= is Ctrl++)
         autoRepeat: !modelData.hold
         readonly property bool passes: !km.textKey(modelData.keys)       // answers even in a kit field (above)
-        enabled: km.enabled && !OpenPopups.takes(modelData.keys) && (!km.typing || km.whileTyping.indexOf(modelData.job) >= 0 || (km.inField && (passes || OpenPopups.focused.cannotUse(modelData.keys)))) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
+        enabled: km.enabled && !OpenPopups.takes(modelData.keys) && (!km.typing || km.whileTyping.indexOf(modelData.job) >= 0 || (km.inField && passes)) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
         onActivated: {
             if (km.inField) OpenPopups.focused.focus = false     // the field lets go first: what was typed is kept (FieldFrame)
             km.hub.key(modelData.job)
