@@ -427,6 +427,20 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         no scrub is still moving (its pictures are the moving kind: playback.py)."""
         return self.frames.idle() and self._frame > 0 and self._waiting is None and self._ahead is None and not self.play.moving()
 
+    def playhead_ready(self) -> bool:
+        """The document's own picture AT THE PLAYHEAD is on screen, whatever other times' paint-on pictures are still
+        being made (`drawn` waits for all of them: with Drawn so far keyed that is minutes, so a script or agent waiting
+        on it could not tell when the playhead's picture had come). What a harness or agent waits on after a move."""
+        return (self.frames.idle() and self._frame > 0 and self._waiting is None and not self.play.moving()
+                and not self._here_pending())
+
+    playheadReady = Property(bool, lambda self: self.playhead_ready(), notify=frameChanged)   # (QML, steps)
+
+    def _here_pending(self) -> bool:
+        """A Drawn so far picture of the playhead's frame is still being made (a less drawn one stands in)."""
+        half = 0.5 / float(self.comp().get("fps", 30))
+        return self._ahead is not None and any(abs(job.at - self._t) < half for job in self._ahead_jobs)
+
     def _render_all(self):
         """Something outside the document changed (the markers, a 3D render): every node is described again."""
         self._keeper.forget()
@@ -476,8 +490,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     def _paint_note(self):
         """Said while the playhead's Drawn so far picture is still being made (a less drawn one stands in: write_on.Ahead),
         so nobody times a paint-on by the stand-in; taken back once it shows."""
-        half = 0.5 / float(self.comp().get("fps", 30))
-        here = self._ahead is not None and any(abs(job.at - self._t) < half for job in self._ahead_jobs)
+        here = self._here_pending()
         if here != (self._kit.status == self.PAINT_NOTE):
             self._set_status(self.PAINT_NOTE if here else "", False)
 

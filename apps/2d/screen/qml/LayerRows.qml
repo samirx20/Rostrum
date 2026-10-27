@@ -213,6 +213,7 @@ ListView {
             x: list.ruler.x - 8; width: list.ruler.width + 16; height: row.own
             rowData: row.modelData; ruler: list.ruler; rows: list
             cells: Component { FrameMarks {   // a drawing's cells
+                objectName: drawing ? "bar:" + row.modelData.id : ""    // the row's handle, as a layer's bar (hidden on a drawing's row) is: a scripted hand finds it by id
                 frames: row.modelData.frames || []; again: row.modelData.again || []; keys: row.modelData.keys || []
                 drawing: row.modelData.row === "layer" && (row.modelData.kind === "drawing" || (row.modelData.frames || []).length > 0)
                 trims: row.modelData.trim === true; layerStart: row.modelData.start || 0; layerEnd: row.modelData.end === undefined ? 1e9 : row.modelData.end
