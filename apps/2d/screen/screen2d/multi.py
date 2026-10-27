@@ -243,9 +243,12 @@ class Multi(QObject):
 
     @Slot(float, float, result="QVariantList")
     def underMenu(self, x, y):
-        """The canvas right-click's first row, Select layer ▸ (under_menu.py); [] with fewer than two layers there."""
+        """The canvas right-click's first row, Select layer ▸ (under_menu.py); [] with fewer than two layers there and
+        none that can't be seen now."""
         sel, _ = self._depth()
-        return under_menu.entries(self.b, bounds.under_chains(self.b.placed(), self.b._t, x, y), sel)
+        placed = self.b.placed()
+        return under_menu.entries(self.b, bounds.under_chains(placed, self.b._t, x, y), sel,
+                                  bounds.unseen_under(placed, self.b._t, x, y))
 
     @Slot(float, float, str, result=str)
     def pick(self, x, y, mode):

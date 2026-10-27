@@ -83,9 +83,12 @@ def never_covers(comp: dict, layer: dict, shots: list) -> bool:
 
 
 def report(comp: dict, layer: dict, shots: list, fps: float) -> tuple[list[dict], bool]:
-    """(edges, whether it covers the whole frame at some moment: a backdrop, not a title the frame always sees round)."""
+    """(edges, whether it covers the whole frame at some moment: a backdrop, not a title the frame always sees round).
+    Frames where the layer's own size is changing are not judged: a bar growing or a wipe passing through is the
+    animation, not the frame seeing past a backdrop (production round: the band covered a growing bar's art with
+    warnings it had no reason for)."""
     worst: dict[str, list] = {}
-    once, m, short, last = False, None, [], None
+    once, m, short, last, size_was = False, None, [], None, None
     p = resolve(layer, 0.0)
     moving = sorted(animated(layer) if layer["type"] == "text" else animated(layer) & BOX)    # what moves its box
     tracks = [keys_of(layer, k) for k in moving]
@@ -99,7 +102,9 @@ def report(comp: dict, layer: dict, shots: list, fps: float) -> tuple[list[dict]
                 m = matrix(p, w, h) if w * sx > 0 and h * sy > 0 else None
             last = (now, shot)
             short = None if m is None else _short(m, seen(comp, shot, p["depth"]), w, h, sx, sy)
-        if short is None:
+        size_now = tuple(v for k, v in zip(moving, now) if k in SIZE)
+        growing, size_was = size_was is not None and size_now != size_was, size_now
+        if short is None or growing:
             continue
         once = once or not short
         for edge, d in short:

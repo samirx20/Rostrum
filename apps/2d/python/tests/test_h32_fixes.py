@@ -46,7 +46,8 @@ def test_k_twice_without_a_change_keys_nothing_new():
         d.apply({"op": "key.add", "target": ["a"], "args": {"fields": "pose", "t": 1.0}}, SAM)
     d.apply({"op": "value.set", "target": ["a"], "args": {"prop": "x", "v": 150, "at": 1.0}}, SAM)
     d.apply({"op": "key.add", "target": ["a"], "args": {"fields": "pose", "t": 1.5}}, SAM)
-    assert {k["prop"] for k in d.item("a")["keys"] if k["t"] == 1.5} == {"x"}      # only what changed
+    keyed = {k["prop"] for k in d.item("a")["keys"] if k["t"] == 1.5}       # X moves: the whole pose, the still ones as
+    assert "x" in keyed and keyed >= {"y", "opacity"}                          # holds (production round, hand row 24)
 
 
 def test_pulse_is_one_on_the_beat_and_falls_to_zero():

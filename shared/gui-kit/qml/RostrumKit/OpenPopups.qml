@@ -45,6 +45,14 @@ QtObject {
             if (p.modal === false && p.area === undefined && !p.covers && typeof p.close === "function") p.close()
     }
 
+    // The window closes with popups open (AppShell's onClosing): each ends now, newest first, as a click away would end it
+    // (its own onClosed runs: a picker's change and a Stagger are kept, a tried choice goes back), while the app is still
+    // there to take it. Closing it the usual way waits for its fade, and the window and its document are gone by then
+    // (hand maker row 21: a Fill switched to Linear in the open picker was Solid again after the window closed).
+    function windowClosing() {
+        for (const p of open.slice().reverse()) { remove(p); if (typeof p.closed === "function") p.closed() }
+    }
+
     function add(p) { if (open.indexOf(p) < 0) open = open.concat([p]) }
     function remove(p) { if (open.indexOf(p) >= 0) open = open.filter(o => o !== p) }
 

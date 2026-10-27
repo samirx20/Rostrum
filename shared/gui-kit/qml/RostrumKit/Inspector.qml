@@ -123,7 +123,7 @@ Panel {
                         id: rowsView
                         model: page.rowsModel
                         delegate: InspectorRow { bridge: panel.bridge; rows: page.rowsModel; keyMarks: panel.keyMarks
-                                                 instant: page.instant
+                                                 instant: page.instant; onGroupOpened: (g) => panel.showGroup(g)
                                                  highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
                     }
                 }
@@ -151,6 +151,28 @@ Panel {
                     onClicked: panel.bridge.agent.askHistory(panel.last.session) }
     }
     Timer { interval: 30000; repeat: true; running: panel.visible && panel.hasLast; onTriggered: panel.tick++ }
+
+    // A group opened from the row of names opens below it, often under the panel's edge: once it has eased open, the
+    // panel scrolls so its heading and first rows are in view (not when they already are).
+    function showGroup(group) { opening.group = group; opening.restart() }
+    Timer {
+        id: opening
+        property string group: ""
+        interval: Theme.reveal + 40
+        onTriggered: {
+            const page = pagesView.itemAt(panel.pages ? panel.pages.shown : 0)
+            const rowsView = page ? page.rowsView : null
+            for (let i = 0; rowsView && i < rowsView.count; i++) {
+                const r = rowsView.itemAt(i)
+                if (!r || r.model.row !== "fold" || r.model.id !== "fold:" + group) continue
+                const top = r.mapToItem(list, 0, 0).y, seen = top + Math.min(4 * Theme.row, scroller.height - Theme.row)
+                if (top < scroller.contentY || seen > scroller.contentY + scroller.height)   // the least scroll that shows
+                    scroller.contentY = Math.max(0, Math.min(top - Theme.grid, seen - scroller.height,   // them: the row of
+                                                             scroller.contentHeight - scroller.height))  // names stays in reach
+                return
+            }
+        }
+    }
 
     // The jump to a field: after its group's reveal has eased open, scroll the row into view, flash it, focus it.
     Connections {

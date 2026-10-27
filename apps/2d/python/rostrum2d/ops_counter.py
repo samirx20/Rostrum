@@ -9,7 +9,7 @@ from rostrum_core import Param
 from rostrum_core.keys import keys_of
 from rostrum_core.keys.easing import NAMES as EASES
 
-from . import fields as F
+from . import fields as F, names
 from .kind import REGISTRY as R
 from .ops_keys import put_key
 
@@ -34,6 +34,7 @@ def text_counter(ctx, targets, args):
     at, end = args.get("at", 0.0), args.get("at", 0.0) + args.get("duration", 1.0)
     for t in targets:
         ctx.set(t, "counter", True)
+        names.counting(ctx, t)          # "Counter", "Counter 2" … among the counters
         for arg, field in FORMAT.items():
             if arg in args:
                 ctx.set(t, field, F.param("text", field).check(args[arg], f"{ctx.where} › {t}.{field}"))

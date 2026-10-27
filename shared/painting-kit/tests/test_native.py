@@ -7,6 +7,7 @@ import pytest
 from rostrum_paint import brush as B, compose, marks, native, pictures
 
 needs_native = pytest.mark.skipif(not native.available(), reason="the native stamper is not built (apps/2d/engine/stamp)")
+needs_walks = pytest.mark.skipif(not native.walks(), reason="the native stamper is built from before its spacing and fill")
 H, W = 120, 200
 
 
@@ -91,3 +92,41 @@ def test_native_equals_numpy_for_big_overlapping_dabs():
                for layer, lay in ((ours, native.lay), (theirs, B.dabs))]
         assert got[0].a.tobytes() == got[1].a.tobytes(), f"{tip} {s}: coverage"
         assert ours.tobytes() == theirs.tobytes(), f"{tip} {s}: pixels"
+
+
+@needs_walks
+def test_native_spacing_equals_the_python_walk():
+    """Where the dabs go (brush._spacing, its taper's shape.step_scale): the native walk gives the same places, number
+    for number, on many strokes: flat and changing pressure, size pressure, tapers at either end or both (sized by the
+    path or endless, as an open stroke's), short and long paths, paths with repeated points."""
+    rng = np.random.default_rng(7)
+    for i in range(400):
+        n = int(rng.integers(1, 60))
+        steps = rng.random(n - 1) * rng.choice([0.5, 5, 40]) * (rng.random(n - 1) > 0.1)     # some points repeat
+        L = np.concatenate([[0.0], np.cumsum(steps)])
+        pr = np.full(n, 0.7) if i % 4 == 0 else rng.random(n)
+        size = float(rng.choice([1, 3, 8.5, 24, 120]))
+        p = {"taper_start": float(rng.choice([0, 0, 0.5, 2])), "taper_end": float(rng.choice([0, 0.7, 3])),
+             "size_jitter": 0}
+        step, sp = float(rng.choice([0.3, 0.9, 2.5, 11.0])), float(rng.choice([0, 0.5, 0.8, 1]))
+        length = None if i % 3 else float("inf")
+        want = B._spacing(L, pr, step, sp, size, p, length)
+        got = B.spaced(L, pr, step, sp, size, p, length)
+        assert np.asarray(want, np.float64).tobytes() == np.asarray(got, np.float64).tobytes(), f"stroke {i}"
+
+
+@needs_walks
+def test_native_fill_equals_apply_paint():
+    """A fill's paint (fill.lay): the native pass lays marks.apply_paint's numbers, normal from no coverage, into a
+    box of a bigger layer."""
+    rng = np.random.default_rng(3)
+    base = (rng.random((H, W, 4)) * 0.8).astype(np.float32)
+    base[..., :3] = np.minimum(base[..., :3], base[..., 3:])
+    c = (rng.random((50, 70)) * (rng.random((50, 70)) > 0.3)).astype(np.float32)
+    c[0, :5] = [0, 1, 0.5, 1e-7, 0.9999]
+    for col in ((0.2, 0.9, 0.31), (1.0, 0.0, 1 / 3)):
+        col = np.asarray(col, np.float32)
+        ours, theirs = base.copy(), base.copy()
+        native.fill(ours[13:63, 21:91], c, col)
+        marks.apply_paint(theirs[13:63, 21:91], np.zeros_like(c), c, col, "normal")
+        assert ours.tobytes() == theirs.tobytes()

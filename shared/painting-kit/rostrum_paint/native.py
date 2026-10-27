@@ -1,7 +1,9 @@
 """The native stamper (the 2D engine's `rostrum2d_stamp` library, `apps/2d/engine/stamp/`): lays a planned stroke's
 dabs (`brush.plan`) with the same pixels as `brush.dabs`, bit for bit, many times faster. `lay` has `brush.dabs`'s
 signature, so `brush.stamp_stroke(..., lay=native.lay)` uses it. `straight8`: premultiplied float -> straight RGBA8 for
-a box, `compose.straight8`'s bytes in one call (numpy's steps when the library isn't built).
+a box, `compose.straight8`'s bytes in one call (numpy's steps when the library isn't built). `spacing`: where a
+stroke's dabs go (`brush._spacing`, a walk of a Python step per dab: thousands a stroke); `fill`: a fill's paint laid
+(`marks.apply_paint` for a fill); the same numbers as the Python, which stays the reference (tests/test_native.py).
 
 The library: `ROSTRUM_STAMP_LIB`, else the engine's working build in this checkout. `available()` says whether it
 is built; `lay` fails loudly when it isn't. A build of another layout (its `rostrum2d_stamp_layout`, missing in builds
@@ -47,6 +49,13 @@ def _lib():
         f = lib.rostrum2d_stamp_straight8
         f.restype = ctypes.c_int32
         f.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t, ctypes.c_size_t]
+        if hasattr(lib, "rostrum2d_stamp_spacing"):     # added in layout 5's later builds (an older one: the kit's Python)
+            f = lib.rostrum2d_stamp_spacing
+            f.restype = ctypes.c_int64
+            f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] + [ctypes.c_void_p] * 2 + [ctypes.c_size_t]
+            f = lib.rostrum2d_stamp_fill
+            f.restype = ctypes.c_int32
+            f.argtypes = [ctypes.c_void_p] + [ctypes.c_size_t] * 3 + [ctypes.c_void_p] * 2
         _LIB = lib
     return _LIB
 
@@ -79,6 +88,12 @@ def available() -> bool:
         raise
     except (RuntimeError, OSError):
         return False
+
+
+def walks() -> bool:
+    """Whether the built library has `spacing` and `fill` (a build from before them hasn't: the kit's Python does
+    them then, the same numbers, slower)."""
+    return available() and hasattr(_lib(), "rostrum2d_stamp_spacing")
 
 
 def _ptr(a):
@@ -158,3 +173,33 @@ def straight8(px, out=None):
     if lib.rostrum2d_stamp_straight8(_ptr(px), px.strides[0] // 4, _ptr(out), out.strides[0], h, w):
         raise RuntimeError("the native stamper refused straight8")
     return out
+
+
+def spacing(L, pressure, step, sp, size, length, start, end) -> np.ndarray:
+    """`brush._spacing`, native: the dabs' places along the path (px from its start), f64. `L`: the path's lengths so
+    far, `pressure` its pressure there; `length`: what the taper is sized by; `start`, `end`: the taper's."""
+    L, pr = np.ascontiguousarray(L, np.float64), np.ascontiguousarray(pressure, np.float64)
+    if len(L) < 1 or len(pr) != len(L):
+        raise ValueError(f"spacing takes the path's lengths and pressures, one each a point, got {len(L)} and {len(pr)}")
+    k = np.array([step, sp, size, length, start, end], np.float64)
+    out = np.empty(int(float(L[-1]) / 0.3) + 3, np.float64)     # a dab at least every 0.3 px
+    n = _lib().rostrum2d_stamp_spacing(_ptr(L), _ptr(pr), len(L), _ptr(k), _ptr(out), len(out))
+    if n < 0:
+        raise RuntimeError("the native stamper's spacing ran past its room")
+    return out[:n]
+
+
+def fill(region, c, col) -> None:
+    """`marks.apply_paint(region, 0, c, col, "normal")` (a fill's paint), native: `region` h x w x 4 float32 (a box of a
+    layer, rows of RGBA) changed in place, `c` its coverage (h x w float32), `col` the colour (3 float32)."""
+    h, w = region.shape[:2]
+    if region.dtype != np.float32 or region.shape[2:] != (4,) or region.strides[1:] != (16, 4) or region.strides[0] % 4:
+        raise ValueError(f"fill takes float32 rows of RGBA pixels, got {region.dtype} {region.shape} {region.strides}")
+    if not region.flags.writeable:
+        raise ValueError("the region must be writeable")
+    c = np.ascontiguousarray(_f32(np.ascontiguousarray(c), (h, w)))
+    col = np.ascontiguousarray(col, np.float32)
+    if col.shape != (3,):
+        raise ValueError(f"fill takes one colour (3 float32), got {col.shape}")
+    if h and w and _lib().rostrum2d_stamp_fill(_ptr(region), region.strides[0] // 4, h, w, _ptr(c), _ptr(col)):
+        raise RuntimeError("the native stamper refused a fill")

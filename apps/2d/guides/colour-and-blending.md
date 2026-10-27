@@ -50,6 +50,11 @@ card.key("fillOpacity", {0.0: 0.0, 1.0: 0.4})
   A gradient's opacity is each stop's (`"#7c4dff 100 80"`), so `opacity` on a gradient fill is refused.
 - On the screen: open the Fill colour square; a solid colour has an opacity strip and percentage under the hue, like a
   gradient stop's. A colour of 100 % shows no change.
+- A gradient's direction on the screen: the Fill picker's **Angle** (linear: 90° = left to right, 180° = top to bottom;
+  angular: where the sweep starts) and **Centre** (radial and angular, % of the shape), or its handles on the canvas.
+  Agents: `layer.fill {target, type: "linear", angle: 180}` (`cx`, `cy`: 0..1 of the box).
+- A change made in an open picker (or any small panel, such as Stagger) is kept when the window closes with it still
+  open, as a click away keeps it.
 - Preview and export draw it the same way, with the same engine.
 - A picture fill and a painted fill (a painting of the scene, [drawing.md](drawing.md) part 9) are not solid: their `fillOpacity` is the fill's own, and `layer.fill {opacity}` takes it for a picture or painted fill too.
 

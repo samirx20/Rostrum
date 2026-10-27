@@ -4,7 +4,7 @@
     rostrum-3d --project <folder> --item <id>                                     (the same, as an installed command)
 
 Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
-look_frame, look_sheet, look_at, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_usd_file, inspect_shot,
+look_frame, look_sheet, look_at, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
 inspect_animations. One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
 """

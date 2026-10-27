@@ -87,6 +87,10 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.viewport = viewport(self) if viewport else None
         self.balls = MaterialBalls(BallRenderer() if self.viewport is not None else None)   # rendered preview balls
         self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows
+        from .importing import Importer
+        self._importer = Importer(self)        # the rail's Import group, files dropped on the viewport (importing.py)
+        from .assets_qt import Assets
+        self._assets = Assets(self)            # Import › Asset library: the sheet (assets_qt.py, qml/AssetSheet.qml)
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
     def scene(self) -> dict:
@@ -110,6 +114,8 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     poses = Property(QObject, lambda self: self._poses, constant=True)  # QML: backend.poses (poses_qt.py)
     mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
     lipsync = Property(QObject, lambda self: self._lipsync, constant=True)   # QML: backend.lipsync (the kit's LipSyncSheet)
+    importer = Property(QObject, lambda self: self._importer, constant=True)   # QML: backend.importer (importing.py)
+    assets = Property(QObject, lambda self: self._assets, constant=True)   # QML: backend.assets (assets_qt.py)
 
     @Property(QObject, constant=True)
     def adder(self):

@@ -9,11 +9,11 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import BEZIERS, key_value, keys_of, marked, register_key_ops, track_value
 
-from . import fields as F
+from . import fields as F, pathdata
 from .kind import REGISTRY as R, check_text
 
 OWNERS = F.ANIMATED_OWNERS
-D = Param.text("d", label="Shape", help="For a path's shape: path data (absolute M, L, C, Z), morphed between keys; "
+D = Param.text("d", label="Shape", help="For a path's shape: SVG path data (kept as absolute M, L, C, Z), morphed between keys; "
                "for its widthProfile: \"pos,mult …\", blended between keys")
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
@@ -35,10 +35,12 @@ def _checked_value(ctx, owner: dict, prop: str, args: dict):
     value = p.check(args[want], f"{ctx.where} › {owner['id']}.{prop}")
     if want == "d":
         try:
+            if prop == "d":
+                value = pathdata.normalize(value)            # any SVG path data, stored as M L C Z
             check_text(prop, value)
         except ValueError as e:
             ctx.fail(codes.BAD_ARGUMENT, '"d"', str(e), hint='"pos,mult pos,mult …", positions 0..1 increasing, multipliers 0 or more.'
-                     if prop == "widthProfile" else "Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z.")
+                     if prop == "widthProfile" else "SVG path data: M L H V C S Q T A Z (lower case relative).")
     return want, value
 
 
@@ -106,7 +108,25 @@ POSE = ["x", "y", "scale", "zoom", "rotation", "opacity"]   # K: position, scale
 def _value_now(ctx, owner: dict, prop: str, t):
     """{"v": value} of a pose field at own time t, or None where this owner can't key it now (no such field, driven
     by an expression or placed by an auto layout / a path) or where a key would change nothing. The one rule for what K
-    keys (UX_SPEC 3.17): every field it can, except one whose keys already all hold this value: K never makes a flat field."""
+    keys (UX_SPEC 3.17): every field it can, except one whose keys already all hold this value — unless K keys another
+    field of the same owner that does change: then K keys the whole pose, the still ones as holds, so a move added
+    later starts here (production round: a frame's zoom crept from 0 s because K skipped it as "nothing")."""
+    now = _keyable_value(ctx, owner, prop, t)
+    if now is None or not adds_nothing(owner, prop, now):
+        return None if now is None else {"v": now}
+    for other in POSE:       # keys already at t left out: K's own keys from this same press (it keys field by field)
+        if other != prop and (v := _keyable_value(ctx, owner, other, t)) is not None and not _flat_besides(owner, other, v, t):
+            return {"v": now}
+    return None
+
+
+def _flat_besides(owner: dict, prop: str, v, t) -> bool:
+    keys = [k for k in keys_of(owner, prop) if k["t"] != t]
+    return bool(keys) and all(key_value(k) == v for k in keys)
+
+
+def _keyable_value(ctx, owner: dict, prop: str, t):
+    """The value K would key for this field at own time t, or None where this owner can't key it now."""
     from rostrum_core.conditions import holds
     from .evaluate import value_at
     from .exprbake import source_of
@@ -118,8 +138,7 @@ def _value_now(ctx, owner: dict, prop: str, t):
     keys = keys_of(owner, prop)
     if any(isinstance(k["t"], str) for k in keys):     # timed on a marker: the value needs the markers; left out
         return None
-    now = value_at(owner, prop, t)
-    return None if adds_nothing(owner, prop, now) else {"v": now}
+    return value_at(owner, prop, t)
 
 
 def adds_nothing(owner: dict, prop: str, v) -> bool:

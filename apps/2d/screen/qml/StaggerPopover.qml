@@ -9,7 +9,7 @@ Popover {
     id: pop
     readonly property var st: backend.stagger
     property bool cancelled: false
-    title: "Stagger " + pop.st.what
+    title: "Stagger " + (pop.st?.what ?? "")
     modal: true                         // the closing click does nothing else (the kit's Popover never dims the window)
     focusItem: byField
     // Ctrl+A here is the popover's, never silent (K7): it selects the number to type over (the layers it staggers are
@@ -34,7 +34,7 @@ Popover {
             NumberField {
                 id: byField; objectName: "staggerBy"
                 anchors.verticalCenter: parent.verticalCenter; width: 64
-                value: pop.st.by; from: 0; to: 600; step: 1; unit: " f"
+                value: pop.st?.by ?? 0; from: 0; to: 600; step: 1; unit: " f"
                 onEdited: (v) => pop.st.setBy(v)
                 onScrubbed: (v) => pop.st.setBy(v)
             }
@@ -46,7 +46,7 @@ Popover {
             ChoiceField {
                 objectName: "staggerOrder"
                 anchors.verticalCenter: parent.verticalCenter; width: 160
-                options: pop.st.orders; current: pop.st.order
+                options: pop.st?.orders ?? []; current: pop.st?.order ?? ""   // ?.: the backend goes first when the window closes
                 onPicked: (v) => pop.st.setOrder(v)
             }
         }

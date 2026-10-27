@@ -22,7 +22,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import project_tool, tool_groups
+from . import inspect_keys, project_tool, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -39,9 +39,12 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
 SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
                "path / group(id, **fields), made inside `with group(...):` to go in it (their x, y are then in the group's "
                "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
-               "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=). "
+               "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=); "
+               "item.pivot(x, y): the anchor on that comp point, nothing moves (a grown drawing's turning point); "
+               "w, h = t.measure(): a text's real box in its own px (before scale), to place things by its width. "
                "The scene's frame (what is exported): f = frame(); f.key(\"x\", {0: 960, 4: 2600}); "
-               "f.fit([\"hills\", \"tree\"], at=4) frames layers as they show then (depth counted), f.fit(rect=(x, y, w, h), at=4), "
+               "f.fit([\"hills\", \"tree\"], at=4) frames layers as they show then (depth counted), f.fit(rect=(x, y, w, h), at=4, "
+               "ease=\"easeInOut\") (ease: how it moves into that framing; a fit where it already is changes nothing), "
                "f.cut(at=6, to=\"rect\", rect=(3200, 0, 1920, 1080)) or f.cut(at=\"#logo lands\") jumps it, f.home(at=8); "
                "the same as the operations frame.fit, frame.cut, frame.home (target \"frame\"). "
                "Fields: x, y (the anchor, default the centre), w, h, scale, rotation, opacity 0-1; shape: shape=\"rect\" | "
@@ -77,6 +80,7 @@ def make_runtime(app: App) -> Runtime:
     library.use_project(app.folder)                  # the project's own tip and paper pictures are brush choices
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
+    inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
     return runtime
 
 

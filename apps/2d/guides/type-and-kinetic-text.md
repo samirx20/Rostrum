@@ -142,8 +142,9 @@ Two kinds of font can be named:
 - **Installed on this computer**: Arial, Georgia, Segoe UI and anything the person has installed. Another computer may
   not have them.
 
-`inspect_fonts` (optional `search="serif"`) lists every family with its source, real weights, range and whether it has an
-italic. A script can read the same list in Python: `from rostrum2d.fontlist import families`. A font installed while
+`inspect_fonts` lists the families shipped with Rostrum2D (the same on every computer) with their real weights, range
+and whether they have an italic, and how many are installed on this computer; `search="serif"` (part of a name) lists
+the matching ones, installed too, and `all: true` every one. (A scene script can't import modules beyond `math` and `random`: pick the family with `inspect_fonts`, then write its name in the script.) A font installed while
 the app runs shows after a restart.
 
 **A missing font is never swapped.** Setting a font that isn't there is refused at once, naming the closest names. A

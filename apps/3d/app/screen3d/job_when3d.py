@@ -58,6 +58,7 @@ WHEN = {
     "zoom_in": lambda b: _vp(b) is not None, "zoom_out": lambda b: _vp(b) is not None,
     "onion": lambda b: b.page == "animate", "poses_panel": lambda b: b.page == "animate",
     "shapes_menu": lambda b: b.page == "build", "type_menu": lambda b: b.page == "build",
+    "add_file": lambda b: b.page == "build" and bool(b.importer.rail),        # the Import group (importing.py)
 }
 
 

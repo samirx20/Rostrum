@@ -42,11 +42,16 @@ Motion blur never crosses a cut.
 |---|---|
 | `frame.fit to=view rect=[x, y, w, h] at=3` | The frame becomes the largest frame-shaped box in that rectangle (world px), keeping its turn, keyed at `at`. If the frame had no keys yet, its place now is also keyed at 0 s, so it starts where it was and arrives there. |
 | `frame.fit to=items ids=[hills, tree] at=3` | The frame shows those layers as they will look in the export at `at` (depth included), with 5 % room (`pad`). |
+| `frame.fit … at=3 ease=easeInOut` | The same, and the move into it takes that ease (any key ease name: `smooth`, `easeInOut`, `snappy`, `linear` …). It goes on the key the move starts from (the frame's key before `at`, or the 0 s key the fit adds). |
 | `frame.cut at=2.4` | Two keys: the frame's place one frame before `at` with the Hold ease, and the same place at `at`. Then move the frame to the next shot: that sets the key at `at`. |
 | `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
 | `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. |
 
-In a script: `f.fit(["hills", "tree"], at=4)`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
+In a script: `f.fit(["hills", "tree"], at=4, ease="easeInOut")`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
+A fit where the frame already is changes nothing and is no error: at 0 s, or on a still frame, nothing is keyed; on an
+animated frame after 0 s its place is keyed there, a hold the next fit moves on from. So shots can be written in time
+order — `f.fit(rect=wide, at=0)`, `f.fit(rect=wide, at=2)` (hold until 2 s), `f.fit(["tree"], at=5, ease="easeInOut")`
+(an eased push from 2 s to 5 s).
 
 **On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
 (**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
@@ -61,7 +66,7 @@ them off with **Show the frame's path** in the **Fit · %** menu (a view setting
 its **More** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on
 right-click (the Frame row, or the canvas) and in **Ctrl+K**, which also has **Cut to the view**. With layers picked,
 **More** has **Move the frame to these** and **Cut to these**. Only what applies shows: no Cut here at 0 s (hover the Frame row: its tip says so), and a locked frame offers
-only Unlock. **Frame the view** on a view the frame already shows keys nothing and says "Already framed" (an agent's `frame.fit` refuses it the same way).
+only Unlock. **Frame the view** on a view the frame already shows keys nothing and says "Already framed" (an agent's or a script's `frame.fit` there changes nothing, as above).
 
 - **A push:** pick the frame (**C**) at 0 s, move the playhead to 3 s, pan and zoom your view until the second place
   fills the canvas the way you want it, then **Frame the view**. The frame fits what you see (leaving the same room

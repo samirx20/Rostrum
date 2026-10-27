@@ -52,3 +52,17 @@ def test_mirror_pose_keys_the_other_side_reversed_in_one_step():
     assert (value_at(r, "rotation", 1.0), value_at(r, "moveX", 1.0)) == (-30, -12)
     d.undo(SAM)
     assert value_at(d.item(right["id"]), "rotation", 1.0) == 0
+
+
+def test_mirror_after_a_pose_adds_no_flat_keys():
+    """A pose keys the right side at 0; mirroring a still left side at 1 must not add a second key of the same value
+    (the Problems chip listed every such field as "keys that do nothing")."""
+    from rostrum2d import diagnose
+    d = rig()
+    left, right = draw(d, *down_the(d, "upper arm L")), draw(d, *down_the(d, "upper arm R"))
+    d.apply({"op": "pose.save", "target": "r", "args": {"id": "rest", "t": 0}}, SAM)
+    d.apply({"op": "pose.apply", "target": "r", "args": {"pose": "rest", "t": 0}}, SAM)
+    d.apply({"op": "value.set", "target": [left["id"]], "args": {"prop": "rotation", "at": 1.0, "v": 30}}, SAM)
+    d.apply({"op": "pose.mirror", "target": ["r"], "args": {"t": 1.0}}, SAM)
+    assert value_at(d.item(right["id"]), "rotation", 1.0) == -30
+    assert [p["message"] for p in diagnose.problems(d.data["comps"][0]) if p["kind"] == "unused-keys"] == []

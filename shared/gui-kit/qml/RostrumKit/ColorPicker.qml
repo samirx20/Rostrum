@@ -24,6 +24,10 @@ Column {
     signal swatchAdd(string hex)
     signal extraEdited(string text)
 
+    // Open: the hex box takes the keys at once (selected), so a hex typed right after the click lands in it, never on the
+    // canvas's shortcuts (a typed "FF4A9C" ran F, 4, Shift+A … on the scene).
+    function takeTyping() { hexBox.input.forceActiveFocus(); hexBox.input.selectAll() }
+
     property real h: 0
     property real s: 0
     property real v: 1

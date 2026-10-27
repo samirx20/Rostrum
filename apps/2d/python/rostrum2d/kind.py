@@ -48,6 +48,9 @@ def _set_fields(ctx, targets, args):
                 t, args.get("font", item.get("font", "")), args.get("italic", item.get("italic", False)))):
             raise ValueError(why)                       # never drawn in another font: refused when set
         before = dict(item) if item.get("type") == "text" else None
+        for k in ("d", "path") if item.get("type") in ("path", "text") else ():
+            if isinstance(args.get(k), str) and not (k == "path" and re.fullmatch(r"[A-Za-z_][\w.-]{2,}", args[k])):
+                args = {**args, k: pathdata.check(args[k], f"{t}.{k}")}   # any SVG path data, stored as M L C Z
         for k, v in args.items():
             ctx.set(t, k, v)
         if before is not None:                       # Align moves a point text's anchor with it (text_anchor.py)
@@ -159,7 +162,7 @@ def _check_owner(item: dict, problems: list, opening: bool = False):
             pathdata.commands(item["path"])
         except ValueError as e:
             what = f'"{item["path"]}" is not path data' if re.fullmatch(r"[A-Za-z_][\w.-]{2,}", item["path"]) else str(e)
-            problems.append(f'{item["id"]}.path: {what}. `path` is SVG path data (M L C Z); {follow}')
+            problems.append(f'{item["id"]}.path: {what}. `path` is SVG path data; {follow}')
     if item.get("type") == "path":
         try:
             pathdata.commands(item["d"])

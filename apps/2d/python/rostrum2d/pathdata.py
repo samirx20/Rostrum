@@ -1,4 +1,7 @@
-"""Path data (`d`) of path layers: absolute M x y, L x y, C x1 y1 x2 y2 x y, Z only (ENGINE_CONTRACT.md § 2 path).
+"""Path data (`d`) of path layers: stored as absolute M x y, L x y, C x1 y1 x2 y2 x y, Z only (ENGINE_CONTRACT.md § 2
+path). What people and agents give may be any SVG path data (relative commands, H, V, Q, T, S, A arcs): `normalize`
+turns it into those four at the input boundary (a script's path(d=) and d keys, path.set, key.add), exactly for
+lines, quadratics and smooth curves, arcs as cubics within 0.03 % of their radius.
 
 Two views of one path:
 - commands: [("M", x, y), ("L", x, y), ("C", x1, y1, x2, y2, x, y), ("Z",)], what `d` says;
@@ -29,7 +32,7 @@ def commands(d: str) -> list[tuple]:
                 open_ = False
                 continue
         elif cmd in (None, "Z"):
-            raise ValueError(f'"{toks[i]}" before a command (absolute M, L, C, Z only)')
+            raise ValueError(f'"{toks[i]}" before a command (start with M)')
         n = _COUNT[cmd]
         nums = toks[i:i + n]
         if len(nums) < n or any(t in _COUNT for t in nums):
@@ -37,13 +40,145 @@ def commands(d: str) -> list[tuple]:
         try:
             vals = [float(t) for t in nums]
         except ValueError:
-            raise ValueError(f'"{" ".join(nums)}" are not numbers (absolute M, L, C, Z only)') from None
+            raise ValueError(f'"{" ".join(nums)}" are not numbers') from None
         if cmd != "M" and not open_:
             raise ValueError(f"{cmd} needs an M first")
         out.append((cmd, *vals))
         open_, i = True, i + n
         if cmd == "M":
             cmd = "L"                                    # more pairs after M are lines
+    return out
+
+
+_NUM = re.compile(r"[\s,]*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)")
+_FLAG = re.compile(r"[\s,]*([01])")
+_GAP = re.compile(r"[\s,]*")
+_SVG_COUNT = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "S": 4, "Q": 4, "T": 2, "A": 7, "Z": 0}
+_STORED = re.compile(r"[\sMLCZ0-9eE.,+-]*")
+
+
+def normalize(d: str) -> str:
+    """Any SVG path data → absolute M, L, C, Z (as stored and drawn). Already only those: returned as given. Anything
+    else SVG does not read (an unknown letter, a missing number) raises ValueError saying what and where."""
+    if _STORED.fullmatch(d):
+        try:
+            commands(d)
+            return d
+        except ValueError:
+            pass                                        # e.g. a line after Z: SVG reads it, so it is read in full below
+    out, i, cmd, cur, start, ctrl, prev = [], 0, None, (0.0, 0.0), (0.0, 0.0), None, None
+    n = len(d)
+
+    def num(flag=False):
+        nonlocal i
+        m = (_FLAG if flag else _NUM).match(d, i)
+        if not m:
+            rest = d[i:].strip()[:12]
+            raise ValueError(f'{cmd} needs {_SVG_COUNT[cmd.upper()]} numbers{" (an arc flag is 0 or 1)" if flag else ""}; '
+                             f'got "{rest or "the end"}"')
+        i = m.end()
+        return float(m.group(1))
+
+    while True:
+        i = _GAP.match(d, i).end()
+        if i >= n:
+            break
+        if d[i].isalpha():
+            if d[i].upper() not in _SVG_COUNT:
+                raise ValueError(f'"{d[i]}" is not an SVG path command (M L H V C S Q T A Z, or lower case for relative)')
+            cmd, i = d[i], i + 1
+        elif cmd is None:
+            raise ValueError(f'"{d[i:i + 8]}" before a command (start with M)')
+        elif cmd in "Zz":
+            raise ValueError(f'"{d[i:i + 8]}" after Z: numbers need a command')
+        up, rel = cmd.upper(), cmd.islower()
+        if up != "M" and not out:
+            raise ValueError(f"{cmd} needs an M first")
+        if up == "Z" and out[-1][0] == "Z":                     # Z Z: closed already
+            continue
+        if up != "M" and out[-1][0] == "Z":                     # after Z the pen is back at the start: a new subpath there
+            out.append(("M", *start))
+        ox, oy = cur if rel else (0.0, 0.0)
+        if up == "Z":
+            out.append(("Z",))
+            cur, ctrl, prev = start, None, "Z"
+            continue
+        if up == "M":
+            cur = start = (ox + num(), oy + num())
+            out.append(("M", *cur))
+            cmd, ctrl, prev = ("l" if rel else "L"), None, "M"      # more pairs after M are lines
+            continue
+        if up in "LHV":
+            x = cur[0] if up == "V" else ox + num()
+            y = cur[1] if up == "H" else oy + num()
+            cur, ctrl = (x, y), None
+            out.append(("L", *cur))
+        elif up in "CS":
+            if up == "C":
+                c1 = (ox + num(), oy + num())
+            else:
+                c1 = (2 * cur[0] - ctrl[0], 2 * cur[1] - ctrl[1]) if ctrl and prev in "CS" else cur
+            c2 = (ox + num(), oy + num())
+            end = (ox + num(), oy + num())
+            out.append(("C", *c1, *c2, *end))
+            cur, ctrl = end, c2
+        elif up in "QT":
+            if up == "Q":
+                q = (ox + num(), oy + num())
+            else:
+                q = (2 * cur[0] - ctrl[0], 2 * cur[1] - ctrl[1]) if ctrl and prev in "QT" else cur
+            end = (ox + num(), oy + num())
+            out.append(("C", cur[0] + 2 / 3 * (q[0] - cur[0]), cur[1] + 2 / 3 * (q[1] - cur[1]),
+                        end[0] + 2 / 3 * (q[0] - end[0]), end[1] + 2 / 3 * (q[1] - end[1]), *end))
+            cur, ctrl = end, q
+        else:                                                    # A rx ry turn large sweep x y
+            rx, ry, turn = abs(num()), abs(num()), num()
+            large, sweep = num(flag=True), num(flag=True)
+            end = (ox + num(), oy + num())
+            out += _arc(cur, end, rx, ry, turn, bool(large), bool(sweep))
+            cur, ctrl = end, None
+        prev = up
+    if not out:
+        return ""
+    return write(out)
+
+
+def _arc(p0, p1, rx, ry, turn, large, sweep) -> list[tuple]:
+    """An SVG arc (endpoint form) as cubics, one per quarter turn at most (SVG 1.1 implementation notes F.6)."""
+    if p0 == p1:
+        return []
+    if rx == 0 or ry == 0:
+        return [("L", *p1)]
+    phi = math.radians(turn % 360)
+    cos, sin = math.cos(phi), math.sin(phi)
+    dx, dy = (p0[0] - p1[0]) / 2, (p0[1] - p1[1]) / 2
+    x1, y1 = cos * dx + sin * dy, -sin * dx + cos * dy
+    lam = (x1 / rx) ** 2 + (y1 / ry) ** 2
+    if lam > 1:                                                  # radii too small for the two ends: scaled up, as SVG does
+        rx, ry = rx * math.sqrt(lam), ry * math.sqrt(lam)
+    num_ = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1
+    co = math.sqrt(max(num_, 0.0) / (rx * rx * y1 * y1 + ry * ry * x1 * x1)) * (-1 if large == sweep else 1)
+    cx1, cy1 = co * rx * y1 / ry, -co * ry * x1 / rx
+    cx, cy = cos * cx1 - sin * cy1 + (p0[0] + p1[0]) / 2, sin * cx1 + cos * cy1 + (p0[1] + p1[1]) / 2
+    ang = lambda ux, uy, vx, vy: math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)  # noqa: E731
+    a0 = ang(1, 0, (x1 - cx1) / rx, (y1 - cy1) / ry)
+    da = ang((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry)
+    if not sweep and da > 0:
+        da -= 2 * math.pi
+    elif sweep and da < 0:
+        da += 2 * math.pi
+    parts = max(1, math.ceil(abs(da) / (math.pi / 2) - 1e-9))
+    step = da / parts
+    k = 4 / 3 * math.tan(step / 4)
+    pt = lambda a: (cx + rx * math.cos(a) * cos - ry * math.sin(a) * sin, cy + rx * math.cos(a) * sin + ry * math.sin(a) * cos)  # noqa: E731
+    dpt = lambda a: (-rx * math.sin(a) * cos - ry * math.cos(a) * sin, -rx * math.sin(a) * sin + ry * math.cos(a) * cos)  # noqa: E731
+    out = []
+    for j in range(parts):
+        a, b = a0 + j * step, a0 + (j + 1) * step
+        (ax, ay), (bx, by), (dax, day), (dbx, dby) = pt(a), pt(b), dpt(a), dpt(b)
+        if j == parts - 1:
+            bx, by = p1
+        out.append(("C", ax + k * dax, ay + k * day, bx - k * dbx, by - k * dby, bx, by))
     return out
 
 
@@ -57,11 +192,11 @@ def _num(v: float) -> str:
 
 
 def check(d: str, where: str = "d") -> str:
+    """`d` as stored (normalize), or ValueError naming `where`."""
     try:
-        commands(d)
+        return normalize(d)
     except ValueError as e:
         raise ValueError(f"{where}: {e}") from None
-    return d
 
 
 # ---- points (the pen's view) ----
@@ -239,7 +374,8 @@ def for_script(layer) -> dict:
     def path(id=None, **values):
         shift = None
         if "d" in values:
-            cmds = commands(check(values["d"], f"{id or 'path'}.d"))
+            values["d"] = check(values["d"], f"{id or 'path'}.d")       # any SVG path data, stored as M L C Z
+            cmds = commands(values["d"])
             if not {"x", "y", "w", "h", "ridePath"} & values.keys():
                 cmds, (x0, y0, w, h) = fit(cmds)
                 shift = (x0, y0)

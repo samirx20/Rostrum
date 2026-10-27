@@ -31,9 +31,13 @@ FIELDS: dict[str, list[Param]] = {
         X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     "import": [
-        X("file", "File", "File", "", help="Absolute path of a .usd / .usda / .usdc / .usdz; the file is never rewritten"),
+        X("file", "File", "File", "", help="Absolute path of a USD, glTF / GLB, OBJ, FBX or Alembic file; the file is never rewritten"),
         X("prim", "Prim", "File", "", D, help='Path inside the file; "" = its default prim'),
         X("material", "Material", "Material", "", S, help='One material over the whole import, or "" to keep the file\'s', refers="material"),
+        Param.number("fileUnit", label="File unit", group="File", min=0, max=1e6, step=0.001, unit="m", importance=D,
+                     default=1.0, shown="script",
+                     help="Metres per unit of the file when it was imported and scaled to metres (1 = not rescaled); "
+                          "Keep original size (import.keep_size) undoes the rescale. Set by import.add, never by hand"),
     ] + TRANSFORM,
     # A part of an import: an override on a prim inside the file (path relative to the import's prim).
     "part": [

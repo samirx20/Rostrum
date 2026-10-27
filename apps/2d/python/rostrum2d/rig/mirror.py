@@ -15,7 +15,7 @@ from rostrum_core.errors import codes
 
 from ..evaluate import value_at
 from ..kind import REGISTRY as R
-from ..ops_keys import keys_of, put_key
+from ..ops_keys import adds_nothing, keys_of, put_key
 from .bodynames import SIDES, tokens
 from .model import tip
 from .poses import TIME, owners
@@ -111,4 +111,6 @@ def pose_mirror(ctx, targets, args):
                 v = round(v, 4) + 0.0           # never "-0"
                 if not keys_of(item, f) and abs(value_at(item, f, at) - v) < 1e-9:
                     continue                     # already so, and still: no key needed
+                if adds_nothing(item, f, v):     # the one K rule (ops_keys.adds_nothing): never a flat field
+                    continue
                 put_key(ctx, id_, f, at, {"v": v, "ease": "hold" if f == "show" else "smooth"})

@@ -28,7 +28,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `light(id, kind=, **fields)` | `rect disk strip sphere spot distant dome` |
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
-| `import_usd(id, file=, parts=[…], **fields)` | a USD file by reference (also a holder) |
+| `import_usd(id, file=, parts=[…], **fields)` | a 3D file by reference: USD, glTF / GLB, OBJ, FBX or Alembic (also a holder) |
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `clay(id, **fields)` | a clay: a lump to sculpt, its shape built from its steps in order (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |
@@ -108,7 +108,7 @@ Materials and shots always go to the top level, even when made inside a `with`.
   `item.key("visible", {0: False, 1.2: True})` shows and hides: on or off from each key to the next, never in between.
 - `item.aim(item_or_id)` or `item.aim((x, y, z))` points the item's −Z at an item's origin or a point, every frame (turns `rx ry rz` off while it aims).
   `item.aim(target, roll=90)` then turns it around the way it points: a strip light stands on end, a camera's horizon tilts. `roll` can be keyed.
-- `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_usd_file`).
+- `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_model_file`).
 
 ## Inside the script
 

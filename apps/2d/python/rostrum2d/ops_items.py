@@ -10,7 +10,7 @@ from rostrum_core.errors import codes
 
 from . import fields as F
 from .kind import LISTS, REGISTRY as R
-from .names import display_name, unique_name
+from .names import copy_base, display_name, unique_name
 
 ID = Param.text("id", label="Id", help="Optional; counted per type when left out (text_1, text_2 …)")
 NAME = Param.text("name", label="Name")
@@ -111,7 +111,7 @@ def _by(name, label, unit, **kw):
     return Param.number(name, label=label, unit=unit, min=-100000, max=100000, importance="secondary", **kw)
 
 
-@R.operation("layer.duplicate", "Copy layers: each copy lands just above its original in the stack, named \"<name> copy\", "
+@R.operation("layer.duplicate", "Copy layers: each copy lands just above its original in the stack, named \"<name> copy\" (a text that reads as its words keeps doing so), "
              "with its keys, effects, masks and layers inside it copied under new ids. Without `by_x` / `by_y` / `by_turn` / "
              "`by_scale` it is nudged 24 px right and down (further for each more copy, so none sits exactly on another). "
              "With them, `times` copies (1 to 200) each take that step from the one before, as one change: "
@@ -163,7 +163,7 @@ def layer_duplicate(ctx, targets, args):
                 place = places[(loc.parent, loc.key)] = spots(siblings)
             first = steps_for(siblings, [loc.item], place)
         at = next(i for i, c in enumerate(siblings) if c is loc.item) + 1
-        name = re.sub(r" copy( \d+)?$", "", display_name(loc.item)) + " copy"   # a copy's copy: "copy 2", never "copy copy"
+        name = copy_base(loc.item)        # "<name> copy" ("copy 2", never "copy copy"); a text named by its words keeps following them
         for n in range(1, args.get("times", 1) + 1):
             step = (n * dx, n * dy, n * turn, ratio ** n) if given else first + n - 1
             copy = put(loc.item, loc.parent, loc.key, at, taken, step, pattern and pattern.replace("{n}", str(n)))

@@ -28,12 +28,15 @@ document
 ```
 
 - Every part has an **id** (`title`, `bg`, `title.opacity.k200`). Use ids, never names or positions. `inspect_item` with no `id`
-  lists them; with an `id` it shows one part's values and the operations that fit it right now.
+  lists them; with an `id` it shows one part's values and the operations that fit it right now. Its keys come as a
+  summary per field (how many, first and last time and value); `keys: "all"` lists every key.
 - `inspect_operations` lists everything you can do (`text.set`, `shape.set`, `key.add`, `value.set`, `layer.arrange` …) with
   arguments. `edit_document` applies a list of them, all or nothing.
 - Copy a comp with everything in it with `comp.duplicate` (the copy lands right after it, named "<name> copy"), put comps in order with `comp.move` (`index` 0 = first), delete a throw-away comp with `comp.remove` (never the last one; Undo brings it back). A comp added without a name is numbered: "Scene 2", "Scene 3". Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
 - A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`, `shutter` (motion blur, degrees; 0 = off; see frame-parallax-motion-blur). A layer's `x`, `y` is where its **anchor** sits
   in the comp, in pixels (0,0 is top-left). The anchor is `anchorX`/`anchorY`, 0 to 1 across the box, default 0.5 = centre.
+  To turn round a known spot, `item.pivot(x, y)` puts the anchor on that comp point and nothing moves (any layer; the
+  way for a drawing, whose canvas grows).
   A group's children are placed inside the group's own box (its top-left is 0,0).
 - Colours are `#rrggbb` (or short, `#fff`). Mixing colours between keys happens in linear light.
 
@@ -137,11 +140,11 @@ refused, never dropped.
 
 | Layer | Its main fields |
 |---|---|
-| every layer | `x`, `y` (where its anchor sits, px), `scale`, `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
+| every layer | `x`, `y` (where its anchor sits, px), `scale`, `scaleX`/`scaleY` (stretch one way; negative mirrors; key `scaleX` to squash), `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
 | `comp` | `width`, `height`, `fps`, `duration` (s), `background`, `shutter` (motion blur angle, 0 = off), `shutterSamples`, `workStart` / `workEnd` (the work area the screen shows on its ruler, s; 0 = none; export a part with `start` / `end`) |
 | `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
 | `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
-| `path` | `d` (SVG data: M L C Z), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |
+| `path` | `d` (any SVG path data: M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z, so reading it back shows those), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |
 | `drawing` | `w`, `h` (its canvas, px), `eachFrame`, `loop`, `drawnSoFar` (0–1: key 0 → 1 to paint its strokes on in the order they were painted) |
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
 
@@ -172,6 +175,11 @@ Things that surprise people the first time:
   are placed in comp px. Give it `x=300, y=300` and that comp-sized box is *centred* there (anchor 0.5), so a child at
   (100, 100) lands far up and left, off screen. To place a group by a point, give it `w`, `h` (then `x`, `y` is its
   centre, and its children sit in its box), or `anchorX=0, anchorY=0` as well (then `x`, `y` is its top-left).
+- **Stacking order:** layers are drawn in the order they are made: the first one made is at the bottom, each later one
+  on top of it (inside a group the same, among its children). Make the background first; `layer.arrange` with `index`
+  (0 = bottom) moves one later.
+- **A text's real width:** `w, h = title.measure()` in a script gives its box in its own px (before `scale`), measured
+  by the code that draws it; place by it (`note.x = title.x + title.measure()[0] / 2 * title.scale + 24`).
 - **Text sits on its anchor too, and its anchor follows its alignment:** every text, made by a script, an operation
   or a person's Text tool, starts centred on `x`, `y` (anchor 0.5, `align="center"`). Without a `boxWidth`, changing
   `align` moves the across anchor with it, as After Effects' point text: `align="left"` makes `x` the left edge (anchor
@@ -198,12 +206,12 @@ You can't judge motion from the script. Look.
 | Tool | Use it to |
 |---|---|
 | `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
-| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1280, the whole sheet), `cols` tiles a row. |
-| `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. |
+| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. |
+| `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. `area: [x, y, w, h]` (comp px) draws only that part, sharp at `width` (a zoom on a mouth or an edge); `times` + `cols` for a sheet of chosen moments. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
 | `look_frame` (`what: "in_frame"`) | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
-| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. |
+| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). |
 
 Look pictures go to the project's `looks` folder (`<project folder>\looks\`; with no project open, to Rostrum's look cache); every reply gives the full path in `files`. `look_frame` and `look_frame` (`what: "sheet"`) use the
 same engine as export, so what you see is what the file will be.

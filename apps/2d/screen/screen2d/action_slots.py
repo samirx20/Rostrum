@@ -98,8 +98,21 @@ class ActionSlots(SlotMixin):
             self._set_status(words)                           # Align that keyed X: "… · keyed X at 3.00 s" (keyed_note.py)
         if any(c["op"] == "layer.duplicate" for c in calls):
             after = [self.doc.item(parent)[k][at + 1]["id"] for parent, k, at in (self.doc.parent_of(i) for i in layers)]
+            self._fold_like(layers, after)
         if after:
             self.selectMany(after)
+
+    def _fold_like(self, originals, copies):
+        """Copies show in the timeline folded or open as what they copy, group by group inside them too (a copy of a
+        folded row of 4 layers came open: 4 rows became 20 lines). The fold choices are by id, and a copy's ids are new."""
+        def walk(a, b):
+            if a["id"] in self._flipped:
+                self._flipped.add(b["id"])
+            for x, y in zip(a.get("layers", []), b.get("layers", [])):
+                walk(x, y)
+        for o, c in zip(originals, copies):
+            walk(self.doc.item(o), self.doc.item(c))
+        self.outlineChanged.emit()
 
     def _act_do(self, name, entry):
         """2D's actions that are not operations by themselves."""

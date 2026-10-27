@@ -361,6 +361,17 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.play.toggle()
 
     @Slot(str)
+    def selectShown(self, item_id):
+        """Select layer ▸ : pick the layer and open the groups it is in that were folded, so the timeline brings its row
+        into view (a layer that can't be seen now is found only there)."""
+        parent = self.doc.parent_of(item_id)[0] if self.doc.has(item_id) else None
+        while parent is not None and self.doc.has(parent) and self.doc.item(parent).get("type") != "comp":
+            self._flipped.discard(parent)
+            parent = self.doc.parent_of(parent)[0]
+        self.outlineChanged.emit()
+        self.select(item_id)
+
+    @Slot(str)
     def toggleFold(self, item_id):
         """Fold an open row, open a closed one (a group starts open, any other layer closed)."""
         self._flipped ^= {item_id}
@@ -522,11 +533,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._asked_from, self.placed_index(), self.touched(), self._t, self.doc.kind.lists, blur)
 
     def close(self):
+        self.endScrub()        # a field or picker change still open is kept, as its let-go keeps it (before anything closes)
+        self.endDrag()         # so is a canvas drag still going (Alt+F4 mid-drag), before the live link closes
         if self.link:
             self.link.close()
         self.play.stop()
         self.marks.close()
-        self.endDrag()
         self._outline_paced.cancel()                       # a drag's step still waiting: nothing left to tell
         self._outline_news.cancel()
         self._kit.paced.cancel()

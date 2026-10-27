@@ -132,7 +132,16 @@ A mouth drawn in a few shapes (one layer per shape, X A B C D E F G H; any subse
 for a missing one) follows a voice clip. The clip is heard once, the result is stored, and the mouth layers get ordinary
 `opacity` keys with `hold` ease: 1 while their shape shows, 0 otherwise. You can move or change any of them by hand.
 
-Hear it first, changing nothing: `inspect_sounds (what "lipsync") source=<wav> text="the words said" at=0.5 shapes={"X": "mouth_X", ...}`.
+**The source.** A Sound voice line of the project: `"voice:<line id>"` (`"voice:<song>/<line id>"` when two songs share
+the id; Sound's `inspect_item` lists the lines). It hears the line's made take and uses its words as `text` unless you
+give one, so changing the words in Sound never leaves a stale path in your script (re-run the script after Sound's
+`render_voice` makes the new take). A take not made yet is refused, naming the line. Or any WAV file (a recording).
+`at` is still the comp seconds where the line starts: give the same time the line has in Sound.
+
+**Order.** Make the composition first (`comp(...)` in a script, or `comp.add`): hearing and applying both read its
+frame rate, and are refused with "no composition yet" before it exists.
+
+Hear it first, changing nothing: `inspect_sounds (what "lipsync") source="voice:line_1" at=3 shapes={"X": "mouth_X", ...}`.
 It lists every phone, word and mouth cue in composition seconds, and with `shapes` which layer shows when. Timing tools:
 `lead_frames` (shapes start before the sound; default 1), `min_frames` (shorter shapes give their time away; default 1),
 `rest_gap` (a silence longer than this closes the mouth; default 0.25 s), `tail` (how long a sound lasts; default 0.08 s).
@@ -143,7 +152,7 @@ Apply it in a script (the mouth layers must be made earlier in the same script; 
 with rig("puppet", w=1920, h=1080):
     rest = path("mouth_X", d="M 0 0 L 40 0", x=960, y=540)
     wide = path("mouth_D", d=polygon(6, 24), x=960, y=540)
-    said = lipsync("take.wav", at=0.5, text="Every city keeps one hour.", shapes={"X": rest, "D": wide}, lead_frames=1)
+    said = lipsync("voice:line_1", at=0.5, shapes={"X": rest, "D": wide}, lead_frames=1)    # or "take.wav", text="…"
 ```
 
 Or as an operation: `lipsync.apply` with `target` = the rig or group, `source`, `at`, `text`, `shapeX` … `shapeH`, `leadFrames`.
@@ -151,13 +160,13 @@ It only adds keys; to redo a mouth, `key.clear` its opacity first. Words the dic
 `pronounce={"rostrum": "R AA1 S T R AH0 M"}`. Check with `look_frame` on the mouth at a few word starts, then listen to a render.
 The first run on a clip loads a speech model (a GPU job, a few seconds, longer on a busy computer); after that it reads the cache. On the screen the Lip sync sheet shows its progress (step 1 to 3 of 3, a moving bar) and the window stays free.
 
-Not yet: lip sync from a RostrumSound voice line or a shared marker as `at` (today `source` is a WAV and `at` is seconds),
-languages other than English with words.
+Not yet: a shared marker as `at` (today `at` is seconds), languages other than English with words.
 
 ## Swap sets: one drawing at a time
 
 A swap set is a slot on a character that shows one of several drawings: mouth shapes, hands, eyes, a blink. It is a group
-with **One at a time** on; its children are the drawings, in order, and **Shows** says which one (0 is the first).
+with **One at a time** on (the field `swap`: in a script `with group("mouth", swap=True):`, as an operation
+`group.set {swap: true}`); its children are the drawings, in order, and **Shows** (`show`) says which one (0 is the first).
 
 - **Draw the set.** One layer per drawing, all placed where they should sit, as children of the group. Keep the same
   registration (the same pivot and size) so a swap does not make the part jump. A child may have its own animation
@@ -165,7 +174,8 @@ with **One at a time** on; its children are the drawings, in order, and **Shows*
 - **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script, or `swap.show` with `t` and `layer`
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
   `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
-- **Blink.** `blink.add` on the eyes' slot with `open`, `closed` and optionally `half` (a half-closed drawing for the
+- **Blink.** An operation, not a script call: after the script, `edit_document` with `blink.add` on the eyes' slot
+  (`{"op": "blink.add", "target": ["eyes"], "args": {"open": "eyes_open", "closed": "eyes_shut"}}`), with `open`, `closed` and optionally `half` (a half-closed drawing for the
   frame before and after). `every` is the mean gap in seconds, `vary` how uneven it is, `frames` how long the eyes stay
   closed, `start` / `end` the stretch. A `seed` makes the same blinks every run; change it for others. It never moves
   or replaces a key that is there, so keep a blink you like and key the rest by hand. Look at a few blink frames.

@@ -39,7 +39,8 @@ def told(calls: list[dict], doc) -> str:
             return f"Made a set of {_layers(len(c['target']))} that shows one at a time: pick which under Shows"
         if op == "rig.make":
             n = len(c["target"])
-            what = display_name(doc.item(c["target"][0])) if n == 1 else f"{n} parts"     # one group made one rig: "1 parts" was wrong
+            rid = args.get("id") or (c["target"][0] if n == 1 else None)     # the group became the rig: read the rig, never the gone id
+            what = display_name(doc.item(rid)) if rid and doc.has(rid) else f"{n} parts"     # (that error stopped "Make a puppet")
             return f"Made a puppet of {what}: draw its bones with the Bone tool (J)"
         if op == "layer.match_size":
             n = len(c["target"])

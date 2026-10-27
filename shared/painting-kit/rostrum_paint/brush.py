@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from . import shape as shaping
-from . import pictures, wrap
+from . import native, pictures, wrap
 from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, UNDER, Coverage, Paper, _noise1, _noise1_by_dab, _ss, _up, apply_paint
 
 
@@ -133,7 +133,7 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
     if p["even"] and tip not in ("line", "block"):   # a soft edge shows the dabs as ridges unless they come closer
         r0 = size / 2
         step = min(step, max(0.5, EVEN * math.sqrt(r0 * max(1.0, (1 - p["hardness"]) * r0))))
-    t = np.minimum(np.array(_spacing(L, pts[:, 2], step, sp, size, p, sized)), L[-1])
+    t = np.minimum(np.array(spaced(L, pts[:, 2], step, sp, size, p, sized)), L[-1])
     X, Y, Pr = (np.interp(t, L, pts[:, k]) if L[-1] > 0 else pts[:1, k] for k in range(3))
     S = t / L[-1] if L[-1] > 0 else np.zeros(1)
     n = len(t)
@@ -239,6 +239,15 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
                            start=start, end=end, streak=streak, wv=wv, cols=cols, G=G, F=F,
                            bbox=(bx0, by0, bx1, by1), D=D, box=box, cs=cs, wetk=wetk, at=at, wrap=bool(p["wrap"]),
                            again=again, r0=r0, rl=rl, length=length, next=hi, ahead=ahead)
+
+
+def spaced(L, pressure, step, sp, size, p, length=None):
+    """`_spacing`, by the native stamper when it is built: the same numbers (tests/test_native.py), without a
+    Python step per dab (a look at a hand-painted piece walked ~400,000 of them)."""
+    if not native.walks():
+        return _spacing(L, pressure, step, sp, size, p, length)
+    return native.spacing(L, pressure, step, sp, size, float(L[-1]) if length is None else length,
+                          p["taper_start"], p["taper_end"])
 
 
 def _spacing(L, pressure, step, sp, size, p, length=None) -> list:

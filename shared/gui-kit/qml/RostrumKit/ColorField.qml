@@ -41,7 +41,9 @@ SwatchHex {
         id: picker
         readonly property bool banked: typeof colourBank !== "undefined"
         onClosed: f.settle()
+        onOpened: body.takeTyping()
         ColorPicker {
+            id: body
             hex: f.shown; showAlpha: false
             project: picker.banked ? colourBank.project : []
             brand: picker.banked ? colourBank.brand : []

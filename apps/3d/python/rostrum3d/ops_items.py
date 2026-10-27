@@ -70,23 +70,6 @@ _adder("rig", "Add a camera rig (orbit / crane / dolly) at a base point; put the
        "(into=<rig id>) and key the rig's angle, lift, swing or travel. Handheld adds a gentle seeded drift.")
 
 
-@R.operation("import.add", "Bring in a USD file by reference (the file is never rewritten). `parts`: prim paths "
-             "(from inspect_usd) to give their own material or hide later.", label="Import USD",
-             params=[*PLACE, Param.list("parts", "text", label="Parts", importance="deep",
-                                        help="Prim paths relative to the import's prim, e.g. Body/Screen"),
-                     *F.unconditional("import")])
-def import_add(ctx, targets, args):
-    if not args.get("file"):
-        ctx.fail(codes.BAD_ARGUMENT, '"file"', "is required", hint="The absolute path of a .usd/.usda/.usdc/.usdz.")
-    fields = [p.name for p in F.FIELDS["import"]]
-    item = new_item(ctx, "import", args, {k: v for k, v in args.items() if k in fields})
-    for path in args.get("parts", []):
-        item["parts"].append(build.make("part", build.part_id(item["id"], path), {"name": path, "path": path},
-                                        ctx.where))
-    parent, key = _holder(ctx, args.get("into"))
-    ctx.insert(parent, key, item, args.get("index"))
-
-
 @R.operation("part.add", "Add a part override to an import: a prim inside its file that gets its own material or "
              "is hidden.", target="import", label="Add part",
              params=[Param.text("path", label="Path", required=True), *F.unconditional("part")[1:]])

@@ -20,7 +20,8 @@ FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns 
 CONSTRAINTS = {"follow", "followAmount", "followPose", "stick"}             # follow.py: resolved into x … sz
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
 POSE = {"jointNames", "holds", "jointsKey"}    # a clay's joint settings: the document's alone (ops_pose.py)
-RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED}   # resolved, never sent
+FILE_UNIT = "fileUnit"                         # an import's: what its file was in, for Keep original size (ops_import.py)
+RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 

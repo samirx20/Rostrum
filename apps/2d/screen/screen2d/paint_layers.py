@@ -31,6 +31,7 @@ class PaintLayers(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._picked, self._drag = bridge, "", None
+        self._shown = None                                # what the panel showed when last told (_tell)
         self.fresh_each = False                           # Draw each frame, asked for before the first stroke makes the drawing
         self.thumbs = ThumbProvider()                     # image://paintthumbs (session.py)
         self.thumbs.notes.ready.connect(self._tell)        # a thumbnail drawn off the GUI thread: the list shows it
@@ -42,8 +43,14 @@ class PaintLayers(QObject):
 
     def _tell(self):
         """Told only while Draw is on: the panel is shown only then (a layer dragged with Move re-ran its rows at each
-        move); Draw coming on tells it once (toolChanged)."""
-        if self.b.tool == "draw":
+        move); Draw coming on tells it once (toolChanged). And only when what it shows is different: every picture
+        that lands, change and outline news rebuilt every row (eye, thumbnail), so while pictures kept landing the
+        list kept redrawing and the screen never held still."""
+        if self.b.tool != "draw":
+            return
+        shown = (self.canAdd, self.layers, self.toggles, self.onionApplies)
+        if shown != self._shown:
+            self._shown = shown
             self.changed.emit()
 
     def _painter_changed(self):

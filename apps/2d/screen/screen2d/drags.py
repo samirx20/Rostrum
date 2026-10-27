@@ -74,6 +74,7 @@ class DragSlots(SlotMixin):
         was = {lay: (x, y) for lay, x, y in (self._grab if isinstance(self._grab, list) else [self._grab])}
         grab = [(c, *was[o]) for c, o in zip(copies, layers)]
         self._grab = grab if len(grab) > 1 else grab[0]
+        self._fold_like(layers, copies)                 # folded in the timeline as what they copy (action_slots.py)
         self.selectMany(copies)
         return True
 

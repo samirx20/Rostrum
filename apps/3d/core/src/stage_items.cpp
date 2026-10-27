@@ -17,6 +17,8 @@
 #include <cstdio>
 
 #include "clay_scene.h"
+#include "convert.h"
+#include "error.h"
 #include "extrude.h"
 #include "item_track.h"
 #include "materials.h"
@@ -109,18 +111,25 @@ void build_import(Item& it, const SdfPath& path) {
   author_transform(it, prim);
   Reader& p = it.props;
   const std::string file = p.str("file"), inner = p.str("prim");
-  const std::string kinds = "the absolute path of a .usd, .usda, .usdc or .usdz file";
+  const std::string kinds = "the absolute path of " + accepted_files();
   if (file.empty()) fail(p.at("file"), "is empty", kinds);
-  check_file(file, p.at("file"), "a .usd, .usda, .usdc or .usdz file");
-  std::string ext = std::filesystem::path(file).extension().string();
-  std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return char(std::tolower(c)); });
-  if (ext != ".usd" && ext != ".usda" && ext != ".usdc" && ext != ".usdz") fail(p.at("file"), "is not a USD file", kinds);
+  check_file(file, p.at("file"), accepted_files().c_str());
+  if (!is_usd(file) && !format_for(file)) fail(p.at("file"), "is not a file an import reads", kinds);
+  // Another format: its converted layer (convert.h), referenced by the layer's identifier like a file.
+  std::string source = file;
+  if (!is_usd(file)) {
+    try {
+      source = converted_layer(file)->GetIdentifier();
+    } catch (const Error& e) {
+      fail(p.at("file"), e.what(), "a file that opens in the program that made it");
+    }
+  }
   if (inner.empty()) {
-    prim.GetReferences().AddReference(file);
+    prim.GetReferences().AddReference(source);
   } else {
     if (!SdfPath::IsValidPathString(inner) || !SdfPath(inner).IsAbsolutePath() || !SdfPath(inner).IsPrimPath())
       fail(p.at("prim"), "\"" + inner + "\" is not a prim path", "\"\" (the file's default prim) or a path like /Root/Body");
-    prim.GetReferences().AddReference(file, SdfPath(inner));
+    prim.GetReferences().AddReference(source, SdfPath(inner));
   }
   if (prim.GetPrimStack().size() < 2)  // only our own spec: the reference brought nothing in
     fail(p.at(inner.empty() ? "file" : "prim"),

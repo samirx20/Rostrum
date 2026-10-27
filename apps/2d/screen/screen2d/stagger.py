@@ -8,6 +8,7 @@ layer's picked keys move together). Offered to QML as `backend.stagger`; screen 
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum2d import boxes
 from rostrum2d.ops_stagger import ORDERS, WORDS
 from rostrum_gui.edits import Drag
 
@@ -20,6 +21,7 @@ class Stagger(QObject):
         super().__init__(parent)
         self.b, self._drag, self._ids, self._by, self._order = bridge, None, [], 2, "stack"
         self._op, self._what = "layer.stagger", ""
+        self._chosen = False            # an Order the person picked: kept; until then it follows where the layers sit
 
     @Property(bool, notify=changed)
     def open(self):
@@ -52,6 +54,8 @@ class Stagger(QObject):
             self._what = f"{len(keys)} keys on {len(self.b._keys._layers())} layers"
         elif len(layers) >= 2:
             self._op, self._ids, self._what = "layer.stagger", layers, f"{len(layers)} layers"
+            if not self._chosen:
+                self._order = self._seen_order(layers)
         else:
             self.b._set_status("Stagger needs two or more layers selected, or keys picked on two or more layers.")
             return False
@@ -70,10 +74,22 @@ class Stagger(QObject):
         self._by = max(0, int(frames))
         self._spread()
 
+    def _seen_order(self, ids: list[str]) -> str:
+        """The order a list reads in on screen: a column top to bottom, a row left to right (a list made by Ctrl+D has
+        each copy above the one before in the stack, so the stack's order brought its last line in first)."""
+        mids = []
+        for i in ids:
+            x0, y0, x1, y1 = boxes.box(self.b.doc.item(i), self.b.own_t(i))
+            mids.append(((x0 + x1) / 2, (y0 + y1) / 2))
+        across, down = max(m[0] for m in mids) - min(m[0] for m in mids), max(m[1] for m in mids) - min(m[1] for m in mids)
+        if max(across, down) < 1:
+            return "stack"                  # all on one spot: only the stack tells them apart
+        return "top_to_bottom" if down >= across else "left_to_right"
+
     @Slot(str)
     def setOrder(self, order):
         if order in ORDERS:
-            self._order = order
+            self._order, self._chosen = order, True
             self._spread()
 
     def _spread(self):

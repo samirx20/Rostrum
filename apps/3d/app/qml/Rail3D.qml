@@ -13,7 +13,9 @@ import RostrumKit
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
 // selected, the tool Select again. Paint (B) shows while one mesh or clay is selected (paint_mode_qt.py) and stays on while
 // painting. Last on both pages, the Materials ball: the project's materials (MaterialsList) beside the rail, a library
-// of things to put in the scene like the rest of the rail (header SPEC §3; also Ctrl+K). The groups that aren't built yet (Simulate, Import) are absent until they work (rule of individuality).
+// of things to put in the scene like the rest of the rail (header SPEC §3; also Ctrl+K). Import (Ctrl+I, Build page): a file
+// per format, landing at once on the surface in the middle of the view, then Asset library (ImportFiles.qml, importing.py).
+// Simulate isn't built yet: absent until it works (rule of individuality).
 ToolRail {
     id: rail
     current: paintMode.on ? "paint" : viewport.clay.on ? "clay" : viewport.pose.on ? "pose" : "select"
@@ -49,6 +51,7 @@ ToolRail {
                                 help: "Draw an outline: it puffs into clay. Then sculpt it: Add, Carve, Smooth." }] },
         { id: "shapes", name: "Shapes", job: "shapes_menu", items: rail.entries(backend.adder.rail.shapes) },
         { id: "type", name: "Type & logo", job: "type_menu", items: rail.entries(backend.adder.rail.type) },
+        { id: "import", name: "Import", job: "add_file", items: backend.importer.rail },     // absent while it has no entries
         { sep: true },
         { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
@@ -98,9 +101,11 @@ ToolRail {
         if (e.act === "bones") viewport.bones.start()
         else if (e.act === "mesh:svg") svgDialog.open()
         else if (e.act === "mesh:path2d") rail.openDrawings()
+        else if (e.act && e.act.startsWith("import:")) importFiles.open(e.act.slice(7))
         else if (e.act) (e.act.startsWith("mesh:") ? backend.adder.arm(e.act) : backend.adder.add(e.act))
     }
 
+    ImportFiles { id: importFiles }     // the Import group's picks: a file dialog per format, or the Asset library
     FileDialog {    // Logo from SVG: the file, then a click places it
         id: svgDialog
         title: "Logo from SVG"
