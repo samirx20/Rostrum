@@ -1,7 +1,8 @@
 # View walk (3d-v1): the live view drawn inside the window, by real input, on a 300-object scene. A scratch project
 # (the sample scene plus 300 small boxes) in a fresh background window; then, with QTest's real mouse and keys:
 # a click picks the ball, a left drag on empty space orbits (120 moves at 60 a second), the ball's move arrow is
-# dragged (60 moves), and Shift+F shows the Final look (the engine program's progressive Cycles picture) and back.
+# dragged (60 moves), a right-click opens the item's menu and the Materials list opens over the view, and Shift+F shows
+# the Final look (the engine program's progressive Cycles picture) and back.
 # Each move's time to the screen: the move -> the frame that drew a view asked for after it -> that frame's swap
 # (the window's own frame counters: ViewLink.drawn / .shown, steady clock = time.perf_counter on Windows).
 #   heavy.ps1 run "priyam: view walk" gpu <venv python> apps\3d\tools\view_walk.py <out folder>
@@ -74,6 +75,12 @@ def stats(xs):
 
 
 GUI = []
+
+
+def all_items(item):
+    yield item
+    for c in item.childItems():
+        yield from all_items(c)
 
 
 def drag(win, a, b, n, button=Qt.LeftButton):
@@ -154,6 +161,23 @@ def main():
         report["gizmoGuiMsPerMove"] = stats(GUI)
         report["gizmoSceneLoadMs"] = stats([x for x in loads if x is not None])
         win.grabWindow().save(str(OUT / "view-walk-gizmo.png"))
+
+        # popups over the view: the right-click menu on the ball (picked through the view), the Materials list
+        QTest.mouseClick(win, Qt.RightButton, Qt.NoModifier, ball)
+        shown = lambda: any(c.property("text") == "Duplicate" and c.isVisible() for c in all_items(win.contentItem()))  # noqa: E731
+        W.pump(5, shown, "the right-click menu")
+        W.check(shown(), "a right-click on the ball opens its menu over the view")
+        win.grabWindow().save(str(OUT / "view-walk-menu.png"))
+        QTest.keyClick(win, Qt.Key_Escape)
+        W.pump(0.5)
+        chip = next((c for c in all_items(win.contentItem()) if c.property("text") == "Materials"), None)
+        if chip is not None:
+            W.click(win, chip)
+            W.pump(1.0)
+            win.grabWindow().save(str(OUT / "view-walk-materials.png"))
+            QTest.keyClick(win, Qt.Key_Escape)
+            W.pump(0.5)
+        W.check(chip is not None, "the Materials button is there (its list: view-walk-materials.png)")
 
         # orbit: a left drag on empty space (Escape first: nothing selected, no gizmo in the way)
         QTest.keyClick(win, Qt.Key_Escape)
