@@ -28,7 +28,7 @@ class _Watch(GuiFilter):
         self.watch_windows(app)         # the windows, never the whole app (gui_filter.watch_windows)
 
     def on_event(self, obj, event):
-        if event.type() in POINTER:
+        if event.type() in POINTER or event.type() in FIRST:
             self.last = time.monotonic()
             if _before and event.type() in FIRST:
                 for fn in _before[:]:
@@ -38,7 +38,9 @@ class _Watch(GuiFilter):
 
 
 _watch: dict = {}           # the app -> its watcher (a test makes one app, a window run one)
-FIRST = {QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick, QEvent.Type.KeyPress}
+# a key's shortcut runs on its ShortcutOverride, before its press: F2 at once after drawing found no pick and named nothing,
+# so the typed name ran as shortcuts (M made markers; critic 2d-final row 1)
+FIRST = {QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick, QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride}
 _before: list = []          # run once before the next press or key (before_next_input)
 
 

@@ -1,0 +1,66 @@
+"""The model gate agents rely on (2D final critic F5-1): a model job short of memory waits, bounded, instead of failing
+at once; one waiting for its turn waits while another holds it; both fail plainly when the wait runs out."""
+import pytest
+
+from rostrum_core import memory
+from rostrum_core.errors import RostrumError
+
+
+class Clock:
+    def __init__(self):
+        self.t = 0.0
+
+    def __call__(self):
+        return self.t
+
+    def sleep(self, s):
+        self.t += s
+
+
+def test_waits_until_memory_frees():
+    c, frees, said = Clock(), iter([1.0, 1.5, 3.0]), []
+    got = memory.gate("voice", "voice generation", 2.5, wait=60, waiting=said.append,
+                      free=lambda: next(frees), sleep=c.sleep, clock=c)
+    assert got == 3.0 and len(said) == 2 and "waiting for memory" in said[0]
+
+
+def test_fails_plainly_when_memory_never_frees():
+    c = Clock()
+    with pytest.raises(RostrumError) as e:
+        memory.gate("voice", "voice generation", 2.5, wait=10, waiting=lambda w: None,
+                    free=lambda: 1.9, sleep=c.sleep, clock=c)
+    assert "NO_MEMORY" in str(e.value.code) and "1.9 GB" in str(e.value) and c.t >= 10
+
+
+def test_turn_waits_for_the_other_job_then_fails_plainly(tmp_path):
+    lock = tmp_path / "turn.lock"
+    with memory.turn("a", "the phone model", 0.1, wait=5, lock_file=lock, free=lambda: 9.0):
+        c = Clock()
+        with pytest.raises(RostrumError) as e:
+            with memory.turn("b", "voice generation", 0.1, wait=6, lock_file=lock, free=lambda: 9.0,
+                             waiting=lambda w: None, sleep=c.sleep, clock=c):
+                pass
+        assert "another model job" in str(e.value) and c.t >= 6
+    with memory.turn("b", "voice generation", 0.1, wait=1, lock_file=lock, free=lambda: 9.0):
+        pass                                     # free again once the first job is done
+
+
+def test_an_agent_job_shows_the_wait_in_its_progress():
+    """inspect_job shows "waiting for memory (… GB free …)" while a model job waits, not only stderr."""
+    from rostrum_core.mcp.jobs import InProcessJobs
+    frees, seen = iter([1.0, 1.0, 9.0]), []
+
+    def work(job):
+        job.changed = lambda j: seen.append(j.note)
+        memory.gate("voice", "voice generation", 2.5, wait=30, free=lambda: next(frees), sleep=lambda s: None)
+        return "made"
+    jobs = InProcessJobs(shared=False)
+    job = jobs.submit("voice", work)
+    jobs.wait(job.id, 10)
+    assert job.status == "done" and any(n.startswith("waiting for memory (1.0 GB free") for n in seen), seen
+
+
+def test_the_note_never_says_the_need_is_free():
+    """C6: 2.46 GB free beside a 2.5 GB need read "2.5 GB free, needs 2.5"."""
+    assert memory.free_words(2.46, 2.5) == "2.46" and memory.free_words(1.94, 2.5) == "1.9"
+    assert memory.free_words(2.4999, 2.5) == "just under 2.5"

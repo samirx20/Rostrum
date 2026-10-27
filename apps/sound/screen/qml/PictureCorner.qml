@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import QtMultimedia
 import RostrumKit
 
@@ -118,6 +119,7 @@ Panel {
         }
     }
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: chooser
         title: "Choose the video"
         nameFilters: ["Video (*.mp4 *.mov *.mkv *.webm *.avi *.m4v)", "All files (*)"]

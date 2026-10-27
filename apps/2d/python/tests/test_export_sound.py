@@ -38,6 +38,7 @@ def test_sound_asked_and_failed_leaves_no_file(tmp_path, monkeypatch):
 
     monkeypatch.setattr(io_export, "export", fake_export)
     monkeypatch.setattr(export_sound, "mix", no_mix)
+    monkeypatch.setattr(exporting.project_sound, "check_before_export", lambda *a: None)   # no song file here: the mix itself fails
     s = exporting.settings("t", "mp4", 1.0, sound="snd_main")
     with pytest.raises(RostrumError, match="sound engine is missing"):
         exporting.run("t", SCENE, "mp4", s, folder=tmp_path, out=tmp_path / "a.mp4", engine_factory=lambda: _NoEngine())

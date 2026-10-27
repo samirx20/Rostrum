@@ -134,15 +134,27 @@ class Exporter(ExportSheet):
         doc, comp = self.bridge.doc, self._comp()
         timed = retime.timed(comp, self.bridge.marks.times if doc.folder else None, comp.get("fps", 30))
         s["area"] = export_area.chosen("export", self._choice, timed, span[0], self._area(), self._picked() if self._area() == "items" else None)
-        return {"scene": exporting.snapshot(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
+        return {"scene": exporting.snapshot_later(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
                 "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self.stem(), "out": out,
                 "overwrite": overwrite}
 
     def work(self, p, progress):
+        scene = p["scene"]
+        if callable(scene):         # the scene and its painted pictures are made here, in the job: minutes for a painted
+            progress(-1.0)          # piece, which froze the window when the press made them (2D final critic)
+            self.phase("Preparing the scene")
+
+            def made(done, total):
+                self.phase(f"Preparing the painted pictures · {done} of {total}")
+                progress(done / total)
+            scene = scene(made, lambda: self._stopping)
+            self.phase("")
+            progress(0.0)
+
         def make_engine():
             self._engine = (self._engine_factory or exporting._engine)()
             return self._engine
-        facts = exporting.run("export", p["scene"], p["fmt"], p["s"], p["folder"], p["item"], p["seq"], p["out"],
+        facts = exporting.run("export", scene, p["fmt"], p["s"], p["folder"], p["item"], p["seq"], p["out"],
                               lambda done, total: progress(done / total if total else 0.0), make_engine,
                               name=p["name"], overwrite=p["overwrite"])
         version = Path(facts["file"]).parent.name if p["out"] is None else ""
@@ -186,11 +198,11 @@ class Exporter(ExportSheet):
         v, doc, comp = dict(self._values), self.bridge.doc, self._comp_id
 
         def prepare():
-            scene, factory = exporting.snapshot(doc, comp, "gif"), self._engine_factory or exporting._engine
+            later, factory = exporting.snapshot_later(doc, comp, "gif"), self._engine_factory or exporting._engine
 
             def job():
                 with factory() as eng:
-                    eng.load(scene)
+                    eng.load(later())       # (its painted pictures made here, off the screen's thread)
                     return gif_size.estimate(eng, span[0], span[1], v["alpha"], v["size"], v["rate"])
             return job
         key = (comp, doc.seq, span, v["alpha"], v["size"], v["rate"])

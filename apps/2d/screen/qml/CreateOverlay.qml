@@ -33,7 +33,9 @@ Item {
     MouseArea {
         id: area
         anchors.fill: parent
-        enabled: (ov.creating || ov.create.typing) && !backend.playing && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
+        enabled: (ov.creating || ov.create.typing) && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
+        // while playing too: a press stops the playback and draws. Off while playing, the press fell to the move layer under it
+        // and a shape tool's drag moved the shape it started on (critic 2d-final B10; Figma and After Effects always draw)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
         hoverEnabled: ov.tool === "text"
         // the Text tool over a text: the I-beam, and a press types in that text at the click (create.textAt), not a new one
@@ -47,6 +49,7 @@ Item {
         property bool shape: ov.shapeTool
         property bool ending: false                           // this press ended typing: its release makes nothing
         onPressed: (m) => {
+            if (backend.playing) backend.togglePlay()
             ending = ov.create.typing                         // a press here is outside the typing box (that takes its own):
             if (ending) return ov.create.commitText(editor.text)   // the text is made / kept, one change
             p0 = ov.atMouse(m); px = m.x; py = m.y

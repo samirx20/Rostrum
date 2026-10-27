@@ -10,7 +10,9 @@ from . import beat_words, corner_rows, exprs, outline, fill_rows, font_rows, pai
 SIBLING_PICKS = {"matte": lambda s: s.get("type") != FRAME,       # any layer beside it that draws a picture can be its
                                                                     # track matte: the frame (the camera) draws none
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
-                 "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath")}   # a layer rides one (not a riding one)
+                 "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath"),   # a layer rides one (not a riding one)
+                 "parent": lambda s: s.get("type") == "bone"}       # a bone hangs from another bone of its rig, shown by name
+RIG_BONE_PICKS = {"bone": ("ik", "bind"), "bone2": ("bind",)}     # an IK chain's lower bone, a bind's bones: the rig's bones by name
 
 
 # A group's and a rig's box is their children's space, not a size to set; a text's words are typed on the canvas only.
@@ -139,6 +141,10 @@ class Hooks2D:
             return found
         if param == "textStyle":                     # the document's text styles (rostrum2d/text_styles.py)
             return [{"value": s["id"], "label": s["name"]} for s in self.doc.data.get("textStyles", [])]
+        if param in RIG_BONE_PICKS and item.get("type") in RIG_BONE_PICKS[param]:   # an IK chain's / bind's bone: by name
+            rig = self.doc.item(self.doc.parent_of(item["id"])[0])
+            return ([{"value": "", "label": "None (rigid)"}] if param == "bone2" else []) + [
+                {"value": s["id"], "label": outline.label_of(s, None)} for s in rig.get("bones", [])]
         if param not in SIBLING_PICKS:
             return []
         parent, key, _ = self.doc.parent_of(item["id"])
@@ -151,7 +157,19 @@ class Hooks2D:
         if every is None:
             every = made[(parent, key, param)] = [{"value": s["id"], "label": outline.label_of(s, None)}
                                                   for s in self.doc.item(parent).get(key, []) if SIBLING_PICKS[param](s)]
-        return [c for c in every if c["value"] != item["id"]]
+        # nearest first, the layers above it before those under it (the one just above is a track matte's usual pick):
+        # in the document's order the layer just above came last, out of the list's view (critic 2d-final row 9)
+        place = made.get((parent, key, "place"))
+        if place is None:
+            place = made[(parent, key, "place")] = {s["id"]: i for i, s in enumerate(self.doc.item(parent).get(key, []))}
+        mine = place.get(item["id"], -1)
+        if param == "parent":                        # never under itself: a bone below it in the chain is left out
+            up = {s["id"]: s.get("parent", "") for s in self.doc.item(parent).get(key, [])}
+            def under(b, seen=()):
+                return b == item["id"] or (b in up and b not in seen and under(up[b], (*seen, b)))
+            every = [c for c in every if not under(c["value"])]
+        return sorted((c for c in every if c["value"] != item["id"]),
+                      key=lambda c: (place[c["value"]] < mine, abs(place[c["value"]] - mine)))
 
     def expr_state(self, item, param):
         return exprs.state(item, param)

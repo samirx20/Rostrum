@@ -127,7 +127,7 @@ def _check_targets(kind, op, targets, view, where):
         if t not in idx:
             err = RostrumError.not_found(where, '/'.join(op.targets), t,
                                          [i for i, l in idx.items() if l.item.get("type") in op.targets])
-            err.hint = (kind.elsewhere(t) if kind.elsewhere else None) or err.hint
+            err.hint = (kind.elsewhere(t, view.data) if kind.elsewhere else None) or err.hint
             raise RostrumError(err.code, err.where, err.subject, err.problem, err.accepted, err.hint) from None
         it = idx[t].item
         if it.get("type") not in op.targets:

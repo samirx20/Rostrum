@@ -27,6 +27,7 @@ QtObject {
     readonly property color danger: "#ff6b6b"
     readonly property color ok: "#4cc38a"
     readonly property color warn: "#f2b33d"
+    readonly property color hold: "#f59e0b"         // the one orange: a held thing (a hold key, a pinned pose) and a shape's setting handles
     readonly property color agent: "#a594f9"        // an agent's work: its chip dot, the 1 s outline on what it changed
     readonly property color agentSoft: Qt.rgba(165 / 255, 148 / 255, 249 / 255, 0.14)
     readonly property color snap: "#ff2fd0"         // what a drag snapped to (INTERACTION 1.11): the snap line and its name chip
@@ -104,7 +105,7 @@ QtObject {
 
     // canvas pointers (CURSORS.md); must match rostrum_gui/cursors.py (tests/test_cursors.py checks)
     readonly property var cursorKinds: ["pick", "resize", "rotate", "anchor", "text", "text-box", "make", "pen", "fill", "dropper", "hand", "hand-grab", "zoom-plus", "zoom-minus", "no", "none"]
-    readonly property var cursorBadges: ["copy", "remove", "deep", "point", "bend", "radius", "shape", "close", "x", "caret", "slash", "wrap", "centre"]
+    readonly property var cursorBadges: ["copy", "remove", "deep", "point", "bend", "radius", "shape", "close", "x", "caret", "slash", "wrap", "alt", "centre"]
 
     // words as a person reads them: first letter up, the rest as written ("next stroke" → "Next stroke", never
     // "Next Stroke"; Font.Capitalize upper-cases every word)

@@ -58,6 +58,8 @@ def guess_job(scene: dict, s: dict, frames: int, exe=None) -> float:
 
 def learn(s: dict, seconds: float):
     """A Render landed in `seconds`: keep this computer's speed for the next first guess."""
+    if s.get("renderer", "cycles") != "cycles":
+        return                                          # the kept speed is Cycles' (a Stylized render has no samples)
     ref = _reference(s.get("samples", 128)) * s["width"] * s["height"] / HD_PIXELS
     if ref <= 0 or seconds <= 0:
         return

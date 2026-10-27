@@ -17,6 +17,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum2d import project_sound, sound_cues
 from rostrum_core import filestamps
 
+from . import song_add
 from .song_history import SongHistory
 from .soundtrack_play import SoundtrackPlay
 from .soundtrack_render import SoundtrackRender
@@ -91,6 +92,18 @@ class Soundtrack(QObject):
         if self.b.doc.folder:
             project_sound.refresh(self.b.doc.folder)
         self.check()
+
+    @Slot(str)
+    def addSong(self, url):
+        """File › Add a song from RostrumSound… (song_add.py): copied in, then heard at once."""
+        from PySide6.QtCore import QUrl
+        try:
+            said = song_add.add(self.b.doc.folder, QUrl(url).toLocalFile() if url.startswith("file:") else url)
+        except (ValueError, OSError) as e:
+            return self.b._fail(f"Error: add song: {e}")
+        project_sound.refresh(self.b.doc.folder)
+        self.check()
+        self.b._set_status(said)
 
     @Slot()
     def check(self):

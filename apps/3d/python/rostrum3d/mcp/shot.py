@@ -20,7 +20,7 @@ TIME = {
 }
 LOOK = {
     "quality": {"enum": list(QUALITY), "default": "fast", "description": "fast = Storm (about a second a frame), final = Cycles (path traced, what export gives)."},
-    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized."},
+    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials)."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": LOOK_WIDTH, "description": "Picture width in px; the height follows the shot's shape."},
 }
 

@@ -94,11 +94,11 @@ def generate(text: str, voice: str = "ryan", style: str = "", language: str = "a
         raise RostrumError(codes.MODEL_MISSING, where, "the voice model",
                            f"is not installed in {d} (missing {', '.join(missing)})",
                            hint=fetch.next_step("voice"))
-    _memory_gate(where)
     k = key(text, voice, style, language, seed)
     recipe = {"engine": ENGINE, "text": text, **_settings(voice, style, language, seed)}
-    entry = store().put("voice", k, lambda folder: _run(d, folder / "take.wav", text, voice, style, language, seed),
-                        recipe)
+    with memory.turn(where, "voice generation", MIN_FREE_GB):      # waits its turn and for memory, bounded
+        entry = store().put("voice", k, lambda folder: _run(d, folder / "take.wav", text, voice, style, language, seed),
+                            recipe)
     f = entry / "take.wav"
     return Take(str(f), _seconds(f), True, k)
 
@@ -127,10 +127,6 @@ def _run(d: Path, out: Path, text, voice, style, language, seed):
         shutil.copyfile(made, out)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
-def _memory_gate(where):
-    memory.gate(where, "voice generation", MIN_FREE_GB)
 
 
 def _seconds(f: Path) -> float:

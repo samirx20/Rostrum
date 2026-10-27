@@ -1,0 +1,151 @@
+"""Free memory on this computer, and the turn a model job waits for before it loads (voice, speech words, the phone
+model for lip sync, clean-up). One model job loads at a time on the machine, across every app and process (a lock file
+the system frees when its process ends), and it starts only when enough memory is free. Both are waited for, a
+bounded time (ROSTRUM_MODEL_WAIT_S, default 300 s), with `waiting(words)` told every few seconds; when the time runs
+out the job fails plainly (NO_MEMORY), naming what it needed and what was free. A laptop shared with other work used to
+refuse a voice outright when memory was short for a moment (2D final critic, F5-1: five failed calls).
+
+    with memory.turn("voice", "voice generation", 2.5, waiting=print):
+        ...load the model, run it, release it...
+"""
+from __future__ import annotations
+
+import contextvars
+import os
+import sys
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
+from .errors import RostrumError, codes
+
+POLL_S = 2.0
+_SINK: contextvars.ContextVar = contextvars.ContextVar("rostrum_memory_sink", default=None)
+
+
+def wait_s() -> float:
+    return float(os.environ.get("ROSTRUM_MODEL_WAIT_S") or 300)
+
+
+def free_gb() -> float | None:
+    """Free physical memory in GB (None where it can't be read)."""
+    if os.name != "nt":
+        return None
+    import ctypes
+
+    class M(ctypes.Structure):
+        _fields_ = [("len", ctypes.c_ulong), ("load", ctypes.c_ulong), ("total", ctypes.c_ulonglong),
+                    ("avail", ctypes.c_ulonglong), *[(f"x{i}", ctypes.c_ulonglong) for i in range(5)]]
+    m = M()
+    m.len = ctypes.sizeof(M)
+    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
+    return m.avail / 2 ** 30
+
+
+@contextmanager
+def reporting(fn):
+    """While the block runs (on this thread), waiting notes go to `fn(words)`: an agent job's progress (mcp/jobs.py), so
+    inspect_job shows "waiting for memory …" instead of a silent job."""
+    token = _SINK.set(fn)
+    try:
+        yield
+    finally:
+        _SINK.reset(token)
+
+
+def free_words(free: float, need: float) -> str:
+    """The free GB as it is said beside what is needed: one decimal, more where one decimal would round up to the need
+    ("2.46", never "2.5 GB free, needs 2.5"; hand maker C, C6)."""
+    for places in (1, 2, 3):
+        said = f"{free:.{places}f}"
+        if float(said) < need:
+            return said
+    return f"just under {need:g}"
+
+
+def _say(words):
+    sink = _SINK.get()
+    if sink is not None:
+        return sink(words)
+    print(f"rostrum: {words}", file=sys.stderr, flush=True)     # stderr: an MCP server's stdout is its protocol
+
+
+def gate(where: str, what: str, need_gb: float, wait: float | None = None, waiting=None, *, free=free_gb,
+         sleep=time.sleep, clock=time.monotonic) -> float | None:
+    """Wait until `need_gb` is free (up to `wait` seconds, default wait_s()), then return what is free. Never frees in
+    time: NO_MEMORY, said plainly."""
+    limit, t0, told = wait_s() if wait is None else wait, clock(), None
+    say = waiting or _say
+    while True:
+        f = free()
+        if f is None or f >= need_gb:
+            return f
+        waited = clock() - t0
+        if waited >= limit:
+            raise RostrumError(codes.NO_MEMORY, where, what,
+                               f"needs about {need_gb} GB of free memory; {free_words(f, need_gb)} GB was still free after waiting "
+                               f"{waited:.0f} s", hint="Close other programs (or wait for other work to finish) and try "
+                               "again; ROSTRUM_MODEL_WAIT_S sets how long a job waits.")
+        if told is None or clock() - told >= 10 or waiting or _SINK.get() is not None:
+            say(f"waiting for memory ({free_words(f, need_gb)} GB free, {what} needs {need_gb} GB; {waited:.0f} s so far)")
+            told = clock()
+        sleep(max(0.01, min(POLL_S, limit - waited)))
+
+
+def _turn_file() -> Path:
+    base = Path(os.environ.get("ROSTRUM_DATA") or Path.home() / ".rostrum") / "locks"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "model-turn.lock"
+
+
+def _try_lock(fh) -> bool:
+    try:
+        if os.name == "nt":
+            import msvcrt
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        return False
+
+
+def _unlock(fh):
+    try:
+        if os.name == "nt":
+            import msvcrt
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    finally:
+        fh.close()
+
+
+@contextmanager
+def turn(where: str, what: str, need_gb: float, wait: float | None = None, waiting=None, *, free=free_gb,
+         sleep=time.sleep, clock=time.monotonic, lock_file=None):
+    """Hold the machine's one model turn for the with-block: wait for it (another model job is running), then for
+    the memory (`gate`), together at most `wait` seconds."""
+    limit, t0, told = wait_s() if wait is None else wait, clock(), None
+    say = waiting or _say
+    fh = open(lock_file or _turn_file(), "a+b")
+    while not _try_lock(fh):
+        waited = clock() - t0
+        if waited >= limit:
+            fh.close()
+            raise RostrumError(codes.NO_MEMORY, where, what,
+                               f"waited {waited:.0f} s for another model job on this computer to finish",
+                               hint="Try again when it is done; ROSTRUM_MODEL_WAIT_S sets how long a job waits.")
+        if told is None or clock() - told >= 10 or waiting or _SINK.get() is not None:
+            say(f"waiting for another model job to finish ({what} goes next; {waited:.0f} s so far)")
+            told = clock()
+        sleep(max(0.01, min(POLL_S, limit - waited)))
+    try:
+        gate(where, what, need_gb, max(0.0, limit - (clock() - t0)), waiting, free=free, sleep=sleep, clock=clock)
+        yield
+    finally:
+        _unlock(fh)

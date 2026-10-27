@@ -1,6 +1,6 @@
 """Lay out Rostrum3D's one runtime library folder from the libraries already downloaded for the proofs.
 
-    python -I apps\\3d\\libs\\lay_out.py [--dest DIR] [--bundle DIR] [--cycles DIR] [--stylized DIR] [--openvdb DIR] [--check]
+    python -I apps\\3d\\libs\\lay_out.py [--dest DIR] [--bundle DIR] [--cycles DIR] [--openvdb DIR] [--check]
 
 Nothing is downloaded. Files are copied only when missing or different (size / time), so a re-run takes seconds.
 `--check` lists what would be copied and the size, and copies nothing. Any missing file or folder stops with exit 1.
@@ -11,9 +11,12 @@ The folder (VERSION below is also the folder name; rostrum3d/runtime.py has the 
     runtime\\usd\\lib\\       usd_ms.dll + usd\\ (plugInfo.json and resources of every USD / Hydra plug-in)
     runtime\\usd\\plugin\\usd\\ Storm, image readers, preview-surface shaders (usd_ms.dll finds ..\\plugin\\usd too)
     runtime\\hydra\\cycles\\  Cycles' install root: hydra\\ (hdCycles.dll + plugInfo), lib\\ (GPU kernels), source\\, license\\
-    runtime\\hydra\\rostrum\\ our stylized plug-in (hdRostrum.dll, plugInfo.json, shaders)
     sdk\\                    what apps\\3d\\core needs to build, same layout as the bundle (CMake's BUNDLE = sdk)
     VERSION.json
+
+Our stylized plug-in (hdRostrum) is not copied here (brief 22): apps\\3d\\stylized\\build.bat builds it against this
+folder's sdk\\ into apps\\3d\\stylized\\.build\\install\\, where rostrum3d/runtime.py finds it (ROSTRUM3D_STYLIZED
+overrides); VERSION.json says so. An older folder's runtime\\hydra\\rostrum\\ is no longer read.
 """
 from __future__ import annotations
 
@@ -35,7 +38,7 @@ REPO = Path(__file__).resolve().parents[3]
 DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION
 DEFAULT_BUNDLE = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
 DEFAULT_CYCLES = REPO / "proofs" / "3d-product" / ".build" / "cycles"
-DEFAULT_STYLIZED = REPO / "proofs" / "3d-stylized" / ".build" / "install"
+STYLIZED_BUILT = r"apps\3d\stylized\.build\install (apps\3d\stylized\build.bat; ROSTRUM3D_STYLIZED overrides)"
 # OpenVDB 13.0's headers and import library (the clay volume, core/src/clay_*), from the same Blender lib-windows_x64
 # bundle (v5.2.2, 60d6e96) whose openvdb.dll is in LOADED below (byte-identical); the main bundle has only the DLL.
 DEFAULT_OPENVDB = Path.home() / ".rostrum" / "downloads" / "blender-lib-v5.2.2-openvdb" / "repo" / "openvdb"
@@ -100,7 +103,7 @@ def walk(src: Path, dst: Path, skip_dirs=(), skip_suffix=()):
                 yield p, dst / p.relative_to(src)
 
 
-def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path, openvdb: Path = DEFAULT_OPENVDB) -> list[tuple[Path, Path]]:
+def plan(bundle: Path, cycles: Path, dest: Path, openvdb: Path = DEFAULT_OPENVDB) -> list[tuple[Path, Path]]:
     jobs: list[tuple[Path, Path]] = []
     rt, install = dest / "runtime", cycles / CYCLES_INSTALL
     for folder, names in LOADED.items():
@@ -119,7 +122,6 @@ def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path, openvdb: Path =
     jobs += walk(need(install / "hydra"), cy / "hydra")
     for sub in ("lib", "source", "license"):
         jobs += walk(install / sub, cy / sub)
-    jobs += walk(stylized, rt / "hydra" / "rostrum")
     for d in SDK_DIRS:
         jobs += walk(bundle / d, dest / "sdk" / d)
     jobs += [(need(bundle / f), dest / "sdk" / f) for f in SDK_FILES]
@@ -192,12 +194,11 @@ def main() -> int:
     ap.add_argument("--dest", type=Path, default=DEFAULT_DEST)
     ap.add_argument("--bundle", type=Path, default=DEFAULT_BUNDLE, help="Blender lib\\windows_x64 folder")
     ap.add_argument("--cycles", type=Path, default=DEFAULT_CYCLES, help="Cycles folder that has install\\")
-    ap.add_argument("--stylized", type=Path, default=DEFAULT_STYLIZED, help="our stylized plug-in install folder")
     ap.add_argument("--openvdb", type=Path, default=DEFAULT_OPENVDB, help="Blender lib-windows_x64's openvdb folder (include, lib)")
     ap.add_argument("--check", action="store_true", help="list what would be copied, copy nothing")
     a = ap.parse_args()
     try:
-        jobs = plan(a.bundle, a.cycles, a.stylized, a.dest, a.openvdb)
+        jobs = plan(a.bundle, a.cycles, a.dest, a.openvdb)
     except Missing as e:
         print(f"lay_out: {e}", file=sys.stderr)
         return 1
@@ -216,7 +217,7 @@ def main() -> int:
         "version": VERSION,
         "bundle": {"source": "Blender lib-windows_x64", "tag": BUNDLE_TAG, "commit": BUNDLE_COMMIT},
         "cycles": {"commit": CYCLES_COMMIT, "install": CYCLES_INSTALL, "patch": CYCLES_PATCH},
-        "stylized": {"source": str(REPO), "git_head": git_head()},
+        "stylized": {"not_in_this_folder": True, "built_in": STYLIZED_BUILT, "git_head": git_head()},
         "date": datetime.date.today().isoformat(),
         "files": len(jobs),
         "size_bytes": total,

@@ -94,7 +94,7 @@ def sheet_text(total: float, frames: int, per_frame: float) -> str:
 
 OVERRIDES = {
     "frame": {"type": "integer", "minimum": 0, "description": "Estimate a still of this shot frame instead of the shot's frames."},
-    "quality": {"enum": [*QUALITIES, "custom"], "description": "Instead of the shot's own: draft 32 samples, good 128, final 512."},
+    "quality": {"enum": [*QUALITIES, "stylized", "custom"], "description": "Instead of the shot's own: draft 32 samples, good 128, final 512 (Cycles); stylized = the stylized renderer (lines, halftone, light to colour), 2× supersampled."},
     "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Instead of the shot's own (sets quality custom)."},
     "denoise": {"type": "boolean", "description": "Noise clean-up, instead of the shot's own (sets quality custom)."},
     "size": {"enum": list(SIZES), "description": "Instead of the shot's own: full, half or double the shot's frame size."},

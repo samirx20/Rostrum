@@ -85,7 +85,7 @@ def with_song_markers(runtime) -> None:
             return Reply(f'"{hit["name"]}" (in the song {hit["item"]}) is at {hit["at"]:g} s.', {"at": hit["at"]})
         if name:
             return old.fn(ctx, args)
-        shared = old.fn(ctx, args) if ctx.app.folder else Reply("", {"markers": []})
+        shared = old.fn(ctx, {**args, "songs": False}) if ctx.app.folder else Reply("", {"markers": []})   # songs: here, above
         rows = shared.data.get("markers", [])
         said = "; ".join(f'"{m["name"]}" at {m["at"]:g} s' for m in own)
         line = (f"{len(own)} song marker{'s' * (len(own) != 1)}: {said}." if own else "No song markers.")

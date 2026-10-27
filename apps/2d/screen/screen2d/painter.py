@@ -21,7 +21,7 @@ from rostrum_gui.select_soon import SelectSoon
 
 from rostrum2d import painted_fill, paintings
 
-from . import adding, brush_presets, fill_aim, framing, onion, wet_layers, wet_through, wet_uses, wet_wrap
+from . import adding, brush_presets, fill_aim, framing, onion, wet_kept, wet_layers, wet_through, wet_uses, wet_wrap
 from .wet import WetView, reveal_rect, smear_ink
 from .pen_tilt import PenTilt
 from .brush import Brush
@@ -58,6 +58,7 @@ class Painter(BrushPanel):
         self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
         self._select_made = SelectSoon(bridge, self)        # the drawing a first stroke made: picked the frame after
         bridge.opened.landed.connect(self._wet.landed)     # ... on a painting opened on its own, until its picture lands
+        bridge.shownChanged.connect(lambda: self._wet.settle(self._stroke_shown))   # kept lifted strokes (wet_kept.py)
         self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
@@ -361,6 +362,11 @@ class Painter(BrushPanel):
             self._wet.add(x, y, pressure)
         elif len(s.points) > n:
             self._wet.add(*s.points[-1][:3])
+
+    def _stroke_shown(self, sid: str) -> bool:
+        """Whether the canvas's picture holds the stroke `sid`, or the document no longer does (an undo)."""
+        shown = self.b._shown
+        return (shown is not None and wet_kept.has_stroke(shown[0], sid)) or not wet_kept.has_stroke(self.b.doc.data, sid)
 
     @Slot()
     def endStroke(self):

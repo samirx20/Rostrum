@@ -89,4 +89,24 @@ def refresh(folder) -> None:
 def edit(folder, calls, who, label=None):
     """Apply marker operations as one change, saved at once through the one door. Returns the Change (None: nothing
     changed)."""
-    return open_to_change(folder).apply(calls, who, label=label)
+    doc = open_to_change(folder)
+    _refuse_song_clashes(folder, doc, calls)
+    return doc.apply(calls, who, label=label)
+
+
+def _refuse_song_clashes(folder, doc, calls):
+    """One marker namespace: a project marker added, moved or renamed onto a song's own marker's name at another time
+    is refused now, plainly (song_markers.refuse), not found later by an export that has drawn every frame."""
+    from . import song_markers
+    songs = song_markers.times(folder) if any(str(c.get("op", "")).startswith("marker.") for c in calls) else {}
+    if not songs:
+        return
+    rows = {m["id"]: m for m in doc.data.get("markers", [])}
+    for c in calls:
+        op, a = c.get("op"), c.get("args") or {}
+        made = [(a.get("name", ""), a.get("at"))] if op == "marker.add" else [
+            (a.get("name", rows[t]["name"]), a.get("at", rows[t]["at"])) for t in c.get("target") or [] if t in rows
+            if op in ("marker.move", "marker.rename", "marker.set", "marker.keep")]
+        for name, at in made:
+            if name and isinstance(at, (int, float)):
+                song_markers.refuse(name, float(at), songs, op)

@@ -36,8 +36,9 @@ class ScrubAhead(QObject):
 
     def _target(self):
         """(scene, quick rect) to draw ahead for now, or None when this is no time for it."""
-        b = self.b
-        if self._busy or not b._scene or b._waiting is not None or b.play.playing or b.play.moving() or b.dragging():
+        b = self.b      # (paint-on pictures still being made: their frames would show stand-ins, and drawing them slowed
+        #                  the making ~3×, 2D final critic)
+        if self._busy or not b._scene or b._waiting is not None or b._ahead is not None or b.play.playing or b.play.moving() or b.dragging():
             return None
         world = b._world.quick_rect()
         return None if world is None else (b._scene, world)

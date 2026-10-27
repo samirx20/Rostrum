@@ -29,7 +29,7 @@ def test_markers_fail_loudly(tmp_path):
         M.edit(tmp_path, [{"op": "marker.add", "args": {"name": " Drop ", "at": 4}}], who)
     with pytest.raises(RostrumError, match="drop"):
         M.at(tmp_path, "drpo")
-    with pytest.raises(RostrumError, match="both a project marker"):      # decided S11: a clash is an error
+    with pytest.raises(RostrumError, match="is a project marker at"):      # decided S11: a clash is an error
         M.refuse_clashes(M.times(tmp_path), ["intro", "DROP"], "sound doc")
     assert M.used(M.times(tmp_path), ["drop"]) == {"drop": 1.0}
 

@@ -42,6 +42,7 @@ The pointer always shows what a press will do right there (CANVAS.md 1.1). Every
 | `caret` | ^ | pen: change a point's handles |
 | `slash` | / | pen: carry on from a path's end |
 | `wrap` | ¶ | the text box's wrap width |
+| `alt` | ⌥ key | Alt held changes what the press does (3D Pose: Alt over a joint) |
 | `centre` | dot on the hotspot | Alt on a resize square: resize from the centre |
 
 ## How an app uses it

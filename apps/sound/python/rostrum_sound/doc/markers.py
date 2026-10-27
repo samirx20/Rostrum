@@ -15,7 +15,9 @@
   `edit_markers` tool), never by a Sound operation. Their item is `{"id", "name", "at", "shared": True}`.
 - **the document's own** (`doc["markers"]`, `marker.add / set / remove` in doc/ops_mix.py): may sit on a beat.
 
-A name used by both is a loud error (manager, S11). Names match case-insensitively, as the project's do.
+One namespace (AGENTS.md rule 8): a name used by both at the same time is one marker; at different times a loud
+error (manager, S11), raised when the second one is made. Names match case-insensitively, as the project's do. The
+document's own markers are seen by the other apps as read-only context (rostrum_core.song_markers).
 Which project: the folder this process works in (`use_project`, set when the MCP app or the screen opens a
 project; `with project(folder):` for one block). No project = only the document's own markers.
 A project marker renamed elsewhere: `renames(doc)` finds the old names the document still uses; the Sound
@@ -68,11 +70,26 @@ def project_rows() -> list[dict]:
 
 
 def items(doc: dict) -> list[tuple[str, dict]]:
-    """[(name, marker item)]: the document's own, then the project's. The one place that decides which exist."""
+    """[(name, marker item)]: the document's own, then the project's. The one place that decides which exist.
+    One namespace: an own marker with a project marker's name at the same time is that one marker (listed once, as
+    the document's own); at another time it is a loud error (rostrum_core.song_markers)."""
     own = [(m.get("name", m["id"]), m) for m in doc.get("markers", [])]
     rows = project_rows()
-    shared.refuse_clashes({r["name"]: r["at"] for r in rows}, [n for n, _ in own], "the song's markers")
+    if rows and own:
+        names = {key(r["name"]) for r in rows}
+        shared.refuse_clashes({r["name"]: r["at"] for r in rows},
+                              {n: _plain_at(m, doc) for n, m in own if key(n) in names}, "the song's markers")
+        mine = {key(n) for n, _ in own}
+        rows = [r for r in rows if key(r["name"]) not in mine]
     return own + [(r["name"], {"id": r["id"], "name": r["name"], "at": r["at"], "shared": True}) for r in rows]
+
+
+def _plain_at(marker: dict, doc: dict) -> float | None:
+    """An own marker's seconds when it is written in seconds or beats (None when it names another marker)."""
+    at = marker.get("at", 0)
+    if isinstance(at, dict):
+        return tempo.seconds_at(doc, float(at["beat"]))
+    return float(at) if isinstance(at, (int, float)) and not isinstance(at, bool) else None
 
 
 def by_name(doc: dict) -> dict:

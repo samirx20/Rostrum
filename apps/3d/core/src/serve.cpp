@@ -78,6 +78,7 @@ std::string answer(Core& core, const std::string& line, const std::function<void
       {"clay_grid", [&](const JsObject& a) { return core.clay_grid(a); }},
       {"xform", [&](const JsObject& a) { return core.xform(a); }},
       {"copies", [&](const JsObject& a) { return core.copies_live(a); }},
+      {"material", [&](const JsObject& a) { return core.material(a); }},
       {"sees", [&](const JsObject& a) { return core.sees(a); }},
       {"texels", [&](const JsObject& a) { return core.texels(a); }},
       {"info", [&](const JsObject&) { return core.info(); }},

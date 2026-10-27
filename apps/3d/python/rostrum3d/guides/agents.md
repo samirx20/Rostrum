@@ -22,7 +22,9 @@ and framed before you add anything; change or delete any of them like any item (
    A look that takes longer than a moment (a `final` one, a busy machine) answers "Job … is running" with a `job_id`:
    ask `inspect_job` with it (and `wait_s`) for the picture. Read the picture only from the finished reply.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
-     `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
+     `final` (Cycles) tells you light, glass, shadows, reflections. `renderer: "stylized"` draws the stylized look: a
+     material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
+     blocks"); it fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim").
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
@@ -122,6 +124,11 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **A look at fast quality is not a look at final.** Storm has no true glass, soft shadows or global light. Judge shape and timing in
   Storm, then confirm light and materials with one `final` look at the frame that matters most. (A person on the screen gets the
   same with Shift+F, Look: Final: the viewport itself runs Cycles with the Render button's settings and cleans up sample by sample.)
+- **A stylized material is judged in the stylized look.** After `material.set` with `lines`, `lightToColor` or `halftone`,
+  look with `renderer: "stylized"` (Lines and Halftone are invisible in `fast` and `final`). Its bands follow the real lights:
+  move or brighten a light to move the lit / shadow edges, or change `shadowBelow` / `litFrom`. For the finished pictures,
+  `render_still` / `render_video` with `renderer: "stylized"` (drawn at twice the size and smoothed down), or set the shot's
+  `renderQuality` to `stylized` so the person's Render button and render sheet use it too.
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
   it from `look_at` (its `distance`) instead of measuring by eye. Or name what must stay sharp: `camera.set focusItem=<item id>`
   (with `dof` on); the distance then follows that item's origin every frame, along the way the camera looks. `focusItem=""`

@@ -21,7 +21,7 @@ from .match import starts
 from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
-ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
+ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "integer", "unit", "display",
          "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "switch", "tag", "tagHelp", "note", "button", "inside")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
@@ -86,7 +86,7 @@ def _grouped(params, kind: str) -> list[dict]:
 def _param_row(p) -> dict:
     return {"row": "param", "id": p.name, "label": p.label, "type": p.type, "group": p.group,
             "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
-            "step": p.step, "unit": p.unit, "display": p.display, "valid_when": p.valid_when, "default": p.default,
+            "step": p.step, "integer": p.integer, "unit": p.unit, "display": p.display, "valid_when": p.valid_when, "default": p.default,
             "words": [{"value": v, "label": w} for v, w in p.words.items()],
             "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items, "control": p.control,
             "filters": list(p.filters), "shown": p.shown}

@@ -24,6 +24,13 @@ def test_cues_rest_in_silence_hold_short_gaps_and_lead():
     assert visemes.resolve("F", {"X", "A", "D"}) == "A" and visemes.resolve("E", {"X", "C"}) == "C"
 
 
+def test_a_line_ends_on_the_rest_mouth_even_when_the_clip_ends_on_its_last_sound():
+    """Hand maker C, C10: a voice take cut right after its last word left the last shape open to the scene's end."""
+    cues = visemes.cues(PHONES, fps=25, tail=0.08, start=0, end=1.54)          # the file ends on the last phone
+    assert cues[-1]["shape"] == "X" and abs(cues[-1]["start"] - 1.64) < 0.05 and cues[-2]["shape"] != "X"
+    assert visemes.cues(PHONES, fps=25, start=0, end=2)[-1]["shape"] == "X"   # with silence after it, as before
+
+
 def test_rerun_keeps_a_persons_mouth_key_and_words_change_the_cache_key(monkeypatch, tmp_path):
     monkeypatch.setattr(phonemes, "analyse", lambda *a, **k: {"phones": PHONES, "words": [], "end": 2.0,
                                                               "mode": "decoded", "device": "cpu", "computed": False})

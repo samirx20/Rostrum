@@ -22,17 +22,28 @@ def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None, frames:
     """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py).
     `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe); `frames`:
     only these frame numbers in it will be drawn (a contact sheet)."""
+    return scene_later(doc, comp_id, span, frames)()
+
+
+def scene_later(doc, comp_id: str, span: tuple[float, float] | None = None, frames: list[int] | None = None):
+    """scene_of in two halves: its refusals now, and a call `(progress, stopped) -> scene` that describes the document
+    as it is now (a document is never changed in place: holding its data is the snapshot), making the painted pictures
+    first: minutes for a painted piece, so an export runs it in its job, never on the screen's thread (2D final critic)."""
     from rostrum2d import follow
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    t0 = time.perf_counter()
-    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span, frames=frames)
-    spent = time.perf_counter() - t0
-    if spent >= SLOW_PICTURES_S:        # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
-        scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "
-                             "them, not when a script adds them. They are kept, so the next look at the same paint is quick."]
-    return scene
+    data, times, folder = doc.data, markers.times(doc.folder), doc.folder
+
+    def make(progress=None, stopped=None) -> dict:
+        t0 = time.perf_counter()
+        scene = describe(data, comp_id, times, folder, span, frames=frames, progress=progress, stopped=stopped)
+        spent = time.perf_counter() - t0
+        if spent >= SLOW_PICTURES_S:    # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
+            scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "
+                                 "them, not when a script adds them. They are kept, so the next look at the same paint is quick."]
+        return scene
+    return make
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:

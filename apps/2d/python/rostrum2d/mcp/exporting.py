@@ -13,7 +13,7 @@ from pathlib import Path
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
 
-from rostrum2d import settings as app_settings
+from rostrum2d import project_sound, settings as app_settings
 from rostrum2d.io import formats as table
 
 from .export_settings import DATA, LABELS, QUALITY_ARGS, GIF_ARGS, formats, info, see_through, settings  # noqa: F401  (callers read them here)
@@ -30,13 +30,21 @@ def nothing_showing(comp: dict) -> bool:
 def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
     """What a job exports, taken now (edits made while it runs are not in the file): the engine's scene, or for motion
     the samples themselves (read from the composition as it plays)."""
+    got = snapshot_later(doc, comp_id, fmt, layers)
+    return got() if callable(got) else got
+
+
+def snapshot_later(doc, comp_id: str, fmt: str, layers: list[str] | None = None):
+    """snapshot's refusals and its copy of the document now; the scene itself, its painted pictures made first, from the
+    call `(progress, stopped) -> scene` it returns (render.scene_later), run in the job (the screen's Export). Motion's
+    samples are taken now."""
     from . import render
     if fmt != "motion":
         comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
         if comp is not None and nothing_showing(comp):
             raise RostrumError(codes.BAD_ARGUMENT, "export", f'composition "{comp_id}"', "has nothing showing to export", hint="Add a layer (or show a hidden one) first.",
                                plain="There is nothing to export yet: the scene has no layers showing. Add one first.")
-        return render.scene_of(doc, comp_id)
+        return render.scene_later(doc, comp_id)
     import copy
     from rostrum_core import markers
     from rostrum2d import motion_samples, retime
@@ -135,6 +143,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
     An `out` that already exists is refused unless `overwrite` (a sequence's folder is never replaced).
     `on_stop`: a job's on_cancel, handed the engine's end so a stop needs no next frame."""
     row, comp = info(where, fmt), scene["comp"]
+    project_sound.check_before_export(folder, s.get("sound"), where)     # markers and the song: before any frame
     stem = name or f'{item or "doc"}_{comp["id"]}'
     png = fmt in table.FORMATS and not table.FORMATS[fmt].video     # a sequence: one file per frame, in a folder
     seq_name = lambda base: table.pattern(table.FORMATS[fmt], base)

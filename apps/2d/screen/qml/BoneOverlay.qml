@@ -54,13 +54,15 @@ Item {
                 property bool on: false
                 property point p0           // where the press was, in composition px (the bone turns under the pointer: its own coordinates would say "still")
                 property bool ctrl: false       // Ctrl at the press or the release: a window that was not active at the press may only report it later
-                onPressed: (m) => { const p = ov.at(area, m); p0 = p; ctrl = (m.modifiers & Qt.ControlModifier) !== 0; on = ov.rig.dragger.beginPose(bone.modelData, p.x, p.y) }
+                onPressed: (m) => { const p = ov.at(area, m); p0 = p; ctrl = (m.modifiers & Qt.ControlModifier) !== 0
+                                    if (ctrl && !ov.rig.attaching()) { m.accepted = false; return }   // Ctrl: the drawn part under the bone (Stage's press)
+                                    on = ov.rig.dragger.beginPose(bone.modelData, p.x, p.y) }
                 onPositionChanged: (m) => { if (on) { const p = ov.at(area, m); ov.rig.dragger.moveTo(p.x, p.y) } }
                 onReleased: (m) => {
                     const q = ov.at(area, m)
-                    const still = (Math.abs(q.x - p0.x) + Math.abs(q.y - p0.y)) * ov.fit < 3
-                    if (on) { if (still) ov.rig.dragger.cancel(); else ov.rig.dragger.end() }
+                    const moved = (Math.abs(q.x - p0.x) + Math.abs(q.y - p0.y)) * ov.fit, still = moved < 3
                     if (still) ov.rig.pickBone(bone.modelData, ctrl || (m.modifiers & Qt.ControlModifier) !== 0)   // a click picks the bone; Ctrl+click adds it to the part picked
+                    if (on) { if (!still) ov.rig.dragger.end(); else if (moved > 0) ov.rig.dragger.short(); else ov.rig.dragger.cancel() }   // a drag too short to pose says so
                     on = false
                 }
                 onCanceled: { if (on) ov.rig.dragger.cancel(); on = false }

@@ -33,6 +33,7 @@ _ORDERS: OrderedDict = OrderedDict()     # (stroke's hash, box) -> (order px, st
 _LOCK = threading.Lock()
 _MADE: OrderedDict = OrderedDict()      # picture key -> its frame entry, once made: a describe asks for every frame's
 #                                         picture on each change, and the paint cache's look-up touches the disk (~1 ms)
+_BY_DRAWING: OrderedDict = OrderedDict()  # (content key, w, h, cropped) -> {amount: entry}: the stand-ins (`_below`)
 
 
 def amount_at(item: dict, t: float) -> float:
@@ -224,12 +225,21 @@ def _entry(key: str, cropped: bool) -> dict:
     return {"src": str(folder / "ink.png"), **({"crop": crop} if crop else {})}
 
 
-def _remember(key: str, entry: dict) -> dict:
+def _remember(key: str, entry: dict, drawing: tuple, amount: float) -> dict:
+    """Keep the made picture's entry, and under its drawing (content key, w, h, cropped) by amount (`_below`)."""
     with _LOCK:
         _MADE[key] = entry
         while len(_MADE) > 4096:
             _MADE.popitem(last=False)
+        _BY_DRAWING.setdefault(drawing, {})[amount] = entry
+        _BY_DRAWING.move_to_end(drawing)
+        while len(_BY_DRAWING) > 64:
+            _BY_DRAWING.popitem(last=False)
     return entry
+
+
+def _drawing(frame: dict, w: int, h: int, cropped: bool) -> tuple:
+    return canvas.content_key(frame, w, h), w, h, cropped
 
 
 def made(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict | None:
@@ -238,7 +248,17 @@ def made(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict | No
     got = _MADE.get(key)
     if got is not None and filestamps.is_file(got["src"]):
         return got
-    return _remember(key, _entry(key, cropped)) if CACHE.get("paint", key) else None
+    return _remember(key, _entry(key, cropped), _drawing(frame, w, h, cropped), amount) if CACHE.get("paint", key) else None
+
+
+def _below(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict | None:
+    """The made picture of this drawing nearest under `amount` (less drawn, never more), or None."""
+    with _LOCK:
+        got = dict(_BY_DRAWING.get(_drawing(frame, w, h, cropped), {}))
+    for a in sorted((a for a in got if a < amount), reverse=True):
+        if filestamps.is_file(got[a]["src"]):
+            return got[a]
+    return None
 
 
 def png(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict:
@@ -260,13 +280,15 @@ def png(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict:
         Image.fromarray(np.ascontiguousarray(part), "RGBA").save(tmp / "ink.png", compress_level=1)
         (tmp / "crop.json").write_text(json.dumps({"crop": crop}), encoding="utf-8")
     CACHE.put("paint", key, make, {"w": w, "h": h, "amount": amount, "content": canvas.content_key(frame, w, h)})
-    return _remember(key, _entry(key, cropped))
+    return _remember(key, _entry(key, cropped), _drawing(frame, w, h, cropped), amount)
 
 
 class Ahead:
-    """A picture the screen draws without waiting for (`later`): the whole drawing stands in until it is made, then the
-    canvas draws again. A keyed Drawn so far needs a picture per frame (~50 for 2 s, about a second each the first
-    time), and waiting for them all kept the canvas on its old picture for about a minute (2D r11b)."""
+    """A picture the screen draws without waiting for (`later`): until it is made the drawing's nearest made picture
+    drawn less far stands in (or none of it), then the canvas draws again. Never the whole drawing: it showed the
+    finished painting at 31 % while the export showed only the ink (2D final critic). A keyed Drawn so far needs a
+    picture per frame (~50 for 2 s, about a second each the first time), and waiting for them all kept the canvas on
+    its old picture for about a minute (2D r11b)."""
     ahead = True
 
     def __init__(self, make, at: float = 0.0):
@@ -276,9 +298,9 @@ class Ahead:
         return self.make()
 
 
-def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | None, stand_in=None, at: float = 0.0) -> dict:
-    """One picture of the drawing part drawn: made now, or (a screen: `later`) made off its thread, `stand_in()` (the
-    whole drawing) meanwhile."""
+def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | None, at: float = 0.0) -> dict:
+    """One picture of the drawing part drawn: made now, or (a screen: `later`) made off its thread, the nearest made
+    picture drawn less far meanwhile (`_below`; nothing drawn when there is none)."""
     w, h = size
     if amount <= 0:
         return ({"src": str(ink.png({"paints": []}, w, h)[0])} if cropped else {"src": str(canvas.png({"paints": []}, w, h))})
@@ -288,12 +310,7 @@ def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | 
     if later is None:
         return png(frame, w, h, amount, cropped)
     later.append(Ahead(lambda: png(frame, w, h, amount, cropped), at))
-    if stand_in is None:
-        return _part(frame, size, 0.0, cropped, None)
-    n = len(later)
-    got = stand_in()
-    del later[n:]       # the whole drawing only stands in: not made for it (a look made it beside its pictures, ~1/4 of its time)
-    return got
+    return _below(frame, w, h, amount, cropped) or _part(frame, size, 0.0, cropped, None)
 
 
 def entries(item: dict, run: list, fps: float, first: int, last: int, size: tuple, full, later: list | None,
@@ -307,7 +324,7 @@ def entries(item: dict, run: list, fps: float, first: int, last: int, size: tupl
     cropped = item["type"] == "drawing"
     if not keys_of(item, DRAWN):
         a = amount_at(item, 0.0)
-        return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, lambda f=f: full(f), n / fps))} for n, f in run]
+        return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, n / fps))} for n, f in run]
     out, i, shown = [], 0, None
     lo, hi = (max(first, run[0][0]), last + 1) if run else (0, 0)
     for n in (range(lo, hi) if frames is None else sorted({n for n in frames if lo <= n < hi})):
@@ -316,5 +333,5 @@ def entries(item: dict, run: list, fps: float, first: int, last: int, size: tupl
         a = amount_at(item, n / fps)
         if (i, a) != shown:
             shown, f = (i, a), run[i][1]
-            out.append({"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, lambda f=f: full(f), n / fps))})
+            out.append({"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, n / fps))})
     return out or [{"at": n, **full(f)} for n, f in run[:1]]

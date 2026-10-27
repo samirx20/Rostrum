@@ -35,7 +35,12 @@ Item {
         onCommitted: (t) => {
             const r = VK.read("time", t, { t: backend.time, fps: backend.frameInfo.fps || 30, duration: backend.frameInfo.duration || 0,
                                            markers: backend.markers || [] })
-            if (r.error) problem = r.error; else backend.setTime(r.value)
+            if (r.error) { problem = r.error; return }
+            backend.setTime(r.value)
+            // a time between two frames lands on the nearer one: said, so a key typed there reads as it is (15.5 -> 15.52 at 25 fps)
+            const typed = /^\s*\d*\.?\d+\s*s?\s*$/.test(t) ? parseFloat(t) : NaN     // plain seconds only (36f, 1:12, a marker: exact)
+            if (Math.abs(typed - r.value) > 1e-6 && backend.tell)
+                backend.tell(typed + " s is between frames: on frame " + Math.round(r.value * (backend.frameInfo.fps || 30)) + " (" + r.value.toFixed(2) + " s)")
         }
         Connections { target: box.input; function onActiveFocusChanged() { if (!box.input.activeFocus) tr.typing = false } }
     }

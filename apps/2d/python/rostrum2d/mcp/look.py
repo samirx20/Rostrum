@@ -98,6 +98,8 @@ def _times_sheet(ctx, doc, comp, args: dict):
     frames = []
     for t in args["times"]:
         f = round(t * fps)
+        if f >= frames_in_comp and t <= comp.get("duration", 5.0) + 1e-9:      # the end time is the last frame
+            f = frames_in_comp - 1
         if not 0 <= f < frames_in_comp:
             raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"time {t} s", f"is outside the composition (0 to {(frames_in_comp - 1) / fps:.3f} s, its last frame)")
         frames.append(f)

@@ -58,7 +58,9 @@ def cues(phones: list[dict], fps: float = 24, lead_frames: float = 1, min_frames
     - a phone sounds at least `tail` s past where the model last hears it;
     - a silence shorter than `rest_gap` s holds the mouth before it; a longer one rests (X);
     - every shape starts `lead_frames` frames before its sound (mouths move ahead of what we hear);
-    - a shape shorter than `min_frames` frames gives its time to the shape before it."""
+    - a shape shorter than `min_frames` frames gives its time to the shape before it;
+    - the last cue is always the rest (X), `tail` s after the last sound, even past the clip's end (a voice take cut
+      right after its last word left the mouth open to the end of the scene: hand maker C, C10)."""
     lo = (phones[0]["start"] if phones else 0.0) if start is None else start
     hi = (phones[-1]["end"] + tail if phones else lo) if end is None else end
     raw, cursor = [["X", lo]], lo
@@ -72,7 +74,12 @@ def cues(phones: list[dict], fps: float = 24, lead_frames: float = 1, min_frames
     if hi <= lo:
         return [{"shape": "X", "start": lo, "end": lo}]
     snapped = [[s, max(lo, round((t - grid) * fps) / fps + grid)] for s, t in raw]
-    return _tidy(snapped, lo, hi, min_frames / fps - 1e-6)
+    out = _tidy(snapped, lo, hi, min_frames / fps - 1e-6)
+    if phones and out[-1]["shape"] != "X":      # the mouth closes after the last sound, even when the clip ends on it
+        t = max(round((cursor - grid) * fps) / fps + grid, out[-1]["start"] + 1 / fps)
+        out[-1]["end"] = round(min(out[-1]["end"], t), 4)
+        out.append({"shape": "X", "start": round(t, 4), "end": round(max(t, hi), 4)})
+    return out
 
 
 def _tidy(raw, lo, hi, shortest) -> list[dict]:

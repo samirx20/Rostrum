@@ -39,10 +39,27 @@ struct RostrumMeshData {
     unsigned version = 0;        // bumped on every geometry change (GPU re-upload)
 };
 
+// What the shade / edges / ink passes need of one material. Read from the material's
+// `rostrum_stylized` node (outputs:rostrum:surface, see LOOKS.md), else from UsdPreviewSurface /
+// Cycles' graphs (base colour, texture, emission only: a plain material).
 struct RostrumMaterialData {
     GfVec3f baseColor{0.6f, 0.6f, 0.6f};
     std::string texture;         // albedo image (sRGB), "" = none
-    bool unlit = false;          // emission-only material (a painted card): shown as painted
+    GfVec3f emission{0, 0, 0};   // linear glow added after the lighting
+    bool unlit = false;          // a glowing card (emission over a black base, nothing stylized):
+                                 // shown as is, casts no shadow, gets no lines
+    // Light to colour (bands of "how lit")
+    bool lightToColor = false, lightSmooth = false;
+    GfVec3f litColor{1, 1, 1}, midColor{0.451f, 0.451f, 0.451f}, shadowColor{0.0742f, 0.0742f, 0.0742f};
+    float shadowBelow = 0.15f, litFrom = 0.5f, lightSoftness = 0.1f;
+    // Lines (ink outline and creases)
+    bool lines = false;
+    float linesWidth = 1.5f, linesTaper = 0.5f, linesWobble = 0.3f, linesCreaseAngle = 40.0f;
+    GfVec3f linesColor{0.0103f, 0.0103f, 0.0103f};
+    // Halftone (dots or lines where the surface is not lit)
+    bool halftone = false, halftoneLines = false;
+    float halftoneSize = 6.0f, halftoneAngle = 45.0f;
+    GfVec3f halftoneColor{0.0103f, 0.0103f, 0.0103f};
 };
 
 struct RostrumRamp {
@@ -55,11 +72,19 @@ struct RostrumLightData {
     TfToken type;                    // distantLight, domeLight, rectLight, sphereLight, diskLight
     GfMatrix4d xform{1.0};
     GfVec3f color{1, 1, 1};          // colour x colour temperature
-    float gain = 1.0f;               // rostrum:gain (stylized brightness; physical intensity is Cycles')
+    // UsdLux brightness: intensity x 2^exposure, normalize, the shape's size (world units, the
+    // light's scale applied), a sphere's shaping cone (a spot)
+    float intensity = 1.0f;
+    bool normalize = false;
+    float width = 1.0f, height = 1.0f, radius = 0.5f;
+    float coneAngle = 180.0f, coneSoftness = 0.0f;   // half angle, degrees; 180 = no cone
+    GfVec3f domeUp{1, 1, 1}, domeDown{1, 1, 1};      // dome: what a white matte surface facing up /
+                                                     // down shows (its picture x colour x intensity)
+    float gain = 1.0f;               // rostrum:gain (legacy ramp lights only)
     float wrap = 0.0f;               // rostrum:wrap: light wraps past the terminator (0..1)
-    bool shadow = true;              // rostrum:shadow
+    bool shadow = true;              // rostrum:shadow, else UsdLux shadow:enable
     GfVec3f hemiUp{0, 1, 0};         // dome: "how lit" = facing this direction (bounce: point it down)
-    RostrumRamp ramp;                // rostrum:ramp:* ; empty = plain lambert to the light colour
+    RostrumRamp ramp;                // rostrum:ramp:* ; empty = physical light (the usual case)
     bool enabled = true;             // rostrum:enable
 };
 

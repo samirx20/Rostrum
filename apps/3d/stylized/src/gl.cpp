@@ -1,4 +1,4 @@
-// P-3D-3: OpenGL helpers (see gl.h).
+// OpenGL helpers (see gl.h).
 #include "gl.h"
 
 #include <pxr/imaging/hio/image.h>
@@ -126,7 +126,7 @@ void RostrumTarget::Resize(int width, int height, std::vector<GLenum> const &for
         glGenTextures(1, &t);
         glBindTexture(GL_TEXTURE_2D, t);
         glTexStorage2D(GL_TEXTURE_2D, 1, formats[i], w, h);
-        bool integer = formats[i] == GL_R32I;
+        bool integer = formats[i] == GL_R32I || formats[i] == GL_RG32I;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, integer ? GL_NEAREST : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, integer ? GL_NEAREST : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

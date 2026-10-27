@@ -61,3 +61,33 @@ def test_the_screen_shows_the_exports_pictures_after_a_stroke_is_added():
     shown = on_screen(drawn(after))
     assert shown == scene._pictures(drawn(after), 10, {"until": 1.0})
     assert shown != on_screen(drawn(before))     # the added stroke makes new pictures at every in-between time
+
+
+def test_a_picture_not_made_yet_never_stands_in_with_more_than_is_drawn(tmp_path, monkeypatch):
+    """While the screen's in-between pictures are made, each stands in with one drawn less far (or none of it), never
+    the whole drawing: the canvas showed the finished painting at 31 % while the export showed only the ink (2D final
+    critic). Once made, the screen's entries are the export's."""
+    monkeypatch.setenv("ROSTRUM_CACHE_DIR", str(tmp_path))
+    from rostrum_core import cache
+    monkeypatch.setattr(cache, "CACHE", cache.Cache())
+    monkeypatch.setattr(write_on, "CACHE", cache.CACHE)
+    f = frame()
+    f["paints"][0]["strokes"][0]["color"] = "#123456"          # a drawing of its own (no picture made by another test)
+    d = {"id": "d", "type": "drawing", "w": W, "h": H, "frames": [f],
+         "keys": [{"prop": "drawnSoFar", "t": 0.0, "v": 0.0}, {"prop": "drawnSoFar", "t": 0.4, "v": 1.0}]}
+    later = []
+    scene._pictures(d, 10, {"until": 1.0, "later": later})
+    for job in [j for j in later if not getattr(j, "ahead", False)]:
+        job()
+    whole = scene._pictures(d, 10, {"until": 1.0, "later": []})[-1]["src"]
+    later = []
+    shown = scene._pictures(d, 10, {"until": 1.0, "later": later})
+    assert later and all(e["src"] != whole for e in shown[:-1])      # nothing made yet: none of it, not the whole
+    min(later, key=lambda j: abs(j.at - 0.1))()                       # the picture at 0.1 s is made
+    later = []
+    shown = scene._pictures(d, 10, {"until": 1.0, "later": later})
+    at = {e["at"]: e["src"] for e in shown}
+    assert at[2] == at[1] != whole                                    # 0.2 s stands in with 0.1 s's (drawn less far)
+    for job in later:
+        job()
+    assert scene._pictures(d, 10, {"until": 1.0, "later": []}) == scene._pictures(d, 10, {"until": 1.0})

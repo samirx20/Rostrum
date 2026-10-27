@@ -15,7 +15,7 @@ Item {
     id: s
     property var box: ({})
     property real fit: 1
-    readonly property color ring: "#f59e0b"           // the one orange for shape settings (stand-in until the kit's Theme has it)
+    readonly property color ring: Theme.hold          // the kit's one orange
     // re-asked on every box, zoom or picture change (selBox: each previewed step of a drag is a new picture)
     readonly property var info: { backend.selBox; return backend.shapeHandles(box, fit) }
     readonly property var list: info.handles || []

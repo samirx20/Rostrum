@@ -4,7 +4,11 @@ One folder, laid out by `apps/3d/libs/lay_out.py`:  ~/.rostrum/libs/3d/<VERSION>
     runtime/bin           the DLLs the engine loads
     runtime/usd/lib       usd_ms.dll (its plug-ins are in usd/lib/usd, found next to it)
     runtime/hydra/cycles  Cycles' Hydra plug-in  (hydra/ is the plug-in folder, lib/ holds the GPU kernels)
-    runtime/hydra/rostrum our stylized plug-in
+
+Our stylized plug-in (hdRostrum, the Stylized look) is not in that folder: it is built from this checkout by
+apps/3d/stylized/build.bat into apps/3d/stylized/.build/install (hdRostrum.dll, plugInfo.json, hdRostrum/resources),
+or ROSTRUM3D_STYLIZED names another such folder. Without it the engine runs without the Stylized look (its `info`
+leaves "stylized" out of `renderers`), and asking for it fails with StylizedMissing, which names build.bat.
 """
 from __future__ import annotations
 
@@ -16,6 +20,10 @@ VERSION = "5.2.2-cycles-a456b76-r3"                       # same name as in apps
 
 
 class LibsMissing(RuntimeError):
+    pass
+
+
+class StylizedMissing(LibsMissing):
     pass
 
 
@@ -36,15 +44,36 @@ def find_exe() -> Path:
     return REPO / "apps" / "3d" / "core" / ".build" / "install" / "rostrum3d-core.exe"
 
 
+def stylized_dir() -> Path:
+    """ROSTRUM3D_STYLIZED, else this checkout's build of the stylized plug-in (apps/3d/stylized/build.bat)."""
+    if os.environ.get("ROSTRUM3D_STYLIZED"):
+        return Path(os.environ["ROSTRUM3D_STYLIZED"])
+    return REPO / "apps" / "3d" / "stylized" / ".build" / "install"
+
+
+def stylized_found() -> bool:
+    return (stylized_dir() / "plugInfo.json").is_file()
+
+
+def need_stylized(where: str = "Stylized look"):
+    """Loud when the stylized plug-in isn't built: what to run."""
+    if not stylized_found():
+        raise StylizedMissing(f"{where}: the stylized renderer isn't built: {stylized_dir() / 'plugInfo.json'} not found. "
+                              "Run: apps\\3d\\stylized\\build.bat (or set ROSTRUM3D_STYLIZED to a folder it made)")
+
+
 def runtime_env(base: dict | None = None) -> dict:
-    """The child's environment: DLL folders on PATH, where Hydra finds the Cycles and stylized plug-ins, the GPU choice."""
+    """The child's environment: DLL folders on PATH, where Hydra finds the Cycles and stylized plug-ins (the stylized one
+    only when built: stylized_dir), the GPU choice."""
     rt = libs_root() / "runtime"
     dirs = [rt / "bin", rt / "usd" / "lib"]
-    plugins = [rt / "hydra" / "cycles" / "hydra", rt / "hydra" / "rostrum"]
+    plugins = [rt / "hydra" / "cycles" / "hydra"]
     for d in (*dirs, *plugins):
         if not d.is_dir():
             raise LibsMissing(f"3D libraries missing: {d} not found. Run: python -I apps\\3d\\libs\\lay_out.py "
                               "(or set ROSTRUM3D_LIBS to a folder it made)")
+    if stylized_found():
+        plugins.append(stylized_dir())
     env = dict(os.environ if base is None else base)
     env["PATH"] = os.pathsep.join([str(d) for d in dirs] + [env.get("PATH", "")])
     ours = [str(p) for p in plugins]                  # ours first, then whatever the person already set (no duplicates)

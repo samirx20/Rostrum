@@ -23,6 +23,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_cache_folder
 
+from ..render_fields import QUALITIES, STYLIZED
 from . import draw, estimate, layers
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
@@ -30,7 +31,7 @@ tools = Tools()
 FIRST = 1001                                   # the first frame of every picture hand-off (shared/HANDOFFS.md § 6)
 QUALITY_ARG = {"enum": list(QUALITY), "default": "final", "description": "final = Cycles (path traced), fast = Storm (a draft)."}
 SETTINGS = {
-    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized."},
+    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (materials' Lines, Halftone and Light to colour; drawn at twice the size and smoothed down; no passes)."},
     "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "Picture width in px. Default: the shot's render size (renderSize); the height follows."},
     "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Cycles samples per pixel. Default: the shot's render quality (draft 32, good 128, final 512)."},
     "denoise": {"type": "boolean", "description": "Cycles noise clean-up. Default: the shot's render settings (on)."},
@@ -54,8 +55,14 @@ class DocView:
 
 
 def _cycles(args: dict, renderer: str, s: dict) -> dict:
-    """Samples and noise clean-up: the call's, else the shot's render settings (render_fields.settings)."""
-    return {"samples": args.get("samples", s["samples"]), "denoise": args.get("denoise", s["denoise"])} if renderer == "cycles" else {}
+    """The renderer's own request settings. Cycles: samples and noise clean-up, the call's, else the shot's render
+    settings (render_fields.settings; a shot set to Stylized: the Final preset's). Stylized: its supersampling."""
+    if renderer == "stylized":
+        return {"stylized": dict(STYLIZED)}
+    if renderer != "cycles":
+        return {}
+    s = s if s["renderer"] == "cycles" else QUALITIES["final"]
+    return {"samples": args.get("samples", s["samples"]), "denoise": args.get("denoise", s["denoise"])}
 
 
 def _shot(doc, info: dict) -> dict:

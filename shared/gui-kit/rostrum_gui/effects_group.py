@@ -32,7 +32,7 @@ class EffectGroup(QObject):
 
     @Property(bool, notify=changed)
     def open(self):
-        return self._id in self._part.opened
+        return self._id not in self._part.folded
 
     @Property(QObject, constant=True)
     def rows(self):
@@ -49,7 +49,7 @@ class EffectGroup(QObject):
     # ---- what its rows and header call ------------------------------------------------------------------------
     @Slot()
     def toggle(self):
-        self._part.opened ^= {self._id}
+        self._part.folded ^= {self._id}
         self.changed.emit()
 
     @Slot()
@@ -65,6 +65,26 @@ class EffectGroup(QObject):
     def setValue(self, param, value):
         b = self._part.bridge
         return b._guard(lambda: b._apply([b.edit_call(self._id, param, value)], edit_label(b.doc, self._id, param, value)))
+
+    @Slot(str)
+    def toggleAnimate(self, param):
+        """The key mark of an effect's setting (Blur's amount …): a key at the playhead, or the key there goes, as on a
+        layer's own rows (the app's animate_calls on the effect item). Effects had no mark: a blur-in or a rack focus
+        couldn't be keyed by hand (critic 2d-final row 5)."""
+        self._key(param, False)
+
+    @Slot(str)
+    def stopAnimating(self, param):
+        self._key(param, True)
+
+    def _key(self, param, stop):
+        b = self._part.bridge
+        def go():
+            if stop and b.anim_state(b.doc.item(self._id), param) not in ("keyed", "onkey"):
+                return
+            calls, label = b.animate_calls(self._id, param, stop=stop)
+            b._apply(calls, label)
+        b._guard(go)
 
     @Slot(str)
     def beginScrub(self, param):
@@ -94,7 +114,8 @@ class EffectGroup(QObject):
         op = b.doc.kind.registry.field_op(item["type"])
         if not self._static:
             self._static = rows.layout(op, item["type"])
-        self.model.update(rows.evaluate(self._static, b.shown_values(item), b.doc.kind.facts(item, b.doc), self._more))
+        self.model.update(rows.evaluate(self._static, b.shown_values(item), b.doc.kind.facts(item, b.doc), self._more,
+                                        lambda name: b.anim_state(item, name)))     # each amount's key mark, as on a layer's rows
         told = (self.label, self.open, self._more)      # the rows changed in place above; the header only on news
         if told != self._told:
             self._told = told

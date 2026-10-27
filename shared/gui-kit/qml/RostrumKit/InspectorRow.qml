@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import "."
 import "ValueKinds.js" as VK
 
@@ -233,7 +234,6 @@ Item {
                        text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
                        HoverHandler { id: labelHover }
-                       TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too (F12, F13)
                        HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
                                   hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
                 Rectangle {  // an optional small tag after the label (model.tag, e.g. "Final"; its hover words model.tagHelp)
@@ -297,6 +297,18 @@ Item {
                            font.family: monoFont; wrapMode: Text.WrapAnywhere }
                 }
                 HoverHandler { id: rowHover }
+                TapHandler {  // a left click on the row's free room (beside the switch, between the label and a slider) is
+                              // its main control's: a switch flips, a box takes the caret. The widgets take their own clicks
+                              // first; the room around them was dead (hand A row 1: right of Depth of field; B: a slider's gap)
+                    acceptedButtons: Qt.LeftButton
+                    enabled: !row.driven && !!row.model.valid
+                    onTapped: (ev) => {
+                        const q = widget.mapFromItem(cell, ev.position.x, ev.position.y)
+                        if (q.x >= 0 && q.y >= 0 && q.x < widget.width && q.y < widget.height) return   // the widget's own area: its own click
+                        if (row.model.type === "toggle") return row.set(!row.model.value)     // its words too (F12, F13)
+                        row.focusWidget()
+                    }
+                }
                 TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
                     acceptedButtons: Qt.RightButton
                     onTapped: (pt) => { if (!row.canReset) return; resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
@@ -331,6 +343,7 @@ Item {
                 active: false
                 function open() { active = true; item.open() }
                 sourceComponent: FileDialog {
+                    popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
                     title: row.model.more ? String(row.model.more).replace("…", "") : ""
                     nameFilters: (row.model.filters || []).concat(["All files (*)"])
                     onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
@@ -374,7 +387,10 @@ Item {
                          onEdited: (v) => row.set(v)
                          onScrubStarted: row.bridge.beginScrub(row.model.id)
                          onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
-                         onScrubEnded: row.bridge.endScrub() }
+                         onScrubEnded: row.bridge.endScrub()
+                         forwardsTyping: true                   // a number typed after a click on the slider goes to the box
+                         onTyped: (t) => { const f = amountField.item; if (!f) return
+                                           f.input.forceActiveFocus(); f.input.text = t; f.input.cursorPosition = t.length; f.input.typed = true } }
                 Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its widest words need ("Mixed", either end of its range)
                          width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.widestNeeds : 0)
                          sourceComponent: number }
@@ -384,6 +400,8 @@ Item {
                 from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
                 to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
                 step: row.model.step ? row.model.step : 1
+                commitSame: row.model.anim === "keyed"       // animated, no key here: the same value typed keys a hold (route.edit_call)
+                typeStep: row.model.integer ? step : 0       // a typed value is kept as typed (1420.4057), a whole-number setting's rounded
                 unit: row.model.mixed ? "" : row.model.unit || ""
                 atRest: row.mixed
                 words: row.model.words || []

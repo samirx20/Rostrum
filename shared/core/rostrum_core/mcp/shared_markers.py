@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 
 from .. import markers as M
+from .. import marker_times, song_markers
 from ..errors import RostrumError, codes
 from .reply import Reply
 from .tools import Tools
@@ -42,13 +43,25 @@ def register(tools: Tools):
     @tools.tool("inspect_markers", {"properties": {
         "name": {"type": "string", "description": "One marker by name or id; with an offset (\"drop+0.5\") gives its time."}}})
     def inspect_markers(ctx, args):
-        """The project's named markers (every app reads the same list): id, name, time in seconds, who made it."""
-        every = M.listing(_folder(ctx))
+        """The project's named markers (every app reads the same list): id, name, time in seconds, who made it. Then
+        the songs' own markers (`song_markers`: made in RostrumSound, e.g. marker() in its script): read-only here,
+        found by name like any marker (look_frame, "#name" times); change them in RostrumSound."""
+        folder = _folder(ctx)
+        every = M.listing(folder)
+        songs = song_markers.times(folder) if args.get("songs", True) else {}
         if args.get("name"):
+            ref = marker_times.split(f'#{args["name"]}')
+            if ref and M.lookup({m["name"]: m["at"] for m in every}, ref[0]) is None and M.lookup(songs, ref[0]) is not None:
+                at = round(M.lookup(songs, ref[0]) + ref[1], 6)
+                return Reply(f'"{args["name"]}" (a song’s own marker) is at {at:g} s.', {"at": at})
             at = M.at(None, args["name"], every)
             return Reply(f'"{args["name"]}" is at {at:g} s.', {"at": at})
         said = "; ".join(_line(m) for m in every) or "none yet (add one with edit_markers)"
-        return Reply(f"{len(every)} marker{'s' * (len(every) != 1)}: {said}.", {"markers": every})
+        extra = {n: t for n, t in songs.items() if M.lookup({m["name"]: m["at"] for m in every}, n) is None}
+        line = (f" Songs' own markers (read-only here; change them in RostrumSound): "
+                + "; ".join(f'"{n}" at {t:g} s' for n, t in extra.items()) + ".") if extra else ""
+        return Reply(f"{len(every)} marker{'s' * (len(every) != 1)}: {said}.{line}",
+                     {"markers": every, **({"song_markers": [{"name": n, "at": t} for n, t in extra.items()]} if extra else {})})
 
     @tools.tool("edit_markers", {"required": ["ops"], "properties": {
         "ops": {"type": "array", "minItems": 1, "items": _CALL}, "label": {"type": "string"}}})

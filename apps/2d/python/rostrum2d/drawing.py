@@ -81,16 +81,24 @@ def within(run: list[tuple[int, dict]], first: int, last: int) -> list[tuple[int
 WORKERS = 4                 # pictures made side by side (the stamper runs outside Python's lock); memory: ~0.3 GB each
 
 
-def make_all(jobs: list) -> None:
-    """Run picture-making jobs (`later`'s calls) side by side; the first failure is raised, loudly."""
-    if len(jobs) < 2:
-        for job in jobs:
-            job()
-        return
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(min(WORKERS, len(jobs)), thread_name_prefix="paint-picture") as pool:
-        for done in [pool.submit(job) for job in jobs]:
+class Stopped(Exception):
+    """The picture making was stopped on request (an export's Cancel during its preparation)."""
+
+
+def make_all(jobs: list, progress=None, stopped=None) -> None:
+    """Run picture-making jobs (`later`'s calls) side by side; the first failure is raised, loudly. `progress(done,
+    total)` after each; `stopped()` true: the jobs not begun are dropped and Stopped is raised."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    with ThreadPoolExecutor(max(1, min(WORKERS, len(jobs))), thread_name_prefix="paint-picture") as pool:
+        running = [pool.submit(job) for job in jobs]
+        for n, done in enumerate(as_completed(running), 1):
             done.result()
+            if progress is not None:
+                progress(n, len(jobs))
+            if stopped is not None and stopped():
+                for f in running:
+                    f.cancel()
+                raise Stopped("stopped while the painted pictures were made")
 
 
 def queue(later: list, key, job) -> None:

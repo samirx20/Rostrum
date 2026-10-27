@@ -2,7 +2,9 @@
 position keys, one dot per frame (their spacing shows speed), a square per key, and a key's spatial handles; a jump (a
 key with the `hold` ease, then the next key: for the frame, a cut) is a dashed line with no dots. For the frame, also a
 faint outline of it (turned and zoomed) at each of its keys. The View menu's "Show the frame's path" (screen state, on
-at first, never an undo step) keeps the frame's path and key outlines showing, faint, while something else is picked.
+at first, never an undo step) keeps the frame's path showing, faint, while something else is picked; its outlines at
+the keys only while the frame is picked (left faint, a push's 1.9× outline at its key read as the frame still zoomed
+there: critic 2d-final row 11).
 A layer riding a path shows none (the ride is shown). Everything is in world px, drawn through the Stage's one mapping.
 The maths is motion_geo.py; the document is read once per change and selection, a playhead move only maps again, a pan
 or zoom of the view costs nothing here.
@@ -137,7 +139,7 @@ class MotionPath(QObject):
         if self._view is not None and self._view[0] is tracks and self._view[1] == t:
             return self._view[2]
         picked = set(self.b._keys.ids)
-        out = [self._row(oid, faint, tr, frames, t, picked) for oid, faint, tr, frames in tracks[1]]
+        out = [self._row(oid, faint, tr, [] if faint else frames, t, picked) for oid, faint, tr, frames in tracks[1]]
         self._view = (tracks, t, out)
         return out
 

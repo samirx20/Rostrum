@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import "."
 
 // The paint picker's Picture part: the picture (its file name; a click chooses another). How it sits in the layer's box
@@ -41,6 +42,7 @@ Column {
         }
     }
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: dialog
         title: "Choose a picture"
         nameFilters: ["Pictures (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"]

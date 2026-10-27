@@ -1,4 +1,4 @@
-// P-3D-3: the Rostrum Stylized render delegate: which prims it takes, and the AOVs it writes.
+// The Rostrum Stylized render delegate: which prims it takes, and the AOVs it writes.
 #include "delegate.h"
 #include "prims.h"
 #include "renderBuffer.h"
@@ -88,8 +88,10 @@ HdAovDescriptor HdRostrumDelegate::GetDefaultAovDescriptor(TfToken const &name) 
 
 TfTokenVector HdRostrumDelegate::GetMaterialRenderContexts() const
 {
-    // Cycles' own node graphs first (the H1/H2 stages author those), then UsdPreviewSurface
-    return {TfToken("cycles"), TfToken("")};
+    // the core's `rostrum_stylized` node (outputs:rostrum:surface), else the universal surface
+    // (UsdPreviewSurface). Hydra falls back to the universal one anyway; it is listed so the
+    // fallback doesn't depend on which path (scene index or legacy) asks.
+    return {TfToken("rostrum"), TfToken("")};
 }
 
 std::map<std::string, float> HdRostrumDelegate::LookSettings() const

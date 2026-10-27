@@ -132,7 +132,11 @@ def _seen_at(comp: dict, layer: dict, times: list[float]) -> list[tuple[float, f
     return out
 
 
-def path_of(comp: dict, layer: dict, rate: float) -> dict:
+SAMPLES_SHOWN = 60      # samples in the reply when no rate is asked (length and peak are still measured every frame)
+
+
+def path_of(comp: dict, layer: dict, rate: float, shown: int | None = None) -> dict:
+    """`shown`: at most that many samples in the reply (evenly picked, first and last kept); None: every one."""
     duration = float(comp.get("duration", 5.0))
     times = [min(i / rate, duration) for i in range(int(duration * rate) + 1)]
     seen = _seen_at(comp, layer, times)
@@ -144,13 +148,16 @@ def path_of(comp: dict, layer: dict, rate: float) -> dict:
                               if side in xs.get(t, {}) or side in ys.get(t, {}) else None)
     keys = [{"t": t, "x": xs[t]["v"] if t in xs else None, "y": ys[t]["v"] if t in ys else None,
              "out": handle("out", t), "in": handle("in", t)} for t in sorted({*xs, *ys}, key=order)]
+    if shown and len(samples) > shown:
+        every = -(-(len(samples) - 1) // shown)
+        samples = samples[::every] + ([samples[-1]] if (len(samples) - 1) % every else [])
     return {"layer": layer["id"], "rate": rate, "samples": samples, "keys": keys, "length_px": r(sum(steps), 1),
             "peak_speed_px_s": r(max(steps, default=0.0) * rate, 1)}
 
 
 @tools.tool("look_path", {"required": ["layer"], "properties": {**ITEM_COMP,
     "layer": {"type": "string", "description": "A layer id, or the frame's id (\"frame\")."},
-    "rate": {"type": "number", "exclusiveMinimum": 0, "maximum": 240, "description": "Samples a second. Default: the composition's frame rate."}}})
+    "rate": {"type": "number", "exclusiveMinimum": 0, "maximum": 240, "description": "Samples a second, every one listed. Default: measured every frame, about 60 samples listed (evenly spread)."}}})
 def look_path(ctx, args):
     """The path a layer or the frame travels, from the document's keys (no rendering): per sample t, its own x / y
     and where that point is seen on screen (through its groups and the frame; for the frame, where the output's centre
@@ -161,6 +168,7 @@ def look_path(ctx, args):
     layers = {x["id"]: x for x in _all_layers(comp.get("layers", []))}
     if args["layer"] not in layers:
         raise RostrumError.not_found("look_path", "layer", args["layer"], list(layers), "the layers and the frame of this composition")
-    a = path_of(comp, layers[args["layer"]], float(args.get("rate") or comp.get("fps", 30)))
+    a = path_of(comp, layers[args["layer"]], float(args.get("rate") or comp.get("fps", 30)),
+                None if args.get("rate") else SAMPLES_SHOWN)
     return Reply(f'{a["layer"]}: path {a["length_px"]} px on screen, peak {a["peak_speed_px_s"]} px/s, '
                  f'{len(a["keys"])} position key{"s" * (len(a["keys"]) != 1)}.', a)
