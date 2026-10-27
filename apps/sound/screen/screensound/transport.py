@@ -198,11 +198,10 @@ class Transport(QObject):
         t = self.player.position()
         if self.player.playing and self.player.alive:
             if not self.player.rolled:          # before the sound starts: the playhead stays at the press (the button
-                t = self._ran = self._press[0]  # says playing). Running ahead on a clock meant a step back when the
-                                                # engine started 0.3-0.6 s late on a big song (production round)
+                t = self._ran = self._press[0]  # says playing). The engine says "rolling" when the sound reaches the
+                                                # speaker (its output delay: ~10 ms on speakers, ~250 ms on Bluetooth)
             elif self._ran is not None and t < self._ran and self._ran - t < CATCH_UP_S:
-                t = self._ran                   # the engine's reports a little behind what was shown (its first
-                                                # "rolling" is ahead of the speaker by the output delay): the playhead
+                t = self._ran                   # the engine's reports a little behind what was shown: the playhead
                                                 # waits in place, never a small step back
             else:
                 self._ran = t

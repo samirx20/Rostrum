@@ -1,8 +1,13 @@
 //! The transport's protocol (play.rs): one JSON line on stdin → a command for the audio thread (notes go
-//! straight to the instrument), and the set-up the command line asks for.
+//! straight to the instrument), and the set-up the command line asks for. A `{"load"}` is read on a thread of its
+//! own (`loader`): reading a 3-minute render took 0.35-0.5 s, and every command behind it (a Play right after an
+//! edit's render landed) waited for it. Now play goes on with the render it has and the new one is swapped in at
+//! the playhead when it is read; only a Play with recording armed waits for it (play.rs), so a take is played
+//! against the song as it is now.
 
 use std::io::BufRead;
-use std::sync::mpsc::Sender;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 
 use crate::live::instrument::Event;
@@ -13,9 +18,10 @@ use crate::live::wasapi;
 
 pub enum Msg {
     Cmd(Cmd),
-    /// A new render to play, and its strips' meters (levels.rs) or why there are none.
-    /// A new render to play on: its frames, its meters and its length in seconds (the `end` line says this one).
-    Load(Cmd, Result<crate::mix::render::levels::Levels, String>, f64),
+    /// The `{"load"}` numbered `.0` (and every one before it) is read: the new render to play on, its frames, its
+    /// meters (levels.rs) or why there are none, and its length in seconds (the `end` line says this one); None when
+    /// it could not be read (the loader said why).
+    Load(u64, Option<(Cmd, Result<crate::mix::render::levels::Levels, String>, f64)>),
     Packet(record::Packet),
     Quit,
 }
@@ -28,7 +34,7 @@ pub fn arg<T: std::str::FromStr>(args: &[String], name: &str, k: usize) -> Resul
 }
 
 /// One JSON line → what it asks for (notes go straight to the audio thread).
-pub fn parse(v: &serde_json::Value, rate: f64, notes: &Sender<Event>, monitoring: &Monitoring) -> Result<Option<Msg>, String> {
+pub fn parse(v: &serde_json::Value, notes: &Sender<Event>) -> Result<Option<Msg>, String> {
     let pair = |x: &serde_json::Value| x.as_array().filter(|a| a.len() == 2).and_then(|a| Some((a[0].as_f64()?, a[1].as_f64()?)));
     let key = |k: &serde_json::Value| k.as_u64().filter(|k| *k < 128).map(|k| k as u8);
     Ok(Some(Msg::Cmd(if v["quit"].as_bool() == Some(true) {
@@ -65,10 +71,6 @@ pub fn parse(v: &serde_json::Value, rate: f64, notes: &Sender<Event>, monitoring
             h => h["gain"].as_f64().ok_or(format!("hear takes true, false or {{\"gain\": g}}; got {h}"))?.clamp(0.0, 4.0),
         };
         Cmd::Hear(gain as f32, 0.0)
-    } else if let Some(f) = v["load"].as_str() {
-        let (mix, from, levels) = crate::live::play::mix::read(f)?;
-        let seconds = mix.seconds(from);
-        return Ok(Some(Msg::Load(Cmd::Load(Arc::new(monitoring.again(&mix, from, rate as u32)?)), levels, seconds)));
     } else {
         return Err(format!("unknown command {v}"));
     })))
@@ -104,21 +106,55 @@ pub fn setup(args: &[String], ctx: &Sender<Cmd>, calibrate: bool) -> Result<Opti
     Ok(armed)
 }
 
-/// Commands from stdin, on a thread of their own (or the --measure test pattern on the instrument).
-/// The end of input quits, unless playback is to run to its end.
-pub fn read_input(mtx: Sender<Msg>, ntx: Sender<Event>, rate: f64, monitoring: Arc<Monitoring>, measure: Option<usize>, until_end: bool) -> std::thread::JoinHandle<()> {
+/// A render read for playing on: its frames as the stream plays them, its meters and its seconds.
+fn load(f: &str, rate: f64, monitoring: &Monitoring) -> Result<(Cmd, Result<crate::mix::render::levels::Levels, String>, f64), String> {
+    let (mix, from, levels) = crate::live::play::mix::read(f)?;
+    let seconds = mix.seconds(from);
+    Ok((Cmd::Load(Arc::new(monitoring.again(mix, from, rate as u32)?)), levels, seconds))
+}
+
+/// The loader: reads the `{"load"}`s it is given (numbered), only the newest when several wait, and hands each to the
+/// main loop. `asked` is the newest number given to it (play.rs: a load still on its way).
+fn loader(mtx: Sender<Msg>, rate: f64, monitoring: Arc<Monitoring>) -> Sender<(u64, String)> {
+    let (tx, rx) = channel::<(u64, String)>();
+    std::thread::spawn(move || {
+        while let Ok(mut newest) = rx.recv() {
+            while let Ok(n) = rx.try_recv() {
+                newest = n;
+            }
+            let read = load(&newest.1, rate, &monitoring).map_err(|e| println!("{}", serde_json::json!({ "error": e }))).ok();
+            if mtx.send(Msg::Load(newest.0, read)).is_err() {
+                return;
+            }
+        }
+    });
+    tx
+}
+
+/// Commands from stdin, on a thread of their own (or the --measure test pattern on the instrument); loads on the
+/// loader's, `asked` counting them. The end of input quits, unless playback is to run to its end.
+pub fn read_input(mtx: Sender<Msg>, ntx: Sender<Event>, rate: f64, monitoring: Arc<Monitoring>, measure: Option<usize>, until_end: bool, asked: Arc<AtomicU64>) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         if let Some(n) = measure {
             crate::live::perform::test_pattern(n, ntx);
             let _ = mtx.send(Msg::Quit);
             return;
         }
+        let loads = loader(mtx.clone(), rate, monitoring);
         for line in std::io::stdin().lock().lines() {
             let Ok(line) = line else { break };
             if line.trim().is_empty() {
                 continue;
             }
-            match serde_json::from_str::<serde_json::Value>(&line).map_err(|_| format!("not JSON: {line}")).and_then(|v| parse(&v, rate, &ntx, &monitoring)) {
+            let v = serde_json::from_str::<serde_json::Value>(&line).map_err(|_| format!("not JSON: {line}"));
+            if let Some(f) = v.as_ref().ok().and_then(|v| v["load"].as_str()) {
+                // Counted once it is on its way, before any command after it reaches the main loop.
+                let n = asked.load(Ordering::SeqCst) + 1;
+                let _ = loads.send((n, f.to_string()));
+                asked.store(n, Ordering::SeqCst);
+                continue;
+            }
+            match v.and_then(|v| parse(&v, &ntx)) {
                 Ok(Some(m)) => {
                     let quit = matches!(m, Msg::Quit);
                     let _ = mtx.send(m);

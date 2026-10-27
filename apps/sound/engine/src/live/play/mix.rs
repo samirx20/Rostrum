@@ -17,7 +17,9 @@ pub enum Mix {
 }
 
 /// The mix in a file, its rate, and its strips' live meters (levels.rs: the render's own, or why there are none).
-/// A stereo WAV is read as it always was (sfz.rs), so what plays is sample for sample what played before surround monitoring.
+/// The engine's own render (32-bit float) is read once, straight into frames (`float_wav`): a load on a 3-minute song
+/// took 350-500 ms when it was read twice and copied three times. Any other WAV is read as it always was (sfz.rs), so what
+/// plays is sample for sample what played before surround monitoring.
 pub fn read(path: &str) -> Result<(Mix, f64, Result<Levels, String>), String> {
     if path.ends_with(".json") {
         let s = crate::mix::schedule::Schedule::parse(&std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?)?;
@@ -28,14 +30,54 @@ pub fn read(path: &str) -> Result<(Mix, f64, Result<Levels, String>), String> {
         return Ok((mix, s.sample_rate as f64, levels));
     }
     let levels = Levels::beside(std::path::Path::new(path));
-    if let Ok((chs, sr)) = crate::mix::wavio::read(path) {
-        if chs.len() > 2 {
-            let layout = Layout::of_channels(chs.len()).map_err(|e| format!("{path}: {e}"))?;
-            return Ok((Mix::Bed(chs, layout), sr, levels));
-        }
+    let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
+    if let Some((data, nch, sr)) = float_wav(&bytes) {
+        drop(bytes);
+        let mix = match nch {
+            1 => Mix::Stereo(Frames { channels: 2, mask: 0x3, data: data.iter().flat_map(|&v| [v, v]).collect() }),
+            2 => Mix::Stereo(Frames { channels: 2, mask: 0x3, data }),
+            _ => {
+                let layout = Layout::of_channels(nch).map_err(|e| format!("{path}: {e}"))?;
+                Mix::Bed((0..nch).map(|c| data.iter().skip(c).step_by(nch).copied().collect()).collect(), layout)
+            }
+        };
+        return Ok((mix, sr, levels));
     }
+    drop(bytes);
     let s = crate::instruments::sfz::read_wav(std::path::Path::new(path))?;
     Ok((Mix::Stereo(Frames::stereo(&s.frames)), s.rate, levels))
+}
+
+/// A 32-bit float WAV (what the engine writes): its samples interleaved, its channels and rate; None for any other file.
+fn float_wav(b: &[u8]) -> Option<(Vec<f32>, usize, f64)> {
+    let u16_at = |i: usize| Some(u16::from_le_bytes(b.get(i..i + 2)?.try_into().ok()?));
+    let u32_at = |i: usize| Some(u32::from_le_bytes(b.get(i..i + 4)?.try_into().ok()?));
+    if b.len() < 12 || &b[0..4] != b"RIFF" || &b[8..12] != b"WAVE" {
+        return None;
+    }
+    let (mut o, mut fmt, mut data) = (12usize, None, None);
+    while o + 8 <= b.len() {
+        let len = u32_at(o + 4)? as usize;
+        match &b[o..o + 4] {
+            b"fmt " => fmt = Some(o + 8),
+            b"data" => data = Some((o + 8, len.min(b.len() - o - 8))),
+            _ => {}
+        }
+        o = o.checked_add(8 + len + len % 2)?;
+    }
+    let (f, (d, len)) = (fmt?, data?);
+    // WAVE_FORMAT_EXTENSIBLE: its subformat GUID starts with the plain format code (3: float).
+    let tag = match u16_at(f)? {
+        0xFFFE => u16_at(f + 24)?,
+        t => t,
+    };
+    let (nch, sr, bits) = (u16_at(f + 2)? as usize, u32_at(f + 4)?, u16_at(f + 14)?);
+    if tag != 3 || bits != 32 || nch == 0 {
+        return None;
+    }
+    let frames = len / (4 * nch);
+    let data = b[d..d + frames * nch * 4].chunks_exact(4).map(|s| f32::from_le_bytes([s[0], s[1], s[2], s[3]])).collect();
+    Some((data, nch, sr as f64))
 }
 
 /// How a session monitors: asked (`--monitor`), the mastering spec its folds are held to (`--master`),
@@ -58,8 +100,8 @@ impl Monitoring {
     }
 
     /// The mix for this device, at the device's rate; remembers the choice.
-    pub fn first(&self, mix: &Mix, from: f64, dev: &Device) -> Result<Frames, String> {
-        let layout = match mix {
+    pub fn first(&self, mix: Mix, from: f64, dev: &Device) -> Result<Frames, String> {
+        let layout = match &mix {
             Mix::Stereo(_) => Layout::Stereo,
             Mix::Bed(_, l) => *l,
         };
@@ -70,7 +112,7 @@ impl Monitoring {
     }
 
     /// A new render of the mix (a reload), monitored as the first was.
-    pub fn again(&self, mix: &Mix, from: f64, rate: u32) -> Result<Frames, String> {
+    pub fn again(&self, mix: Mix, from: f64, rate: u32) -> Result<Frames, String> {
         let (mode, _, channels) = self.chosen.lock().unwrap().clone().ok_or("the stream is not open yet")?;
         let f = self.played(mix, mode, from, rate)?;
         if f.channels != channels {
@@ -79,12 +121,13 @@ impl Monitoring {
         Ok(f)
     }
 
-    fn played(&self, mix: &Mix, mode: Monitor, from: f64, rate: u32) -> Result<Frames, String> {
+    /// The mix as the stream plays it (taken, never copied: a 3-minute song is ~70 MB).
+    fn played(&self, mix: Mix, mode: Monitor, from: f64, rate: u32) -> Result<Frames, String> {
         let f = match mix {
-            Mix::Stereo(f) => f.clone(),
-            Mix::Bed(chs, layout) => monitor::prepare(chs, *layout, mode, self.master.clone(), from)?,
+            Mix::Stereo(f) => f,
+            Mix::Bed(chs, layout) => monitor::prepare(&chs, layout, mode, self.master.clone(), from)?,
         };
-        Ok(frames::resample(&f, from, rate as f64))
+        Ok(if from == rate as f64 { f } else { frames::resample(&f, from, rate as f64) })
     }
 
     /// The `ready` line's account of it.
@@ -120,10 +163,10 @@ mod tests {
         // Before surround monitoring: sfz::read_wav, then the transport's stereo resample.
         let old = crate::instruments::sfz::read_wav(&file).unwrap();
         let before = Frames::stereo(&crate::live::transport::resample(&old.frames, old.rate, 48000.0));
-        let (mix, from, _) = read(&path).unwrap();
         let m = Monitoring { asked: None, master: None, chosen: Mutex::new(None) };
         for dev in [Device { rate: 48000, channels: 2, mask: 0x3, form_factor: 3, name: "headphones".into() }, Device { rate: 48000, channels: 6, mask: 0x3F, form_factor: 1, name: "5.1".into() }] {
-            assert_eq!(m.first(&mix, from, &dev).unwrap(), before, "{}", dev.name);
+            let (mix, from, _) = read(&path).unwrap();
+            assert_eq!(m.first(mix, from, &dev).unwrap(), before, "{}", dev.name);
             assert_eq!(m.chosen.lock().unwrap().as_ref().unwrap().0, Monitor::Stereo);
         }
         let _ = std::fs::remove_file(file);
@@ -132,15 +175,15 @@ mod tests {
     #[test]
     fn a_bed_is_monitored_by_the_device_and_a_reload_keeps_the_mode() {
         let chs: Vec<Vec<f32>> = (0..6).map(|c| vec![0.05 * c as f32; 2000]).collect();
-        let mix = Mix::Bed(chs.clone(), Layout::Surround51);
+        let mix = || Mix::Bed(chs.clone(), Layout::Surround51);
         let m = Monitoring { asked: None, master: None, chosen: Mutex::new(None) };
         let speakers = Device { rate: 48000, channels: 2, mask: 0x3, form_factor: 1, name: "Speakers".into() };
-        assert_eq!(m.first(&mix, 48000.0, &speakers).unwrap().channels, 2);
+        assert_eq!(m.first(mix(), 48000.0, &speakers).unwrap().channels, 2);
         assert_eq!(m.report(Some(2))["mode"], "stereo");
         let wide = Device { rate: 48000, channels: 6, mask: 0x60F, form_factor: 1, name: "AVR".into() };
-        assert_eq!(m.first(&mix, 48000.0, &wide).unwrap().channels, 6);
-        assert_eq!(m.again(&mix, 48000.0, 48000).unwrap().channels, 6);
+        assert_eq!(m.first(mix(), 48000.0, &wide).unwrap().channels, 6);
+        assert_eq!(m.again(mix(), 48000.0, 48000).unwrap().channels, 6);
         // The layout changed under a running 6-channel stream: said, not folded silently.
-        assert!(m.again(&Mix::Stereo(Frames::from_channels(&chs[..2], 0x3)), 48000.0, 48000).unwrap_err().contains("stop and play again"));
+        assert!(m.again(Mix::Stereo(Frames::from_channels(&chs[..2], 0x3)), 48000.0, 48000).unwrap_err().contains("stop and play again"));
     }
 }
