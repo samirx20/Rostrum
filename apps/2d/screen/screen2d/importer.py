@@ -186,7 +186,8 @@ class Importer(QObject):
         """Files dropped on the canvas (or pasted: Ctrl+V of files copied in Explorer / Finder), imported one after another
         as the Import panel would, each one change; a picture or clip lands centred where it was dropped (x, y in
         composition px; NaN = centred). False (and said) when none of them is a file the importer reads."""
-        files = [QUrl(u).toLocalFile() if str(u).startswith("file:") else str(u) for u in urls]
+        files = [u.toLocalFile() if isinstance(u, QUrl)         # the canvas's DropArea hands over real urls (str() of one is "PySide6.QtCore.QUrl('file:…')")
+                 else QUrl(u).toLocalFile() if str(u).startswith("file:") else str(u) for u in urls]
         known = [f for f in files if self._readable(f)]
         if not known:
             self.b._fail(f"Error: import: {Path(files[0]).name if files else 'nothing'} is not a file Rostrum2D imports "

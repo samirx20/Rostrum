@@ -14,6 +14,7 @@ import json
 from PySide6.QtCore import Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum2d import fields as F
+from rostrum2d.io.figma import link_parts
 from rostrum2d.ops_clip import copied
 from rostrum_gui import clip
 from rostrum_gui.parts import SlotMixin
@@ -56,6 +57,12 @@ class ClipboardSlots(SlotMixin):
             return False
         self.selectMany([layer["id"] for layer in self.doc.item(into).get("layers", []) if layer["id"] not in before])
         return True
+
+    def _clip_outside(self) -> bool:
+        """The clipboard holds what _paste_outside takes: files copied in Explorer / Finder, or a Figma link. (Paste is
+        offered for it too: the action's "clipboard" fact was layers only, so Ctrl+V on a link said it didn't fit.)"""
+        mime = QGuiApplication.clipboard().mimeData()
+        return mime is not None and (any(u.isLocalFile() for u in mime.urls()) or link_parts(mime.text() or "") is not None)
 
     def _paste_outside(self) -> bool:
         """From outside Rostrum, not layers: files copied in Explorer / Finder are imported (as if dropped, centred); a
