@@ -60,20 +60,25 @@ JsObject inspect_usd(const std::string& file) {
   if (!std::filesystem::exists(file)) throw Error("inspect_usd.file: no file " + file);
   const Format* format = format_for(file);
   if (!is_usd(file) && !format) throw Error("inspect_usd.file: " + file + " is not " + accepted_files());
-  TfErrorMark mark;
   UsdStageRefPtr s;
-  if (format) {
+  if (format) {  // our own conversion: its readers fail loudly themselves (convert.cpp)
+    SdfLayerRefPtr layer;
     try {
-      s = UsdStage::Open(converted_layer(file));
+      layer = converted_layer(file);
     } catch (const Error& e) {
       throw Error(std::string("inspect_usd.file: ") + e.what());
     }
-  } else {
-    s = UsdStage::Open(file);
+    s = UsdStage::Open(layer);
+    if (!s) throw Error("inspect_usd.file: USD could not open the converted " + file);
   }
+  TfErrorMark mark;
+  if (!format) s = UsdStage::Open(file);
   if (!s || !mark.IsClean()) {
     std::string why;
-    for (auto e = mark.GetBegin(); e != mark.GetEnd() && why.empty(); ++e) why = ": " + e->GetCommentary();
+    for (auto e = mark.GetBegin(); e != mark.GetEnd() && why.empty(); ++e)
+      why = ": " + (e->GetCommentary().empty() ? e->GetErrorCodeAsString() + " in " + e->GetSourceFunction()
+                                                 : e->GetCommentary());
+    if (!s) why += " (no stage)";
     throw Error("inspect_usd.file: USD could not open " + file + why);
   }
   // The earliest time: an animated file (Alembic) may have no values outside its samples.
