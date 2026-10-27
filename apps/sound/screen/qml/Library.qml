@@ -7,9 +7,9 @@ import RostrumKit
 // open on it — the microphone's track comes armed, ready to record. Add always adds: changing a track's sound is the track's own
 // Sound ▾ picker, never a question here. "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
-// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it.
+// through the engine (soundLibrary.auditionEntry: an instrument plays a short phrase in the song's key and tempo); Esc or ■ Stop ends it.
 // A search that finds nothing names the closest sounds, or the kind chip they are under ("Show Instruments").
-// A click only previews: it never changes a track's sound. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
+// A click plays a short phrase in the song's key and tempo, the same row again stops it; double-click adds. A click only previews: it never changes a track's sound. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
 Panel {
     id: p
     title: "Library"
@@ -39,6 +39,11 @@ Panel {
         noHear = e ? e.noHear : ""
         if (e && e.hearable) soundLibrary.auditionEntry(e.key)
         else if (e) soundLibrary.stopAudition()
+    }
+
+    function toggle(i) {                                 // a click on a row: it plays at once (the row lights); the same row again stops it
+        if (current === i && soundLibrary.auditioning !== "") { soundLibrary.stopAudition(); return }
+        pick(i)
     }
 
     // after an add: the preview stops; the Library stays open on the same search and list, so the next sound is one
@@ -95,8 +100,10 @@ Panel {
             width: list.width; height: list.rowH; radius: Theme.radiusCtl
             color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: p.pick(row.index) }
+            TapHandler { onTapped: p.toggle(row.index); onDoubleTapped: p.use(row.index) }
             readonly property bool heard: p.shownAt === index && soundLibrary.auditioning !== ""
+            Rectangle { visible: row.heard; width: 3; radius: 1; color: Theme.accent   // the press is answered at once: this row is the one playing
+                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom; topMargin: 6; bottomMargin: 6 } }
             Row {   // Add on every row (the row itself hears it); Loop beside it, only while it plays
                 id: hear
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
