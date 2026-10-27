@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal
 
 from . import block_patch, drum_rows, key_lock, lanes, timeline
+from .roll_hover import RollHover
 
 
 def shape(part: dict) -> dict:
@@ -13,7 +14,7 @@ def shape(part: dict) -> dict:
     return {**{k: v for k, v in part.items() if k != "blocks"}, "sound": bool(part.get("blocks"))}
 
 
-class RollView:
+class RollView(RollHover):      # (what the pointer over the roll would do: roll_hover.py)
     blocksTempoChanged = Signal()
 
     @Property("QVariantList", notify=blocksTempoChanged)
