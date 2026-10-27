@@ -9,7 +9,8 @@ or zoom of the view costs nothing here.
 
 Drags are one gesture = one undo step each (drags.py `_begin`): a key square moves that key's x and y (key.set v) by the
 pointer's offset taken back into the layer's own px; a handle end bends the path (key.path_handles), its opposite handle
-mirrored so the curve stays smooth (Alt: not mirrored). A click on a key square picks its keys (backend.keys). The
+mirrored so the curve stays smooth (Alt: not mirrored). A click on a key square picks its keys (backend.keys).
+Ctrl+click on the line adds a key at the time of the dot there (addKeyAt: value.set x, y {at}, motion_geo.time_near). The
 frame's keys are moved the same way: the canvas is the world, so the view never moves with them.
 """
 from __future__ import annotations
@@ -214,6 +215,27 @@ class MotionPath(QObject):
                                                            tuple(k[side + "Own"]), m)):
             return False
         return True
+
+    @Slot(float, float, float, result=bool)
+    def addKeyAt(self, x: float, y: float, limit: float) -> bool:
+        """Ctrl+click on a shown path's line (canvas point x, y, world px; within `limit` world px): a position key at
+        the time of the frame dot under the pointer, holding the place the path has there (After Effects), so the
+        path keeps its course. One undo step, the same value.set x, y {at} an agent calls. False: no line there."""
+        for p in self.paths:
+            if p["faint"]:
+                continue
+            owner = self.b.placed_item(p["id"])
+            t = G.time_near(owner, self.b.comp()["fps"], G.mapping(self.b.placed(), owner, self.b._t), x, y, limit)
+            if t is None:
+                continue
+            if self._owner_ok(p["id"]) is None:
+                return True
+            at, (vx, vy) = self.b.own_t(p["id"], t), G.position(owner)(t)
+            calls = [{"op": "value.set", "target": [p["id"]], "args": {"prop": f, "at": at, "v": round(v, 2)}}
+                     for f, v in (("x", vx), ("y", vy))]
+            self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label="Add a path key"), ""))
+            return True
+        return False
 
     @Slot(float, float, bool)
     def drag(self, dx: float, dy: float, alt: bool):

@@ -10,7 +10,7 @@ import "Mods.js" as Mods
 // that group; Ctrl+press the piece itself; double-click goes one level in; Shift+click adds / removes. Dragging moves
 // it (all selected layers together), snapping to the frame and the other layers (backend.snap: Ctrl pressed after the
 // drag began = no snapping, Shift = straight); dragging on empty canvas draws a rubber band that selects the layers it
-// touches (boxSelect, not locked ones; Shift+box adds, Ctrl+box picks the deepest pieces). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
+// touches, lit live as it grows (band.py; boxSelect, not locked ones; Shift+box adds, Ctrl+box picks the deepest pieces). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
 // x / y gets a key at the playhead). Layers outside the frame can still be grabbed.
 // The frame (FrameHandles.qml, frame_drag.py): its name tab or C picks it; picked, a drag inside it moves it, its corners
 // zoom it and the zones outside them turn it; its outline never catches a click.
@@ -273,6 +273,7 @@ Rectangle {
             preventStealing: true
             property bool moving: false
             property bool band: false
+            readonly property bool banding: band && (b0.x !== b1.x || b0.y !== b1.y)   // the rubber band is drawn: what it would pick lights up instead of the pick
             property bool deep: false       // Ctrl at the press picks the deepest piece; only a later Ctrl stops snapping
             property bool unseen: false     // looking through, the press was outside the frame: nothing there is shown
             property real sx: 0
@@ -280,7 +281,7 @@ Rectangle {
             property point b0
             property point b1
             function comp(m) { return panel.inWell(m.x, m.y) }
-            function stop() { if (moving) backend.endDrag(); moving = false; band = false; held = "" }
+            function stop() { if (moving) backend.endDrag(); if (band) backend.multi.endBand(); moving = false; band = false; held = "" }
             function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
             property string held: ""        // an Alt press on a layer: a click picks behind, a drag past 4 px makes a copy (decided on the first move)
             property bool lined: false      // Alt+Shift: the same, but a click leaves the pick alone and the copy goes along a line
@@ -306,7 +307,10 @@ Rectangle {
                 if (moving) {
                     backend.snap.keys(Mods.ctrl(m) && !deep, Mods.shift(m))
                     backend.moveBy((m.x - sx) / view.zoom, (m.y - sy) / view.zoom)
-                } else if (band) b1 = comp(m)
+                } else if (band) {
+                    b1 = comp(m)
+                    backend.multi.bandTo(b0.x, b0.y, b1.x, b1.y, (Mods.shift(m) ? "shift " : "") + (Mods.ctrl(m) ? "ctrl" : ""))   // lights them live (band.py)
+                }
             }
             onReleased: (m) => {
                 if (held !== "") { const p = comp({ x: sx, y: sy }); if (!lined) { backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click") }; held = "" }   // Alt+click: the layer behind (Alt+Shift+click: the pick stays)
@@ -352,14 +356,14 @@ Rectangle {
                     required property int index
                     readonly property var modelData: backend.multi.knobBoxes[index] || ({})
                     box: modelData; fit: view.zoom; space: marks
-                    visible: index < outlines.needed && !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
+                    visible: index < outlines.needed && !canvas.banding && !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && !(modelData.type === "path" && backend.pen.editing) && !backend.pen.on
                 }
             }
             Shape {   // several layers: their outlines as one shape (multi.outlinePath): a dark halo under the accent line, as HaloLine draws one
                 id: multiOutline
-                visible: backend.multi.count > 1
+                visible: backend.multi.count > 1 && !canvas.banding
                 scale: view.zoom; transformOrigin: Item.TopLeft
                 asynchronous: true    // its 200 quads, twice, are laid into triangles off the screen thread
                 // groupBox: read for its news only (the boxes moved), a small map; reading `boxes` copied all of them
@@ -372,7 +376,7 @@ Rectangle {
             }
             Handles {   // several layers: one box round them all with the same knobs, acting on all together (group_slots.py)
                 box: backend.multi.groupBox; fit: view.zoom; space: marks; group: true
-                visible: backend.multi.count > 1
+                visible: backend.multi.count > 1 && !canvas.banding
                 editable: backend.multi.count > 1 && !well.drawing && backend.tool !== "bone" && !backend.pen.on
             }
             Rectangle {   // the selection rides a path: says so over the picture (the view moves with a riding camera, so no outline)
@@ -423,8 +427,19 @@ Rectangle {
                 transform: Rotation { origin.x: (peek.b.ax || 0) * peek.width; origin.y: (peek.b.ay || 0) * peek.height; angle: peek.b.rot || 0 }
                 Rectangle { anchors.fill: parent; color: "transparent"; border.width: 2; border.color: Theme.accent }
             }
+            Shape {   // the rubber band growing: the layers letting go would pick, outlined live (multi.bandPath: band.py)
+                id: bandOutline
+                objectName: "bandOutline"
+                visible: canvas.banding && d !== ""
+                scale: view.zoom; transformOrigin: Item.TopLeft
+                readonly property string d: canvas.banding ? backend.multi.bandPath : ""
+                ShapePath { strokeWidth: 3 / view.zoom; strokeColor: Qt.rgba(0, 0, 0, 0.6); fillColor: "transparent"; joinStyle: ShapePath.MiterJoin
+                            PathSvg { path: bandOutline.d } }
+                ShapePath { strokeWidth: 1 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"; joinStyle: ShapePath.MiterJoin
+                            PathSvg { path: bandOutline.d } }
+            }
             HaloLine {  // the rubber band
-                visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
+                visible: canvas.banding
                 x: Math.min(canvas.b0.x, canvas.b1.x) * view.zoom; y: Math.min(canvas.b0.y, canvas.b1.y) * view.zoom
                 width: Math.abs(canvas.b1.x - canvas.b0.x) * view.zoom; height: Math.abs(canvas.b1.y - canvas.b0.y) * view.zoom
                 fillOpacity: 0.12
@@ -443,6 +458,12 @@ Rectangle {
                     height: vertical ? (modelData.to - modelData.from) * view.zoom : 1
                 }
             }
+        }
+        MeasureMarks {  // Alt with one layer picked: red lines and numbers to the hovered layer or the frame (measure_view.py)
+            anchors.fill: parent
+            visible: marks.visible && backend.tool === "move"
+            busy: canvas.pressed
+            fit: view.zoom; ox: view.ox; oy: view.oy
         }
         ViewInput { anchors.fill: parent; view: view }   // wheel, pinch and Space+drag move the view
         DragHandler {  // middle-drag pans (on the well itself: other buttons pass straight to the tools)

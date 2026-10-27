@@ -6,7 +6,7 @@ import "Mods.js" as Mods
 // frame (close dots: slow, far apart: fast), a square per key (filled when picked) and the picked or bent keys' handles;
 // a jump (for the frame, a cut) is a dashed line with no dots; for the frame, a faint outline of it at each key. Drag a
 // square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path bends, the opposite
-// handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
+// handle mirrored (Alt: not); Ctrl+click the line: a new key there. One drag (or click) = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
 // the Stage's one mapping (canvas px = o + world px × fit), so a pan or zoom only repaints. `noFrame`: the frame's own
 // path left out (looking through the frame: it is the canvas's edge then).
 Item {
@@ -74,6 +74,16 @@ Item {
                       function onOyChanged() { ink.requestPaint() }
                       function onFrameRowsChanged() { if (ink.frame) ink.requestPaint() }
                       function onLayerRowsChanged() { if (!ink.frame) ink.requestPaint() } }
+    }
+
+    // Ctrl+click on the path's line (5 screen px either side): a new key there, at the time of the dot under the
+    // pointer (motion_path.addKeyAt: value.set x, y {at}, one undo step). Any other press, or a Ctrl+press away from a
+    // line, passes on to the canvas below (its Ctrl+press picks the deepest piece).
+    MouseArea {
+        objectName: "motionPathLine"
+        anchors.fill: parent
+        enabled: mp.interactive && mp.layerRows.length + mp.frameRows.length > 0 && !spaceKey.held
+        onPressed: (m) => { m.accepted = Mods.ctrl(m) && backend.motionPath.addKeyAt((m.x - mp.ox) / mp.fit, (m.y - mp.oy) / mp.fit, 5 / mp.fit) }
     }
 
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters keep their marks

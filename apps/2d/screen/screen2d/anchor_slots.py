@@ -1,6 +1,6 @@
 """The anchor point on the canvas: drag the ring to move the point a layer turns and scales around, while the layer
 stays exactly where it shows (Position follows: After Effects' "pan behind"). One drag = one undo step, made of the
-same value.set calls an agent makes (route.value_call). The ring shows only while the settings panel's Anchor group is
+same layer.anchor call an agent makes (rostrum2d/ops_anchor.py: it moves Position so the layer keeps its place). The ring shows only while the settings panel's Anchor group is
 open (`anchorOpen`), on a single layer that has a box; the maths of what moves is transform.turn. A slot mix-in for
 Bridge2D (see rostrum_gui/parts.py); it uses handle_slots' grab.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
 
-from . import bounds, route, transform as T
+from . import bounds, transform as T
 
 SNAP_PX = 5.0              # a screen distance: the anchor catches the edges and the middle (0, 50, 100 %) this close
 CATCH = (0.0, 0.5, 1.0)
@@ -43,8 +43,6 @@ class AnchorSlots:
         ax, ay = p["anchorX"] + sx * ldx / b["lw"], p["anchorY"] + sy * ldy / b["lh"]
         if not free:
             ax, ay = self._caught(ax, b["lw"]), self._caught(ay, b["lh"])
-        dx, dy = T.turn(sx * (ax - p["anchorX"]) * b["lw"], sy * (ay - p["anchorY"]) * b["lh"], b["lrot"])
-        sets = {"anchorX": round(ax, 4), "anchorY": round(ay, 4)}
-        if not g.placed:
-            sets.update({"x": round(p["x"] + dx, 2), "y": round(p["y"] + dy, 2)})
-        self._guard(lambda: self._drag.preview([route.value_call(item, k, v, self.own_t(item["id"])) for k, v in sets.items()]))
+        call = {"op": "layer.anchor", "target": [item["id"]],
+                "args": {"x": round(ax, 4), "y": round(ay, 4), "keep_place": True, "at": self.own_t(item["id"])}}
+        self._guard(lambda: self._drag.preview([call]))

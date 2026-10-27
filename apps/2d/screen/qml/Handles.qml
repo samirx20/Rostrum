@@ -94,17 +94,20 @@ Item {
             }
         }
     }
-    // the anchor: a ring round the point the layer turns and scales about, only while the settings panel's Anchor group is open
-    // (anchor_slots.py: the layer stays where it shows, one drag = one undo step). Over the knobs: one sitting on a knob would be unreachable under it.
+    // the anchor: a ring round the point the layer turns and scales about, shown on one picked layer whose box is over 48 px on screen (so
+    // a turn shows its centre, as Figma and Rive do). It is dragged only while the settings panel's Anchor group is open: else a press
+    // on it moves the layer, as a press in the middle always does (CANVAS §3 rule 3). anchor_slots.py: the layer stays where it shows,
+    // one drag = one undo step (layer.anchor). Over the knobs: one sitting on a knob would be unreachable under it.
     Rectangle {
         id: anchorRing
         objectName: "anchorPoint"
-        visible: h.editable && !h.group && h.kit.anchor === true && backend.anchorOpen
+        visible: h.editable && !h.group && h.kit.anchor === true && (backend.anchorOpen || Math.min(h.bw, h.bh) > 48)
         width: 19; height: 19; radius: 10; color: "transparent"; border.width: 2; border.color: Theme.accent
         x: (h.box.ax || 0) * h.bw - width / 2; y: (h.box.ay || 0) * h.bh - height / 2
         Rectangle { anchors.centerIn: parent; width: 3; height: 3; radius: 2; color: Theme.accent }
         MouseArea {
             anchors.fill: parent
+            enabled: backend.anchorOpen
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             preventStealing: true
             property bool on: false

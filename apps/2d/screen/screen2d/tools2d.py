@@ -16,6 +16,7 @@ from .importer import Importer
 from .brand_view import LibraryView
 from .key_bar import KeyBar
 from .key_select import KeySelect
+from .measure_view import Measure
 from .motion_path import MotionPath
 from .multi import Multi
 from .paint_layers import PaintLayers
@@ -61,6 +62,7 @@ class ToolSlots(SlotMixin):
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
         self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
         self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
+        self._measure = Measure(self)                       # Alt measures from the picked layer (measure_view.py): backend.measure
         self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
         self._paint_tool = PaintTool(self)                  # Brush, Eraser, Fill, Pick, Select: which is on (paint_tool.py): backend.paintTool
         self._rig = RigView(self)                           # the rig in hand's bones on the canvas (rig_view.py): backend.rig
@@ -152,6 +154,11 @@ class ToolSlots(SlotMixin):
     def colourPick(self):
         """Hold Alt while Draw is on: pick the colour under the pointer (paint_pick.py)."""
         return self._pick
+
+    @Property(QObject, constant=True)
+    def measure(self):
+        """Hold Alt with one layer picked: red lines and numbers to the layer under the pointer or the frame (measure_view.py)."""
+        return self._measure
 
     @Property(QObject, constant=True)
     def paintTool(self):
