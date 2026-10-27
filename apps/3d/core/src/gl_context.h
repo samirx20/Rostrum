@@ -39,6 +39,7 @@ class Framebuffer {
   int height() const { return h_; }
   void bind_and_clear() const;          // clear to transparent black, depth 1
   std::vector<float> read_rgba() const;  // top row first
+  std::vector<float> read_depth() const;  // 0..1 window depth, GL rows bottom up
   unsigned color_texture() const { return color_; }
   unsigned depth_texture() const { return depth_; }
 

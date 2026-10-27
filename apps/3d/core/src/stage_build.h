@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "clay_scene.h"
+#include "copies.h"
 
 namespace r3d {
 
@@ -15,6 +16,7 @@ struct BuildResult {
   int start = 0, end = 0;
   double fps = 24;
   std::vector<clay::Node> clays;  // clay items: their surfaces are the clay store's (Core::scene syncs it)
+  std::vector<copies::State> copies;  // copies items as laid out (Core keeps them: the live `copies` request, pick)
 };
 
 // Replaces the content of stage's root layer with the scene. Checked whole: on any problem it throws

@@ -22,7 +22,7 @@ IGNORE = ()
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
-         "import-menu", "import-unit-note")
+         "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -103,6 +103,16 @@ def toy_import() -> list[str]:
     return ["--script", str(script)]
 
 
+def buds(layout: str = "line") -> list[str]:
+    """Start args for the sample with a bud (a small sphere) made many times: twelve in a line, or scattered over the block."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / f"buds_{layout}.py"
+    where = ('layout="line", count=12, spacingX=0.09' if layout == "line"
+             else 'layout="surface", surface="block", count=400, minSpacing=0.02, seed=3')
+    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.03, z=0.7, material=clay)'
+    script.write_text(f"{SOURCE}{bud}\ncopies(\"buds\", source=bud, {where})\n", encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -147,6 +157,16 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("import-drop-hover", s, ["import-hover 420 300"]),                     # a file from Explorer over the viewport: its ring
         ("import-unit-note", toy_import(), ["import-note toy", "settled"]),     # rescaled from centimetres: Keep original size
         ("import-part-selected", toy_import(), ["select toy.Head", "settled"]),  # a part: its Material and Visible
+        # Copies and scatter (brief 24): the copies item's rows (Count first, the grey line under it), right-click on a shape
+        # (Make copies ›), on a surface with something selected (Scatter), on a copies item (Change near ›), a change near added
+        ("copies-selected", buds(), ["select buds", "settled"]),
+        ("copies-scattered", buds("surface"), ["select buds", "settled"]),
+        ("copies-more", buds(), ["select buds", "more"]),
+        ("copies-context-shape", s, ["context block"]),                                   # Make copies in the right-click
+        ("copies-context-copies", buds(), ["context buds"]),                               # Change near
+        ("copies-scatter-menu", s, ["select vase", "context block"]),                      # Scatter 'vase' on 'block'
+        ("copies-near-added", buds(), ["select buds", "action copies:near:scale", "settled"]),
+        ("copies-effector-selected", buds(), ["select buds", "action copies:near:turn", "select effector_1", "settled"]),
         ("text-typing", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "type AURORA", "wait 600"]),
         ("drawings-list", s, ["drawings"]),
         ("bevel-too-big", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "typeend", "set bevel 0.01", "wait 2500"]),

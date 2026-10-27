@@ -69,7 +69,7 @@ class Frames:
             v.update(rigs.transform(v, t))
         elif item["type"] == "light" and v["kind"] == "dome":     # a dome only turns around up (light_fields.py)
             v["rx"], v["ry"], v["rz"] = 0.0, v["turn"], 0.0
-        elif v["aim"] != "none":
+        elif v.get("aim", "none") != "none":
             v["rx"], v["ry"], v["rz"] = self._aim(id_, v, f)
         if v.get("stick"):
             own = [v["x"], v["y"], v["z"]]

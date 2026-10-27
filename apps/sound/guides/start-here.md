@@ -11,7 +11,7 @@
   `render_*` makes files as a job, `look_*` lets you see or hear a result. Every tool and its arguments: `inspect_tools`.
 - `inspect_operations` lists every operation and its arguments (`name: "master.set"` for one). `edit_document` applies a
   list of them, all or nothing.
-- The song you work on is the item `cue` unless the project has another; `inspect_project` says.
+- The song you work on is the item `song` in a new project (`inspect_project` says which items there are).
 - Your changes carry your client name and are grouped per turn, so a person can review or undo them together.
 - `run_script` merges what the script makes into the document. Anything a person moved by hand stays where they put it
   and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite. Changing only
@@ -22,10 +22,8 @@
 
 - **A new part, written in a script: the script helpers** (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
 - **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.pedal` (the sustain pedal lifted on each chord change, down again `catch` beats later), `note.ramp_velocity` (a crescendo or fade: `start` on the first note, `end` on the last, by time), `note.transpose`, `note.fit_key`, `note.duplicate`, `note.humanize`, `hit.humanize`, `hit.fill`, and `track.feel` (swing and looseness, one track's playing, notes untouched), through `edit_document`. They change the notes in place; a script would rewrite them. `note.humanize` / `hit.humanize` add on top of whatever looseness the notes already have (a script's own `humanize` included), and a second run with the same seed adds the same amount again: to redo it, undo first or use another seed.
-- **Finding the notes to edit: `inspect_notes {track, from?, to?, section?, limit?}`**: one line per note (or drum hit) of the track, `id  time (s, bar.beat)  pitch  length  vel`, for a stretch given in bars `{"bar": 5}`, seconds, beats or a marker (`"#drop"`), or a section's name; capped, then "… N more, narrow the range". Use its ids as targets. A note's id is made from where it started when it was made (`harp.n8438` began at 8.438 s) and stays when the note moves or the tempo changes, so read a note's time from this list, never from its id. `inspect_item` with `detail: "full"` lists every note with its raw values and is long: prefer `inspect_notes`.
-- **Checking what an edit really did: `inspect_note_changes {since, until?, track?, section?, from?, to?, limit?}`**: the notes and drum hits added, removed and changed (pitch or drum, time, length, velocity) between two states of the song, per track, counts first, then one line each (`+` added, `-` removed, `~` changed and what changed). `since` is a history step number (`inspect_history` lists them), `{"mine": N}` (before your own last N steps), `{"steps": N}` (anyone's) or `{"version": "name"}`; `until` a later step, else now. After a `note.thin`, a `note.fit_key` or a script re-run, `{"since": {"mine": 1}}` shows exactly which notes moved. Read-only.
-- **Going back to an earlier point: `edit_history_go {to}`**: the song as it stood right after history step `to` again, by taking back every step since (an undo of all of them at once: they stay in History, taken back, and going to a later step brings them back; edit_undo afterwards goes on back, it does not undo the going). Only over your own steps: a change by the person since is refused and named. For just your last change, `edit_undo`.
-- **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `name` gives the file another name, like the Export sheet's name box; `<item>` is the song's id, `cue` unless the project has another), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths: copy from there. A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`.
+- **Finding and checking notes:** `inspect_notes {track, from?, to?}` lists a track's notes (ids, time, pitch, length, vel; read a note's time from the list, never from its id); `inspect_note_changes {since}` shows what an edit really changed; `edit_history_go {to}` goes back to an earlier step (your own steps only); `edit_undo` takes back the last one. Arguments: `inspect_tools`; the craft: `inspect_guide 'writing-parts'`.
+- **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `name` gives the file another name, like the Export sheet's name box; `<item>` is the song's id, `song` in a new project), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths: copy from there. A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`. **`render_video` (2D) does not use this file:** it renders the song's current document again (the same sound, cached when the song is unchanged); so a `render_mix` is for you to check and deliver, and `run_set_main_mix` only says which song goes under the picture.
 - The arpeggio steps, orders and octaves are one rule in both. The script's `voice` goes further (drop 2, spread, voice leading); `note.chord` stacks plain tones. Pick by what you start from.
 
 ## `edit_document`: whole calls that work
@@ -68,7 +66,7 @@ The range is read as the song was before the call. Operations' own arguments: `i
 3. **Write the song** with `run_script`. The argument is `source` (the Python text); `name` is optional (see below):
 
    ```json
-   {"tool": "run_script", "arguments": {"name": "cue", "source": "tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))"}}
+   {"tool": "run_script", "arguments": {"name": "song", "source": "tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))"}}
    ```
 
 4. **Look before you render.** `look_arrangement` (a picture of every part against the bars and markers),
@@ -77,7 +75,7 @@ The range is read as the song was before the call. Operations' own arguments: `i
 5. **Render.** `render_mix` with `stems: true`, then `inspect_job` until it is done.
 6. **Look at the result.** `look_sound` (`what`: `loudness` by default, `levels`, `low_end`, `clash`, `spectrum`, `stereo`) and
    `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` (with `track`) checks a chord part note by note; the loudness summary names the loudest moment and its time, the loudness of each section (`data.sections`), and has an `ending` line (see 8); `start` / `end` (seconds, `{"beat": n}` or `"#marker"`) measure one stretch only. Which tool answers which question: `listening`. Whether it is musical is
-   for a person to hear; say so in your report.
+   for a person to hear; say so in your report. **Listen** with the look tools before you call it done: `inspect_guide 'listening'` (which tool answers which question) and `'checking-a-mix-by-ear'`.
 7. **Fix, render again.** Change one thing at a time. To change a value a script made, edit the script and run it again under
    the same `name`; to change one value, use `edit_document`.
 8. **End it cleanly** (`topic: "script"`, section "Ending a song") and render the last version. Check the end with
@@ -103,6 +101,8 @@ The range is read as the song was before the call. Operations' own arguments: `i
   (`-24`, not `{"db": -24}`), `attack` and `release` are in seconds (`0.01`, not `10`).
 
 ## Loudness: louder or cleaner (`maxLimit`)
+
+**A first render often lands 1 to 3 dB under the target (-16 LUFS for video): that is the default, not a failure. Do not leave it: the `render_mix` reply names the fix; `edit_loudness {"apply": "best"}` (or `keep_balance`) reaches the target in one call. A single track far below the others (`look_sound` `levels` shows each track's LUFS) is a level problem of its own: raise that track.**
 
 A new song has gentle limiting on: the master's limiter may pull the loudest moment down by at most `maxLimit` (default 2 dB;
 the screen's **Most limiting**; the document takes 0 to 12 dB). A mix whose peaks stand further above its average loudness is

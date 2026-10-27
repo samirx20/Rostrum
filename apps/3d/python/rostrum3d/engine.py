@@ -57,6 +57,7 @@ class Engine:
         self._hash, self._lock, self._notices = None, threading.RLock(), []
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
+        self.copies: dict = {}                          # the last scene's copies info: {id: {count, seen, camera}} (contract 2, copies)
         self.stopped = False                            # kill(for_good=True): a cancelled job's engine never starts again
         _MINE.add(self)
 
@@ -132,6 +133,7 @@ class Engine:
     # --- the requests
     def load(self, scene: dict) -> dict:
         out = self._request({"scene": scene})
+        self.copies = out.get("copies") or {}
         self._hash = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
         return out
 

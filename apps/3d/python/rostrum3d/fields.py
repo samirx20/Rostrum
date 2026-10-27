@@ -19,30 +19,34 @@ from .field_kit import (ANIMATED, ANIMATING, ANY, C, CH, D, DOF, FOLLOWS, IS, N,
                         T, TIMING, TRANSFORM, X)
 from .item_fields import COMBINE_OPS, FIELDS, SOLIDS  # noqa: F401
 from .clay_fields import STILL as CLAY_STILL
+from .copies_fields import STILL as COPIES_STILL
 from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, STILL as LIGHT_STILL  # noqa: F401
 from .mesh_fields import SHAPES  # noqa: F401
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
-ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay")      # scene items (USD prims)
-KEYED = (*ITEMS, "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
-HOLDERS = ("group", "import", "rig", "combine")
+ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay", "copies")      # scene items (USD prims)
+KEYED = (*ITEMS, "effector", "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
+HOLDERS = ("group", "import", "rig", "combine", "copies")
 LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
          "camera": ["keys"],
          "clay": ["steps", "bones", "keys", "paints", "paintmasks"],   # its steps build its shape, in order (clay_fields.py); its joints (ops_pose.py)
          "combine": ["children", "keys"],
+         "copies": ["children", "keys"],               # its source item(s) and its effectors
+         "effector": ["keys"],
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
 DATA_GROUPS = {"Mesh data", "Bone data", "Mirror data"}   # data an operation writes (a mesh's points, a bone's head, a mirrored copy's link), never rows
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
+         **COPIES_STILL,
          "clay": CLAY_STILL,                     # its brush settings and detail
          "bone": {"x", "y", "z", "length"},       # a bone moves only by its Turn
          "*": {"aim"}}
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
-          "bone": "Bone", "clay": "Clay", "claystep": "Clay step"}
+          "bone": "Bone", "clay": "Clay", "copies": "Copies", "effector": "Change near", "claystep": "Clay step"}
 KEYED_TOGGLES = {"visible"}                    # toggles keys may drive: on / off at each key, nothing in between
 
 

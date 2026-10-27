@@ -89,7 +89,10 @@ class Viewport(QObject):
         self.paint = PaintMode(bridge, self)                   # Paint (B): brush strokes on a mesh (paint_mode_qt.py)
         from .clay_tool_qt import ClayTool
         self.clay_tool = ClayTool(bridge, self)                # Clay (Q): Lump and the brushes (clay_tool_qt.py)
+        from .copies_qt import CopiesTool
+        self.copies = CopiesTool(bridge, self)                 # copies: the shot camera's count, one copy picked (copies_qt.py)
         self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
+        self.copies.changed.connect(self.gizmo._refresh)       # a copy picked: the handles stand on it
         ops_mesh.use_engine(EngineVia(self._r), bridge.doc.folder)   # mesh.edit asks this engine for a shape's mesh
         _ENGINE_FOR_OPS[0] = self                              # (the newest window's; an old one closing leaves it)
         from .place_light import PlaceLight
@@ -380,6 +383,8 @@ class Viewport(QObject):
         or linking a light: that instead)."""
         if self._size is not None and self.focus.wants_click():
             self._guard(lambda: self.focus.click(x, y))
+        elif self._size is not None and self.copies.wants_click():             # On a surface…: that click names the surface
+            self._guard(lambda: self.copies.click(x, y))
         elif self._size is not None and self.place.wants_click():
             self._guard(lambda: self.place.click(x, y))
         elif self._size is not None and self.clay_tool.wants_click():          # Clay's Lump: a ball there
@@ -465,6 +470,8 @@ class Viewport(QObject):
             return self.bridge.mats.dropOn(drop, item)
         if self.bridge.add.armed:
             return self._guard(lambda: self._place(item, reply or {}))
+        if self.copies.picked(item, reply):                  # one copy of a copies item: the item and that copy
+            return self.picked.emit(item)
         if item != self.bridge.selected:
             self.bridge.select(item)
         self.picked.emit(item or "")

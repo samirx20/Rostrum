@@ -6,7 +6,7 @@ undo step. How an edit becomes a call lives in route.py only.
 Bridge3D is this class (the wiring, the document hooks, the file pieces) and its mix-ins, one job each:
 bridge_signals (the signals), bridge_shots (shot + page), bridge_scene (scene list, selection), bridge_time (playhead,
 timeline, key drags), bridge_rows (the settings panel's rows, the screen's facts), action_preview3d (actions),
-key_routes3d (the keys that are not actions).
+key_routes3d (the keys that are not actions), bridge_copies (copies: right-click on a surface, the Count line, live Count / Spacing drags).
 
 What the viewport (viewport.py) reads from it: scene(), frame, shot_info(), selected, select(id), and the signals
 docChanged, frameChanged, selectionChanged.
@@ -27,6 +27,7 @@ from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL, QUICK_APPROX
 from . import job_when3d, lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
+from .bridge_copies import CopiesMixin
 from .bridge_rows import RowsMixin
 from .bridge_scene import SceneMixin
 from .bridge_shots import ShotMixin
@@ -46,7 +47,7 @@ from .timeline3d import Mover
 
 # The group each kind IS (SPEC 3.2, the lead's ruling): always open; every other group opens only when changed.
 sections.OWN.update({"mesh": "Shape", "import": "File", "part": "Part", "light": "Light", "camera": "Lens", "rig": "Rig",
-                     "material": "Surface", "shot": "Shot", "key": "Key"})
+                     "material": "Surface", "shot": "Shot", "key": "Key", "copies": "Copies", "effector": "Change near"})
 
 
 def _viewport(bridge):
@@ -54,7 +55,7 @@ def _viewport(bridge):
     return Viewport(bridge)
 
 
-class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, DocBridge):
+class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, CopiesMixin, DocBridge):
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: a "Final" tag
     QUICK_APPROX = {"material": MATERIAL_APPROX}                         # fields it only hints at: a "Final" tag too
@@ -84,6 +85,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self._stretch = Stretch3D(self, self)
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
+        self._make_copies()                                 # right-click › Scatter on, the Count line (bridge_copies.py)
         self.viewport = viewport(self) if viewport else None
         self.balls = MaterialBalls(BallRenderer() if self.viewport is not None else None)   # rendered preview balls
         self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows

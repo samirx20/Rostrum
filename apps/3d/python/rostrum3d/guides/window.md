@@ -37,7 +37,9 @@ sits on top of it.
   material (Ctrl+Alt+V) on shapes, Look through and Pick what it lights (lights), Focus on a point (a camera with depth of
   field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
-  mesh each shape shows, Apply: one undo step, keys on the timeline), then Duplicate (Ctrl+D) and Delete (Delete). An item
+  mesh each shape shows, Apply: one undo step, keys on the timeline), **Make copies ›** (a shape, group, import or clay),
+  **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected) and **Change near ›** (a
+  copies item), see *Copies and scatter* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
   outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
   Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
   while something is selected.
@@ -184,6 +186,26 @@ whose models show. Click a tile: the model downloads (a bar fills on the tile) i
 `assets\<source>\<model>\`, and lands on the surface in the middle of the view, selected, as one undo step. A
 model already downloaded is used again at once. The scene must be in a project folder (the sample scene isn't). Esc
 or × closes the sheet.
+
+## Copies and scatter
+
+One thing, many times, without making a thousand items (the guide *copies* has the fields and the script). By hand:
+
+- **Twelve buds in a line:** right-click the bud › **Make copies › Line**, type **12** (the Count box is already waiting for
+  you), Enter. Right-click › Make copies also has **Grid**, **Circle** and **On a surface…** (then click the surface).
+  The new copies item holds the bud and is selected; one undo step.
+- **Scatter over a surface:** select the pebble, then right-click the plinth: **Scatter 'Pebble' on 'Plinth'**. By default
+  only the copies the shot camera sees are drawn (Only what the camera sees, under the copies' settings); under **Count** a
+  grey line says how many: "212 of 400 in Hero 01" (or "400 copies" before the camera has been asked).
+- **Drag a number:** drag **Count**, **Space X / Z**, **Radius** or **Keep apart** in the settings panel and the copies
+  follow the pointer live; letting go is one undo step (Esc puts it back).
+- **One copy:** click a copy; the copies item is selected and the line at the top says "Copy 7 of Buds". The arrows move,
+  turn and size just that copy; the drop keeps it there (it never moves again when you change the count or the layout; **Release held
+  copies** in the right-click menu lets them go back). One undo step.
+- **Change near ›** (right-click a copies item): **Scale**, **Turn**, **Push** or **Colour** the copies close to something.
+  With another item selected too (Ctrl+click), the change follows that item; alone, a small sphere is added beside the copies
+  and selected: move it and the copies near it change. Its settings (Radius, Amount, Falloff) are the effector's row under
+  the copies in the scene list; key Amount or Radius for change over time.
 
 ## The settings panel (right)
 

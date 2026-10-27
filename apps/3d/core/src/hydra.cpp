@@ -1,6 +1,7 @@
 #include "hydra.h"
 
 #include <pxr/base/gf/frustum.h>
+#include <pxr/base/gf/vec4d.h>
 #include <pxr/base/tf/errorMark.h>
 #include <pxr/imaging/cameraUtil/conformWindow.h>
 #include <pxr/imaging/cameraUtil/framing.h>
@@ -12,7 +13,9 @@
 #include <pxr/usd/usdGeom/camera.h>
 #include <pxr/usd/usdGeom/metrics.h>
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <thread>
 
 #include "clay_whole.h"
@@ -169,6 +172,7 @@ Hydra::~Hydra() {
   fb_.reset();
   mask_fb_.reset();
   ghost_fbs_.clear();
+  sees_fb_.reset();
 }
 
 TfToken Hydra::plugin_for(const std::string& name) {
@@ -437,23 +441,87 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
 }
 
 SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, double y, GfVec3d* point,
-                    GfVec3d* normal) {
+                    GfVec3d* normal, SdfPath* instancer, int* instance) {
   const GfVec2d ndc(2.0 * (x + 0.5) / w - 1.0, 1.0 - 2.0 * (y + 0.5) / h);
   GfFrustum narrow = f.ComputeNarrowedFrustum(ndc, GfVec2d(1.0 / w, 1.0 / h));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   TfErrorMark mark;
   auto& e = engine("storm", true);  // picking is the viewport's Storm; the answer is the same whatever drew the picture
-  SdfPath hit;
+  SdfPath hit, by;
+  int index = -1;
   framebuffer(w, h).bind_and_clear();
   const bool any = e.TestIntersection(narrow.ComputeViewMatrix(), narrow.ComputeProjectionMatrix(),
-                                      stage_->GetPseudoRoot(), params, point, normal, &hit);
+                                      stage_->GetPseudoRoot(), params, point, normal, &hit, &by, &index);
+  if (instancer) *instancer = any ? by : SdfPath();
+  if (instance) *instance = any ? index : -1;
   throw_usd_errors(mark, "pick");
   if (!any) return SdfPath();
   if (normal->GetLength() < 1e-12) *normal = f.GetPosition() - *point;  // no normal from the hit: face the camera
   normal->Normalize();
   if (GfDot(*normal, f.GetPosition() - *point) < 0) *normal = -*normal;  // the side the camera sees
   return hit;
+}
+
+namespace {
+// The prims to draw so that everything but `hide` (and what they hold) is drawn: the roots of the stage's tree with the
+// hidden branches cut out (an item's ancestors are groups, so cutting at them loses no geometry of their own).
+void roots_without(const UsdPrim& prim, const SdfPathVector& hide, SdfPathVector* out) {
+  for (const SdfPath& h : hide)
+    if (prim.GetPath() == h) return;
+  bool holds = false;
+  for (const SdfPath& h : hide) holds |= h.HasPrefix(prim.GetPath());
+  if (!holds) {
+    out->push_back(prim.GetPath());
+    return;
+  }
+  for (const UsdPrim& child : prim.GetChildren()) roots_without(child, hide, out);
+}
+}  // namespace
+
+// Storm's depth through the frustum (the selection mask's engine: no sky, unlit; drawn rarely, after a scene), each
+// point projected and compared with the depth drawn there as distances from the eye.
+std::vector<bool> Hydra::sees(const GfFrustum& f, int frame, int w, int h, const SdfPathVector& hide,
+                              const std::vector<GfVec3d>& points) {
+  TfErrorMark mark;
+  auto& e = mask_engine();
+  const GfMatrix4d view = f.ComputeViewMatrix(), proj = f.ComputeProjectionMatrix();
+  e.SetCameraState(view, proj);
+  e.SetRenderBufferSize(GfVec2i(w, h));
+  e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
+  UsdImagingGLRenderParams params;
+  params.frame = UsdTimeCode(frame);
+  params.enableLighting = false;
+  params.colorCorrectionMode = TfToken("disabled");
+  params.clearColor = GfVec4f(0, 0, 0, 0);
+  SdfPathVector roots;
+  roots_without(stage_->GetPseudoRoot(), hide, &roots);
+  if (!sees_fb_ || sees_fb_->width() != w || sees_fb_->height() != h) {
+    sees_fb_.reset();
+    sees_fb_ = std::make_unique<Framebuffer>(w, h);
+  }
+  sees_fb_->bind_and_clear();
+  e.PrepareBatch(stage_->GetPseudoRoot(), params);
+  e.RenderBatch(roots, params);
+  gl_.finish();
+  throw_usd_errors(mark, "sees (frame " + std::to_string(frame) + ")");
+  const std::vector<float> depth = sees_fb_->read_depth();
+  const GfMatrix4d to_clip = view * proj, from_clip = to_clip.GetInverse();
+  const GfVec3d eye = f.GetPosition();
+  std::vector<bool> out(points.size(), false);
+  for (size_t i = 0; i < points.size(); ++i) {
+    const GfVec4d c = GfVec4d(points[i][0], points[i][1], points[i][2], 1) * to_clip;
+    if (c[3] <= 1e-9) continue;  // behind the camera
+    const double x = c[0] / c[3], y = c[1] / c[3], z = c[2] / c[3];
+    if (std::abs(x) > 1.05 || std::abs(y) > 1.05 || z > 1) continue;
+    const int px = std::clamp(int((x * 0.5 + 0.5) * w), 0, w - 1), py = std::clamp(int((y * 0.5 + 0.5) * h), 0, h - 1);
+    const float d = depth[size_t(py) * w + px];
+    if (d >= 1.f) { out[i] = true; continue; }  // nothing drawn there
+    const GfVec4d q = GfVec4d(x, y, 2.0 * d - 1.0, 1) * from_clip;
+    const double drawn = (GfVec3d(q[0], q[1], q[2]) / q[3] - eye).GetLength(), here = (points[i] - eye).GetLength();
+    out[i] = here <= drawn * 1.01 + 0.02;  // on or in front of what is drawn (a point on a surface is seen)
+  }
+  return out;
 }
 
 }  // namespace r3d

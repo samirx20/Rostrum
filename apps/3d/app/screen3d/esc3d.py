@@ -28,6 +28,8 @@ ORDER = (
      lambda b, v: v is not None and v.bone_tool.on, lambda b, v: v.bone_tool.cancel()),
     ("focus", "picking a camera's focus: stop",
      lambda b, v: v is not None and bool(v.focus.camera), lambda b, v: v.focus.stop()),
+    ("surface", "picking the surface to scatter copies over: stop",
+     lambda b, v: v is not None and v.copies.wants_click(), lambda b, v: v.copies.stop()),
     ("link", "picking what a light lights: finish",
      lambda b, v: v is not None and bool(v.place.mode), lambda b, v: v.place.stop()),
     ("knife", "the Knife's line: drop it",

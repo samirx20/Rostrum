@@ -64,6 +64,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   ctx.shutter = shutter;
   ctx.materials = build_materials(built, s.list("materials"), start, end);
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
+  copies::lay_out_all(built, ctx.copies);  // a surface may come after its copies item
   link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists
   s.finish();
 
@@ -76,6 +77,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   result.end = end;
   result.fps = fps;
   result.clays = std::move(ctx.clays);
+  result.copies = std::move(ctx.copies);
   publish_light_extras(built);  // what the Hydra filters hand the renderers (light_extras.h); same paths once moved
   stage->GetRootLayer()->TransferContent(layer);
   return result;

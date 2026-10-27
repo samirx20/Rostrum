@@ -83,7 +83,7 @@ def part_add(ctx, targets, args):
 
 @R.operation("item.remove", "Delete items (with everything inside them, their keys and parts, and the mirrored "
              "copies of a deleted mesh or across a deleted clay).",
-             target=(*F.ITEMS, "part"), label="Delete", importance="secondary")
+             target=(*F.ITEMS, "effector", "part"), label="Delete", importance="secondary")
 def item_remove(ctx, targets, args):
     gone = set()
     for t in targets:
@@ -136,7 +136,7 @@ def item_duplicate(ctx, targets, args):
 
 
 @R.operation("item.rename", "Rename an item, material or shot (the id stays).",
-             target=(*F.ITEMS, "part", "material", "shot"), label="Rename", importance="secondary",
+             target=(*F.ITEMS, "effector", "part", "material", "shot"), label="Rename", importance="secondary",
              params=[Param.text("name", label="Name", required=True)])
 def item_rename(ctx, targets, args):
     for t in targets:

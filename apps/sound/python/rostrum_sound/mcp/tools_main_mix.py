@@ -11,7 +11,7 @@ from .. import main_mix
 def register(tools: Tools):
     @tools.tool("run_set_main_mix", {"properties": {"item": {"type": "string", "description": "The song to make the main mix. Optional when only one is open."}}})
     def run_set_main_mix(ctx, args):
-        """Make a song the project's main mix: the song 2D plays with the picture and the Editor uses for the final mix. Answers the new main mix and the one it replaced. No change when the song already is the main mix."""
+        """Make a song the project's main mix: the song 2D plays with the picture and the Editor uses for the final mix. Answers the new main mix and the one it replaced. No change when the song already is the main mix. It only marks which song; it does not render. 2D's render_video then renders that song's current document itself (cached while it is unchanged), never an old render_mix file, so no re-render or re-mark is needed after you change the song."""
         folder = ctx.app.folder
         if not folder:
             raise RostrumError(codes.BAD_ARGUMENT, "run_set_main_mix", "the project", "is not in a project folder")

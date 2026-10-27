@@ -30,6 +30,8 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
 | `import_usd(id, file=, parts=[…], **fields)` | a 3D file by reference: USD, glTF / GLB, OBJ, FBX or Alembic (also a holder) |
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
+| `copies(id, source, layout=, count=, **fields)` | one thing many times: `source` (an item or list made earlier in the same list) goes inside; or `with copies(...):` and make it inside (guide `copies`) |
+| `copies.effector(kind=, near=, radius=, amount=)` | change the copies near an item: `scale turn push colour` |
 | `clay(id, **fields)` | a clay: a lump to sculpt, its shape built from its steps in order (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |
 | `clay.draw(outline, facing=, puff=, mode=, blend=, symmetry=, name=)` | a drawn shape joined on (the clay's own space); a tiny one is a lump |
@@ -57,6 +59,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
+- **copies** `layout count columns spacingX spacingY spacingZ radius faceOut surface amountBy density minSpacing alongSurface onlySeen seed varyMove varyTurn varyScale` (guide `copies`); **effector** `kind near radius falloff amount axis colour`.
 - **import** `file prim material`; **part** `path material visible`.
 - **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd motionBlur shutter` (motion blur: camera-rigs.md)
   (`inspect_guide` `agents`, "Render settings and the time estimate").
@@ -91,7 +94,7 @@ with import_usd("phone", file=r"C:/assets/phone.usdc", parts=["Body/Screen"]) as
     phone.part("Body/Frame", material=steel)       # material= and visible= on a prim inside the file
 ```
 
-Only a group, a rig, an import or a combine holds items (a combine: meshes and combines only). `with` on anything else is an error. An item's transform is relative to its holder.
+Only a group, a rig, an import, a combine or a copies holds items (a combine: meshes and combines only; a copies: what it repeats, then effectors). `with` on anything else is an error. An item's transform is relative to its holder.
 Materials and shots always go to the top level, even when made inside a `with`.
 
 ## Handle methods

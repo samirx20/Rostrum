@@ -153,6 +153,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
   guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
+- **Many of one thing.** A row, grid or ring, or a scatter over a surface (grass, pebbles, confetti): `copies.make` / `copies.scatter`
+  (script: `copies(id, source, layout=, count=)`), 10,000 at most, drawn as instances; scattered copies the shot camera never sees are
+  left out, and `look_frame` says how many it saw. `copies.hold` keeps one copy where you put it; `effector.add` makes the ones near an
+  item bigger, turned, pushed away or tinted, following that item as it moves. Guide `copies`.
 - **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` makes a clay from a drawn outline
   (`draw`: scene points, `facing` the plane's normal towards the viewer, `puff` 1 = round), a spun profile (`spin`,
   `axis`) or a ball (`at`, `radius`); its shape is its list of steps, applied in order. `clay.draw` (`outline`) and

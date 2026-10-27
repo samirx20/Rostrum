@@ -65,6 +65,9 @@ class RowsMixin:
             if r["row"] == "param" and r["id"] == "bevel" and type_ == "mesh":
                 line = fit_note(getattr(self, "_fits", {}), self._sel)
                 r["note"] = {"text": line, "kind": "warning"} if line else None
+            if r["row"] == "param" and r["id"] == "count" and type_ == "copies":
+                line = self.copies_note(self._sel)             # "212 of 400 in Hero 01", or "400 copies"
+                r["note"] = {"text": line, "kind": "hint"} if line else None
             if r["row"] == "param" and r["id"] in self.FINAL_ONLY.get(type_, ()):
                 r["tag"], r["tagHelp"] = "Final", FINAL_TIP
             elif r["row"] == "param" and r["id"] in self.QUICK_APPROX.get(type_, ()):

@@ -9,6 +9,7 @@ from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
 from .clay_fields import CLAY, STEP as CLAYSTEP
+from .copies_fields import COPIES, EFFECTOR
 from .field_kit import CH, C, D, DOF, N, S, T, TRANSFORM, X, ANY
 from .light_fields import LIGHT
 from .material_fields import MATERIAL
@@ -45,6 +46,8 @@ FIELDS: dict[str, list[Param]] = {
         X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s', refers="material"),
         T("visible", "Visible", "Part", True),
     ],
+    "copies": COPIES,                   # copies_fields.py: a source drawn many times, laid out by the core
+    "effector": EFFECTOR,               # changes the copies near an item (inside a copies item only)
     "clay": CLAY,                       # clay_fields.py: a lump to sculpt, its shape = its steps
     "claystep": CLAYSTEP,               # one piece or brush stroke of a clay, in order
     "light": LIGHT,                     # light_fields.py

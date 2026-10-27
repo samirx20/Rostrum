@@ -7,6 +7,22 @@ another reading. The lines are listed beside the Editor; click one to change its
 
 **For agents:**
 
+*Words: a **voice line** is a spoken sentence on a **voice track** (`instrument: "voice"`). A **chord voicing** is how a chord's notes are spread (the script helper `voice(...)`, also written `chord_voicing(...)`; `inspect_guide 'writing-music-tools'`). This guide is only about spoken voice lines.*
+
+**A worked call: a voice track with two lines.** A script can make the voice track, but spoken lines are written with the
+operation `line.add`: `v.line(...)` in a script is not a thing (the error says so). Two steps:
+
+1. `run_script`: `{"name": "song", "source": "tempo(96); length(bar(9))\nn = track('narrator', instrument='voice', voice='ryan', language='english', style='calm')"}`
+   (or in `edit_document`: `{"op": "track.add", "args": {"id": "narrator", "instrument": "voice", "voice": "ryan"}}`).
+2. `edit_document`: `{"ops": [{"op": "line.add", "target": ["narrator"], "args": {"text": "Welcome to the show.", "at": 1.0}}, {"op": "line.add", "target": ["narrator"], "args": {"text": "Here is how it works.", "at": 4.5}}]}`.
+
+Then `render_voice` (each line's made `start` / `end`), and move the second line with `line.set` (`at` = the first line's `end`
++ the gap you want) if the estimate was off. **The gap between lines:** leave at least 0.3 s of silence after a line ends
+(0.5 to 0.8 s when the picture needs the mouth to close, a gesture or a cut between the lines); lines placed edge to edge
+run together and give lip sync nowhere to rest. Placing a line on a marker (`"at": "#drop+0.5"`) keeps it tied to the picture's shared markers.
+**Music under the voice:** `duck.add` on the music track with `under: ["narrator"]` dips it for the whole line (short attack
+and release; `voice` mode turns on by itself under a voice track); `inspect_guide 'mixing-to-delivery'`.
+
 A voice track (`instrument: "voice"`, with `voice`, `language`, `style`) holds `lines`: words and a start time. Add them
 with `line.add` (`text`, `at` as seconds, `{"beat": n}` or a marker such as `"#drop+0.5"`; `seed` = another take of the
 same words), change with `line.set`, delete with `line.remove`.

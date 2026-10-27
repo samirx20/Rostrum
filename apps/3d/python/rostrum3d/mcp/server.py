@@ -28,7 +28,7 @@ from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
-INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, lights and cameras, animated by keys and rendered by Hydra "
+INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
                 "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'getting-started' first for the five-minute character. "
                 "Read inspect_guide 'agents', build with run_script, then check "
                 "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video.")
