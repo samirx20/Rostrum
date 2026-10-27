@@ -173,12 +173,17 @@ class Item:
     # drawing layers (painting kit): drawing.frame(at) -> frame.paint() -> paint.stroke(points, **brush)
     def frame(self, at: int, id: str | None = None) -> "Item":
         self._need(("drawing", "painting"), "frame")
-        node = {"id": self._b.new_id("frame", id), "type": "frame", "at": F.param("frame", "at").check(at, "frame"),
-                "paints": [], "paintmasks": []}
+        at = F.param("frame", "at").check(at, "frame")
         frames = self.node["frames"]
-        if any(f["at"] == node["at"] for f in frames):
-            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}: call {self.id}.frame({node['at']}) once, "
-                             f"keep what it returns (f = {self.id}.frame({node['at']})) and paint more on f, or use another frame")
+        same = next((f for f in frames if f["at"] == at), None)
+        if same is not None:                # asked again: the drawing already there, to paint more on
+            if id is not None and id != same["id"]:
+                raise ValueError(f'{self.id} already has a drawing at frame {at} ("{same["id"]}"); '
+                                 f"{self.id}.frame({at}) gives it again, or use another frame")
+            item = Item(self._b, same)
+            item.drawings = frames
+            return item
+        node = {"id": self._b.new_id("frame", id), "type": "frame", "at": at, "paints": [], "paintmasks": []}
         frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
         item = Item(self._b, node)
         item.drawings = frames
@@ -204,12 +209,16 @@ class Item:
         if self.node["type"] == "painting":              # the shortcut: its first drawing and its Ink layer, made when missing
             return self._ink().stroke(points, id, **brush)
         self._need("paint", "stroke")
+        if "mask" in brush:             # mask=f.paintmask(...): the object it gave, or its id
+            brush["mask"] = getattr(brush["mask"], "id", brush["mask"])
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
 
     def fill(self, points, id: str | None = None, **values) -> "Item":
         """A filled polygon on this paint layer, sharp-edged, in painting order (the kit's fill: what paint.fill makes
         from a click): `ink.fill([(x, y), …], color="#2a2340")` for a ridge or a silhouette; [x, y, ring] for holes."""
         self._need("paint", "fill")
+        if "mask" in values:
+            values["mask"] = getattr(values["mask"], "id", values["mask"])
         return self._b.add_kit("fill", id, {"points": [[*p[:2], p[2] if len(p) > 2 else 0] for p in points], **values},
                                self.node["strokes"])
 
@@ -379,6 +388,11 @@ class Build:
     def layer(self, type_, id=None, **values) -> Item:
         if not self.holders:
             raise ValueError(f"make a composition first: comp(...) before {type_}(...)")
+        if type_ == "drawing":          # placed by its canvas: with no x / y its top-left is the comp's (or the group's
+            dflt = F.defaults("drawing")    # box's), so canvas px = comp px whatever its size and strokes go where given
+            for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
+                if xy not in values:
+                    values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
         return self.add(type_, id, values, self.holders[-1]["layers"])
 
 

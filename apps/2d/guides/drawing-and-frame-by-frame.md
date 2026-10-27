@@ -10,7 +10,10 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
                                                                                           ─ paintmasks
 ```
 
-- A **drawing layer** has a canvas `w × h` px. Untransformed and placed at its default spot, canvas px = composition px.
+- A **drawing layer** has a canvas `w × h` px. Made in a script without `x`, `y`, its canvas's top-left sits on the
+  comp's (or its group's) top-left, whatever its size: canvas px = composition px, so `drawing("cliff", w=1100, h=620)`
+  painted at (1500, 900) shows at (1500, 900). Give `x`, `y` (where its anchor, default the centre, goes) to place it
+  elsewhere; then canvas px start at its top-left. The `paint.stroke` operation takes comp px by default either way.
   The canvas **grows with the strokes, in any direction**: `paint.stroke` past an edge makes it bigger (in 256 px
   steps) in the same undo step, and so does a script's stroke or fill when the script runs (the `w`, `h` you give
   `drawing(...)` are a starting size, never a crop) (an erasing stroke, `mode: "erase"`, never grows it: past the edge there is nothing to
@@ -39,6 +42,19 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 - A **paint mask** is a polygon; a stroke with `mask` set paints only inside it (`invert` = outside).
 
 ## Making strokes
+
+**The script calls for drawings, on one card:**
+
+| Call | Gives |
+|---|---|
+| `d = drawing(id, w=, h=, eachFrame=, loop=)` | A drawing layer; no `x`, `y`: canvas px = comp px |
+| `f = d.frame(at)` | Its drawing at frame `at`; asking again for the same `at` gives the same drawing |
+| `ink = f.paint(id)` / `f.paint()` | A paint layer on it (each call a new one; keep the handle to paint more on it) |
+| `ink.stroke(points, size=, color=, brush=, hardness=, opacity=, mode=, mask=)` | A brush stroke, points in canvas px `(x, y[, pressure])` |
+| `ink.fill(points, color=, mask=)` | A sharp filled polygon (fades in, not drawn, under `drawnSoFar`) |
+| `m = f.paintmask(points, invert=, feather=)` | A paint mask; `stroke(..., mask=m)` keeps the stroke inside it (`m` or its id) |
+| `d.pivot(x, y)` | Its turning point on a comp point, nothing moves |
+| `d.key("drawnSoFar", {...})`, `d.key("scaleX", {...})` | Paint it on over time; squash or mirror it |
 
 - One `edit_document` call list = **one undo step**: put a whole pass (say, the 30 strokes of one drawing's base) in one
   call list. `undo` takes the whole pass back.

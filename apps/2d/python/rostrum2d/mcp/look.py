@@ -26,19 +26,34 @@ TIMES = {"times": {"type": "array", "items": {"type": "number", "minimum": 0}, "
                    "description": "Seconds, several: one contact sheet of exactly these moments (instead of time / frame), e.g. [0.5, 1.2, 3.0]. Each tile is labelled with its time. (what \"sheet\" is the same picture for `count` moments spread evenly from start to end.)"}}
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
-                                                                          "description": "Picture width in px (never larger than the composition). Default 960; with `times`, the width of the whole sheet, which its tiles share (default 1600: ~390 px tiles 4 across; fewer times give bigger tiles)."}}})
+AREA = {"area": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4,
+                 "description": "[x, y, w, h] in comp px: only that part, drawn sharp at `width` (a zoom on a mouth, a "
+                                "hand, an edge; e.g. [860, 380, 200, 120]). One frame only (not with `times`)."},
+        "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "With `times`: tiles per row. Default 4 "
+                                                                                "(fewer when there are fewer times)."}}
+
+
+@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, **AREA, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
+                                                                          "description": "Picture width in px (never larger than the composition; with `area`, any up to 4096: the zoom). Default 960; with `times`, the width of the whole sheet, which its tiles share (default 1600: ~390 px tiles 4 across; fewer times give bigger tiles)."}}})
 def look_frame(ctx, args):
     """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
     Give `times: [0.5, 1.2, 3.0]` for one contact sheet of exactly those moments in one call; what "sheet" makes the same
     sheet from `start`, `end`, `count` (evenly spaced). A sheet is for the whole motion at a glance; for detail look at
-    one frame (960 px, or `width` up to the comp's), or a sheet of 2-4 moments.
+    one frame (960 px, or `width` up to the comp's), a sheet of 2-4 moments, or `area` [x, y, w, h] (comp px): only that
+    part, drawn sharp at `width` (a zoom: a mouth, a hand, an edge).
     Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait."""
     doc, comp = doc_and_comp(ctx, args)
     if "times" in args:
+        if "area" in args:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"area" and "times"', "were both given", ["area", "times"],
+                               "A zoom is one frame: give time (or frame) with area.")
         return _times_sheet(ctx, doc, comp, args)
+    if "cols" in args:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"cols"', "is for a sheet", ["times"], "Give cols with times.")
     t, frame = time_of(ctx, comp, args)
+    if "area" in args:
+        return _area(ctx, doc, comp, t, frame, args)
     scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
     seen = shown_ids(comp, t)
@@ -53,6 +68,25 @@ def look_frame(ctx, args):
                      scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
+
+
+def _area(ctx, doc, comp, t, frame, args):
+    x, y, w, h = args["area"]
+    cw, ch = comp_size(comp)
+    if w <= 0 or h <= 0 or x >= cw or y >= ch or x + w <= 0 or y + h <= 0:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'area {args["area"]}', f"has no area inside the composition (0, 0, {cw:g}, {ch:g})",
+                           hint="[x, y, w, h] in comp px, w and h above 0.")
+    width = min(args.get("width", FRAME_WIDTH), 4096)
+    scene = render.scene_of(doc, comp["id"], (t, t))
+    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}_area', project=doc.folder)
+
+    def job_fn(job):
+        pw, ph = render.area_still(ctx.tool, scene, t, (x, y, w, h), width, dest)
+        return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, area [{x:g}, {y:g}, {w:g}, {h:g}] (comp px) drawn {pw}×{ph} '
+                     f'({pw / w:.2g}× zoom).', {"time": t, "frame": frame, "area": [x, y, w, h], "width": pw, "height": ph,
+                                               "zoom": round(pw / w, 3)}, [dest], [dest], scene.get("warnings", []))
+
+    return ctx.long(f'look_frame {comp["id"]} f{frame} area', job_fn)
 
 
 def _times_sheet(ctx, doc, comp, args: dict):

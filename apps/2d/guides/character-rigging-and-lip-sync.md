@@ -175,7 +175,7 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
   `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
 - **Blink.** An operation, not a script call: after the script, `edit_document` with `blink.add` on the eyes' slot
-  (`{"op": "blink.add", "target": "eyes", "args": {"open": "eyes_open", "closed": "eyes_shut"}}`), with `open`, `closed` and optionally `half` (a half-closed drawing for the
+  (`{"op": "blink.add", "target": ["eyes"], "args": {"open": "eyes_open", "closed": "eyes_shut"}}`), with `open`, `closed` and optionally `half` (a half-closed drawing for the
   frame before and after). `every` is the mean gap in seconds, `vary` how uneven it is, `frames` how long the eyes stay
   closed, `start` / `end` the stretch. A `seed` makes the same blinks every run; change it for others. It never moves
   or replaces a key that is there, so keep a blink you like and key the rest by hand. Look at a few blink frames.

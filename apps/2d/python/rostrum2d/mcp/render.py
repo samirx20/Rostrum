@@ -82,6 +82,26 @@ def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width
         raise _fail(where, "the engine", e) from e
 
 
+def area_still(where: str, scene: dict, t: float, area, width: int, png: Path) -> tuple[int, int]:
+    """Only `area` [x, y, w, h] (comp px) of the frame at `t`, drawn by the engine at `width` px wide (sharp: a zoom,
+    not a crop of a small picture), as `png`. Returns its size."""
+    from PIL import Image
+    from rostrum2d.engine import Engine
+    x, y, w, h = (float(v) for v in area)
+    try:
+        with Engine() as eng:
+            eng.load(scene)
+            view, pw, ph, stride = eng.pixels(t, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
+            data = bytes(view)
+            view.release()
+            Image.frombuffer("RGBA", (pw, ph), data, "raw", "RGBA", stride, 1).save(png, "PNG")
+            return pw, ph
+    except RostrumError:
+        raise
+    except Exception as e:
+        raise _fail(where, f"the area {[x, y, w, h]} at {t:.3f} s", e) from e
+
+
 def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None, quality=None, bitrate=None, on_stop=None) -> dict:
     """Export to `<name>.partial.mp4`, then rename: a failed export never leaves a file under the final name. `on_stop`: a
     job's on_cancel, given the engine's end (run_stop ends the engine at once, even mid-frame)."""
