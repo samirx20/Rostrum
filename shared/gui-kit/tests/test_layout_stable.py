@@ -62,4 +62,5 @@ def test_a_panel_slid_sideways_as_one_is_a_side_panel_opening_not_a_move():
                                  for k, s in before.items()}
     assert layout_stable.slid(before, moved(268, 0), "work", set()) == (268, 0)
     assert layout_stable.slid(before, moved(0, -404), "work", set()) == (0, 0)
-    assert layout_stable.slid(before, moved(268, 0, n=3), "work", set()) == (0, 0)
+    assert layout_stable.slid(before, moved(268, 0, n=4), "work", set()) == (268, 0)    # right-anchored ones stay
+    assert layout_stable.slid(before, moved(24, 0), "work", set()) == (0, 0)             # a label pushing its row

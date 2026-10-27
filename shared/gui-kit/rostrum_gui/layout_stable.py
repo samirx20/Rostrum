@@ -154,19 +154,22 @@ def try_one(win, c, wait, hover) -> tuple[list, list, dict, set]:
 
 
 def slid(before: dict, after: dict, panel: str, alive: set) -> tuple[float, float]:
-    """How far the whole panel slid sideways as one, else (0, 0): a side panel the click opened (a Library) pushes the
-    work area beside it, every control by the same step, nothing moving within it, and what the click opened takes
-    the next press. At least SLID of the panel's controls must share the step; moves are then judged against it. Only
-    sideways: a panel growing up under the pointer (a dock opening) is still a find."""
+    """How far the panel's controls slid sideways as one, else (0, 0): a side panel the click opened (a Library) pushes
+    the work area beside it, every left-anchored control by the same step (right-anchored ones stay), nothing moving
+    within it, and what the click opened takes the next press. At least SLID of the controls that moved must share one
+    step of SLIDE_MIN px or more; moves are then judged against it. Only sideways and only that far: a panel growing up
+    under the pointer (a dock opening) or a row of buttons pushed by a widening label is still a find."""
     steps = [(round(after[k].rect.left() - o.rect.left()), round(after[k].rect.top() - o.rect.top()))
              for k, o in before.items() if o.panel == panel and k in after and k not in alive]
+    steps = [st for st in steps if st != (0, 0)]
     if len(steps) < 4:
         return 0, 0
     top = max(set(steps), key=steps.count)
-    return top if top[0] != 0 and top[1] == 0 and steps.count(top) >= SLID * len(steps) else (0, 0)
+    return top if abs(top[0]) >= SLIDE_MIN and top[1] == 0 and steps.count(top) >= SLID * len(steps) else (0, 0)
 
 
 SLID = 0.8
+SLIDE_MIN = 100
 
 
 def popup_frame(spots: dict, layer: str):
