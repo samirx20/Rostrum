@@ -192,6 +192,36 @@ to choose another part. **Fill the frame** and **Align to the frame** use the fr
 the frame moves, More › **Cover the frame's move** sizes a layer for the whole move (`painted-backgrounds`).
 
 
+## Depth of field
+
+The frame can blur each layer by how far it is from a **focus depth**, as a lens does: layers at the focus are sharp,
+those behind or in front of it get softer. It reads the same **Depth** the parallax uses, so it works on the scene's
+own layers (not inside a group: a group blurs as one, at its depth); a layer that **sticks to the shot** is never
+blurred. Each layer is blurred once per frame, so it costs about what one Blur effect per layer costs. The canvas,
+Quick preview and the export show the same blur.
+
+| Field | What it does |
+|---|---|
+| `dof` | **Depth of field** on or off. Its two rows below show only while it is on. |
+| `focus` | **Focus depth**: the depth that is sharp (0 = the layers as placed, 1 = twice as far, -0.5 = nearer). Keyable. |
+| `focusBlur` | **Blur** (px): how soft a layer far behind the focus gets; a layer twice as near as the focus gets as much, nearer ones more. Keyable. |
+
+How soft a layer gets: `focusBlur × |(1 + focus) / (1 + depth) − 1|` px of the layer's own size (the frame's zoom
+grows it with the layer, as it grows a Blur effect). With the focus at 0 and Blur 20: a layer at depth 1 gets 10 px,
+depth 3 gets 15 px, far away almost 20 px; a layer at depth -0.5 (twice as near) gets 20 px.
+
+**A rack focus** is two keys on the focus: sharp on the foreground, then on the background.
+
+```python
+f = frame()
+f.set(dof=True, focusBlur=24)
+f.key("focus", {10.5: -0.4, 13.5: 2.5}, ease="easeInOut")   # from the near layers to the far ones
+```
+
+From an agent: `value.set target=frame prop=dof v=true`, then `value.set target=frame prop=focus v=2.5 at=13.5` (or
+`key.add`). On the screen: pick the frame (**C**), turn on **Depth of field** in its settings, and type or key
+**Focus depth** and **Blur** like any field.
+
 ## Motion blur (shutter)
 
 Two fields on the **composition** (set with `comp.set`, or `comp("main", shutter=180)`; not animatable). On the screen:
@@ -249,5 +279,5 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 ## Not yet
 
-Looking through a turned frame straight (the canvas turning with it). Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), depth of field, a frame with perspective in depth (depth is parallax
+Looking through a turned frame straight (the canvas turning with it). Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), focus picked by clicking a layer (type its depth into Focus depth), a frame with perspective in depth (depth is parallax
 scaling, not 3D).
