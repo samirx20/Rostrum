@@ -45,6 +45,12 @@ Item {
             }
         }
     }
+    Loader {            // a picked shape's orange setting handles (corner radius, points, arc ends ...), under the knobs: a corner wins
+        id: shapeKnobs
+        anchors.fill: parent
+        active: h.editable && !h.group && h.box.type === "shape"
+        sourceComponent: ShapeHandles { box: h.box; fit: h.fit }
+    }
     KeptRepeater {      // the kit's knobs, kept: a pick (or the frame, and back) remakes none
         id: knobs
         needed: h.editable ? h.kit.knobs.length : 0
@@ -57,6 +63,7 @@ Item {
             readonly property bool edge: hx === 0 || hy === 0
             objectName: (h.group ? "groupHandle:" : "handle:") + (info.name || "")   // what a scripted hand drags (dragobj)
             visible: index < knobs.needed && (!edge || info.always === true || (hx === 0 ? h.bw : h.bh) > 36)   // a small box keeps only its corners
+                     && !(edge && shapeKnobs.item && shapeKnobs.item.covers.indexOf(info.name) >= 0)   // a setting handle sits there
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
             // A small box on screen (under `tiny` px a side): its knobs sit just OUTSIDE it on that side, so the knobs never cover the

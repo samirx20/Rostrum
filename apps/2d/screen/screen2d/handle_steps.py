@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import math
 
+from .transform import turn
+
 HANDLES = {"nw": (-1, -1), "n": (0, -1), "ne": (1, -1), "e": (1, 0), "se": (1, 1), "s": (0, 1), "sw": (-1, 1), "w": (-1, 0)}
 MOVES = (0.25, 0.5, 0.75, 1.0)             # a few moves, as a hand would make
 
@@ -46,6 +48,9 @@ def steps_handles(bridge, step, rest):
             a = math.radians(float(rest[0]) * f)
             bridge.groupRotateTo(cx + 100 * math.cos(a), cy + 100 * math.sin(a), flags["shift"])
         bridge.endDrag()
+    elif word == "shapehandle":               # a shape's setting handle, pressed where it sits, dragged dx dy on screen
+        bridge.select(rest[0])
+        shape_handle(bridge, step, rest[1], float(rest[2]), float(rest[3]), flags["shift"], flags["alt"])
     elif word == "boxselect":
         bridge._multi.boxSelect(*[float(v) for v in rest[:4]], " ".join(k for k in ("shift", "ctrl") if flags.get(k) or k in rest))   # [shift] [ctrl]
     elif word == "shiftpick":
@@ -57,3 +62,17 @@ def steps_handles(bridge, step, rest):
         for f in MOVES:
             bridge.moveBy(dx * f, dy * f)
         bridge.endDrag()
+
+
+def shape_handle(bridge, step, name, dx, dy, shift=False, alt=False):
+    from . import route
+    from .shape_handle_slots import placed
+    b = bridge.selBox
+    item = bridge.doc.item(bridge.selectedLayer)
+    at = next((h for h in placed(b, route.shown_values(item, bridge.own_t(item["id"])), bridge.view_zoom(), name) if h["name"] == name), None)
+    if at is None or not bridge.beginShapeHandle(name, at["u"], at["v"]):
+        raise RuntimeError(f"step {step!r}: {bridge.status or 'no such handle on this layer'}")
+    ldx, ldy = turn(dx, dy, -b["rot"])        # the drag along the box's own sides, as fractions of it
+    for f in MOVES:
+        bridge.shapeHandleTo(at["u"] + ldx * f / b["w"], at["v"] + ldy * f / b["h"], shift, alt)
+    bridge.endDrag()

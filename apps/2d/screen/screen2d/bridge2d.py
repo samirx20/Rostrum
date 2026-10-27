@@ -24,6 +24,7 @@ from .group_slots import GroupSlots
 from .anchor_slots import AnchorSlots
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
+from .shape_handle_slots import ShapeHandleSlots
 from .action_slots import ActionSlots
 from .action_preview import PREVIEW_TAG, ActionPreview
 from .agent_view import AgentView
@@ -56,7 +57,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, ShapeHandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()

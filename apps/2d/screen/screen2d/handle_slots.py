@@ -15,6 +15,7 @@ from PySide6.QtCore import Property, QObject, Slot
 from rostrum2d.evaluate import resolve
 
 from . import bounds, exprs, layout_drag, line_ends, route, transform as T
+from .shape_handle_slots import wraps
 
 OWN_SIZE = ("shape", "image")                 # types whose Width / Height can be keyed (fields.py); a group is resized by Scale, so what is in it grows with it
 
@@ -77,6 +78,7 @@ class HandleSlots:
     def beginResize(self, hx, hy):
         def fields_of(g, item):
             size = ("w", "rotation") if g.kit == "ends" else ("w", "h", "scaleX", "scaleY") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
+            size += ("boxWidth",) if wraps(g) else ()
             return size + (() if g.placed else ("x", "y"))
         ok = self._handle_begin("Resize", hx, hy, fields_of)
         if ok and self._grab.kit != "ends":             # the dragged edge snaps (snapper.py); not on a turned box
@@ -93,6 +95,8 @@ class HandleSlots:
         if g.kit == "ends":
             return self._end_by(g, item, dx, dy, shift, alt)
         dx, dy = self._snap.edge(g.hx, g.hy, dx, dy)
+        if wraps(g) and not (g.hx and g.hy):                   # a text's side: its wrap width (shape_handle_slots.py)
+            return self._wrap_by(g, item, dx, dy, alt)
         scaled = item["type"] not in OWN_SIZE
         dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
         hx, hy, ax, ay = bounds.parent_side(b, g.hx, g.hy)    # inside a mirrored group the box runs the other way

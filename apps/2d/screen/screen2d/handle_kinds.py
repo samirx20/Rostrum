@@ -2,10 +2,16 @@
 handle drags. No Qt.
 
 "box"  : a corner square on each corner and one on each side, a turn zone outside each corner (most layers).
+"text" : a text: a corner square on each corner (they scale the letters) and one on the left and right sides (they set the
+         wrap width, `boxWidth`: the letters keep their size and the lines re-flow; shape_handle_slots.py). No top and
+         bottom squares: a text's height is its lines'. The side squares show on a short text too (a line of words is
+         rarely 36 px tall on screen).
 "ends" : a line or an arrow: one square on each end point (drag it to move that end: the length and the turn follow,
          the other end stays; Alt: from the middle; Shift: 15 degree steps). No middle squares (they would sit on the
          line and steal a press meant to move it), no turn zones (an end turns it).
 The anchor ring (anchor_slots.py) shows on every kit that says "anchor", while the Anchor group is open.
+SHAPE_HANDLES: the orange setting handles a picked shape shows over its knobs, per shape kind (ShapeHandles.qml; where
+each sits, how it hides by size and what its drag sets: shape_handle_geom.HANDLES).
 A knob is {hx, hy, name, always}: -1 left / top, 1 right / bottom, 0 the middle; `always` shows it on a thin box too
 (Handles.qml hides a side knob of a small box).
 """
@@ -21,8 +27,19 @@ def _knob(hx, hy, always=False):
 KITS = {
     "box": {"knobs": [_knob(*k) for k in ((-1, -1), (1, -1), (1, 1), (-1, 1), (0, -1), (1, 0), (0, 1), (-1, 0))], "turn": True, "anchor": True},
     "ends": {"knobs": [_knob(1, 0, True), _knob(-1, 0, True)], "turn": False, "anchor": True},
+    "text": {"knobs": [*(_knob(*k) for k in ((-1, -1), (1, -1), (1, 1), (-1, 1))), _knob(1, 0, True), _knob(-1, 0, True)], "turn": True, "anchor": True, "sides": "wrap"},
 }
 ENDS = {("shape", "line"), ("shape", "arrow")}          # (layer type, shape kind) drawn from one end to the other
+BY_TYPE = {"text": "text"}                              # a layer type's own kit ("box" for the rest)
+SHAPE_HANDLES = {
+    "rect": ("radius:nw", "radius:ne", "radius:se", "radius:sw"),
+    "ellipse": ("start", "end"),                        # dragging one makes it an arc, the same box
+    "arc": ("start", "end", "hole"),
+    "star": ("points", "inner", "radius"),
+    "polygon": ("sides", "radius"),
+    "triangle": ("tip", "radius"),
+    "spiral": ("turns",),
+}
 
 
 def dressed(box: dict) -> dict:
@@ -37,4 +54,4 @@ def dressed(box: dict) -> dict:
 
 def kit_of(layer_type: str, p: dict) -> str:
     """The kit's name for a layer (p: its values)."""
-    return "ends" if (layer_type, p.get("shape")) in ENDS else "box"
+    return "ends" if (layer_type, p.get("shape")) in ENDS else BY_TYPE.get(layer_type, "box")

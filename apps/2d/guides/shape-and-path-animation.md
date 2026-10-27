@@ -14,6 +14,27 @@ A person uses the Pen tool and writes the same path data the operations below wr
   With any of those given (and in operations), `d` is in the layer's own px from its box's top-left and `x`, `y` place
   the box. A new path is filled light grey: a line wants `fill="none"` (or `filled=False`) and a stroke.
 
+**On the canvas**, a picked shape shows small orange-ringed handles for its own settings (round dots and diamonds, never
+the white resize squares). Each drag is one undo step and is the same `value.set` (or `shape.set` for Each corner and the
+kind) a script sends, so an animated setting gets a key at the playhead:
+
+- **Rectangle:** a dot inside each corner, as far in as the corner is round. Drag it in or out along the corner: every
+  corner gets that `radius`. **Alt**+drag: only that corner (`eachCorner` on, `radiusTL` / `radiusTR` / `radiusBR` /
+  `radiusBL`). The radius stops at half the short side.
+- **Star:** the diamond just above the first tip: drag sideways for more or fewer `points` (3 to 60). The diamond on the
+  first inner corner: drag in or out for `innerRadius`. **Polygon:** the top diamond is `sides`.
+- **Triangle:** the diamond on the top corner slides along the top edge (`tip`).
+- **Triangle, polygon, star:** a dot just inside the first corner rounds every corner (`radius`).
+- **Arc:** two dots near its ends: drag round the middle to move the start (`startAngle`) or the end (`sweep`);
+  **Shift** steps by 15°. The diamond half-way along drags in or out for the `hole` (0 = a pie slice).
+- **Ellipse:** the same two dots at the top. Dragging one turns it into an arc with the same box, in one step
+  (`shape=arc`, `startAngle`, `sweep`).
+- **Spiral:** the diamond on its outer end: drag round for more or fewer `turns`.
+
+While you drag, the others fade and a small label by the pointer says the value ("Radius 24", "7 points"). They show
+only on one picked shape that is big enough on screen (over 60 px for the corner dots, 48 px for the rest; zoom in for a
+small one). A setting driven by an expression is refused (clear the expression first).
+
 `shape.to_path` turns a shape into a path (same id, place, look, effects, masks, keys; keys on fields a path cannot animate
 must be removed first).
 
