@@ -202,7 +202,7 @@ does. Every saved brush is its own brush, even with the same settings as another
 - `look_drawing (what "at") x y`: the colour there, each paint layer's colour, the top stroke and who drew it.
 - `look_drawing (what "landed") stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with
   where you meant it to go.
-- `look_frame`, `look_frame` (`what: "sheet"`), `render_video`: the whole composition, drawn by the engine exactly as it exports.
+- `look_frame`, `look_frame` (`what: "sheet"`), `render_export` (`what: "video"`): the whole composition, drawn by the engine exactly as it exports.
 - `look_drawing (what "coverage") layer time=…`: how much is painted at that time (as far as `drawnSoFar` has got), per paint
   layer and together (painted = at least 60 % opaque, thin = 15–60 %, bare = less), and each bare area named with its box
   ("bare paper: a 1920×104 px strip along the bottom edge, the full width, canvas x 0–1920, y 976–1080 (composition x 0–1920,
@@ -290,7 +290,7 @@ id, so every drawing scatters differently. A painting (a painted fill) boils wit
 
 1. Block the motion first: a few key drawings (the extremes), checked with `look_frame` (`what: "sheet"`).
 2. Fill the in-betweens with `onion=true`, so each drawing sits between its neighbours.
-3. Check the loop: the last drawing must lead into the first. `render_video` and watch it.
+3. Check the loop: the last drawing must lead into the first. `render_export` with `what: "video"` and watch it.
 
 A look (`look_frame`, a sheet, a part of a video) makes only the drawings that show then, several at once; the first
 look at a big painted scene is the slowest (each new drawing is painted once, then kept by its content).

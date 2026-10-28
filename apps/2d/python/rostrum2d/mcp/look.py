@@ -45,7 +45,7 @@ def look_frame(ctx, args):
     painted area (a drawing's wash: a masked stroke, as paint.wash lays; 1 % of the frame or more) that is one flat value at frame
     size: its lightness spread, how much darker its edge is and its grain, in % (`washes` in the data, every area). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait.
-    `video`: the path of a finished mp4 (render_video's `video`) with `times` (or one `time`): the sheet is made of the film's
+    `video`: the path of a finished mp4 (render_export's `video`) with `times` (or one `time`): the sheet is made of the film's
     own frames, so you look at the export itself."""
     if "video" in args:
         if "area" in args or "frame" in args:
@@ -127,7 +127,7 @@ def look_sheet(ctx, args):
     each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
     a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick.
     For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet.
-    `video`: the path of a finished mp4 (render_video's `video`): the sheet is made of the film's own frames (start / end /
+    `video`: the path of a finished mp4 (render_export's `video`): the sheet is made of the film's own frames (start / end /
     count in the film's seconds), so you look at the export itself, not the composition."""
     if "video" in args:
         return video_frames.video_sheet(ctx, args, None)

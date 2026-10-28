@@ -1,4 +1,4 @@
-"""render_video and render_export wait for their own job in the same call (`wait_s`), so the finished reply (the file, its
+"""render_export (what "file" and "video") waits for their own job in the same call (`wait_s`), so the finished reply (the file, its
 checks, the weakest moments) comes back without polling. In the benchmark one agent spent 22 calls on inspect_job for its
 renders. A failed or stopped job is an error here, as inspect_job's is (jobs.outcome); past `wait_s` the reply is the job's
 progress and its id, never a success."""
@@ -10,12 +10,10 @@ import time
 from rostrum_core.mcp.jobs import MAX_WAIT_S, outcome
 from rostrum_core.mcp.tools import _schema_of
 
-TOOLS = ("render_video", "render_export")
+TOOLS = ("render_export",)
 WAIT_S, MOST_S = 120, 600
 WAIT = {"wait_s": {"type": "number", "minimum": 0, "maximum": MOST_S, "default": WAIT_S,
-                   "description": f"Wait up to this many seconds for the export to finish and get its finished reply in this call "
-                                  f"(default {WAIT_S}: a 30 s 1080p film usually finishes inside it; up to {MOST_S}). 0: return the job id at once. "
-                                  "Past it the reply is the job's progress: inspect_job with its job_id and wait_s. A failed export is an error, never a success."}}
+                   "description": "Seconds to wait for the file; 0: the job id at once."}}
 
 
 def with_wait(runtime) -> None:

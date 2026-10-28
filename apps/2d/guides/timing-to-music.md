@@ -81,4 +81,60 @@ These keys work when the song has a tempo.
 
 Right-click the **Sound row** and choose **Open in RostrumSound**. RostrumSound opens on this project's song. Change the music, voice or markers there; 2D picks up the new sound by itself (see step 1.4).
 
+## 10. For agents: layers timed from a marker
+
+Cuts, entrances and beats that other apps also use (the music's drop, the 3D product landing) go on the project's
+**shared markers** (`inspect_markers`, `edit_markers`), never copied as numbers. Give a layer or a whole group
+**Timed from marker** (`marker="reveal"`): its *Starts at*, *Ends at* and keys, and everything inside it, count
+from that marker. Move the marker in any app and the shot moves with it; Sound's music follows the same marker.
+
+In a script, `marker("reveal", 3)` makes that shared marker (re-running moves it, removing the line removes it) and
+gives `"#reveal"`, which adds like a number. A layer's `start="#reveal+0.5"` makes it Timed from marker with its other
+numbers still meaning comp seconds as written; `end="#out"` is Ends at marker. `after(item, gap=)` is when its last
+key lands, `stagger(items, every=, start=)` gives each item its start, `beats(bpm=120, start=)` a beat grid without a
+song: no hand-counted `t0 + i * 0.5` (guide `the-film-as-one-script`).
+
+```python
+with group("reveal_shot", marker="reveal", end=4.0):     # visible from the marker for 4 s
+    t = text("name", body="Lull", size=180)
+    t.key("opacity", {0.0: 0, 0.4: 1})                     # 0.0 = the moment of the marker
+```
+
+- Inside a timed group, `start`, `end` and key times are **seconds from the marker**: `end=4.0` is 4 s after it, not
+  at 4 s of the comp.
+- A layer inside a timed group with its own `marker` counts from its own marker.
+- **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
+  reveal starts, wherever either marker moves.
+- **Cuts:** the frame jumps on a key timed on a marker: `frame().cut(at="#reveal", to="rect", rect=(2240, 0, 1920, 1080))`
+  (or `frame.cut` with `at: "#reveal"`), so the cut moves with the marker (see `frame-parallax-motion-blur`).
+- **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
+  A group's lead-in shows its children too: a child left at *Starts at* 0 starts with its group; a child with a
+  start of its own counts it from the marker (`start=0.2` appears 0.2 s after it).
+- **A key on its own marker:** a key's time may name a marker, as Sound's times do: `t.key("opacity", {0.0: 0,
+  "#drop-0.1": 0.2, "#drop+0.2": 1})` (or `key.add` with `"t": "#drop+0.2"`). It lands at that moment of the
+  project, whatever its layer counts from, so one layer can hit "drop" and "logo lands" both, and a key may sit
+  before the layer's start (a pre-roll: the move is under way when the layer appears). Moving the marker moves the
+  key; a marker that is gone stops the render naming the key. `look_motion` (`what: "curve"`), the curve editor and the settings panel
+  show the marker ("drop +0.2 s"); dragging such a key keeps it on its marker with a new offset.
+- Drawings' frames, effects', masks' and a rig's keys move with their layer.
+- `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
+  shows the times as written, from the marker.
+- A marker the project doesn't have stops the render with a message, and `look_frame` with `what: "diagnose"` lists it.
+- Move a marker with `edit_markers` and `marker.move`; its target may be the marker's name or its id:
+  `{"op": "marker.move", "target": ["drop"], "args": {"at": 5.5}}`.
+
+## 11. For agents: music and sound
+
+Sound is made in **RostrumSound**, never in 2D: its own MCP server (`rostrum-sound`) opened on the **same project
+folder** (its `run_open_project`). Read its guides `start-here` and `scoring-motion` there. What it makes plays here
+with the picture and goes under an mp4 export (`render_export` with `what: "video"`, `sound`, on by default when the project has sound).
+Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), never copied times. From 2D:
+
+- `inspect_sounds` lists what you can tie to a layer: a note or hit on the song's own instruments, the person's
+  recordings, RostrumSound's library; `edit_sound_cue {layer, sound}` ties one to the layer's start (Sound mixes it).
+- `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
+  suggests notes and hits for each landing).
+- **No sound?** A render of a project with no RostrumSound item, or with `sound: false`, makes a silent mp4; it never fails for that. The Sound server is only needed to make or change the music, not to render it.
+- In a script, `beats()` gives the beats of the scene's song in seconds, to cut or key on (`beats(bpm=120)` a grid with no song); a song's markers work as times (`"#drop"`), and `marker("drop", 8)` makes a shared one.
+
 Next: [the-screen.md](the-screen.md), [exporting.md](exporting.md).

@@ -43,4 +43,17 @@ A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence 
 ## Your own keys
 
 To use a different key for something, make the text file `.rostrum/keys/rostrum2d.toml` in your home folder and write one line per action: `"Undo" = "Ctrl+Shift+Z"`. An empty key (`"Add a marker at the playhead" = ""`) takes the key away. Write the action's name as the Keys list (**Ctrl+/**) shows it; a key you changed is marked "(your key)" there. If a line names an action that doesn't exist, or a key another action already has, the app says so when it starts and tells you which file to fix.
+
+## For agents: open or make a project
+
+The server starts on your own project, never the person's: the one you last opened from this working folder (a resumed
+session gets it back), else a fresh scratch project made for you (in `~/.rostrum/projects/agent-scratch/`, with an empty
+document `main`). The first reply says which. To work on the person's project, somewhere else, or to start a new piece:
+
+- `run_open_project {"folder": "C:/Users/me/Videos/launch"}`: the folder is an absolute path. If it doesn't exist yet it
+  is made (with any folders above it), with an empty document `main` in it; an existing project opens as it is.
+- `item` names the document: `{"folder": "...", "item": "teaser"}` opens `teaser`, or starts it empty beside the others.
+- `run_open_project {"what": "recent"}` lists the person's recent projects.
+- A refused call (a path that isn't absolute, a file instead of a folder, a document name with spaces) makes nothing.
+
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

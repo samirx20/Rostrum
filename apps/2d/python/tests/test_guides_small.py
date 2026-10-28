@@ -9,8 +9,8 @@ def test_b_text_rewrites_calls():
     assert g.b_text('`look_frame {"what": "sheet"}`') == '`look {"check": "look_frame", "what": "sheet"}`'
     assert g.b_text('`edit_markers {"ops": []}`') == '`run_script {"do": "edit_markers", "ops": []}`'
     assert g.b_text('`render_export {"format": "mp4"}`') == '`export {"format": "mp4"}`'
-    assert g.b_text("`look_review` names it") == "`look` names it"
-    assert g.b_text("`look_review` with `beats`") == '`look {"check": "look_review", "beats": [...]}`'   # plain look has no beats
+    assert g.b_text('`render_export {"what": "video"}`') == '`export {"what": "video"}`'
+    assert g.b_text('`look_frame` with `what: "review"`') == '`look` check `look_frame` with `what: "review"`'
 
 
 def test_b_guides_name_only_b_tools_and_reference_every_hidden_tool():

@@ -5,7 +5,7 @@ The fastest way to a whole film is **one Python program** that makes every scene
 changes, what a person moved by hand stays. The small tools (`edit_document`, the `*.set` operations) are for quick
 changes to one thing; a film written as many small calls, or as several scripts, is slower to change and easy to break.
 
-This page is about how to **structure** that program. What each call does is in `start-here` (Scripts) and the topic
+This page is about how to **structure** that program. What each call does is in `script-reference` and the topic
 guides; the fragments here show the shape of a technique, not a piece to copy.
 
 ## The loop
@@ -13,15 +13,15 @@ guides; the fragments here show the shape of a technique, not a piece to copy.
 1. Write the script to a file (`C:/work/film.py`) and run it: `run_script {"path": "C:/work/film.py", "look": true}`.
    `look: true` brings back, in the same reply, one contact sheet (3 tiles across) of 6 moments spread over the film
    (2.5 … 27.5 s on a 30 s film) and the film's weakest moments, most visible first (up to 8 lines in the summary, all
-   of them in `data.look.faults`, each with its kind, start, end and words; the same checks as `look_review`).
+   of them in `data.look.faults`, each with its kind, start, end and words; the same checks as `look_frame` with `what: "review"`).
    The reply opens `NOT DONE:` with each weak moment (id, when, fix), or `DONE:` when there are none.
    `look: [2, 7.5, 12, 18]` picks the moments (up to 12). It adds a few seconds to the call. If the stills fail, the
    merge still stands and the summary says "Look FAILED"; look again with `look_frame`. Beats of the brief are not
-   checked here: `look_review` with `beats`, or the export's reply, checks them.
+   checked here: `look_frame` with `what: "review"` and `beats`, or the export's reply, checks them.
 2. Read the faults and the sheet. Edit the file where the fault is.
 3. Run it again with the same path (the file's name is the script's name). Repeat.
 4. For detail, `look_frame` at one time (`area` for a zoom); `look_motion` for what moves when.
-5. Export once it holds up: `render_export {"comp": "main", "format": "mp4"}` (or `render_video`) waits for its own file
+5. Export once it holds up: `render_export {"comp": "main", "what": "video"}` (the project render; `format: "mp4"` with a `path` for an mp4 of your own) waits for its own file
    (`wait_s`, default 120 s, up to 600) and replies with the finished file, its checks and the weakest moments, so there
    is no job to poll. Past `wait_s` the reply says "Still running after N s" with the `inspect_job` call to make;
    `wait_s: 0` gives the job id at once. A failed export is an error, never a success.
@@ -29,6 +29,55 @@ guides; the fragments here show the shape of a technique, not a piece to copy.
 Keep the same file and name for the whole session. A **new name adds a second copy** of everything; a second script
 can't make a scene the first one made, nor key its layers (the refusal names the script that made them: add the lines
 there and run that one).
+
+## Seeing your work: the look tools (use them every time)
+
+You can't judge motion from the script. Look.
+
+| Tool | Use it to |
+|---|---|
+| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
+| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. With `video: "<mp4 path>"` (with `sheet`, or `times`) the sheet is made of a **finished mp4's own frames**: the export itself, no item needed. |
+| `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. `area: [x, y, w, h]` (comp px) draws only that part, sharp at `width` (a zoom on a mouth or an edge); `times` + `cols` for a sheet of chosen moments. |
+| `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
+| `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
+| `look_frame` (`what: "in_frame"`) | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
+| `look_frame` (`what: "empty"`) | Find **blank, pale and standing-still stretches** from tiny pictures every 0.5 s (seconds to run), with times and numbers: near-empty frames (almost only background), washed-out frames (all pale, low contrast), nothing moving for `min_still` s (default 2), and whether the piece ends on one. Facts, not verdicts: a held title is yours to judge. `video: "<mp4 path>"` checks a finished file. |
+| `look_frame` (`what: "review"`) | List the film's **weakest moments, ranked**, each a located fault with times: a near-empty stretch, a text cut off by the frame edge, an old heading still faintly behind a new one, a set of parts (a chart's bars, a list's rows) not drawn in yet while the rest of its group shows, a plain card opening empty, a character's pose barely changing for 6 s or more, an arm held nearly straight for 4 s or more, a character's arms or legs thin next to its body (also named in `run_script`'s reply), framing held 10 s or more (no camera move or cut), nothing moving, a subject cut by the edge (a layer blurred 20 px or more is atmosphere and never named), a title closer to the frame edge than the safe margin, a stray small dot that later grows (a wipe circle left showing), a layer showing outside the screen it belongs to (a cursor beside the phone), a lock-up whose parts touch, a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film), opening shots that look alike (the same layers on the same ground, about as big), the last picture held unchanged for over a fifth of the film, a text partly crossed (10–85 % of it, 1 s or more) by a layer drawn in front of it (a panel's own background counts; a text fully under a panel or sheet is hidden, not crossed; a frosted scrim never counts) with where to place the block instead ("place \"hero\" below \"nav\" (\"nav\" ends at y = 164)"), a text cut by the edge of the screen or box that clips it, two showing texts on top of each other, a pointer (a layer named cursor, pointer, mouse, finger or hand) covering a fifth of a label, an end card whose mark or lock-up is tiny in the frame, a device (`device()`) cut by the frame edge where it is placed, or nibbled by camera push-ins while its sides show (with the frame key, the share of the film it is cut, and `frame().fit(["phone"], at=…, pad=0.06)` or a push onto one part; a push-in that fills the picture but still shows the device's body at a side of the frame (dark bars beside the screen) is named as a broken frame; a deep push-in filling the whole picture is meant and only listed in `data.info`, with the screen texts it cuts, except a label sliced by the edge, which is always named), a character more than half hidden behind layers in front of it, or standing on a bare set (fewer than 3 things or under 15 % of the frame besides it and the background). `beats: [{"at": 25, "to": 30, "expect": "camera move"}]` (also `cut`, `pose change`, `<layer id> moves`, `<layer id> shows`, `<layer id> reveals`: more of it showing over at..to, never whole before) names a beat of the brief that never happens or comes at the wrong time ("'lamp shows' already happened at 0 s; the beat is meant at 24 s"). A whole object made of several layers: name its group. Seconds to run on a 30 s film; `video` reads an exported mp4's pictures. Facts, not taste: a held title may be meant. |
+| `render_export` (`what: "video"`) | Export the project render as an mp4. Always a job; the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` follows it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out or unchanged stretches: `quiet_stretches`; subjects cut by the edge: `edge_cuts`) and ends with the time left and the weakest moments from the review. Takes `beats` as the review does; they are kept for the session and every later export checks them. |
+
+**The loop: make → export → review → fix.** Every finished export's reply ends with the time left and its top weakest
+moments (from the review), e.g. *Time left: 11 min. Weakest moments, most visible first: 1. 22–23 s: near-empty …
+2. 12 s: text "headline" is cut off by the right edge …* Fix the top one, export again, and repeat while time is left:
+each pass is a few minutes. Give the brief's timed moments as `beats` on your first export ("the lamp is
+revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`); until you do, the reply asks for them. Also look at a sheet of the finished piece (`look_frame` `what: "sheet"` with `video` = the
+mp4's path, after your last edit): the review names what can be measured, your eyes judge the rest. A sheet from
+before your last edit doesn't count.
+
+## Using your time
+
+A first version usually takes a fraction of the time you have: the rest is for looking at it (sheets of the whole span,
+the export, single frames, zooms) and refining what you see, in passes.
+
+Every reply ends with a clock line, e.g. *Session 6 min 12 s of real time since your first call (your thinking included) · 23 calls · last look at
+the picture 4 edits ago*. The session starts at your first call; if `ROSTRUM_SESSION_BUDGET_MIN` is set it also says how many
+minutes are left. After an export it also names the kinds of look not done yet (a full-size single frame, the motion with
+`look_motion`). The clock is the only time you have: a long stretch without a reply is not time used up, and the time
+you were given is for making **and looking**.
+
+`inspect_project` with `what: "session"` says what is still unchecked: edits since you last looked at the picture, times
+of the piece you have never looked at (a look at a time covers 2 s either side of it, a sheet covers each of its tiles),
+whether the export was looked at, and the stretches the last empty check named. A technique for the time you have:
+
+- Work in **passes**, not one long build: structure and timing first, then look at sheets of the whole span, then refine what the
+  sheets show (a moment looks different at 100 % in one frame than in a tile, so also look at single frames and `area` zooms).
+- Use the time to look: a sheet of the whole span after each pass, a sheet of the **export** after each render, a zoom on
+  anything small. A piece you have not looked at is not finished, however long the script is.
+- Stop when the checks say nothing is unchecked **and** the picture at every time looks as you mean it, not when a count of
+  calls or minutes feels enough.
+
+Look pictures go to the project's `looks` folder (`<project folder>\looks\`; with no project open, to Rostrum's look cache); every reply gives the full path in `files`. `look_frame` and `look_frame` (`what: "sheet"`) use the
+same engine as export, so what you see is what the file will be.
 
 ## Timing in one place
 

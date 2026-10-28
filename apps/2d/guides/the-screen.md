@@ -97,7 +97,8 @@ The whole list: Group, Ungroup, Crop to a box, Auto layout, Make a set that show
 
    ![A star's settings, with the fill picker open on a picture](pictures/fill-picker.png)
 
-7. With the Brush on, the same panel is headed "Painting" and shows the brush instead (see [drawing.md](drawing.md)).
+7. **Animate on** sets stepped timing ("on twos / threes") for the picked scene, group or layer. Its first choice reads **Same as its group** for a layer inside a group, and **Same as the scene** for a layer straight in a scene.
+8. With the Brush on, the same panel is headed "Painting" and shows the brush instead (see [drawing.md](drawing.md)).
 
 ## 5. The timeline is the layers list
 

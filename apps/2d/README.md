@@ -6,6 +6,9 @@ Motion design, type, UI animation, drawing, frame-by-frame and 2D characters.
 - **Python layer** (`python/rostrum2d/`, on `rostrum_core`): the 2D document, its operations, the script layer, the engine handle, the MCP server `rostrum-2d`.
 - **Screen:** `screen/`, Qt Quick on `shared/gui-kit/`.
 - **Guides:** `guides/`, how-to guides for people and agents (techniques, not styles).
+  Agents read first: `guides/start-here.md` (the loop, layout first, time by name, the five core tools), then the
+  pages its "where next" list starts with: `script-reference`, `the-film-as-one-script`, `lay-out-a-screen`,
+  `timing-to-music`, then the topic page for the job (`guides/README.md` lists them all).
 
 ## The document
 
@@ -39,7 +42,7 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
   Pen tool (`screen/screen2d/pen.py`) writes the same `d`.
 - **Video** (`video.py`): decoded once with `ffmpeg` into a cache keyed by the file's content; the engine picks the
   frame by the frame time, so preview ≡ export.
-- **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.expr(field, "…")`, `.link(field, of=, field=, scale=, offset=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.
+- **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.expr(field, "…")`, `.link(field, of=, field=, scale=, offset=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring, and `guides/script-reference.md` for every function.
 
 ## Use
 
