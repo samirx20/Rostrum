@@ -37,10 +37,12 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no material and no displayColor (clay_usd.cpp)
 
-// The node's props besides the transform, all sent by the compiler.
+// The node's props besides the transform, all sent by the compiler; then the ones it sends only when set (a stored
+// scene without them keeps its cache key)
 const char* const kKeys[] = {"layout", "count", "columns", "spacingX", "spacingY", "spacingZ", "radius", "faceOut",
                              "surface", "amountBy", "density", "minSpacing", "alongSurface", "onTop", "seed", "varyMove",
                              "varyTurn", "varyScale", "seenBy", "seenSize"};
+const char* const kOptionalKeys[] = {"onlySeen", "varyStart"};
 
 // A number from (seed, copy, channel), 0..1, the same on every run and machine: each copy's chances are its own, so
 // changing the count or the layout never reshuffles the others.
@@ -110,7 +112,8 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
   else if (key == "varyScale") {
     p.varyScale = at_least(v, where, 0);
     if (p.varyScale > 1) fail(where, std::to_string(p.varyScale) + " is too big", "0 .. 1");
-  } else if (key == "seenBy") p.seenBy = text(v, where);
+  } else if (key == "varyStart") p.varyStart = at_least(v, where, 0);
+  else if (key == "seenBy") p.seenBy = text(v, where);
   else if (key == "onlySeen") flag(v, where);  // the document's switch; `seenBy` carries it
   else if (key == "seenSize") {
     if (!v.IsArray() || v.GetJsArray().size() != 2) fail(where, "is not a list of 2", "[width, height] in pixels");
@@ -119,6 +122,7 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
     if (p.seenW == 0 || p.seenH == 0) p.seenW = 16, p.seenH = 9;
   } else {
     std::vector<std::string> known(std::begin(kKeys), std::end(kKeys));
+    known.insert(known.end(), std::begin(kOptionalKeys), std::end(kOptionalKeys));
     fail(where, "unknown field", join(known));
   }
 }
@@ -648,7 +652,8 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   s.start = ctx.start;
   s.end = ctx.end;
   for (const char* key : kKeys) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
-  if (it.props.has("onlySeen")) set_param(s.p, "onlySeen", it.props.get("onlySeen", "true or false"), it.props.at("onlySeen"));
+  for (const char* key : kOptionalKeys)
+    if (it.props.has(key)) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
   s.held = read_held(held, it.id + ".held", size_t(ctx.end - ctx.start + 1));
   s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
   if (sim) s.sim = read_sim(*sim, it.id + ".sim");
@@ -818,6 +823,10 @@ int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3
     if (v >= 0 && v < best_score) best = i, best_score = v;
   }
   return best;
+}
+
+int start_delay(const Params& p, int copy, double fps) {
+  return p.varyStart > 0 ? int(std::lround(rnd(p.seed, copy, 7) * p.varyStart * fps)) : 0;
 }
 
 }  // namespace copies

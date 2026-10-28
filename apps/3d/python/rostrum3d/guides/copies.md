@@ -21,8 +21,12 @@ make the source inside. Several sources: each copy picks one of them (by the see
 copies item to move them all, and key it. Framing it (`shot.frame`, Frame the selection) frames all its copies as they stand
 at that moment: laid out, held, keyed or fallen.
 
-Vary them a little: `seed`, `varyMove` (metres), `varyTurn` (degrees round up), `varyScale` (0–1). The same seed gives the same copies,
-whatever else changes; change the seed to shuffle. Nothing about a vary is random between renders.
+Vary them a little: `seed`, `varyMove` (metres), `varyTurn` (degrees round up), `varyScale` (0–1), and on a falling copies item
+`varyStart` (seconds): each copy starts to fall up to that much later than the item's `fallStart`, so they land one after another
+instead of all at once (`copies.set` it after `simulate="falls"`; before that it is refused, since nothing falls). The same seed
+gives the same copies and the same waits, whatever else changes; change the seed to shuffle. Nothing about a vary is random
+between renders. In the window these are the **Vary** rows in the copies item's settings, right under the layout's: Seed, Move,
+Turn, Size, and Start while it falls.
 
 ## Run a script again, safely
 

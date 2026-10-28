@@ -123,6 +123,26 @@ class Item:
             self.set(**place(tree, self.node, _id_of(over)))
         return self
 
+    def start_in_view(self, from_top: float = 0.1, shot=None) -> "Item":
+        """Raise (or lower) this falling thing or cloth so it starts inside the shot camera's picture, its top `from_top`
+        of the picture's height below the picture's top edge (0.1 default), as the camera sees it at its fallStart: it
+        then falls straight down, on screen (the sim.start_in_view operation). Call it after .simulate(...) and after the
+        shot and its camera are made; `shot` (an id or the shot) defaults to the first shot."""
+        from .sim.in_view import NotInView, lift
+        from .sim.inputs import value
+        tree = self._b.doc.data if self._b.doc and self.id not in self._b.taken else self._b.root
+        if value(self.node, "simulate") not in ("falls", "cloth"):
+            raise ValueError(f"{self.id}.start_in_view: set .simulate(\"falls\") or .simulate(\"cloth\") first")
+        shots = tree.get("shots", [])
+        sid = _id_of(shot) if shot is not None else (shots[0]["id"] if shots else "")
+        if not sid:
+            raise ValueError(f"{self.id}.start_in_view: make the shot (with its camera) first")
+        try:
+            dy = lift(tree, self.id, sid, float(from_top))
+        except NotInView as e:
+            raise ValueError(f"{self.id}.start_in_view: can't start in view of shot {sid!r}: {e}") from None
+        return self.set(y=round(float(self.node.get("y", 0.0)) + dy, 4))
+
     def place_on(self, other, at=None, normal=None) -> "Item":
         """Stand this mesh on `other`. Without `at`: on top of a mesh made earlier in the same group, its base on that
         mesh's top, over its middle (move it along the top afterwards with .set(x=…, z=…)); both unturned. With
@@ -423,7 +443,7 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls))", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)", "edit(id, **fields) / remove(id): a thing already in the scene (shot_1, ground, sky …)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]

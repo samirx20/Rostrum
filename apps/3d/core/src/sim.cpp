@@ -222,6 +222,32 @@ double dist(const V3& a, const V3& b) {
 // angle between neighbouring triangles (Jolt's dihedral constraint), from silk (0) through cotton (0.3, hangs in folds)
 // to card (1). The old distance bend at a sub-step's scale held even 0.3 nearly flat: a sheet tented out over a box
 // and, bent over its edge, sprang itself off it.
+// A cloth's Falls from: hold_cloth makes every point immovable (inverse mass 0, like a pinned point), so it keeps its first
+// shape and things land on it; release_cloth gives each point its own weight back (pinned ones stay held) at rest.
+std::vector<float> hold_cloth(JPH::PhysicsSystem& physics, JPH::BodyID id) {
+  JPH::BodyLockWrite lock(physics.GetBodyLockInterfaceNoLock(), id);
+  std::vector<float> inv;
+  if (!lock.Succeeded()) return inv;
+  auto* mp = static_cast<JPH::SoftBodyMotionProperties*>(lock.GetBody().GetMotionProperties());
+  for (JPH::SoftBodyVertex& v : mp->GetVertices()) {
+    inv.push_back(v.mInvMass);
+    v.mInvMass = 0.0f;
+    v.mVelocity = JPH::Vec3::sZero();
+  }
+  return inv;
+}
+
+void release_cloth(JPH::PhysicsSystem& physics, JPH::BodyID id, const std::vector<float>& inv) {
+  JPH::BodyLockWrite lock(physics.GetBodyLockInterfaceNoLock(), id);
+  if (!lock.Succeeded()) return;
+  auto* mp = static_cast<JPH::SoftBodyMotionProperties*>(lock.GetBody().GetMotionProperties());
+  size_t i = 0;
+  for (JPH::SoftBodyVertex& v : mp->GetVertices()) {
+    if (i < inv.size()) v.mInvMass = inv[i++];
+    v.mVelocity = JPH::Vec3::sZero();
+  }
+}
+
 JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
   std::vector<double> mass(c.points.size(), 0.0);
   for (const auto& t : c.triangles) {
@@ -410,6 +436,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   std::vector<JPH::BodyID> cloth_ids;
   std::vector<std::vector<Edge>> cloth_edges(cloths.size());
   std::vector<double> cloth_lowest(cloths.size());
+  std::vector<std::vector<float>> cloth_held(cloths.size());  // a waiting cloth's own point weights (1 / mass), put back at its frame
   for (size_t c = 0; c < cloths.size(); ++c) {
     const Cloth& cl = cloths[c];
     JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
@@ -422,6 +449,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     const JPH::BodyID id = bi.CreateAndAddSoftBody(sb, JPH::EActivation::Activate);
     if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
     cloth_ids.push_back(id);
+    if (cl.wake > 0) cloth_held[c] = hold_cloth(physics, id);  // Falls from: every point held (as a pin) until its frame
     std::set<std::pair<int, int>> seen;
     for (const auto& t : cl.triangles)
       for (size_t e = 0; e < 3; ++e) {
@@ -448,6 +476,11 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       if (const Body& b = bodies[size_t(r)]; b.wake > 0 && b.wake == f) {
         bi.SetMotionType(ids[size_t(r)], JPH::EMotionType::Dynamic, b.asleep ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
         if (!b.asleep) bi.SetLinearVelocity(ids[size_t(r)], v3(b.velocity, k));
+      }
+    for (size_t c = 0; c < cloths.size(); ++c)  // a cloth's Falls from: its points let go, it falls from rest
+      if (cloths[c].wake > 0 && cloths[c].wake == f) {
+        release_cloth(physics, cloth_ids[c], cloth_held[c]);
+        bi.ActivateBody(cloth_ids[c]);
       }
     if (f > 0)
       for (int s = 0; s < steps; ++s) {

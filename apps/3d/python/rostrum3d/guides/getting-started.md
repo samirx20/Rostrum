@@ -9,7 +9,8 @@ Deeper on each step: guides `sculpting` (clay), `posing` (bending it), `material
 
 ## What a new project already has
 
-A wide grey **ground** that catches shadows, a soft photographed **sky** ("Studio"), and the shot **Shot 1**, whose
+A wide grey **ground** that catches shadows, a soft photographed **sky** ("Studio"), two lights (a **Key light** softbox
+high on the left that casts the shadow, a **Rim light** strip behind on the right for a bright edge), and the shot **Shot 1**, whose
 camera looks at the middle of the ground. Shot 1 is framed for things a hand to an arm tall: a character about
 30 cm tall standing in the middle fills about half the picture. Each of these is an ordinary item you can change or
 delete.

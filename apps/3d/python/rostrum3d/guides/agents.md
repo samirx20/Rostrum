@@ -9,7 +9,9 @@ scene from the document each time you look. One `edit_document` call is one undo
 
 A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`, `backdrop=True`: a
 right-click on it in the window is a right-click on empty space), the sky `sky` (a dome light
-showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
+showing the photographed Studio sky, `texture="sky:studio"`), two lights aimed at the middle (`key_light`: a 0.45 m `rect`,
+`normalize` on, intensity 16, on the camera's left 1.1 m up, casting the floor shadow; `rim_light`: a 1 m `strip` on end behind on
+the right, no shadows, for an edge; the sky at `exposure` −1 is the fill) and the shot `shot_1` ("Shot 1") through the camera
 `shot_1_camera`, 55 cm up and 1.6 m back looking 15° down at the middle of the ground (no horizon in the picture: the Studio sky lights the scene but a camera turned up is what shows it),
 framed for things a hand to an arm tall. So the first look is lit
 and framed before you add anything; change or delete any of them like any item (your script's own ids must differ).
@@ -42,7 +44,10 @@ and framed before you add anything; change or delete any of them like any item (
      "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
      `full` for the speed on every frame. A thing set to Falls is measured where the stored simulation has it; when the
      simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
-     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured.
+     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line per falling
+     thing and cloth says how many frames of its drop (until it first lands) the shot camera shows, and names a fall that happens above
+     or outside the picture or starts already at rest, with the fix (`sim.start_in_view` / script `.start_in_view()`, and `fallStart`, which
+     holds a falling thing or a cloth in the picture until that second; [Simulate](simulate.md)).
    - `look_shots` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
      each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_sheet). Use it to compare the
      framing of a sequence or two ends of a cut; an unknown shot fails and lists the document's shots.
@@ -140,11 +145,24 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   each with its time, worked out from the measurement: halving the samples does not halve the time, so it may name far fewer.
 - `render_video` with `budget_min` or `estimate_only` uses this same measurement (kept for the scene), so it agrees with
   `render_estimate`, and fewer samples never estimate longer.
+  The reply waits (up to 25 s) for that measurement and answers at once: `estimate_only` returns the figures (frames, seconds, seconds a
+  frame), also when they are over `budget_min` (then with the settings that fit); `budget_min` alone, when over, is an immediate error
+  that names the settings that fit and says nothing was rendered. Neither is a failed job to find later with `inspect_job`.
 - Look at the probe picture it returns: it is what is about to be drawn.
 - It is a close guide, not a promise: start-up and encoding do not shrink with the settings, and time grows with samples much
   less than in step (a straight line in the log of the samples, as measured).
 - When another job is using the graphics card, the reply says so (`gpu_busy`, also in the text): renders are slower while it runs,
   about twice. A probe taken then is not kept; ask again once the card is free for a clean figure.
+
+## Your time
+
+Every reply of this server ends with a line: the time since your first call (real time, your thinking included), the number of calls,
+whether the picture was looked at since your last edit, and, when the session has a limit (`ROSTRUM_SESSION_BUDGET_MIN`), the minutes left.
+After a finished video it also says how many more passes of look, fix and export the time left allows (each is the video's measured
+time plus about 2½ minutes of looking and fixing). A first video is rarely the last: the reply of `render_video` names the next pass, and
+the line tells you whether there is time for it. Look at the video's frames (`look_sheet` for the whole move, `look_frame` at the weakest
+times, `look_motion` for what moves), name the three weakest moments, fix them with `run_script`, and render again to the same name.
+The time left is a number to use, not a reason to stop early.
 
 ## Techniques
 

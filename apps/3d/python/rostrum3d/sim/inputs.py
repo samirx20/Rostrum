@@ -10,7 +10,7 @@ Falls from (fallStart, seconds into the shot): a falling body held still until t
 shot's start), only when it is above 0, so every result made before it keeps its key.
 
 Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "pinned",
-"friction"}; its compiled node and these settings are in the key like any body's.
+"friction"}, and its Falls from as "wakeFrame" like a falling body's (held in its first shape until then); its compiled node and these settings are in the key like any body's.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from rostrum_core.cache import cache_key
 
 from . import fields as SF
 
-SIM_VERSION = 4                                  # the core's `sim` in its reply; bump both together
+SIM_VERSION = 5                                  # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
@@ -71,6 +71,11 @@ def _velocity(node: dict, fps: float) -> list[float]:
     return [round((anim[k][1] - anim[k][0]) * fps, 6) if len(anim.get(k) or ()) > 1 else 0.0 for k in "xyz"]
 
 
+def _wake(item: dict, info: dict) -> int:
+    """Falls from in frames after the shot's start (0: from the start), at most the shot's length."""
+    return min(round(float(value(item, "fallStart")) * info["fps"]), info["end"] - info["start"] + 1)
+
+
 def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None) -> tuple[dict, str]:
     """(the core's `simulate` request without `folder` and `progress` (Engine.simulate adds it), the stored result's key). `scene`: compile.describe(...,
     sim="none") when the caller has it already (it is made here otherwise)."""
@@ -87,6 +92,8 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
             body = {"item": item["id"], "kind": "cloth", "weight": float(value(item, "clothWeight")),
                     "stiffness": float(value(item, "stiffness")), "pinned": value(item, "pinned"),
                     "friction": float(value(item, "friction"))}
+            if (wake := _wake(item, info)) > 0:
+                body["wakeFrame"] = wake
             reqs.append(body)
             recipe.append({"body": body, "node": _look_free(nodes[item["id"]])})
             continue
@@ -97,8 +104,8 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
                 "velocity": _velocity(nodes[item["id"]], info["fps"]) if falls else [0.0, 0.0, 0.0]}
         if not falls:
             body["mass"] = 0
-        elif (wake := round(float(value(item, "fallStart")) * info["fps"])) > 0:   # sent only when set: older keys hold
-            body["wakeFrame"] = min(wake, info["end"] - info["start"] + 1)
+        elif (wake := _wake(item, info)) > 0:                  # sent only when set: older keys hold
+            body["wakeFrame"] = wake
         reqs.append(body)
         recipe.append({"body": body, "node": _look_free(nodes[item["id"]])})
     req = {"start": info["start"], "end": info["end"], "fps": info["fps"], "ground": ground, "bodies": reqs}

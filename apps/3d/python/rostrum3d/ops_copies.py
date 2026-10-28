@@ -99,7 +99,8 @@ def _make(ctx, targets, args, layout: str | None = None):
              "(they move to the copies item's origin, keeping their turn and size; several sources: each copy picks one, by "
              "the seed). layout line (step spacingX/Y/Z), grid (columns, spacingX/Z; count is the total), circle (radius, "
              "faceOut) or surface (surface = item id; amountBy count|density, density, minSpacing, alongSurface, onlySeen). "
-             "Vary with seed, varyMove, varyTurn, varyScale. With the id of a copies item that exists it works like copies.set: a "
+             "Vary with seed, varyMove, varyTurn, varyScale; varyStart (a falling copies item: each copy starts to fall up to that "
+             "many seconds after fallStart, from the seed, so they land one after another). With the id of a copies item that exists it works like copies.set: a "
              "re-run never makes a second one and never moves a held copy. The core draws the copies as instances "
              "(10000 at most); the reply of look / inspect says how many the camera saw.",
              target=SOURCES, label="Make copies", params=[ID, NAME, *FIELDS])

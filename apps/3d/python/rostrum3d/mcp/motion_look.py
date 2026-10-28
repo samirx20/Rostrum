@@ -9,6 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core.motion.report import LIMIT, capped, examples, stem
 
 from ..motion_track import Track
+from ..sim import fall_view
 from . import motion_found as M, motion_sim
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
@@ -94,7 +95,10 @@ def look_motion(ctx, args):
     and checked for passing through like any shape; when the simulation is out of date (the older result is measured)
     or not computed (they are where their keys put them) the reply says so first and gives no all-clear: run_simulation,
     wait with inspect_job, then look again. A cloth's folds and each copy of a falling copies item are not measured here
-    (named under not measured). Fails with the reason on an unknown item, fewer than two frames, or nothing moving."""
+    (named under not measured). For every falling thing and cloth of the stored result (copies and cloth included) an
+    "On screen" line says over which frames it drops (until it first lands) and how far, how many of those frames the
+    shot camera's picture shows it in and how many it drops outside (above, below, beside), when it enters and lands, or that it starts already at rest, with the fix
+    when the fall isn't seen well (sim.start_in_view, fallStart); data `fallsOnScreen`. Fails with the reason on an unknown item, fewer than two frames, or nothing moving."""
     doc, info = doc_and_shot(ctx, args)
     frames = _range(ctx, info, args)
     sim = motion_sim.moves(doc.data, info, ctx.app.folder)
@@ -106,10 +110,12 @@ def look_motion(ctx, args):
     facts = [known[i] for i in ids]
     turning = {i for i in every if any(x["solid"] != rows[i][0]["solid"] for x in rows[i])}
     moving = {i for i in every if known[i]["moves"]} | turning
+    falls = [r for r in fall_view.views(doc.data, info, ctx.app.folder) if not args.get("items") or r["item"] in ids] if sim else []
     if not moving & set(ids):
         unseen = f' ({"; ".join(sim["skip"].values())})' if sim and sim["skip"] else ""
         raise RostrumError(codes.NOT_FOUND, ctx.tool, f"frames {frames[0]}–{frames[-1]}", ("nothing measured moves in them" if sim else "nothing moves in them") +
-                           (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else ""),
+                           (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else "") +
+                           "".join(f" {r['line']}" for r in falls),
                            hint="Check the keys with inspect_animations, or measure other frames.")
     found = [*M.passing_through(rows, moving, info), *M.jump_findings(facts, info),
              *[x for i in ids for x in M.leaving(i, rows[i], info)]]
@@ -132,6 +138,7 @@ def look_motion(ctx, args):
             f'Overlap test: {OVERLAP_TEST}.')
     warn = sim["line"] if sim and sim["state"] != "stored" else None
     lines = ([sim["line"]] if sim and sim["line"] else []) + [_line(f) for f in movers]
+    lines += [f"On screen: {r['line']}" for r in falls]
     if still:
         lines.append(f'{len(still)} not travelling: {examples(still, 10)}' + (f' ({", ".join(turn_only)} turn or change size in place)' if turn_only else "") + ".")
     if track.skipped:
@@ -142,5 +149,7 @@ def look_motion(ctx, args):
     keep = ("id", "moves", "frames", "path", "moving", "peak", "stops") + (("jumps", "speed_m_s", "screen_speed_px_s") if args.get("full") else ())
     data = {"shot": info["id"], "frames": [frames[0], frames[-1]], "fps": info["fps"], "renderer": None, "overlap_test": "oriented boxes",
             "items": [{k: f[k] for k in keep if k in f} for f in facts if f["moves"] or args.get("full")], "findings": groups,
-            "not_measured": track.skipped, "simulation": sim["state"] if sim else None}
+            "not_measured": track.skipped, "simulation": sim["state"] if sim else None,
+            "fallsOnScreen": [{k: r[k] for k in ("item", "kind", "moving", "drop", "movingFrames", "onScreen", "offScreen", "enters", "lands",
+                                                  "where", "startsAtRest", "fix")} for r in falls]}
     return Reply("\n".join([head, *lines, *notes]), data)

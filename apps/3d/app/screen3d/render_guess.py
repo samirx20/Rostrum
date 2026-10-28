@@ -16,12 +16,25 @@ from rostrum3d.runtime import find_exe
 WRITE_S = 1.0                                           # denoise, PNG + EXR written after the last sample (a rough figure)
 
 
+def floor(s: dict) -> float:
+    """The least a frame can take: Cycles loads its kernels and syncs the scene before the first sample, and a Final's
+    samples cost on top (about 3 s at 128 samples and 1080p on the reference laptop, never under 1 s for fewer); Storm and
+    Stylized draw in well under a second at small sizes, so no floor there."""
+    if s.get("renderer") != "cycles":
+        return 0.0
+    return 3.0 if s.get("samples", 0) >= 128 and s["width"] * s["height"] >= 640 * 360 else 1.0
+
+
 def guess(scene: dict, s: dict, exe=None) -> tuple[float, bool]:
     """(seconds, measured?) for one frame with settings `s` (render_fields.settings). Never blocks on the card.
-    (0.0, False): nothing measured for this scene yet: show "measuring the time"."""
+    (0.0, False): nothing measured for this scene yet, or a kept measurement that scales to under `floor(s)`: show "measuring the time"."""
     try:
         if (m := estimate_job.cached(scene, s, exe or find_exe())) is not None:
-            return scale(m, s, 1, mp4=False)["seconds"], True
+            seconds = scale(m, s, 1, mp4=False)["seconds"]
+            if seconds >= floor(s):
+                return seconds, True
+            # a kept number under what the renderer cannot do (the walk's "about 1 s" for a Final still that took 6-46 s) is
+            # a stale or foreign measurement: no number, "measuring the time", until the frame's own steps give a rate
     except Exception:  # noqa: BLE001  no engine build to key on, an unreadable entry: nothing measured
         pass
     return 0.0, False

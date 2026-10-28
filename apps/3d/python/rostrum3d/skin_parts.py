@@ -13,10 +13,12 @@ text) and sent to the core inside the clay's `skin` as `parts` (ENGINE_CONTRACT.
 
 The rule (the core's skin.cpp does the same; `weights` here is its reference, for tests and follow.py):
 - a point's share of each piece (CL7b): each limb's cells spread through the clay's inside (never across air) within
-  its reach of its joint (its first bone's head; root_reach: the whole patch where its root meets the body), each step
+  its reach of its joint (its first bone's head; root_reach: the whole patch where its root meets the body; the limb's
+  root, root_cells, counts as its own: its share is whole from the joint out), each step
   an inside cell there that is not the limb's own taking the mean of itself and its 6 inside neighbours (3d-28: the
   limb's own cells keep all their share, so the spread goes out into the body only; spreading the body back into a
-  thin arm left the upper arm a third the body's, and a raised arm came apart from the shoulder), round(3.5 σ²) steps (at most SHARE_MOST)
+  thin arm left the upper arm a third the body's, and a raised arm came apart from the shoulder) and inside a tube
+  TUBE × its radius round its first bone (3d-gaps2: else the head beside a raised arm turned with it and creased), round(3.5 σ²) steps (at most SHARE_MOST)
   with σ = SHARE_WIDTH × the blend in cells; cells beyond the reach keep their own piece. KEEP rings of outside cells
   round the clay take the mean of their 26 neighbours valued before them. Read trilinearly between the 8 cell centres
   round the point (cells with no value left out; none: the plain rule); beyond its reach a limb's share s is
@@ -43,6 +45,7 @@ from . import pose_joints as PJ
 
 BEHIND, PRUNE, MOST = 3.0, 0.02, 4
 SHARE_WIDTH, KEEP, SHARE_MOST, REACH = 1.5, 2, 256, 3.0         # skin.cpp kShareWidth, kShareRings, kShareMost, kShareReach
+ROOT, TUBE = 1.0, 1.5                                                       # skin.cpp kRootWidth, kShareTube
 _LAST: list = [None, None]                                        # the last parts and their shares
 
 
@@ -148,6 +151,32 @@ def root_reach(parts: dict, cells: np.ndarray, n: int, joint) -> float:
     return max(reach, float(dist[list(seen)].max()) + pc["blend"])
 
 
+def root_cells(parts: dict, cells: np.ndarray, n: int, rest: list[list[float]], centre: np.ndarray) -> np.ndarray:
+    """The cells of the piece limb n hangs from that are its root (3d-gaps): past its joint along its first bone and
+    within ROOT × its radius (blend / 1.5) of that bone. The finder's limb starts where it leaves the body, often well
+    past the joint; the clay between counted as the body's, so it stayed behind as the arm turned about the joint and
+    a raised arm tore from the shoulder. With it the limb's share is whole from the joint out, and the shared band
+    lies round the joint, where a turn moves the surface least."""
+    pc = parts["pieces"][n]
+    a, t = np.asarray(rest[pc["first"]][:3], float), np.asarray(rest[pc["first"]][3:], float)
+    ab = t - a
+    ln = float(np.linalg.norm(ab))
+    if ln <= 0:
+        return np.zeros(cells.shape, bool)
+    s = ((centre - a) @ ab) / (ln * ln)
+    d = np.linalg.norm(centre - (a + np.clip(s, 0, 1)[..., None] * ab), axis=-1)
+    parent = parts["bone"][pc["from"]] if 0 <= pc["from"] < len(parts["bone"]) else 0
+    return (cells == parent) & (s >= 0) & (d <= ROOT * pc["blend"] / 1.5)
+
+
+def bone_dist(seg, centre: np.ndarray) -> np.ndarray:
+    """Each cell centre's distance to the bone segment `seg` (head xyz, tail xyz)."""
+    a, t = np.asarray(seg[:3], float), np.asarray(seg[3:], float)
+    ab = t - a
+    s = ((centre - a) @ ab) / max(float(ab @ ab), 1e-18)
+    return np.linalg.norm(centre - (a + np.clip(s, 0, 1)[..., None] * ab), axis=-1)
+
+
 def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.ndarray, list[float]]:
     """Each cell's share of each limb, float32 [limb − 1, x, y, z] (the rule above; NaN: no clay near the cell), and
     each piece's reach (root_reach; 0: none)."""
@@ -173,8 +202,11 @@ def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.
         if 0 <= pc["first"] < len(rest) and pc["blend"] > 0:
             sigma = max(SHARE_WIDTH * pc["blend"] / parts["cell"], 0.5)
             centre = np.asarray(parts["origin"]) + (np.indices(cells.shape).transpose(1, 2, 3, 0) + 0.5) * parts["cell"]
+            own = (cells == n) | (inside & root_cells(parts, cells, n, rest, centre))
+            f = own.astype(np.float32)
             reaches[n] = root_reach(parts, cells, n, rest[pc["first"]][:3])
-            free = inside & (cells != n) & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
+            free = inside & ~own & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
+            free &= bone_dist(rest[pc["first"]], centre) <= TUBE * pc["blend"] / 1.5   # 3d-gaps2: never into the head beside it
             for _ in range(min(SHARE_MOST, int(np.floor(3.5 * sigma * sigma + 0.5)))):
                 p = np.pad(f, 1)
                 s = f.astype(np.float64)

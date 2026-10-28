@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 4;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 5;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;
@@ -47,6 +47,7 @@ struct Cloth {
   std::vector<std::array<int, 3>> triangles;    // into points
   std::vector<std::array<float, 2>> st;         // per point (u v), carried to the stored file
   bool refined = false;                         // refine made it finer
+  int wake = 0;                                 // Falls from: frames after the start it holds its first shape (others land on it), then falls
   std::string name() const { return item; }
 };
 

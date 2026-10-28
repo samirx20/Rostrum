@@ -110,6 +110,7 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   r.str("kind");
   c.weight = r.num("weight");
   c.stiffness = r.num("stiffness");
+  if (r.has("wakeFrame")) c.wake = r.count("wakeFrame", 0, 1000000);
   c.friction = r.num("friction");
   const std::string pin = r.one_of("pinned", {"none", "top", "bottom", "left", "right", "front", "back"});
   const char* pins[] = {"none", "top", "bottom", "left", "right", "front", "back"};
@@ -279,6 +280,8 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
       for (size_t c = 0; c < laid.size(); ++c) {
         sim::Body b = base;
         b.copy = int(c);
+        if (b.falls)  // Vary › Start: each copy falls a little later than the item's Falls from, from the seed
+          b.wake = std::min(b.wake + copies::start_delay(s.p, int(c), setup.fps), setup.end - setup.start + 1);
         const copies::Copy& cp = laid[c];
         GfMatrix4d inst = GfMatrix4d().SetScale(GfVec3d(cp.scale)) * GfMatrix4d().SetRotate(GfRotation(GfQuatd(cp.rot))) *
                           GfMatrix4d().SetTranslate(GfVec3d(cp.pos));
