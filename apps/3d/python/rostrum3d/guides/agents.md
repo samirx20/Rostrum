@@ -1,13 +1,13 @@
 # Building, looking and fixing a 3D shot
 
-New here? `inspect_guide` `getting-started` first: a small clay character, from an empty project to a render, in five minutes.
+New here? `inspect_guide` `start-here` first (the loop and the core tools), then `getting-started` (a small clay character, step by step). This page is the depth behind them. Each tool's long description and every argument: `tool-details`.
 
 **The way to work: write the whole scene as one Python script, look, edit the script, re-run it under the same name.** A re-run
 replaces what the script made (values, keys, things you deleted from it) and keeps what a person changed by hand. Keep the
 script in a .py file (`run_script` `path`) so each edit is the whole scene. `edit_document` is for one-off fixes a script can't
 reach. Guide `script`: the API on one page.
 
-**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_sheet`, `look_shots`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground, a part come apart from its figure (`separated:arm`: shapes joined or grouped and touching at the start, apart later), a moving subject leaving the picture (`leaves_frame:cube`), no floor anywhere in the picture (`no_floor:<shot>`), and a cloth or falling copies on the frame's edge where the stored simulation has them. `look_motion` names the same faults from the document alone. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
+**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_frame what "sheet"`, `look_frame what "shots"`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground, a part come apart from its figure (`separated:arm`: shapes joined or grouped and touching at the start, apart later), a moving subject leaving the picture (`leaves_frame:cube`), no floor anywhere in the picture (`no_floor:<shot>`), a photographed sky seen past the floor (`backdrop_edge:<dome>`), and a cloth or falling copies on the frame's edge where the stored simulation has them. `look_motion` names the same faults from the document alone. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
 
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
@@ -37,14 +37,14 @@ and framed before you add anything. A script keeps all of it unless it replaces 
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
      `final` (Cycles) tells you light, glass, shadows, reflections. `renderer: "stylized"` draws the stylized look: a
      material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
-     blocks"); with no `renderer` or `quality`, a shot whose Quality is Stylized is drawn stylized (`look_sheet` and
-     `look_shots` too). It fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
+     blocks"); with no `renderer` or `quality`, a shot whose Quality is Stylized is drawn stylized (`look_frame what "sheet"` and
+     `look_frame what "shots"` too). It fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim"). For every text in the picture it also says which way
      it reads from this camera: left to right, mirrored (seen from behind), upside down, tilted (its angle to the horizontal)
      or edge-on; a text behind the camera or outside the picture is not listed. Fix a text that reads wrong by turning it
      (`ry` 180 turns its back to the camera) or moving the camera, then look again.
-   - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
+   - `look_frame what "sheet"` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
    - `look_motion` — the motion in numbers, every frame, read from the document (no picture, no renderer): per moving item
      its path (world metres and px on the picture), peak speed and stops; then what to fix: two shapes passing through each
      other (both named, the frames, how deep), sudden jumps (a snap or teleport between two frames), an item partly or
@@ -52,18 +52,18 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
      `full` for the speed on every frame. A thing set to Falls is measured where the stored simulation has it; when the
      simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
-     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_sheet` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
+     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_frame what "sheet"` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
      thing and cloth says how many frames of its drop (until it first lands) the shot camera shows, and names a fall that happens above
      or outside the picture or starts already at rest, with the fix (`sim.start_in_view` / script `.start_in_view()`, and `fallStart`, which
      holds a falling thing or a cloth in the picture until that second; [Simulate](simulate.md)).
-   - `look_shots` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
-     each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_sheet). Use it to compare the
+   - `look_frame what "shots"` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
+     each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_frame what "sheet"). Use it to compare the
      framing of a sequence or two ends of a cut; an unknown shot fails and lists the document's shots.
-   - `look_material material=<id or name>` — that material on a ball (`shape: "plane"` for a flat square) turned through 4–8
+   - `look_frame what "material" material=<id or name>` — that material on a ball (`shape: "plane"` for a flat square) turned through 4–8
      angles in one strip, lit by the scene's own lights with everything else hidden. It picks Final (Cycles) by itself for
      glass, metal, clear coat and Final-only settings and the reply says which renderer drew it and why; `quality: "fast"`
      forces Storm. Judge a material's highlight and colour here before assigning it; an unknown material lists the known ones.
-   - `edit_place_highlight` — put a light's highlight on what is at a pixel of that picture (`fresh=true` for a light just
+   - `edit_place_on what "highlight"` — put a light's highlight on what is at a pixel of that picture (`fresh=true` for a light just
      added: distance and a starting brightness too). The lighting guide explains it.
    - `look_at` — "what is at this pixel?" Give x, y of the picture you were just shown (same width). It answers with the item id,
      the part, its material, the point in the world and the distance. Use it to find the id behind something that looks wrong,
@@ -73,13 +73,13 @@ and framed before you add anything. A script keeps all of it unless it replaces 
    - `look_frame highlight="steps:arm"` (or `"steps:arm,foot"`, names or ids) outlines what those steps made on the
      picture, each in its own colour, posed as the clay stands; the reply gives each region's box in pixels and says if
      another item hides part of it. Use it before reshaping a step: is "arm" really the arm you see?
-   - `look_shape target=<clay or mesh>` — the form, not a lit picture: outlines from the front, the side and the top on one
+   - `look_frame what "shape" target=<clay or mesh>` — the form, not a lit picture: outlines from the front, the side and the top on one
      scale, with its measures in numbers (height, width, depth, the width at every tenth of its height, the widest, the
      left–right difference and, on a clay, thin spots). Check proportions and symmetry here after every few modelling
      steps: "51 cm tall … widest 75 cm at 59 % height … left and right differ by up to 3.6 cm at 70 % height".
-   - Paint: `look_paint target=<mesh or clay>` (the paint picture, a layer or a channel, zoom and grid in canvas px),
-     `inspect_paint_strokes` (each stroke: where it landed, on which items, how many px off), `look_coverage` (how much
-     of each item the shot sees is painted, unpainted hatched orange) and `look_where` (a canvas spot or uv → its pixel
+   - Paint: `look_frame what "paint" target=<mesh or clay>` (the paint picture, a layer or a channel, zoom and grid in canvas px),
+     `inspect_paint_strokes` (each stroke: where it landed, on which items, how many px off), `look_frame what "coverage"` (how much
+     of each item the shot sees is painted, unpainted hatched orange) and `look_frame what "where"` (a canvas spot or uv → its pixel
      on the shot and its world point). `look_at` adds `normal`, `faceSet` and `painted` (the top paint layer there).
      Guide `painting`.
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
@@ -104,8 +104,8 @@ and framed before you add anything. A script keeps all of it unless it replaces 
 
 ## Asset library
 
-Free CC0 models from Poly Haven and ambientCG. `inspect_asset_sources` lists the sources and whether each is on;
-`inspect_assets` {source, query, page} searches an on source (40 a page: id, name, thumbnail address);
+Free CC0 models from Poly Haven and ambientCG. `edit_import_asset what "sources"` lists the sources and whether each is on;
+`edit_import_asset what "search"` {source, query, page} searches an on source (40 a page: id, name, thumbnail address);
 `edit_import_asset` {source, id, x, y, z} downloads the model into the project folder (`assets/<source>/<id>/`,
 reused when already there) and imports it with `import.add`, its base at x y z, in one change. Every source is off
 until the person switches it on in Import › Asset library; you can't switch one on, and the tools fail plainly while
@@ -168,7 +168,7 @@ Every reply of this server ends with a line: the time since your first call (rea
 whether the picture was looked at since your last edit, and, when the session has a limit (`ROSTRUM_SESSION_BUDGET_MIN`), the minutes left.
 After a finished video it also says how many more passes of look, fix and export the time left allows (each is the video's measured
 time plus about 2½ minutes of looking and fixing). A first video is rarely the last: the reply of `render_video` names the next pass, and
-the line tells you whether there is time for it. Look at the video's frames (`look_sheet` for the whole move, `look_frame` at the weakest
+the line tells you whether there is time for it. Look at the video's frames (`look_frame what "sheet"` for the whole move, `look_frame` at the weakest
 times, `look_motion` for what moves), name the three weakest moments, fix them with `run_script`, and render again to the same name.
 The time left is a number to use, not a reason to stop early.
 
@@ -188,7 +188,7 @@ The time left is a number to use, not a reason to stop early.
 - **Patterns and variation come from blocks.** A material's Blocks view is open to you as operations: `graph.add`
   (a Noise, Image, Ramp, Mix …), `graph.connect` (`from: "noise_1.value", to: "surface.roughness"`), `graph.set`,
   `graph.remove` (materials.md › For agents). A worn metal: Noise into a Ramp into Roughness; a printed label: an Image
-  into Base colour. Check with `look_material`: it draws the blocks and lists them and their wires in the reply.
+  into Base colour. Check with `look_frame what "material"`: it draws the blocks and lists them and their wires in the reply.
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
   it from `look_at` (its `distance`) instead of measuring by eye. Or name what must stay sharp: `camera.set focusItem=<item id>`
   (with `dof` on); the distance then follows that item's origin every frame, along the way the camera looks. `focusItem=""`
@@ -203,7 +203,7 @@ The time left is a number to use, not a reason to stop early.
   farther). Check the result with a look at the shot.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the
   replies carry both `time` and `frame`.
-- **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.
+- **Check the ends of a move.** First and last frame of a move, and the middle: `look_frame what "sheet"` with `start` / `end` zoomed to that range.
   `look_motion` after each change to keys: it names the frames where something passes through another thing, snaps or leaves the picture.
 - **A word or a logo.** `mesh.add shape=text text="Rostrum" font=Inter size=0.2 depth=0.03 bevel=0.002` makes a word 0.2 m
   tall (the em), pushed out 0.03 m; it is centred on its origin, so spinning it turns it around its middle. `size`, `depth`
@@ -233,7 +233,7 @@ The time left is a number to use, not a reason to stop early.
 - **Things that fall and land.** `sim.body` kind `falls` on what drops (a copies item: every copy), `still` on what it lands on
   (the ground at height 0 is there by default), `sim.set` for mass, bounce, friction; then the `run_simulation` tool (a job). It is
   stored and only recomputed when something it depends on changes; renders compute it first when it is out of date, never
-  render an old one. `inspect_simulation` says where it stands; `sim.to_keys` turns it into ordinary keys you can nudge. Guide `simulate`.
+  render an old one. `run_simulation what "status"` says where it stands; `sim.to_keys` turns it into ordinary keys you can nudge. Guide `simulate`.
 - **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` makes a clay from a drawn outline
   (`draw`: scene points, `facing` the plane's normal towards the viewer, `puff` 1 = round), a spun profile (`spin`,
   `axis`) or a ball (`at`, `radius`); its shape is its list of steps, applied in order. `clay.draw` (`outline`) and
@@ -249,10 +249,10 @@ The time left is a number to use, not a reason to stop early.
   own space; `symmetry: "x"` (the default) mirrors across its X = 0. Each step is one undo step; `claystep.remove` takes
   one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
-  they need, never finer than the clay's size allows in memory (a 50 cm clay stops near 1.4 mm; `look_shape`
+  they need, never finer than the clay's size allows in memory (a 50 cm clay stops near 1.4 mm; `look_frame what "shape"`
   says "Detail held at …" when a close shot asks for more); `clay.set detailMode=fixed detail=0.001` fixes it (finer is
   slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
-  keeps them. Look with `look_frame` from two sides after each few steps, and `look_shape` for the numbers: is it as
+  keeps them. Look with `look_frame` from two sides after each few steps, and `look_frame what "shape"` for the numbers: is it as
   tall as meant, are the arms the same length (a step with Mirror off, a one-sided stroke shows as a left–right
   difference at that height), is a neck or wrist thinner than a few grains (a thin spot: it may break up). `look_at`
   says which step made a spot, `look_frame highlight="steps:<name>"` shows all of it. The person's side: guide `sculpting`.
@@ -262,7 +262,7 @@ The time left is a number to use, not a reason to stop early.
   `reach` (metres), so the paint stays on its spots when the clay is reshaped. Fine detail on clay: a Relief layer.
   From the shot instead: `stroke.add` with `viewPoints` in a `look_frame` picture's px plus the camera fields from
   `look_at`'s `view`, one per item the path crosses, in one call list. Check with `inspect_paint_strokes` and
-  `look_coverage`. Guide `painting`.
+  `look_frame what "coverage"`. Guide `painting`.
 - **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add` with `t` seconds and `v`; the script's
   `key()` also takes that shape: `[{"t": 0.8, "v": 0}]`). `inspect_animations`
   lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
@@ -271,7 +271,7 @@ The time left is a number to use, not a reason to stop early.
   (targets: the stretch's `ids`; `preset` linear, smooth, in, out, spring, bounce or hold, or a curve `x1 y1 x2 y2`);
   `key.scale` stretches or squeezes keys in time around a moment; `key.paste` copies keys onto the same fields of other
   items; `key.stagger` starts several items' keys one after another. Each is one change, one undo step, the same a
-  person makes by clicking a stretch on the Animate page and picking "Out". Check the result with `look_sheet`.
+  person makes by clicking a stretch on the Animate page and picking "Out". Check the result with `look_frame what "sheet"`.
   **Show and hide** by keying `visible`: `key.add` with `v` 1 (shown) or 0 (hidden), or `item.key("visible", {0: False,
   1.2: True})` in a script. It switches at the key and stays until the next one, never part way, whatever the ease
   (an item hidden this way is gone from the picture, not shrunk; its Scale is left alone).
@@ -287,7 +287,7 @@ The time left is a number to use, not a reason to stop early.
   the scene). `pose.rename`, `pose.remove`. Each is one undo step. Onion skin (the person's ghosts in the viewport):
   `look_frame` with `onion: {item, mode}` draws the same ghosts (mode `keys` = the item at its previous and next keys, `frames` =
   2 and 4 frames before and after; red before, green after). Quick looks only, not `final`. Use it to check an arc or spacing at
-  one frame; `look_sheet` shows the whole move.
+  one frame; `look_frame what "sheet"` shows the whole move.
 - **Follow and stick.** `follow.add` (targets: the riders; `item`: what they ride on; optional `from`, `until` seconds)
   makes them move and turn with that item from where they stand, picked up at `from` and let go at `until`
   (`followAmount` keyed 1 and 0, held). Let go, they stay where they are then: no jump. `follow.release` (`at`) lets go
@@ -297,7 +297,7 @@ The time left is a number to use, not a reason to stop early.
   `follow.add` with `pose: true` on a posed clay (or a mesh with bones) rides the bone nearest each rider instead
   (`followPose`): an eye on a turning head. Parts placed on a clay get it already (`place_on`, `edit_place_on`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
-  `look_sheet` shows whether the rider stays put after it is let go.
+  `look_frame what "sheet"` shows whether the rider stays put after it is let go.
 - **Posing a clay.** In the script: `buddy.pose(0, **{"picture-right hand": {"up": 0.1}}).pose(0.4, …)`, one pose
   per call, the joints found for you (guide `posing`). As operations: `pose.find_joints` finds its joints from its
   shape (body, chest, arm.L, forearm.L, foot.R …), `pose.hold` keeps spots still, `pose.drag(part="hand.R", to=[x,
@@ -312,7 +312,7 @@ The time left is a number to use, not a reason to stop early.
   bones itself. `bone.bind` (`off: true`) stops the bending and keeps the bones; `mesh.set skinned` is the same. The mesh
   bends only where it has points along its length: the ready shapes have none along their straight part (`segments`
   go around), so use an editable mesh (`mesh.add shape="poly"` with your own `points` / `faceCounts` / `faceIndices`,
-  or `mesh.edit` then `mesh.knife` across it). Check the bend with `look_sheet`.
+  or `mesh.edit` then `mesh.knife` across it). Check the bend with `look_frame what "sheet"`.
 - **Lip sync.** A mouth is a group whose children are the mouth shapes: one mesh (or group) per shape of the nine
   (X rest, A closed M B P, B slightly open, C open, D wide open, E rounded, F puckered OO W, G teeth on lip F V, H tongue
   up L). Name the children so they say the shape (`mouth_rest`, `mouth_closed`, `mouth_wide`, `mouth_puckered` …; as
@@ -326,7 +326,7 @@ The time left is a number to use, not a reason to stop early.
   move or delete them on the timeline like any other. A second run adds keys only where there is none at that time.
   The person does
   the same: right-click the mouth group › **Lip sync…**, click a voice line, check the shape for each row, Apply.
-  Check with `look_sheet` over the line's seconds.
+  Check with `look_frame what "sheet"` over the line's seconds.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 

@@ -1,6 +1,6 @@
 # Type and kinetic text
 
-How to set type and make it move with the tools Rostrum2D has. Read `start-here` first (ids, keys, `run_script`).
+How to set type and make it move with the tools Rostrum2D has. Read `start-here` first, and `script-reference` for ids, keys and `run_script`.
 Fragments show how a tool is called; words, sizes, times and eases are placeholders for your own decisions.
 Ease behaviour is in `easing-and-overlap`.
 
@@ -175,7 +175,7 @@ the app runs shows after a restart.
 
 **A missing font is never swapped.** Setting a font that isn't there is refused at once, naming the closest names. A
 project opened on a computer that lacks one of its fonts shows a **Missing font** problem naming every text that uses it
-(`inspect_diagnose`, and the Problems chip on the screen). The canvas never goes blank: it draws everything else, and each
+(`look_frame` with `what: "diagnose"`, and the Problems chip on the screen). The canvas never goes blank: it draws everything else, and each
 such text shows as its own box with a dashed red edge and the font's name (looks and part renders carry a warning too).
 A whole-film export refuses, naming the texts, so no file ever goes out with the wrong letters. The fix is one change for
 all the texts that use the font: on the screen, the problem's **Use another font** list; for an agent,
@@ -189,6 +189,6 @@ over both.
 2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
 3. `look_frame` at the landing times and at a hold (`width=1920` for type edges).
 4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).
-5. Then `render_video` (it waits for its file in the same call, `wait_s`).
+5. Then `render_export` with `what: "video"` (it waits for its file in the same call, `wait_s`).
 
 If a person moved something, a re-run reports it as held back. Leave it unless they asked you to put it back.

@@ -48,10 +48,10 @@ def picture(png, shot: str, when: str) -> list[dict]:
     out = []
     if mean < DARK_MEAN:
         out.append(F.fault(f"dark:{shot}", f"the picture is nearly black: mean brightness {mean:.2f} of 1 (under {DARK_MEAN:g})",
-                           "raise the key light about 2 stops (its intensity ×4) or put back the starting lights (key_light, rim_light, sky); inspect_exposure shows the numbers", when))
+                           "raise the key light about 2 stops (its intensity ×4) or put back the starting lights (key_light, rim_light, sky); look_frame what \"exposure\" shows the numbers", when))
     if m["clipped_pct"] > CLIPPED_PCT:
         out.append(F.fault(f"blown:{shot}", f"{m['clipped_pct']:g} % of the picture is blown out to white (over {CLIPPED_PCT:g} %)",
-                           "lower the lights' intensity (halve it) or the shot's Exposure; inspect_exposure shows where", when))
+                           "lower the lights' intensity (halve it) or the shot's Exposure; look_frame what \"exposure\" shows where", when))
     return out
 
 

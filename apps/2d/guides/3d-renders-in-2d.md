@@ -30,7 +30,7 @@ and time it like any layer; you change the product itself in Rostrum3D.
 
 Give it a **Timed from marker**: a shared marker's name ("product lands"). The render's first frame lands on that
 marker, and moves when someone moves the marker in any app. *Starts at* and *Ends at* then count from the marker
-(Starts at 0.5 = half a second after it). Every layer has this field; see `start-here` › Timing to the story.
+(Starts at 0.5 = half a second after it). Every layer has this field; see `timing-to-music` › For agents: layers timed from a marker.
 
 ## When something is wrong, it says so
 
@@ -38,7 +38,7 @@ marker, and moves when someone moves the marker in any app. *Starts at* and *End
   project: the picture is not drawn, and the message says what to do. An export stops. No render yet: see below.
 - **Out of date**: the 3D document changed after the render (its content: the render's `scene_hash` no longer matches).
   The layer keeps showing the render it has (it is still a true render) and the Problems list (agents:
-  `inspect_diagnose`) says "3D render out of date" until 3D renders or sends the shot again.
+  `look_frame` with `what: "diagnose"`) says "3D render out of date" until 3D renders or sends the shot again.
 
 ## Techniques
 
@@ -49,11 +49,11 @@ marker, and moves when someone moves the marker in any app. *Starts at* and *End
 - **Depth without a second render.** Put 2D layers both behind (a soft shape, a gradient) and in front (type, a UI
   card) of the 3D layer. For real depth-of-field, shadows on 2D shapes or passes, finish the shot in the Editor.
 - **Agents:** add it with `run_script` (`render3d("hero", item="product", w=1600, h=900, marker="product lands")`),
-  then `look_frame`; `inspect_diagnose` tells you if the render is missing or out of date.
+  then `look_frame`; `look_frame` with `what: "diagnose"` tells you if the render is missing or out of date.
 
 - **3D not rendered yet?** In looks (`look_frame`, `look_frame` (`what: "sheet"`)), a part of a video and the screen, the layer is a grey
   card at its own box labelled "3D: <item> — not rendered yet", and the reply warns; you can judge the rest of the film
-  now. A whole-film `render_export` / `render_video` refuses until the render is there. "Out of date" means the 3D
+  now. A whole-film `render_export` refuses until the render is there. "Out of date" means the 3D
   scene's content changed after the render; a re-run that changed nothing is not out of date.
 
 What this layer is not: it never mixes the 3D app's passes or combines frames from several apps. That is the

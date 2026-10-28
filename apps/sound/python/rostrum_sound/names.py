@@ -118,7 +118,7 @@ BUILT_IN_NEAR = {"contrabass": ["basses", "uprightBass", "doubleBass"], "doubleb
                  "bells": ["tubularBells", "glockenspiel"], "synth": ["warmPad", "pluck", "subBass"], "lead": ["pluck", "trumpet", "flute"],
                  "choir": ["choirPad"], "orchestra": ["strings", "brass"], "drums": ["(a kit, not a builtIn: kit='drums')"],
                  "kit": ["(a kit, not a builtIn: kit='drums')"]}
-SOUND_GUIDE = "inspect_guide 'start-here', section \"Instrument and kit names\" (every name, what it is)"
+SOUND_GUIDE = "inspect_guide 'agent-reference', section \"Instrument and kit names\" (every name, what it is)"
 
 
 def _loose(word) -> str:

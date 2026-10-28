@@ -28,17 +28,18 @@ def _picks(ctx, scene, info, frame, w, h, x, y) -> list[dict]:
     return hits
 
 
+PIXEL = {"x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture look_frame gave."},
+         "y": {"type": "number", "minimum": 0, "description": "Pixels from the top."},
+         "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "That picture's width in px. Default 960."}}
+
+
 @tools.tool("edit_place_highlight", {"required": ["light", "x", "y"], "properties": {
     **ITEM_SHOT, **TIME,
-    "light": {"type": "string", "description": "The light's id (rect, disk, strip, sphere, spot or distant)."},
-    "x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture look_frame gave."},
-    "y": {"type": "number", "minimum": 0, "description": "Pixels from the top."},
-    "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "That picture's width. Default 960."},
-    "fresh": {"type": "boolean", "default": False, "description": "true: also put it 4 × the item's size away with the starting brightness "
-                                                                   "(a light just added); false: keep its distance and brightness."}}})
+    "light": {"type": "string", "description": "The light's id."},
+    **PIXEL,
+    "fresh": {"type": "boolean", "default": False, "description": "A light just added: also set its distance and a starting brightness."}}})
 def place_highlight(ctx, args):
-    """Move and aim a light so its highlight lands on what is at pixel (x, y) of the shot camera's picture (a sun: its lit side faces it).
-    One change in the history. Then look_frame to see it; the reply there says how much is clipped."""
+    """Aim a `light` so its highlight lands there (`fresh` for a light just added)."""
     doc, info = doc_and_shot(ctx, args)
     frame = frame_of(ctx, info, args)
     w, h = size_of(info, args, 960)
@@ -65,21 +66,12 @@ def place_highlight(ctx, args):
 
 @tools.tool("edit_place_on", {"required": ["mesh", "x", "y"], "properties": {
     **ITEM_SHOT, **TIME,
-    "mesh": {"type": "string", "description": "The mesh's id (made first, e.g. by run_script, at its size)."},
-    "x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture look_frame gave."},
-    "y": {"type": "number", "minimum": 0, "description": "Pixels from the top."},
-    "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "That picture's width. Default 960."},
-    "mirror": {"type": "boolean", "default": True, "description": "On a clay whose Mirror is on (and off its middle): also make the "
-                                                                  "mesh's mirrored copy, which follows it. false: no copy."}}})
+    "mesh": {"type": "string", "description": "The mesh's id (made first, at its size)."},
+    **PIXEL,
+    "mirror": {"type": "boolean", "default": True, "description": "On a mirrored clay, also make a mirrored copy. false: none."}}})
 def place_on(ctx, args):
-    """Stand a mesh on the surface at pixel (x, y) of the shot camera's picture, its base on the surface along the surface's
-    direction there, the way a person places a shape by clicking (an eye on a face). On a clay whose Mirror is on, a point off
-    its middle (farther than the mesh's own half size, so the two don't overlap) also gives the mesh a mirrored copy on the
-    other side ("<mesh>_mirrored", named "<name> (mirrored)") that follows it: edit the original (edits sent to the copy go
-    to it). On a clay the mesh also follows the clay's pose (Follow, followPose): posed later, it moves and turns with the
-    bone nearest it, its copy with its own side's, so eyes stay on a turning head. The reply gives the size a part
-    placed by a click there gets (spotSize, about a sixth of the clay's width at the spot) when the mesh is far from
-    it. One change in the history. Then look_frame to see it."""
+    """Stand a `mesh` on the surface there, its base along the surface (an eye on a face); on a clay it follows the
+    pose, and off a mirrored clay's middle it gets a mirrored copy."""
     doc, info = doc_and_shot(ctx, args)
     frame = frame_of(ctx, info, args)
     w, h = size_of(info, args, 960)

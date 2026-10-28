@@ -111,7 +111,7 @@ def after_export(doc_data: dict, comp: dict, quiet: list[dict], cuts: list[dict]
            '"expect": "lamp reveals"}]) and each export checks they come on time.') if beats is None else ""
     if not rows:
         return "Review: no weak moment found (blank, held, cut-off, faint leftovers). Look at the sheet to judge the rest." + ask
-    return tell(rows, limit) + " Fix the top one, then export again (look_review re-checks in seconds)." + ask
+    return tell(rows, limit) + " Fix the top one, then export again (look_frame what \"review\" re-checks in seconds)." + ask
 
 
 BEATS = {"type": "array", "items": {"type": "object", "required": ["at", "expect"], "properties": {

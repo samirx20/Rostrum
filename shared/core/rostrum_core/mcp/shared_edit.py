@@ -14,7 +14,7 @@ from .jobs import MAX_WAIT_S, outcome
 from .reply import Reply
 from .tools import Tools
 
-_ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
+_ITEM = {"item": {"type": "string", "description": "Project item id; default the open document."}}
 _GROUP = {"group": {"type": "string", "description": "Changes with the same group are reviewed and undone together. Default: one per agent turn."}}
 _CALL = {"type": "object", "required": ["op"], "additionalProperties": False, "properties": {
     "op": {"type": "string", "description": "Operation name, from inspect_operations."},
@@ -66,11 +66,11 @@ def register(tools: Tools):
                      {"seq": change.seq}, warnings=warn, changed=changed)
 
     @tools.tool("run_script", {"properties": {
-        **_ITEM, "source": {"type": "string", "description": "The script itself, as text (Python for this app's script layer). Give `source` or `path`."},
-        "path": {"type": "string", "description": "A .py file to run instead of `source` (absolute path), e.g. \"C:/work/promo.py\". Its file name is the default `name`."},
-        "name": {"type": "string", "default": "agent_script.py", "description": "The script's name (default: the file name with `path`, else agent_script.py). SAME name = replaces and merges what that script made before (a person's edits stay); a NEW name = adds a second copy beside it. To change something an earlier script made, run under its name."},
+        **_ITEM, "source": {"type": "string", "description": "The script as text (Python). Give `source` or `path`."},
+        "path": {"type": "string", "description": "A .py file to run instead of `source` (absolute path)."},
+        "name": {"type": "string", "default": "agent_script.py", "description": "Same name = replaces what that script made (a person's edits stay); a new name adds a second copy. Default: the file name."},
         "force": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string"}}],
-                  "description": "Overwrite what someone else changed since this script's last run (a person, or another agent or script; your own earlier runs and edits never hold anything back): true for all held-back values, or a list of their keys, as the reply names them."},
+                  "description": "Overwrite values someone else changed since this script's last run: true for all, or the keys the reply named."},
         "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def run_script(ctx, args):
         """Run a Python script that builds the document tree and merge it in: {"path": "C:/work/promo.py"} runs a file, {"source": "...", "name": "promo.py"} runs text.
@@ -90,13 +90,11 @@ def register(tools: Tools):
         return ctx.app.script_look(ctx, doc, look, reply) if look not in (None, False, []) and ctx.app.script_look else reply
 
     @tools.tool("inspect_job", {"properties": {
-        "job_id": {"type": "string", "description": "The job (this server's, or one another program has waiting or running). Without it: every job in the queue's order (running, waiting, other programs', then ended)."},
+        "job_id": {"type": "string", "description": "The job; without it, the whole queue in order."},
         "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})
     def inspect_job(ctx, args):
-        """A job's status and progress (frames done of total, and how long since the last one: a stall shows), and its result when
-        done. wait_s (up to 25) waits for it to finish. A frame stuck past its limit (2 min) fails the job by itself, naming the frame.
-        Jobs other programs (another server or session) run are seen too, read-only. Without job_id: the jobs queue in order
-        (one heavy job runs at a time; the rest wait their turn)."""
+        """A job's status, progress and result when done (other programs' jobs too, read-only); wait_s (up to 25) waits for it.
+        Without job_id: the queue in order (one heavy job runs at a time)."""
         if "job_id" not in args:
             jobs = [j.state() for j in ctx.jobs.listing()] if hasattr(ctx.jobs, "listing") else []
             return Reply(f"{len(jobs)} job{'s' * (len(jobs) != 1)}: " + ("; ".join(f"{j['job_id']} {j['label']} {j['status']}" for j in jobs) or "none"),
@@ -105,17 +103,14 @@ def register(tools: Tools):
 
     @tools.tool("run_stop", {"required": ["job_id"], "properties": {"job_id": {"type": "string"}}})
     def run_stop(ctx, args):
-        """Stop a job by its id, this server's or another program's (that program stops it within a few seconds). A stopped
-        render ends its engine at once, even mid-frame. Its output is marked incomplete."""
+        """Stop a job by its id (this server's or another program's); its output is marked incomplete."""
         job = ctx.jobs.cancel(args["job_id"])
         return Reply(f"Stop requested for {job.id} ({job.label}); it is {job.status}.{' ' + job.note if job.owner else ''}", job.state())
 
 
 LOOK = {"look": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
-                 "description": "After the merge, look at the result in the same call: seconds, e.g. [2, 7, 12, 17, 22, 27], or true "
-                                "for 6 moments spread over the film. The reply carries one contact sheet of those moments and the "
-                                "film's weakest moments (named faults with times), so you can edit and re-run at once. The reply opens NOT DONE: "
-                                "with each fault (id, when, fix), or DONE: when there are none."}}
+                 "description": "Look in the same call: true (6 moments) or seconds, e.g. [2, 7, 12]. The reply opens NOT DONE: "
+                                "(each fault: id, when, fix) or DONE:, with a contact sheet."}}
 LOOK_LEAD = ("Write the whole film as one script; pass look to get stills + faults back; edit and re-run under the same name. ")
 
 

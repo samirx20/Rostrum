@@ -14,7 +14,7 @@ from rostrum_sound.mcp import session_clock
 
 SOUND = Path(__file__).resolve().parents[2]
 ENGINE_NAMES = (SOUND / "engine" / "src" / "contract" / "names_instruments.rs").read_text(encoding="utf-8")
-GUIDE = (SOUND / "guides" / "start-here.md").read_text(encoding="utf-8")
+GUIDE = (SOUND / "guides" / "agent-reference.md").read_text(encoding="utf-8")
 
 
 def _guide_names() -> set[str]:

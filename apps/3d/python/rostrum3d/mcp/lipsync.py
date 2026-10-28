@@ -13,10 +13,7 @@ tools = Tools()
 
 @tools.tool("inspect_voice_lines", {"properties": {"item": ITEM_SHOT["item"]}})
 def inspect_voice_lines(ctx, args):
-    """The voice lines of the project's RostrumSound songs: id ("<song>/<line id>", what lipsync.make takes as `line`), the
-    words, where the line starts in seconds, and whether its voice is made yet (a line without a voice can't be lip-synced:
-    Make voice in RostrumSound). Also lists the mouths of this scene (groups whose children are named as mouth shapes) and
-    the shape each child stands for."""
+    """The project's RostrumSound voice lines (id for lipsync.make, words, start, voice made?) and this scene's mouths."""
     doc = ctx.document(args.get("item"))
     lines = voice.lines(ctx.app.folder)
     found = [{"group": g["id"], "shapes": mouths.guess(g)} for g in _groups(doc.data) if mouths.is_mouth(g)]

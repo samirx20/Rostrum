@@ -83,9 +83,9 @@ Roughness, Metallic, Glow colour, Normal, Style.
     `halftoneSize` …) and output `style`: wired into `surface.style` the setting is on. To use two or three at once, chain
     them: each has a `then` input taking another one (`halftone_1.style` → `lines_1.then`, `lines_1.style` →
     `surface.style`). Taking one out (or its wire) switches it off.
-  - `look_material` draws the material with its blocks and lists them in its reply (blocks, settings, wires), so check
+  - `look_frame what "material"` draws the material with its blocks and lists them in its reply (blocks, settings, wires), so check
     the result there. In Python, `graph.describe(material)` gives every block with its ports, what is wired and its values.
-- `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat); to judge one material on its own, `look_material` shows it on a ball in a strip of angles under the scene's lights and picks Final for you when it needs it.
+- `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat); to judge one material on its own, `look_frame what "material"` shows it on a ball in a strip of angles under the scene's lights and picks Final for you when it needs it.
 
 ## The four fields that decide most surfaces
 
@@ -276,7 +276,7 @@ farther light, or a light that grazes the face.
 - Round shapes are made with 64 steps around (`segments`), so outlines stay smooth when a disc or ball fills the frame;
   the ink line follows the real edge, so fewer steps show as corners in the line.
 - A render with Quality **Stylized** uses the same renderer as the view, drawn at twice the size and smoothed down for
-  clean edges, so the render is the view you saw. Agents: `look_frame`, `look_sheet` and `look_shots` draw a shot whose
+  clean edges, so the render is the view you saw. Agents: `look_frame`, `look_frame what "sheet"` and `look_frame what "shots"` draw a shot whose
   Quality is Stylized with the stylized renderer when no `renderer` or `quality` is given, or say `renderer: "stylized"`;
   `render_still` / `render_video` follow the shot's Quality when no `renderer` or `quality` is given (Stylized there renders
   Stylized), and `renderer: "stylized"` renders it for any shot.

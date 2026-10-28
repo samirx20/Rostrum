@@ -41,3 +41,17 @@ def test_combined_tool_checks_the_chosen_part_and_old_names_say_the_new_call():
     assert not rt.call("look_one", {"what": "many"}, who)[0]["ok"]            # the part's own required argument
     old = rt.call("look_many", {"count": 3}, who)[0]
     assert old["error"]["code"] == "UNKNOWN_TOOL" and 'Use look_one with what: "many"' in old["summary"]
+
+
+def test_core_tools_come_first_in_the_list_and_in_inspect_tools():
+    from rostrum_core.mcp import Reply, Tools
+    tools = Tools()
+    for n in ("look_one", "run_two", "edit_three"):
+        tools.add(n, lambda ctx, a: Reply("ok"), {}, f"{n} does its job.")
+    tools.core = ["edit_three", "look_one"]
+    rt = Runtime(toy_server.make_app(), tools)
+    assert [t.name for t in rt.tools.all()][:2] == ["edit_three", "look_one"]
+    reply = _call(rt, {})
+    assert reply["data"]["core"] == ["edit_three", "look_one"]
+    assert reply["summary"].split("\n")[1].startswith("Start with: edit_three (edit_three does its job.); look_one")
+    assert "core" not in _call(rt, {"verb": "look"})["data"]

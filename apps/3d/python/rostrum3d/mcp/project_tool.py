@@ -64,7 +64,7 @@ def open_project(app, folder: str | None, items: list[str]) -> None:
 
 @tools.tool("inspect_recent_projects", {})
 def inspect_recent_projects(ctx, args):
-    """The person's recent Rostrum3D scenes, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the server never opens one by itself."""
+    """The person's recent scenes, newest first; the server never opens one by itself."""
     rows = [{**r, "changed": datetime.fromtimestamp(doc_file(r["folder"], r["item"]).stat().st_mtime).isoformat(timespec="seconds")}
             for r in recent_rows()]
     listed = "; ".join(f'{r["name"]} ({r["folder"]}, item {r["item"]}, changed {r["changed"]})' for r in rows)
@@ -77,10 +77,9 @@ def inspect_recent_projects(ctx, args):
     "folder": {"type": "string", "description": open_folder.folder_description(KIND.ext)},
     "item": {"type": "string", "description": open_folder.item_description("scene", ITEM)}}})
 def run_open_project(ctx, args):
-    """Open a project, making it when it is new: closes the open scenes (every change is already saved, so nothing is lost) and opens this folder's; the engine keeps running and all other tools work on it. A folder that doesn't exist yet is made, and a scene the folder doesn't have yet starts as New does (a ground, the Studio sky, Shot 1's camera)."""
+    """Open a folder's scene (a new folder or scene is made, as New does); nothing open is lost."""
     return open_folder.open_folder(ctx, args, docs_in=docs_in, default_item=default_item, open_project=open_project, word="scene")
 
 
-combine(tools, "run_open_project", "The person's scenes: open one, or make a new one by giving a folder that doesn't exist yet "
-        "(default; every change is already saved, so nothing is lost), or list the recent ones to pick from.",
+combine(tools, "run_open_project", "The person's scenes: open one (default), or list the recent ones.",
         {"open": "run_open_project", "recent": "inspect_recent_projects"}, default="open")

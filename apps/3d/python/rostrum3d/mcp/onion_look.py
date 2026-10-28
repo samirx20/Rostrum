@@ -11,11 +11,10 @@ from rostrum3d import onion
 from . import draw
 
 ONION = {"onion": {"type": "object", "additionalProperties": False, "required": ["item"],
-                   "properties": {"item": {"type": "string", "description": "The item whose ghosts to draw (with everything inside it)."},
+                   "properties": {"item": {"type": "string", "description": "The item whose ghosts to draw."},
                                   "mode": {"enum": list(onion.MODES), "default": "keys",
-                                           "description": "keys = the item at its previous and next keys; frames = 2 and 4 frames before and after."}},
-                   "description": "Onion skin as in the viewport: the item's ghosts at other frames, red before, green after. Quick looks only "
-                                  "(fast or stylized, not final); no ghosts are drawn when the item has no other keys or frames to show."}}
+                                           "description": "keys = at its previous and next keys; frames = 2 and 4 frames away."}},
+                   "description": "An item's ghosts at other frames (red before, green after); quick looks only."}}
 
 
 def ghosts_of(ctx, doc, info: dict, frame: int, spec: dict, renderer: str) -> list[dict]:

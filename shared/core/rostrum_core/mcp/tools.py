@@ -78,6 +78,7 @@ class Tools:
         self.origin = origin                  # what a tool added without its own origin comes from
         self._tools: dict[str, Tool] = {}
         self._renamed: dict[str, tuple[str, str | None]] = {}   # old name -> (new tool, the argument to pass)
+        self.core: list[str] = []             # the app's "core 5": listed first, by tools/list and inspect_tools
 
     def add(self, name: str, fn: Callable, schema=None, description: str | None = None, origin: str | None = None) -> Tool:
         if not _NAME.match(name):
@@ -123,7 +124,9 @@ class Tools:
         self._tools[name] = Tool(t.name, f"{t.description} {more}", t.schema, t.model, t.fn, t.origin)
 
     def all(self) -> list[Tool]:
-        return list(self._tools.values())
+        """Every tool, the core ones first (in their order), then the rest as registered."""
+        first = [self._tools[n] for n in self.core if n in self._tools]
+        return first + [t for t in self._tools.values() if t.name not in self.core]
 
     def merged_with(self, other: "Tools") -> "Tools":
         out = Tools()
@@ -132,6 +135,7 @@ class Tools:
                 raise RostrumError(codes.BAD_ARGUMENT, "tool registration", f'"{t.name}"', "is already registered")
             out._tools[t.name] = t
         out._renamed = {**self._renamed, **other._renamed}
+        out.core = other.core or self.core
         return out
 
 

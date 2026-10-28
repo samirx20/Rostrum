@@ -8,9 +8,8 @@ With no options the server opens the scene this agent session last opened (a res
 a fresh scratch project with a new scene (the start scene; rostrum_core/agent_start.py); never the person's last scene.
 The first reply says what is open and whose; run_open_project lists the person's scenes (what "recent") and switches.
 
-Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus run_open_project (project_tool.py),
-look_frame, look_sheet, look_shots, look_material, look_at, look_paint, inspect_paint_strokes, look_coverage, look_where, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
-inspect_animations, look_motion. One engine process (`rostrum3d-core
+Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
+the 3D ones, few and clear (tool_groups.py joins the look family under look_frame `what`; the core five come first). One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
 """
 from __future__ import annotations
@@ -34,24 +33,18 @@ from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
-from . import project_tool, script_look, session_clock
+from . import project_tool, script_look, session_clock, tool_groups, tool_text
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
-INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
-                "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'getting-started' first for the five-minute character. "
-                "Read inspect_guide 'agents', build with run_script, then check "
-                "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video. "
+INSTRUCTIONS = ("rostrum-3d makes 3D shots: meshes, sculpted clay, imports, lights and cameras, animated by keys, rendered by Storm (quick) "
+                "and Cycles (final). Read inspect_guide 'start-here' first: write the scene as one run_script, look through the shot "
+                "camera with look_frame, fix the script, re-run it, then render. "
                 "The server starts on your own scene: the one you last opened from this folder (a resumed session gets it back), else a fresh "
                 "scratch project made for you, never the person's work (the first reply says which); the person's scenes open only when you ask: "
                 "run_open_project lists them (what \"recent\") and switches.")
-SCRIPT_HELP = ("In Rostrum3D: write the whole scene as ONE script, look, edit that script, and re-run it whole under the same name. "
-               "Any id already in the scene (another script's, or left by an undo) is taken over by the script that makes it again, "
-               "under any name; edit(id) / item(id) gives a handle to anything in the scene. A re-run that leaves out most of what "
-               "its last run made is refused with the list (send the whole script, or remove(...) what you mean to drop). "
-               "A character is ONE clay: c = clay(\"buddy\", radius=0.07) (no at / y: it stands on the ground and positions are heights above it), head / arms / feet "
-               "joined as c.lump(at, radius, to=, name=) pieces; then c.bend(\"arm.R\", {seconds: (x, y, z) degrees}) or "
-               "c.pose(\"hand.R\", {seconds: (x, y, z) world point}) keys its joints; parts made with attach_to=c move and bend with it. "
-               "Guide: inspect_guide 'script'.")
+SCRIPT_HELP = ("In Rostrum3D: the whole scene as ONE script, re-run whole under the same name; edit(id) reaches anything "
+               "in the scene. A character is ONE clay (it stands on the ground; positions are heights above it): c.lump(...) "
+               "pieces, then c.bend / c.pose keys its joints. Guide 'script'.")
 
 
 @dataclass
@@ -61,7 +54,8 @@ class ThreeDState:
 
 def app_tools():
     first, *rest = TOOLS.attrs("tools")
-    return reduce(lambda merged, tools: merged.merged_with(tools), rest, first)
+    tools = tool_groups.group(tool_text.shorten(reduce(lambda merged, tools: merged.merged_with(tools), rest, first)))
+    return tool_text.tidy(tools, [g[0] for g in tool_groups.GROUPS] + [n for n in ("run_open_project",) if n in tools._tools])
 
 
 def open_documents(project: str, items: list[str]) -> dict:

@@ -2,7 +2,7 @@
 
 What can come into a Rostrum2D document, and what can go out. Read `start-here` first.
 
-**Where each is today.** An agent has MCP tools for both: `run_import` (SVG, PDF, PSD, an image or video, or a Figma frame, into a composition as one undo step) and `render_export` (mp4, webm, prores4444, gif, png, exr, lottie, motion; always a job: the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` follows it). `render_video` is the older mp4-only call. The Python calls below are the library, `rostrum2d.io`, for code running next to the document (the screen, a Python agent).
+**Where each is today.** An agent has MCP tools for both: `run_import` (SVG, PDF, PSD, an image or video, or a Figma frame, into a composition as one undo step) and `render_export` (mp4, webm, prores4444, gif, png, exr, lottie, motion; always a job: the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` follows it). `render_export` with `what: "video"` is the project render (an mp4 in the renders folder that Sound and the Editor find). The Python calls below are the library, `rostrum2d.io`, for code running next to the document (the screen, a Python agent).
 
 ## Import
 
@@ -27,7 +27,7 @@ Check an import: `look_frame` at full width next to the source, `inspect_item` (
 
 ## Export
 
-`render_export` (MCP) exports any format below; `render_video` exports an **mp4** (H.264, Rec.709) of a composition, always a job: the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` to follow
+`render_export` (MCP) exports any format below; `render_export` with `what: "video"` exports the project render as an **mp4** (H.264, Rec.709) of a composition, always a job: the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` to follow
 it. In a project it lands in `renders/<item>/vNNN/` with a manifest Sound and the Editor can find; a failed export stays in a
 `.partial` folder and is never listed. `start` and `end` (seconds) pick a range.
 
@@ -36,7 +36,7 @@ file keeps, and so its size. Each frame gets the bits its picture needs, so flat
 every step and only a busy, grainy picture grows. The worst case measured, a 15 s 1080p24 painted piece with a film-grain
 overlay: `standard` about 9 MB (smooths fine grain), `high` about 35 MB (keeps it, looks like `best` at normal size), `best`
 about 108 MB (for hand-offs and re-grading, not for sending). `bitrate` (Mbit/s, up to 160) asks for an exact number instead. On the screen the
-Export panel shows **Quality** only while MP4 is chosen. `render_video` and `render_export` both take `quality` and `bitrate`.
+Export panel shows **Quality** only while MP4 is chosen. Both take `quality` and `bitrate`.
 
 The Python `rostrum2d.io.export(engine, fmt, out, alpha=None, depth=None, start=0.0, end=None, quality=None, bitrate=None, gif=None)` goes through the **same engine
 path as `look_frame`**, then reads the file back (frame count, size, alpha, depth) and **fails loudly** if it does not match.

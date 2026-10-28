@@ -69,7 +69,7 @@ The drift is part of the rig, so a turntable or a crane move can be handheld too
 
 ## Checking a move
 
-Look before you render: `look_sheet` on the shot shows frames spread through it, so you can see the whole move at once,
+Look before you render: `look_frame what "sheet"` on the shot shows frames spread through it, so you can see the whole move at once,
 and `look_frame` at the first and last frame shows where the move starts and ends.
 
 Things to know:

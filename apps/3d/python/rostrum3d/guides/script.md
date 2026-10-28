@@ -7,7 +7,7 @@ file (only posing a clay asks the engine to measure its shape); the same fields 
 ## The way to work: one script, look, edit, re-run
 
 1. Write the **whole scene** as one script (`run_script` with `path` to a .py file you keep, or `source` + a `name`).
-2. Look (`look_frame`, `look_sheet`).
+2. Look (`look_frame`, `look_frame what "sheet"`).
 3. Edit **that same script** (the whole text, with your change) and run it again under **the same name**. It replaces what
    it made: changed values change, keys are rewritten, things you deleted from the script go (the reply lists them; `edit_undo`
    brings them back). What a person changed by hand is kept and listed as held back.
@@ -245,4 +245,4 @@ In `edit_document`, a taken id is refused naming what holds it: `id "top" is alr
 - Shape a key's curve: `custom` ease points and `spring` stiffness / damping are key fields only `key.set` reaches (a script's `spring` / `custom` use the defaults).
 - Add a part to an import it didn't make, or anything to the document's own settings.
 - Use markers: shot and key times in a script are plain seconds.
-- Look at anything. After each run use `look_frame`, `look_sheet` and `look_at`.
+- Look at anything. After each run use `look_frame`, `look_frame what "sheet"` and `look_at`.
