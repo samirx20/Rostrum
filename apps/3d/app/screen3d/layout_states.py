@@ -95,13 +95,12 @@ def Xform "Toy"
 """
 
 
-def toy_import() -> list[str]:
-    """Start args for the sample with an import of a small file in centimetres (a body and a head: two parts)."""
+def toy_import(*then: str) -> list[str]:
+    """Steps that bring in a small file in centimetres (a body and a head: two parts) the way the Import group does, then
+    `then`. A script runs before the window and its engine exist, so only this path reads the file's unit and parts."""
     folder = Path(tempfile.mkdtemp(dir=SCRATCH.name))
     (folder / "toy.usda").write_text(TOY_USDA, encoding="utf-8")
-    script = folder / "toy_import.py"
-    script.write_text(SOURCE + f'import_usd("toy", file={str(folder / "toy.usda")!r}, x=0.6)\n', encoding="utf-8")
-    return ["--script", str(script)]
+    return [f"import-file {folder / 'toy.usda'}", "wait 1500", *then]
 
 
 def buds(layout: str = "line") -> list[str]:
@@ -174,8 +173,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("type-flyout", s, ["rail type"]),
         ("import-menu", s, ["rail import"]),                                    # Import (Ctrl+I): a file per format, Asset library
         ("import-drop-hover", s, ["import-hover 420 300"]),                     # a file from Explorer over the viewport: its ring
-        ("import-unit-note", toy_import(), ["import-note toy", "settled"]),     # rescaled from centimetres: Keep original size
-        ("import-part-selected", toy_import(), ["select toy.Head", "settled"]),  # a part: its Material and Visible
+        ("import-unit-note", [], toy_import("import-note import_1", "settled")),     # rescaled from centimetres: Keep original size
+        ("import-part-selected", [], toy_import("select import_1.Head", "settled")),  # a part: its Material and Visible
         # Copies and scatter (brief 24): the copies item's rows (Count first, the grey line under it), right-click on a shape
         # (Make copies ›), on a surface with something selected (Scatter), on a copies item (Change near ›), a change near added
         ("copies-selected", buds(), ["select buds", "settled"]),
