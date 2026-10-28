@@ -81,6 +81,8 @@ class Estimate(QObject):
             g = render_guess.guess_job(scene, s, frames, self._exe)
         except Exception:  # noqa: BLE001  nothing to guess from: the plain word
             return "Measuring…"
+        if g <= 0:
+            return "Measuring…"                         # the first render on this computer: no number until one is real
         w = render_guess.words(g, False)
         return f"{w[0].upper()}{w[1:]} · measuring…"
 

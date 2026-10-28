@@ -3,10 +3,11 @@ long "Measuring…".
 
 Best first: the render sheet's kept measurement of this very scene (estimate_job.cached, scaled by mcp/estimate.scale:
 the measured number). Without one, a first guess from how fast this computer drew its last Render (seconds of drawing
-per megapixel at Final, kept in the cache folder), else from the reference laptop's figures (estimate_job's docstring:
-full HD 2.5 / 4.3 / 7.6 / 10.5 s at 8 / 32 / 128 / 512 samples, plus the engine's start). A guess says so ("about …,
-a first guess"); while the render runs the job counts the seconds against it, and when it lands its real time is kept
-here, so the next guess is this computer's own.
+per megapixel at Final, kept in the cache folder). A guess says so ("about …, a first guess"); while the render runs the
+job counts the seconds against it, and when it lands its real time is kept here, so the next guess is this computer's own.
+With neither (the first Render on a computer) there is NO number: the reference laptop's figures (CURVE) leave out what a
+first render spends before its first sample (the scene's set-up, Cycles loading its kernels: a 56 s render was "about
+9 s"), so the row says "measuring…" until the frame's own step reports give a real rate (left()), a few seconds in.
 """
 from __future__ import annotations
 
@@ -41,19 +42,25 @@ def _kept() -> dict:
 
 
 def guess(scene: dict, s: dict, exe=None) -> tuple[float, bool]:
-    """(seconds, measured?) for one frame with settings `s` (render_fields.settings). Never blocks on the card."""
+    """(seconds, measured?) for one frame with settings `s` (render_fields.settings). Never blocks on the card.
+    (0.0, False): nothing real to go on yet (no kept measurement, no speed of this computer): show "measuring…"."""
     try:
         if (m := estimate_job.cached(scene, s, exe or find_exe())) is not None:
             return scale(m, s, 1, mp4=False)["seconds"], True
     except Exception:  # noqa: BLE001  no engine build to key on, an unreadable entry: fall through to a guess
         pass
+    per_ref = _kept().get("per_ref")                    # this computer's speed over the reference laptop's, from its last Render
+    if not per_ref:
+        return 0.0, False
     ref = _reference(s.get("samples", 128)) * s["width"] * s["height"] / HD_PIXELS
-    return START_S + ref * float(_kept().get("per_ref", 1.0)), False   # per_ref: this computer's speed over the reference laptop's
+    return START_S + ref * float(per_ref), False
 
 
 def guess_job(scene: dict, s: dict, frames: int, exe=None) -> float:
     """A first guess for `frames` frames: the engine starts once, then each frame (the render sheet while it measures)."""
     one, _ = guess(scene, s, exe)
+    if one <= 0:
+        return 0.0
     return START_S + (one - START_S) * max(1, frames)
 
 
@@ -73,7 +80,9 @@ def learn(s: dict, seconds: float):
 
 
 def words(seconds: float, measured: bool) -> str:
-    """"about 40 s" (measured) or "about 40 s, a first guess"."""
+    """"about 40 s" (measured), "about 40 s, a first guess", or "measuring the time" (no number yet: seconds <= 0)."""
+    if seconds <= 0:
+        return "measuring the time"
     return f"about {human(max(1.0, seconds))}" + ("" if measured else ", a first guess")
 
 

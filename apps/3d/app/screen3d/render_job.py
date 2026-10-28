@@ -11,7 +11,7 @@ A failure is reported (red status, the error line), never as success.
 Render always makes the Final picture (SPEC § 1 6:30): the Final preset whatever the shot's Quality says (a shot set to
 Custom samples keeps its own, a shot set to Stylized renders Stylized: its look is not a Cycles one; other qualities
 are the render sheet's, the ▾ beside the button). The moment it starts,
-its note says how long it will take (render_guess: the kept measurement, else a first guess) and counts the seconds
+its note says how long it will take (render_guess: the kept measurement, else a first guess, else "measuring the time" until Cycles' own steps give one) and counts the seconds
 against that. As soon as Cycles has drawn a little of the frame (its "step" lines: the share done), the time is measured
 on this very frame instead (render_guess.left: "about 25 s left"), so a first guess that was far off is put right
 within seconds. When it lands, the picture shows over the viewport (RenderView.qml) with Show in folder.
@@ -98,6 +98,8 @@ class RenderJob(QObject):
         if self._state != "running":
             return ""
         so_far, said = time.monotonic() - self._t0, max(1.0, self._expect)
+        if self._expect <= 0:                              # no real time yet (render_guess): just the seconds so far
+            return f"{so_far:.0f} s"
         return f"{so_far:.0f} / {said:.0f} s" if said < 90 else f"{so_far / 60:.0f} / {said / 60:.0f} min"
 
     def running(self) -> bool:
@@ -114,7 +116,7 @@ class RenderJob(QObject):
             self._expect, self._measured = so_far + left, True     # measured on this frame: the time left
             return f"Rendering the final picture · {render_guess.words_left(left)}" + (f" · {so_far:.0f} s so far" if so_far >= 1 else "")
         said = render_guess.words(self._expect, self._measured)
-        late = so_far > self._expect * 1.15 + 2
+        late = self._expect > 0 and so_far > self._expect * 1.15 + 2
         return (f"Rendering the final picture · {said}" + (f" · {so_far:.0f} s so far" if so_far >= 1 else "")
                 + (" (taking longer than that)" if late else ""))
 
