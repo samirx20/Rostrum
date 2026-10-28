@@ -67,7 +67,7 @@ def fit_note(fits: dict, item_id: str) -> str:
 
 
 def _fit_label(f) -> str:
-    v = f.fits[f.ids[0]]
+    v = f.fits.get(f.ids[0], 0) if f.ids else 0       # asked for every action's name (why_not): absent when no bevel was refused
     return f"Bevel too big · use {v * 1000:.2f} mm (the largest that fits)" if v > 0 else "Bevel too big · use none"
 
 
