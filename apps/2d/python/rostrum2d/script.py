@@ -37,14 +37,15 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, paint_grow, pathdata, plot, script_frame, script_words as W, text_anchor, text_measure
+from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_words as W, text_anchor, text_measure
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
 from .kind import KIND, LISTS
 from .ops_expr import expr_id, link_source
-from .rig import script as rig_script
+from .rig import motion as rig_motion, script as rig_script
 from .swap import child_index
+from . import ui_blocks
 from .lipsync import script as lipsync_script
 
 # Python's plain built-ins a script may use (start-here.md lists them; keep the two the same). No print (the MCP
@@ -498,7 +499,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
-             **pathdata.for_script(b.layer), **plot.for_script(), **text_measure.for_script(), **rig_script.for_script(b),
+             **pathdata.for_script(b.layer), **plot.for_script(), **mathtype.for_script(b.layer), **text_measure.for_script(), **rig_script.for_script(b), **rig_motion.for_script(b), **ui_blocks.for_script(b),
              **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
@@ -515,7 +516,10 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
        "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
-       "path(id, d=star(5, 100, 45))", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
+       "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=)",
+       "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / idle(chest, head=, arms=) / follow(bone) / blink(slot, open=, closed=)",
+       "device(id, kind=phone|laptop|browser) / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: guide ui-and-product-animation",
+       "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
        "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
 

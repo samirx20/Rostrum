@@ -59,6 +59,8 @@ with rig("puppet", w=600, h=800):
     bind(layer=leg, bone=thigh, bone2=shin)
 ```
 
+`layer("leg")` gives back an item made earlier in the script by its id; `limb(...)` (below) builds a whole arm or leg in one call.
+
 A re-run merges key by key and field by field: a key a person moved stays (the reply names what was held back).
 
 ## 4. IK legs and arms
@@ -83,6 +85,56 @@ Key the target through the lift and swing, and the pin catches it when it lands.
 `mode` is `ik` or `fk` per chain. In `fk` the chain follows the bones' own `rotation`, and the target fields are not
 shown. To blend over time keep `mode=ik` and key `mix` (1 = the IK pose, 0 = the FK pose): an arm that swings free,
 then grabs a handle. Key `mix` over a few frames, not one.
+
+## Limbs, walks and idles in a script
+
+Six script calls build the usual parts in one line each and write the motion as **ordinary keys**: everything they
+make is bones, IK chains, shapes, binds and keys that you edit, retime or delete like your own. They choose no look:
+sizes, colours and timing are yours.
+
+- **`limb(id, x=, y=, angle=90, lengths=(upper, lower, end), widths=(…), parent=, kind="arm" | "leg")`** makes three
+  bones from the joint at (x, y) along `angle` (`<id>_upper`, `<id>_lower`, `<id>_end`: the hand or foot; give two
+  lengths for none), and plain shapes bound to them. `pieces="bend"` (the default) is one rounded bar bent across the
+  elbow or knee by a bend bind (`soft` = how wide the fold is); `"parts"` is two bars, each rigid, overlapping at the
+  joint; `"none"` makes bones only, for your own pictures (bind them with `bind`). A leg gets an IK chain (`<id>_ik`), an
+  arm only with `ik=True`. `bend` is the way the joint folds: `"left"`, `"right"`, `"up"`, `"down"` (the side of the screen
+  it points to) or `clockwise` / `counterclockwise`. A foot points along `end_angle` (0 = right, 180 = left). It returns
+  the limb: `arm.upper`, `arm.lower`, `arm.end`, `arm.ik`, `arm.parts`, and `arm.reach({t: (x, y)})` keys its IK target.
+- **`walk(legs=[a, b], body=hip, arms=[a, b], head=, start=, end=, step=0.5, stride=, lift=, bounce=, travel=True,
+  facing="right")`** keys a walk: each foot's IK target planted on the ground for half the cycle and lifted on an arc for
+  the other half (the foot kept flat against the shin's turn, its toe tipping in the swing by `toe` degrees), the body's
+  bounce (lowest just after each contact) and forward `lean`, the arms swinging against the legs (`swing`, `elbow`
+  degrees), the head steadied against the lean. `step` is seconds per step, `stride` px per step. With `travel` the body
+  moves on `stride` each step and a planted foot stays put on the floor; with `travel=False` it walks on the spot (the
+  feet slide back under it: for a background that moves instead). `stride=0` steps in place. It blends in over half a
+  step, and after `end` settles to standing over half a step. It points the knees the way it walks.
+- **`idle(chest, head=, arms=, start=, end=, breath=3.5, amount=1, seed=0)`** adds breathing and weight shift on top of
+  what the bones do: the chest bone's scale rising with each breath (a quicker in, a slower out), a slow sway, the head
+  drifting and kept level against the sway, the shoulders lifting. Each breath is a little longer or shorter than the
+  last (`seed` changes the pattern), so a hold never freezes. `amount` scales it all.
+- **`follow(bone, start=, end=, lag=0.12, overshoot=0.4, amount=1)`** is `rig.follow` in a script (see Staging below).
+  `walk` and `idle` run it on the arms' upper bones by default (`follow_through=False` leaves it out), so forearms and
+  hands trail.
+- **`blink(eyes, open="eyes_open", closed="eyes_shut", half=, every=3.5, vary=0.3, seed=0, frames=2)`** is `blink.add` in a
+  script: hold keys on the swap set's `show`, never over a key that is there.
+- **`layer("id")`** gives back an item made earlier in the same script (a layer, a group, a bone, an IK chain), to key it
+  or hand it to `lipsync(shapes=…)`, `bind(layer=…)` and the calls above.
+
+Walks and idles only put keys inside their time range and blend into what the bones do before and after, so layer a
+gesture on top (key `armR.upper` after the walk call) or hand-key the stretch around it. A re-run rewrites their range.
+Check with `look_frame` (`what: "rig"`) at a contact and a passing time, and `look_motion` (`what: "rig"`). A walk is
+drawn from the side; for a figure facing the camera use `stride=0` (a step in place) and `swing=0`, or key the legs by hand.
+
+```python
+with rig("kid", w=1920, h=1080):
+    hip = bone("hip", x=500, y=600, angle=-90, length=0)
+    chest = bone("chest", parent=hip, length=200); neck = bone("neck", parent=chest, length=40)
+    legB = limb("legB", parent=hip, x=500, y=600, lengths=(170, 160, 60), widths=(48, 42, 34), kind="leg")
+    armF = limb("armF", parent=chest, x=500, y=420, lengths=(120, 110, 20), widths=(34, 30, 46))
+    ...                                                   # the other leg and arm, the torso and head bound to chest / neck
+    walk(legs=[legF, legB], arms=[armB, armF], body=hip, head=neck, start=0.3, end=4.3, step=0.5, stride=150)
+    idle(chest, head=neck, arms=[armF, armB], start=4.6)
+```
 
 ## Seeing a rig
 
@@ -175,11 +227,12 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
 - **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script, or `swap.show` with `t` and `layer`
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
   `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
-- **Blink.** An operation, not a script call: after the script, `edit_document` with `blink.add` on the eyes' slot
-  (`{"op": "blink.add", "target": ["eyes"], "args": {"open": "eyes_open", "closed": "eyes_shut"}}`), with `open`, `closed` and optionally `half` (a half-closed drawing for the
-  frame before and after). `every` is the mean gap in seconds, `vary` how uneven it is, `frames` how long the eyes stay
-  closed, `start` / `end` the stretch. A `seed` makes the same blinks every run; change it for others. It never moves
-  or replaces a key that is there, so keep a blink you like and key the rest by hand. Look at a few blink frames.
+- **Blink.** In a script, `blink(eyes, open="eyes_open", closed="eyes_shut")`; as an operation, `blink.add` on the eyes'
+  slot (`{"op": "blink.add", "target": ["eyes"], "args": {"open": "eyes_open", "closed": "eyes_shut"}}`). Both take `open`,
+  `closed` and optionally `half` (a half-closed drawing for the frame before and after). `every` is the mean gap in seconds,
+  `vary` how uneven it is, `frames` how long the eyes stay closed, `start` / `end` the stretch. A `seed` makes the same
+  blinks every run; change it for others. It never moves or replaces a key that is there, so keep a blink you like and
+  key the rest by hand. Look at a few blink frames.
 - **Lip sync into a slot.** Put the mouth drawings in a swap set and give `lipsync(..., slot=mouth)` (or the operation
   `lipsync.apply` on the swap set) the shapes as before. The slot's `show` is keyed, one key per change of mouth, in
   place of an opacity key per layer. A person can move any of those keys on the timeline.
@@ -203,5 +256,13 @@ Technique, not a recipe. Where a figure feels stiff, the cause is usually one of
 - **Bend by default.** A chain whose bones lie in one line is straight, and an IK chain asked for a target at full reach is straight too. Rest the bones with a slight bend (a forearm 10-20 degrees off its upper arm), keep IK targets a little inside the chain's reach, and pick the side the joint folds to with the IK's `bend`.
 - **Arcs.** Hands, heads and tails travel on curves, not lines. A swing on a bone's `rotation` moves its tip on an arc by itself; for an IK target, key it at both ends and at a middle time with a sideways offset. `inspect_rig_motion` returns the tip's path so you can check the curve.
 - **Overlap and follow-through.** `rig.follow target=upper_arm start=0 end=1 lag=0.12 overshoot=0.4`: the bones below the target trail behind its turn, swing a little past and settle, each step down the chain a bit later. It is baked as ordinary `rotation` keys (linear between dense samples, thinned to what the curve needs) on those bones, plus the settle after `end`, so edit or delete them like any keys; run it again to re-bake the range. A bigger `lag` is looser (hair, a tail), a small one a stiff arm; `amount` below 1 shows only part of it. The target bone itself is not changed.
+- **Shot changes on one character.** One framing for a whole piece flattens it, however well the figure moves. Change
+  the shot on the beats: a cut is `frame().cut(at=t, to="items", items=["head"], pad=0.2)` (or `frame.cut` as an operation),
+  an instant jump to a new framing, best on a change of action or a line of dialogue; a push-in is `f.fit(["head"], at=t2,
+  ease="easeInOut")` after a fit on the whole body at `t1` (the frame travels between the two times); a pull-out is the
+  same the other way. Cut or push between shot sizes that differ clearly (wide to medium, medium to close-up); a
+  change of a few percent reads as a wobble. Keep the eyes in about the same part of the frame across a cut, and the figure
+  facing the same way, so the viewer does not have to search. Frame a walk wide enough for the stride, or let the frame
+  travel with it (`f.fit` on the figure at the walk's start and end times).
 - **Holds.** Let a pose rest for a few frames (a `hold` ease, or the same value at two times) before the next move; constant motion reads as drifting.
 - **Easing on IK.** Keys on an IK target (`targetX`, `targetY`, `mix`) take an ease like any key (`key.add ... ease=easeOut`): the hand leaves its place quickly and settles.

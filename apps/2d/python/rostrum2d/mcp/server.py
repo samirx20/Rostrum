@@ -58,9 +58,15 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "No import except math and random (seeded: the same numbers every run; random(7) is your own seeded generator "
                "with .uniform/.randint/.choice/.random) and no classes: use functions and dicts. "
                "Equations, graphs and charts: plot_area, curve_points, param_points, polar_points, line_d, lines_d, "
-               "nice_ticks, tick_label, view3d, surface_lines, parse_table (inspect_guide 'data-math-and-graphs'). "
+               "nice_ticks, tick_label, view3d, surface_lines, parse_table; math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers, one per symbol (inspect_guide 'data-math-and-graphs'). "
                "Before a field's first key it holds that key's value. Every field and the first-time surprises: "
-               "inspect_guide 'start-here'. An error names the line and what to write instead.")
+               "inspect_guide 'start-here'. An error names the line and what to write instead. "
+               "layer(\"id\") gives back an item made earlier in the script. Characters (guide character-rigging-and-lip-sync): "
+               "limb(id, x=, y=, lengths=, widths=, kind=\"arm\"|\"leg\", parent=) makes a bending arm or leg (bones, IK, parts); "
+               "walk(legs=[a, b], arms=, body=, start=, end=, step=, stride=), idle(chest, head=, arms=), follow(bone), "
+               "blink(eyes, open=, closed=) write plain keys. Screens (guide ui-and-product-animation): device(id, kind=\"phone\"|"
+               "\"laptop\"|\"browser\") returns its screen group; status_bar, nav_bar, tab_bar, list_rows, card, button, toggle, bars; "
+               "counter(id, start, to, at=, duration=, decimals=, prefix=) is one text that counts (never stack texts).")
 
 
 def app_tools():

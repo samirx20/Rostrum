@@ -1,6 +1,6 @@
 # UI and product animation
 
-How to build screens, cards, devices and product shots from boxes, images, masks, glass and depth. Read `start-here` first.
+How to build screens, cards, devices and product shots from boxes, images, masks, glass and depth, and the script calls that make a whole screen of plain layers fast. Read `start-here` first.
 Fragments show how a tool is called; the numbers are placeholders.
 
 ## Layout
@@ -86,6 +86,75 @@ Copies are only useful if you know which is which. Two ways, by who makes them:
 
 Then stagger them in a reading order: `layer.stagger` with `order: "left_to_right"`, `"top_to_bottom"` or `"centre"`
 orders by where each is seen (one that fades or scales in from 0 counts where it sits, its own scale and opacity taken as full).
+
+## Building blocks: a whole screen in a few lines
+
+These script calls make a device and the usual parts of a screen as **plain groups of shapes and texts**, with ids made
+from the block's id (`trips_r0_title`, `pay_label`), so each part is moved, keyed, restyled or taken apart afterwards
+like anything you made by hand. Every colour and size is a parameter; the defaults are only a neutral start. Each is
+placed by its top-left `x`, `y` in the parent's px (the screen's, inside `with scr:`).
+
+| Call | Makes |
+|---|---|
+| `scr = device(id, kind="phone" \| "laptop" \| "browser", x=, y=, w=, h=, body=, screen=, url=)` | the device from shapes, centred on (x, y), and returns its **screen**: a clipped group (rounded by a mask) whose px start at the screen's top-left. `scr.w`, `scr.h` are its size. `layer(id)` is the whole device (move, scale or tilt that). |
+| `status_bar(w=, y=0, time="9:41", color=)` | the time on the left, signal, Wi-Fi and battery on the right |
+| `nav_bar(title, w=, y=, back=, action=)` | a big title, an optional back label and action word |
+| `tab_bar(labels, w=, parent_h=scr.h, active=0, accent=)` | tabs across the bottom, each an icon square and a label |
+| `rows = list_rows(rows, x=, y=, w=, row_h=84, avatar=True)` | one group per row (`<id>_r0` …): avatar with an initial, title, detail line, value on the right, divider. A row is a string, `(title, detail)` or `(title, detail, value)`. Returns the row groups, top first. |
+| `card(id, x=, y=, w=, h=, title=, detail=, value=, fill=, radius=28, shadow=True)` | a rounded card with text at its top-left and a big value at its bottom-left; make more of its layers inside `with` it |
+| `button(label, x=, y=, w=, h=, fill=, outline=False)` | a pill with its label centred (`<id>_bg`, `<id>_label`) |
+| `toggle(id, x=, y=, on=False)` | a switch: `<id>_track` and `<id>_knob`; flip it by keying the knob's `x` and the track's `fill` |
+| `bars = bars(values, x=, y=, w=, h=, labels=, top=)` | a bar chart standing on its bottom edge (each bar anchored there: a key on `scaleY` from 0 grows it upward). Returns the bars, left first. |
+| `counter(id, start, to, at=, duration=, decimals=, prefix=, suffix=, separator=, **text fields)` | one text that counts (below) |
+
+```python
+scr = device("phone", kind="phone", x=640, y=540)
+with scr:
+    status_bar(w=scr.w); nav_bar("Trips", w=scr.w, y=54, action="Edit")
+    card("hero", x=24, y=170, w=scr.w - 48, h=200, title="Lisbon dinner", detail="4 people", value="$168.00")
+    rows = list_rows([("Ana", "owes you", "$42.00"), ("Ben", "owes you", "$42.00")], y=390, w=scr.w)
+    tab_bar(["Home", "Trips", "Friends", "You"], w=scr.w, parent_h=scr.h, active=1)
+for i, r in enumerate(rows):                          # stagger the rows in: they are ordinary groups
+    r.key("opacity", {1.0 + i * 0.06: 0, 1.4 + i * 0.06: 1}).key("y", {1.0 + i * 0.06: r.y + 30, 1.4 + i * 0.06: r.y})
+```
+
+## Counting numbers
+
+A number that counts is **one text** with *Counts a number* on: the engine writes the digits on every frame from its
+`count` field, so the look tools and the export show the same number, and the width stays steady with tabular figures.
+Never stack a text per value. In a script, `counter("total", 0, 186.4, at=2, duration=1.2, decimals=2, prefix="$",
+size=72)` (the text's other fields after the numbers), or on any text: `text("n", counter=True, countDecimals=2,
+countPrefix="$", figures="tabular lining").key("count", {2: 0, 3.2: 186.4})`. As an operation, `text.counter` (`from`,
+`to`, `at`, `duration`, `ease`, `decimals`, `digits`, `separator`, `prefix`, `suffix`). More steps (it counts, pauses,
+counts on): more keys on `count`. The ease of the first key shapes the count (`easeOut` slows into the final value). A
+number that should land on a beat: key the end on that time, not the start.
+
+## Density: what makes a screen read as a real product
+
+A screen reads as a real app when it carries the amount of detail a real one does, at every moment the shot shows it.
+Techniques to check against, not a style:
+
+- **Fill the screen it opens on.** The first frame of the device is seen longest. Status bar, title, at least one
+  card or chart and a list that runs past the bottom edge (the clip cuts it, which says "there is more") read as a
+  product; a lone title on white reads as a placeholder. Put the content in place first, then animate the way into it.
+- **Several levels of text.** A title, a value, a label and a detail line, in clearly different sizes and weights and
+  two or three greys, give a screen its structure. One size and one colour make it a mock-up.
+- **Real-looking content.** Names, amounts with cents, dates, counts, avatars with initials. Repeated "Item 1, Item 2"
+  reads as a wireframe.
+- **Something on every surface.** A card should carry its title and value from the moment it is seen. When a card opens
+  into a screen (a shared-element move), the new screen's content fades in while it grows, not after; the empty check
+  (`look_frame` `what: "empty"`) names a plain box with nothing on it that is changing size.
+- **Edges and depth.** Dividers, a soft shadow under cards, a frosted bar over content that scrolls under it separate the
+  layers of the interface the way a real one does.
+
+## Into the screen: the camera on a device
+
+The frame (FRAME.md) is a camera over the comp, so the shot can travel into a device and back like a product film:
+`f = frame()`; `f.fit(["phone"], at=0.5)` frames the whole device; `f.fit(["hero_value"], at=3, pad=0.25,
+ease="easeInOut")` pushes in on a number as it counts; `f.fit(["phone"], at=5)` pulls back out; `f.cut(at=7,
+to="items", items=["rows"])` jumps to a new framing on a beat. Push in on the thing that changes (a count, a toggle, a
+chart growing) while it changes, and pull out before the next action happens elsewhere. A slight `tiltY` on the device
+group as it enters, settling to 0, makes the screen a physical object; keep it flat while the viewer reads.
 
 ## Boxes, images, video
 
@@ -194,6 +263,7 @@ sheet over the flip (`look_frame` with `what: "sheet"`).
 ## Seeing and checking
 
 - `look_frame` (set `width=1920` to check crisp edges), `look_frame` (`what: "sheet"`) over the animation, `look_motion` for what moves.
+- `look_frame` (`what: "empty"`) over the whole piece: besides blank and frozen stretches it names a plain box of one colour with nothing on it (6 % of the frame or more) caught while it grows, shrinks, comes or goes: a card that opens before its content arrives.
 - `look_at x y time`: the layers whose box covers a point, top first, with values (effects and masks are not counted).
 - Animate toward the final layout you already placed: look at the last frame first, then key the way into it.
 - Use `value.set` when a person says "make it bigger": a still field changes, an animated one gets a key at `at`.
