@@ -8,10 +8,9 @@ Quality is **Stylized** renders with the stylized renderer instead, and looks li
 Click **Render** at the right of the top bar (or press **F12**). It starts at once and always makes the **final-quality**
 picture of the shot's current frame (the Final preset, whatever Quality the sheet shows; a shot set to Custom samples
 keeps its own, a shot set to Stylized renders Stylized). From the click, the button's place shows the seconds so far against the time it will take ("12 / 40 s";
-rest the pointer on it for the whole sentence); the time is the measured one when this scene was measured before, else
-a first guess from how fast this computer drew its last render, said as "a first guess". On a computer's very first
-render there is no number yet (the scene's set-up and Cycles loading its kernels take their own time): the button shows
-only the seconds so far ("12 s") and the note says "measuring the time". Once the final renderer has
+rest the pointer on it for the whole sentence) when this scene's time was measured before (the render sheet's test).
+Otherwise there is no number yet (a scene's set-up, Cycles loading its kernels and what else the computer is doing all
+change it): the button shows only the seconds so far ("12 s") and the note says "measuring the time". Once the final renderer has
 drawn a little of the frame (usually within a few seconds), the time is measured on that frame itself: "about 25 s
 left", and the clock follows it. **×** beside it cancels. When
 it is done the picture shows over the viewport, saved in the project's Renders folder (`renders/<item>/vNNN/`, a PNG
@@ -72,8 +71,7 @@ Things to know:
 
 ## The time
 
-The time is **measured**. When the sheet opens with nothing measured yet, the row says a first guess at once ("About
-40 s, a first guess · measuring…"; just "Measuring…" on a computer that has not rendered yet) while a short test runs in
+The time is **measured**, never guessed. When the sheet opens with nothing measured yet, the row says "Measuring…" while a short test runs in
 the background: the shot's middle frame (or the playhead's frame, for This frame) through the same engine and settings
 as the real render, at a quarter of the size and once at the real size with few samples. Then it says, for example:
 

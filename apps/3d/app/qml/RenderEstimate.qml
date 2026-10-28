@@ -1,8 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// The render sheet's time (AppShell.exportSummary, just above Render; screen3d/estimate_sheet.py): a first guess at once
-// ("About 40 s, a first guess · measuring…", its lines' places kept so Render below never moves), then
+// The render sheet's time (AppShell.exportSummary, just above Render; screen3d/estimate_sheet.py): "Measuring…" at once
+// (its lines' places kept so Render below never moves), then
 // "About 6 min" and under it "120 frames · 3 s a frame" (how it was measured: on hover), a note when another render was on the graphics card,
 // and the test frame's picture (what is about to be rendered). Budget: click "Set a budget", type "10 min"; over it,
 // the one-setting changes that fit, each a click.
