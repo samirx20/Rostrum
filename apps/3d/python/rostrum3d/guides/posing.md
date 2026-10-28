@@ -87,8 +87,11 @@ c.pose("hand.L", {1: (0.15, 0.2, 0.05)}, holds=["foot.L", "foot.R"])            
 - `pose` is `pose.drag` at each time (world points, `holds` as below).
 - The first of them finds the joints (`pose.find_joints`, with the engine); a piece added to the clay after it fails,
   so make the whole shape first. A wrong name fails with the joints the clay has.
-- What makes the finder read a figure: a **head on a narrower neck** (a head ball overlapping the body's, not sunk into
-  it) gives `head`; **arms held a little out** from the body give `arm` / `forearm`; feet below give `foot`.
+- What makes the finder read a figure: something on top of the body's ball gives `head` (a narrower neck between
+  them places it exactly; without one it turns from the ball's top); **arms held out** from the body, sideways
+  (a bump pointing to the front is not an arm), give `arm` / `forearm`; pieces reaching down to the ground give
+  `foot` / `leg`. A head piece that doesn't touch the body is a separate lump and gets no joint.
+- `holds`: joint names. Holding `"body"` (or `"chest"`) holds the whole trunk upright; the head still turns.
 
 **Single operations** (one undo step each); positions are world points unless said otherwise.
 

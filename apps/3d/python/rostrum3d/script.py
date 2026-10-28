@@ -312,7 +312,7 @@ def _vec(values: dict) -> dict:
 def _clay(b: "Build", id_=None, draw=None, spin=None, facing=None, axis=None, puff=None, **values) -> Item:
     """clay(id, **fields): a ball of `radius` (at `at`, its middle; `to` = a capsule), or empty for .lump / .draw; or
     clay(id, draw=[…] / spin=[…]) made from a drawing in the scene (as clay.add's). Made without a height (no at, y,
-    draw or spin) it rests on the ground (script_figure.py)."""
+    draw or spin) it stands on the ground, its own space the scene's (script_figure.py)."""
     if draw is None and spin is None:
         values, first, grounded = script_figure.start(values)
         it = b.item("clay", id_, **values)
@@ -525,7 +525,7 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: rests on the ground", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(part, {seconds: (x, y, z)}, holds=)", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]

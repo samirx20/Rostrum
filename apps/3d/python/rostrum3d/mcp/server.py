@@ -40,7 +40,7 @@ SCRIPT_HELP = ("In Rostrum3D: write the whole scene as ONE script, look, edit th
                "Any id already in the scene (another script's, or left by an undo) is taken over by the script that makes it again, "
                "under any name; edit(id) / item(id) gives a handle to anything in the scene. A re-run that leaves out most of what "
                "its last run made is refused with the list (send the whole script, or remove(...) what you mean to drop). "
-               "A character is ONE clay: c = clay(\"buddy\", radius=0.07) (no at / y: it rests on the ground), head / arms / feet "
+               "A character is ONE clay: c = clay(\"buddy\", radius=0.07) (no at / y: it stands on the ground and positions are heights above it), head / arms / feet "
                "joined as c.lump(at, radius, to=, name=) pieces; then c.bend(\"arm.R\", {seconds: (x, y, z) degrees}) or "
                "c.pose(\"hand.R\", {seconds: (x, y, z) world point}) keys its joints; parts made with attach_to=c move and bend with it. "
                "Guide: inspect_guide 'script'.")

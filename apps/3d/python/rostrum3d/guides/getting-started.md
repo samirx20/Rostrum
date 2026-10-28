@@ -71,9 +71,11 @@ Build the whole figure as **one clay**: body, head, arms and feet are its pieces
 can float off or drift apart, and its joints are found from that one shape. Separate meshes for the limbs are the
 hard way (they have to be kept touching and moved together by hand).
 
-- `clay(id, radius=…)` starts it as a ball. Without `at` or `y` it **rests on the ground** when the script ends: its
-  lowest point (feet included) goes to the ground's top, and everything attached to it moves with it. Build it around
-  its own middle, (0, 0, 0); `at=(x, y, z)` places the ball's middle there instead (a height you give is kept).
+- `clay(id, radius=r)` starts it as a ball **standing on the ground**: its middle at (0, r, 0), the clay's origin on
+  the ground under it. So every piece position is (x, **height above the ground**, z), the same numbers as the scene:
+  feet at height 0, a head above the body ball's top (2 r). A piece reaching below the ground lifts the whole figure
+  (and what is attached) to stand on it. `at=(x, y, z)` places the ball's middle there instead, and pieces are then
+  measured from that point.
 - `.lump(at, radius, name=)` joins a ball; `.lump(at, radius, to=…)` a capsule from `at` to `to` (an arm, a leg).
   Positions are in the clay's own space; start each piece **inside** the one it joins, so they blend into one.
 - Mirror is on (`symmetry="x"`): make one arm and one foot on the +x side, the other side comes with it.
@@ -84,9 +86,9 @@ hard way (they have to be kept touching and moved together by hand).
   facing=(0, 0, 1))`, its lowest point at y = 0) when the body is not round (guide `sculpting`).
 
 ```python
-c = clay("buddy", radius=0.07, material=material("body", start="clay", baseColor="#e07a3f"))
-c.lump((0, 0.125, 0), 0.055, name="head")                       # overlaps the body: a neck forms between
-c.lump((0.055, 0.04, 0), 0.02, to=(0.13, 0.0, 0), name="arm")   # from inside the body, out and a little down
+c = clay("buddy", radius=0.07, material=material("body", start="clay", baseColor="#e07a3f"))   # middle at 0.07 high
+c.lump((0, 0.195, 0), 0.055, name="head")                       # overlaps the body: a neck forms between
+c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")  # from inside the body, out and a little down
 ```
 
 Then `look_frame` (`shot: "shot_1"`), and `look_shape` (`target: "buddy"`) for its outline and size in numbers.
@@ -123,7 +125,10 @@ a part's end to a world point at each time instead. The first one finds the join
 picture's left. A wrong joint name fails with the list of the ones it has.
 
 - Turning about Z swings an arm up or down in the picture's plane: on `arm.R` (the −x side) a negative angle raises
-  it, on `arm.L` a positive one. About Y turns the head left/right, about X nods it.
+  it, on `arm.L` a positive one. The arm turns at its shoulder joint, inside the body: about 60–90° from hanging
+  reads as raised; much more lays it against the head.
+- `holds=["foot.L", "foot.R", "body"]` on `pose`: the feet stay planted and the whole trunk upright (a held body
+  holds the chest too); only the arm moves. About Y turns the head left/right, about X nods it.
 - A wave: raise `arm.R`, then rock `forearm.R` back and forth a few times (small angles, about a third of a second
   apart), then lower it. Keys between are eased (`ease=` like `item.key`).
 - Things attached to the clay (`attach_to=`, `place_on`) bend with the bone nearest them: the eyes stay on the head.

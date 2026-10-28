@@ -1,8 +1,10 @@
 """A figure as ONE clay in a script (script.py): its start as a ball or a capsule (clay.add's at / radius, + to), resting
 on the ground when no height was given, and posed from the script with keys over time.
 
-- `clay("buddy", radius=0.08)`: a ball; `at=(x, y, z)` places its middle there (a height given: kept); `to=` makes the
-  start a capsule from `at` to `to`. Without at / y / draw / spin, the clay is built where the script's numbers put it,
+- `clay("buddy", radius=0.08)`: a ball resting on the ground: the clay's origin is on the ground under it (the
+  ball's middle at (0, radius, 0) in its own space), so the clay's own space is the scene's and every .lump / .stroke
+  position is a height above the ground. `at=(x, y, z)` places the ball's middle there instead (the clay's origin
+  there too; a height given: kept); `to=` makes the start a capsule from `at` to `to`. Without at / y / draw / spin, the clay is built where the script's numbers put it,
   and when the script ends it moves up or down so its lowest point (at rest, every joined piece) is on the ground's
   top, everything attached to it moving with it: a figure never floats, and no part is left behind.
 - `buddy.pose("hand.R", {t: (x, y, z), …}, holds=)`: pose.drag at each time (world points); `buddy.bend("head",
@@ -37,10 +39,14 @@ def start(values: dict) -> tuple[dict, dict | None, bool]:
     grounded = at is None and "y" not in values
     if at is None and to is None and radius is None:
         return values, None, grounded                   # an empty clay: its steps come from .lump / .draw …
-    at = [float(c) for c in at] if at is not None else [float(values.get(k, 0.0)) for k in "xyz"]
-    values.update(x=at[0], y=at[1], z=at[2])
     r = float(radius or clay_steps.RADIUS)
-    piece = {"at": [0.0, 0.0, 0.0], "radius": r}
+    if at is None and to is None:                      # on the ground: the clay's origin on the ground under the
+        piece = {"at": [0.0, r, 0.0], "radius": r}     # ball, so its own space is the scene's (y = height)
+        values.update({k: float(values.get(k, 0.0)) for k in "xyz"})
+    else:
+        at = [float(c) for c in at] if at is not None else [float(values.get(k, 0.0)) for k in "xyz"]
+        values.update(x=at[0], y=at[1], z=at[2])
+        piece = {"at": [0.0, 0.0, 0.0], "radius": r}
     if to is not None:
         piece["to"] = [round(float(b) - a, 6) for a, b in zip(at, to)]
     first = clay_steps.piece_values({"symmetry": values.get("symmetry") or "x"}, piece,

@@ -22,16 +22,23 @@ A figure is **one clay**: body, head, arms and feet are pieces of it, so it hold
 from its shape. Not separate meshes in groups (they drift apart and need moving together by hand).
 
 ```python
-c = clay("buddy", radius=0.07)                         # a ball; no at / y: it rests on the ground when the script ends
-c.lump((0, 0.125, 0), 0.055, name="head")             # a head on a narrower neck: read as `head`
-c.lump((0.055, 0.04, 0), 0.02, to=(0.13, 0, 0), name="arm")   # held a little out; Mirror makes the other side
-c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -100)})      # degrees about the clay's X, Y, Z from rest, at each time
-c.pose("hand.L", {2: (0.15, 0.2, 0.05)})              # or drag a part's end to a world point (pose.drag)
-mesh("eye", shape="sphere", radius=0.01, x=0.02, y=0.14, z=0.05, attach_to=c)   # rides the head's bone
+c = clay("buddy", radius=0.07)                         # a ball standing on the ground: its middle at (0, 0.07, 0)
+c.lump((0, 0.195, 0), 0.055, name="head")             # every position: x, HEIGHT ABOVE THE GROUND, z
+c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")   # held a little out; Mirror makes the other side
+c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})       # degrees about the clay's X, Y, Z from rest, at each time
+c.pose("hand.L", {2: (0.15, 0.27, 0.05)}, holds=["foot.L", "foot.R", "body"])   # or drag a part's end (pose.drag)
+mesh("eye", shape="sphere", radius=0.01, x=0.02, y=0.21, z=0.05, attach_to=c)   # rides the head's bone
 ```
 
+**Positions.** `clay(id, radius=r)` without `at` / `y` puts the clay's origin on the ground under the ball, so its own
+space is the scene's: every `.lump` / `.stroke` / `.draw` position, `attach_to` part and `pose` point is (x, height above
+the ground, z). A piece reaching below the ground lifts the whole figure (and what is attached) to stand on it. With
+`at=` (or `y=`) the clay's origin is there instead, and its pieces are measured from that point.
+
 Pose after the last piece (the first `bend` / `pose` finds the joints; a piece added after fails). Names: `body`,
-`chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side. Guide `posing`.
+`chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side; a wrong name fails
+listing the ones found. `holds` takes joint names: holding `"body"` keeps the whole trunk upright (the head still
+turns), holding the feet keeps them planted. Guide `posing`.
 
 ## The shape of a script
 
@@ -61,7 +68,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `copies(id, source, layout=, count=, **fields)` | one thing many times: `source` (an item or list made earlier in the same list) goes inside; or `with copies(...):` and make it inside (guide `copies`) |
 | `copies.effector(kind=, near=, radius=, amount=)` | change the copies near an item: `scale turn push colour` |
-| `clay(id, radius=, at=, to=, **fields)` | a clay starting as a ball of `radius` (a capsule from `at` to `to`); with neither, empty for `.lump` / `.draw`. No `at` / `y`: it rests on the ground when the script ends (its lowest point on the ground's top; what is attached to it moves with it) (guide `sculpting`) |
+| `clay(id, radius=, at=, to=, **fields)` | a clay starting as a ball of `radius` (a capsule from `at` to `to`); with neither, empty for `.lump` / `.draw`. No `at` / `y`: the ball stands on the ground, the clay's origin on the ground under it, so piece positions are heights above the ground; a piece below the ground lifts the figure (and what is attached) onto it (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |
 | `clay.draw(outline, facing=, puff=, mode=, blend=, symmetry=, name=)` | a drawn shape joined on (the clay's own space); a tiny one is a lump |
 | `clay.spin(profile, axis=, mode=, blend=, symmetry=, name=)` | a spun shape joined on (the clay's own space) |

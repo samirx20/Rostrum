@@ -257,12 +257,15 @@ def _classify(base, tip, root, radius0, mirrored: bool) -> str:
     d = tip - base
     d = d / max(np.linalg.norm(d), 1e-12)
     low = base[1] < root[1] - 0.3 * radius0 or (base[1] < root[1] and tip[1] < root[1] - 0.6 * radius0)
-    if low and d[1] < 0.3:
+    down = d[1] < -0.5 or tip[1] < root[1] - 0.8 * radius0     # a leg goes down or reaches the bottom; a low arm
+    if low and down:                                            # held out sideways is still an arm
         return "leg"
     if d[1] > 0.7 and not mirrored:
         return "head"
     if d[2] < -0.6 and not mirrored:
         return "tail"
+    if abs(d[2]) > 0.8:                                # sticking out to the front or back, not low: a nose, a
+        return "part"                                  # belly bump, a snout; never an arm
     if mirrored or abs(base[0]) > 0.15 * radius0:
         return "arm"
     return "part"
@@ -320,6 +323,7 @@ def _carry(nodes, kids, radius0, side) -> int | None:
     return middle[0] if middle and len(middle) < len(kids) else None
 
 
+TALL = 1.4                     # a body this many times its ball's radius above the ball's middle carries a head
 BACK = 2.5                     # a limb's base is at most this many times its thickness (radius) behind its first point
 
 
@@ -451,6 +455,9 @@ def find_parts(grid: dict, mirror: bool | None = None) -> tuple[list[dict], dict
         necks = [n for n in after[:-1] if radii[n] < 0.75 * radii[: n + 1].max() and radii[n + 1:].max() > 1.2 * radii[n]]
         if necks:
             stops.append(("head", float(marks[min(necks, key=lambda n: radii[n])])))
+    if stops[-1][0] != "head" and span > TALL * radius0 and radius0 > stops[-1][1] + 1.0:
+        stops.append(("head", radius0))                        # no neck, but something sits on the body's ball: a
+                                                               # head blended in; it turns from the ball's top
     joints = []
     for n, (name, x) in enumerate(stops):
         head = root_pos if n == 0 else at_along(x)
