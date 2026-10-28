@@ -136,6 +136,8 @@ def _frame_faults(data: dict, info: dict, f: int, folder) -> dict:
 
 def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
     """cut_edge (any sampled frame), floating and sinking (every sampled frame) from the scene's geometry through the shot camera."""
+    if not _item(data, info.get("camera")):      # no camera item to look through: the engine names that itself, nothing to judge
+        return []
     per = []
     for f in frames:
         try:
@@ -170,15 +172,21 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
     return out
 
 
-def _own_y(data: dict, id_: str) -> float:
-    """The item's own y (its stored value), for a concrete fix; 0 when it is keyed or inside a group."""
+def _item(data: dict, id_) -> dict | None:
+    """The document's item `id_` (searched through groups), else None."""
     stack = list(data.get("items", []))
     while stack:
         it = stack.pop()
-        if it["id"] == id_:
-            return float(it.get("y", 0.0) or 0.0)
+        if it.get("id") == id_:
+            return it
         stack += it.get("children", [])
-    return 0.0
+    return None
+
+
+def _own_y(data: dict, id_: str) -> float:
+    """The item's own y (its stored value), for a concrete fix; 0 when it is keyed or inside a group."""
+    it = _item(data, id_)
+    return float(it.get("y", 0.0) or 0.0) if it else 0.0
 
 
 def check(data: dict, info: dict, frames: list[int], pngs: dict, folder=None) -> list[dict]:
