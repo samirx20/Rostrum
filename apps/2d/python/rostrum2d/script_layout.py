@@ -10,8 +10,10 @@ them, so a screen is written as nested boxes with padding, gap and align instead
             ...
 
 `row`, `column`, `grid`, `stack` are `group(..., layout=…)` starting as CSS does (padding 0, gap 0, align stretch;
-top-left origin, so x / y outside a container is its top-left). Words every layer call takes (`prepare`, called by
-Build.layer for each one): `origin=` (the pivot by name, "top-left" … "bottom-right"), `tw=` (Tailwind layout words,
+given x / y they place its top-left; with none it sits centred in its parent). Outside a container a layer with no x / y sits at its parent's centre
+(`centre`). Words every layer call takes (`prepare`, called by
+Build.layer for each one): `anchor=` / `origin=` (the pivot by name, "top-left", "top", "left", "center" … "bottom-right",
+or a pair (0, 1)), `tw=` (Tailwind layout words,
 tw.py; explicit arguments win), and inside a container `grow=`, `shrink=`, `align_self=`, `margin=`, `span=`,
 `apart=`, `shift_x=` / `shift_y=`. A group's (or shape's, image's) `w` / `h` take px, "N%", "fill" or (a container)
 "fit". The x / y rule: inside a container the layout places a layer, so x= / y= there fail loudly unless the layer is
@@ -23,7 +25,8 @@ from . import tw as TW
 
 ORIGINS = {"center": (0.5, 0.5), "top-left": (0, 0), "top-center": (0.5, 0), "top-right": (1, 0),
            "left-center": (0, 0.5), "right-center": (1, 0.5), "bottom-left": (0, 1), "bottom-center": (0.5, 1),
-           "bottom-right": (1, 1)}
+           "bottom-right": (1, 1), "top": (0.5, 0), "bottom": (0.5, 1), "left": (0, 0.5), "right": (1, 0.5),
+           "center-left": (0, 0.5), "center-right": (1, 0.5)}
 CHILD = {"grow": "layoutGrow", "shrink": "layoutShrink", "align_self": "alignSelf", "alignSelf": "alignSelf",
          "margin": "margin", "span": "colSpan", "apart": "layoutApart", "shift_x": "shiftX", "shift_y": "shiftY"}
 BOX = {"padding_x": "paddingX", "padding_y": "paddingY", "row_gap": "rowGap", "radius": "bgRadius"}
@@ -37,6 +40,31 @@ def in_layout(build) -> bool:
     """Layers made now go into a container (a group with a layout)."""
     h = build.holders[-1] if build.holders else {}
     return h.get("type") == "group" and h.get("layout", "none") != "none"
+
+
+def _anchor(k, v, where):
+    """anchor= / origin=: a name ("top-left", "bottom", "center" …) or a pair (x, y), 0 = left / top, 1 = right / bottom."""
+    if isinstance(v, str) and v in ORIGINS:
+        return ORIGINS[v]
+    if isinstance(v, (tuple, list)) and len(v) == 2 and all(isinstance(n, (int, float)) for n in v):
+        return float(v[0]), float(v[1])
+    raise ValueError(f'{where}: {k}={v!r} is not an anchor. Write a name: {", ".join(ORIGINS)}; or a pair '
+                     f'{k}=(0, 1) (0 = left / top, 1 = right / bottom)')
+
+
+def centre(build, type_: str, values: dict) -> dict:
+    """`values` with x / y the parent's centre where they are left out: the comp's (width / 2, height / 2) or a sized
+    group's box (w / 2, h / 2, in its px). Inside a container the layout places it; a drawing places its canvas itself."""
+    h = build.holders[-1]
+    if in_layout(build) or type_ in ("drawing", "rig") or h["type"] not in ("comp", "group") or {"x", "y"} <= values.keys():
+        return values
+    if h["type"] == "comp":
+        cx, cy = h["width"] / 2, h["height"] / 2
+    elif h["id"] in build.sized:
+        cx, cy = h["w"] / 2, h["h"] / 2
+    else:       # an unsized group fits around what is inside at its end: a layer left alone sits on the group's x / y
+        cx, cy = h["anchorX"] * h["w"], h["anchorY"] * h["h"]
+    return {"x": cx, "y": cy, **values}
 
 
 def _size(type_, axis, v, out, where):
@@ -62,10 +90,10 @@ def prepare(build, type_: str, id_, values: dict) -> dict:
     inside = in_layout(build)
     out: dict = {}
     for k, v in values.items():
-        if k == "origin":
-            if v not in ORIGINS:
-                raise ValueError(f'{where}: origin "{v}" is not one of {", ".join(ORIGINS)}')
-            out["anchorX"], out["anchorY"] = ORIGINS[v]
+        if k in ("origin", "anchor"):
+            if {"origin", "anchor"} <= values.keys():
+                raise ValueError(f"{where}: anchor= and origin= are one setting; give one")
+            out["anchorX"], out["anchorY"] = _anchor(k, v, where)
         elif k in CHILD:
             if not inside and k != "apart":
                 raise ValueError(f"{where}: {k}= places a layer in a container; it is not inside one. Make it inside "
@@ -100,8 +128,8 @@ def for_script(build) -> dict:
             if "tw" in values:
                 values = {**TW.read(values.pop("tw")), **values}
             values = {**START, **values, "layout": kind}
-            if not {"origin", "anchorX", "anchorY"} & set(values):
-                values["origin"] = "top-left"
+            if not {"origin", "anchor", "anchorX", "anchorY"} & set(values):     # x / y given: its top-left, as CSS;
+                values["origin"] = "top-left" if {"x", "y"} & set(values) else "center"   # none: centred in its parent
             return build.layer("group", id, **values)
         make.__name__ = kind
         make.__doc__ = (f"A group laid out as a {kind}: padding, gap, align, justify, wrap, w / h (px, \"N%\", "

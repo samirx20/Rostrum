@@ -42,7 +42,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 
 **Show beats** is in the menu only when the song has a tempo. When you zoom out far, the beat lines leave and only the bar lines stay.
 
-In a script (for agents): `beats()` gives the same beats as a list of seconds, to cut or key on (`b = beats(); title.set(start=b[16])`); it reads the song that plays with the scene and says so loudly when the project has no song yet.
+In a script (for agents): `beats()` gives the same beats as a list of seconds, to cut or key on (`b = beats(); title.set(start=b[16])`); it reads the song that plays with the scene and says so loudly when the project has no song yet. Before there is a song, `beats(bpm=120, start="#in", count=16)` gives a grid of beats from a marker (marker times that move with it). `marker("drop", 8)` in the script makes a shared marker the song can later be written to; `start="#drop"`, `end="#drop+2"` and keys on `"#drop+0.2"` tie layers to it.
 
 ## 6. Snapping to beats and markers
 

@@ -30,9 +30,10 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
   or `"right"` for another.
 - **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Give `apart=True` to place a
   layer by its own x / y (it then takes no room): a badge on a card, a pointer over a screen. A box made outside any
-  box is placed by its `x`, `y` (its top-left).
-- `origin="center"` (or `"top-left"`, `"bottom-center"`, `"left-center"` … any corner or side) on any layer is its
-  pivot for scale and turn: `origin="bottom-center"` grows a bar up from its floor. A laid-out layer still sits in its
+  box is placed by its `x`, `y` (its top-left); with no `x`, `y` it sits centred in its parent (the frame's middle).
+- `anchor="center"` (or `"top-left"`, `"top"`, `"left"`, `"bottom-center"` … any corner or side, or a pair `(0, 1)`;
+  `origin=` is the same word) on any layer is the point its `x`, `y` place and its pivot for scale and turn:
+  `anchor="bottom"` grows a bar up from its floor. A laid-out layer still sits in its
   slot.
 - `tw="flex flex-col gap-4 p-6 items-center"`: Tailwind layout words on any box or layer, on Tailwind's 4 px scale
   (`gap-4` = 16 px). Read: `flex`, `flex-row` / `flex-col`, `grid`, `grid-cols-N`, `flex-wrap`, `gap-N`, `gap-x-N`,
@@ -74,14 +75,15 @@ line wraps inside its card.
 ## A title lock-up
 
 ```python
-with column("lockup", x=960, y=540, origin="center", align="center", gap=18):
+with column("lockup", anchor="center", align="center", gap=18):
     with row(gap=20, align="center"):
         shape(w=72, h=72, radius=18, fill="#ff7a59")
         text(body="Rostrum", size=120, weight=780)
     text(body="Films from a script", size=36, color="#9ca3af")
 ```
 
-`origin="center"` puts the lock-up's middle on (960, 540) whatever its size, and it grows around it.
+With no `x`, `y` the lock-up's middle (`anchor="center"`) sits at the picture's centre whatever its size, and it grows
+around it.
 
 ## A dashboard
 

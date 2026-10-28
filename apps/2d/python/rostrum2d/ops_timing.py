@@ -32,7 +32,10 @@ def times() -> dict:
 
 def _times(ctx) -> dict:
     """The markers of the document being edited: its own folder when the operation context carries one (`ctx.folder`),
-    else the project `use_project` named."""
+    else the project `use_project` named. A script's own run gives `ctx.marker_times` (script_time.times: the markers
+    it makes with marker() too)."""
+    if getattr(ctx, "marker_times", None) is not None:
+        return ctx.marker_times
     folder = getattr(ctx, "folder", None)
     return markers.times(folder) if folder is not None else times()
 

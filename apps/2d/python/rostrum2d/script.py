@@ -46,6 +46,7 @@ from .ops_expr import expr_id, link_source
 from .rig import motion as rig_motion, script as rig_script
 from .swap import child_index
 from . import script_layout, ui_blocks, ui_pointer
+from . import script_time
 from .lipsync import script as lipsync_script
 
 # Python's plain built-ins a script may use (start-here.md lists them; keep the two the same). No print (the MCP
@@ -381,6 +382,7 @@ class Build:
     def fill(self, node, values):
         if isinstance(values.get("fill"), Painted):         # fill=painted(grain, fit="tile", …): a painted fill, the fields below
             values = {**{k: v for k, v in values.items() if k != "fill"}, **values["fill"].fields()}
+        values = script_time.fill(self, node, values)        # start= / end= on a marker ("#reveal+0.5", script_time.py)
         params = F.FIELDS[node["type"]]
         known = [p.name for p in params]
         kinds = {p.name: p.type for p in params}
@@ -459,6 +461,9 @@ class Build:
             for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
                 if xy not in values:
                     values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
+        values = script_layout.centre(self, type_, values)           # no x / y: the parent's centre
+        if type_ == "group":        # a script's hugging group grows around its anchor; keeping top-left is the canvas's
+            values.setdefault("hugPin", False)
         values = script_layout.prepare(self, type_, id, values)       # origin, tw, container words (guide lay-out-a-screen)
         return self.add(type_, id, values, self.holders[-1]["layers"])
 
@@ -532,13 +537,14 @@ def run_source(source: str, name: str, doc=None) -> dict:
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
              **pathdata.for_script(b.layer), **plot.for_script(), **mathtype.for_script(b.layer), **text_measure.for_script(), **rig_script.for_script(b), **rig_motion.for_script(b), **script_layout.for_script(b), **ui_blocks.for_script(b), **ui_pointer.for_script(b), **shafts.for_script(b),
-             **lipsync_script.for_script(b), **script_scramble.for_script(b), **script_music.for_script(b)}
+             **lipsync_script.for_script(b), **script_scramble.for_script(b), **script_music.for_script(b), **script_time.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
         for finish in getattr(b, "finishers", ()):     # end-of-script passes (rig.motion: limbs' natural bend, colour)
             finish()
         _grow_drawings(b.root)
         _check_links(b.root, b.taken)
+        script_time.publish(b)                       # last: the script's markers only once everything else passed
     except Exception as e:
         raise _failed(e, name, scope) from e
     return b.root
@@ -552,10 +558,10 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",
        "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / step(legs=[l, r], by=px, at=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",
-       "with row / column / grid / stack(id, padding=, gap=, align=, justify=, w=px|\"50%\"|\"fill\"|\"fit\", bg=, radius=, tw=): layers made inside are placed for you (grow=, align_self=, margin=, span=, shift_x=; x / y only with apart=True); origin=\"top-left\"|… on any layer; guide lay-out-a-screen",
+       "with row / column / grid / stack(id, padding=, gap=, align=, justify=, w=px|\"50%\"|\"fill\"|\"fit\", bg=, radius=, tw=): layers made inside are placed for you (grow=, align_self=, margin=, span=, shift_x=; x / y only with apart=True); anchor=\"top-left\"|\"top\"|\"left\"|\"center\"|…|(0, 1) (or origin=) on any layer; no x / y = the parent's centre; guide lay-out-a-screen",
        "device(id, kind=phone|laptop|browser, fit=, anchor=center|left|right, screen=) returns its screen, a column / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: placed by the container they are made in; guide ui-and-product-animation",
        "pointer(id=\"cursor\", kind=arrow|touch) / tap(pointer, target, at=, move=, press=, ripple=, spot=): the tip lands beside the target's words, eased, with a press",
-       "scramble(id, body, start=, end=, rate=, chars=, order=, **text fields): characters cycling and locking into words", "beats(start=, end=): the scene's music beats in seconds (music is made in RostrumSound)", "light_shafts(id, x=, y=, count=, spread=, length=, lean=, color=, strength=, sway=): beams of light, a group (guide frame-parallax-motion-blur)",
+       "scramble(id, body, start=, end=, rate=, chars=, order=, **text fields): characters cycling and locking into words", "beats(start=, end=) the song's beats / beats(bpm=, start=, count=) a beat grid without a song", "marker(name, at) -> \"#name\": a shared project marker; any time may be \"#name+0.5\" (start=, end=, at=, keys)", "after(item, gap=): when its last key lands + gap", "stagger(items, every=, start=) -> [(time, item), …]", "light_shafts(id, x=, y=, count=, spread=, length=, lean=, color=, strength=, sway=): beams of light, a group (guide frame-parallax-motion-blur)",
        "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.letters(text, x=, y=, height=, font=, **brush): hand-lettered words as brush strokes", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
        "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
