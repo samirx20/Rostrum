@@ -26,6 +26,9 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [timing-to-music.md](timing-to-music.md): markers, layers and keys timed from a marker, beats, the song from RostrumSound (also a people page above).
 - [type-and-kinetic-text.md](type-and-kinetic-text.md): setting type and making it move: fonts, variable axes, OpenType features, per-letter animation, gradient letters, scrambling characters into words, building a title in steps.
 - [ui-and-product-animation.md](ui-and-product-animation.md): screens, cards, devices and product shots: devices and screen blocks in one call (`device`, `list_rows`, `card`, `bars` …), counting numbers (`counter`), boxes, masks, frosted glass, shadows, tilt and depth.
+- [styled-words.md](styled-words.md): a few words of one text in another colour, weight, size or opacity, each keyable (`body=["… ", ("words", {…})]`, `text.run("words").key(…)`).
+- [tap-and-react.md](tap-and-react.md): a cursor tap that aims at the centre, chases a moving target and reacts by itself (`then=` press, ripple, highlight or your own function).
+- [lower-thirds-and-charts.md](lower-thirds-and-charts.md): a name and role on a bar (`lower_third`) and a bar or line chart with axes (`chart`): placing, colours, timing on a marker, taking them apart.
 - [shape-and-path-animation.md](shape-and-path-animation.md): vector shapes, the pen, point editing, combining, drawing a stroke on, dashes.
 - [text-on-a-path.md](text-on-a-path.md): text along a path (also a people page above).
 - [easing-and-overlap.md](easing-and-overlap.md): how a key's ease shapes motion, and checking that moves overlap as you meant.

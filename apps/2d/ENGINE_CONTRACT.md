@@ -200,6 +200,12 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
     the line). The text's own transform is not used; its opacity, blend, colour and letter keys are. A `pathLayer` that
     names nothing beside it, or a layer that isn't a path, or one set together with `path`, is refused at load and at
     `edit` (resolved in `scene/follow.rs`, the one place).
+  - **Styled runs** (`scene/runs.rs`): up to 4 runs, `run<n>From` ≤ letter < `run<n>To` (letters of `body`, line breaks
+    counted; used while To > From), each with `run<n>Color` (faded by `run<n>Opacity` and the fill opacity), `run<n>Weight`
+    (0 = the text's) and `run<n>Scale` (about the run's centre on its line; the line keeps its room), all keyable but
+    From / To. Drawn as spans in the one text box; a text with a scaled run on one line (no `boxWidth`) is drawn letter by
+    letter. Drawn letter by letter, a run's fields are read at the layer's time (not the letter's delayed one) and a
+    weighted run takes that weight's advances. A counting text shows no runs. `measure` does not read runs yet.
   - **Letter by letter:** `letterDelay` s ≠ 0: each letter (`letterSplit` letters | words) plays the layer's own keys
     `letterDelay × its place` later; places follow `letterOrder` forward | backward | center | random (`letterSeed`, the
     same order on every machine). Keyed x / y move each letter from the layer's still x / y; keyed rotation, scale,
@@ -283,5 +289,6 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - I1 (same version): the `change` request (a scene keeping the held scene's items by id; only what is new is read and checked); `timing` on the `scene` reply; a load whose `fonts` are the held scene's takes its font list as it is; a load whose texts name other fonts puts the page up again with their faces (it kept the old ones at the same size).
 - X1 (same version): `export.workers` (several frames drawn at once; the reply's `workers` and `budgetMB`); export frames are laid out whole (incremental again since J1). Opacity and blend layers cover only where their content paints (vendor/PATCHES.md › Export speed): pictures within 2/255 of before.
 - X2 (same version): no change to any request or reply. The way from a drawn frame to the MP4 is faster and gives the same pictures: the colour step takes opaque 8-bit pixels from the integer code table the GPU step also reads (same bytes), the frame pipe to the encoder holds a whole frame, NV12 conversion runs on all cores, and `encode-mp4` reads the next frame while it encodes the one before.
+- R6 (same version, 2026-10-29): text `run1From` … `run4Opacity` (24 required fields, § 4 › Styled runs).
 - C1 (same version, 2026-10-26): text `counter`, `count` (keyable), `countDecimals`, `countDigits`, `countSeparator`, `countPrefix`, `countSuffix` (required fields; § 4 › Counter); `measure` takes them too (left out = not counting).
 - J1 (same version): no change to any request or reply. A canvas frame (`frame`, `pixels`) laid out incrementally is the same picture as the export's frame at that time, whatever frames were drawn before it, and exports lay out incrementally again, as the canvas does (Night Bloom ~11 % faster; vendor/PATCHES.md › J1; small glyphs from Skia's atlas may still differ by 1/255 on a few pixels).

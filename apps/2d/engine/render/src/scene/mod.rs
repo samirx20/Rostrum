@@ -15,6 +15,7 @@ pub mod fonts_scan;
 pub mod grade;
 pub mod grain;
 pub mod rough;
+pub mod runs;
 pub mod grade_curve;
 pub mod layout_cmd;
 pub mod letters;

@@ -179,7 +179,8 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             if it.on("stroke") {
                 let _ = write!(s, "-webkit-text-stroke:{}px {};", v(it, "strokeWidth"), v(it, "strokeColor"));
             }
-            Ok((s, escape(it.str("body"))))
+            let runs = if it.on("counter") { vec![] } else { super::runs::read(&it.props) };
+            Ok((s, super::runs::markup(it.str("body"), &runs, super::eval::fill_opacity(&it.props), look.color.is_some())))
         }
         "video" => super::stage_fx::video(it, grad.is_some()),
         "image" => {
