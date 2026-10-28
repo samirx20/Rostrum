@@ -71,3 +71,16 @@ def test_a_fault_that_comes_back_says_what_the_change_did():
     applied.tell(raw, shaped, {"dull_top": {"brightest_db": -33.8}})
     assert "was -33.8 dB, now -29.1 dB, passes at -20 dB or more" in shaped[0]["what"] and "not enough" in shaped[0]["what"]
     assert applied.record(raw, shaped) == {"dull_top": {"brightest_db": -29.1}}
+
+
+def test_a_climax_at_the_files_end_is_read_not_a_crash(tmp_path):
+    """Canary re-run (Haiku task 8): a climax 0.6 s before the file's end (its next seconds past the end, or silent) made the
+    listening check crash (an empty stretch, then a -inf number in the fault words). It is read: the hold falls to silence."""
+    sr = 48000
+    t = np.arange(int(8.6 * sr)) / sr
+    y = 0.05 * np.sin(2 * np.pi * 220 * t) * (t / 8.0)
+    y[int(8.0 * sr):] = 0.6 * np.sin(2 * np.pi * 110 * t[int(8.0 * sr):])
+    path = tmp_path / "end.wav"
+    sf.write(path, np.stack([y, y], axis=1), sr)
+    found = faults.check(str(path), [{"at": 8.0, "kind": "climax"}])["faults"]
+    assert all(isinstance(faults._words(f), str) for f in found)

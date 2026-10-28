@@ -95,7 +95,10 @@ def gated_lufs(kw: np.ndarray, sr: float) -> float:
 
 def integrated(y: np.ndarray, sr: float) -> float:
     """Integrated loudness (LUFS) of [n, channels] samples."""
-    y = np.asarray(y).reshape(len(y), -1)
+    y = np.asarray(y)
+    if y.size == 0:                       # a stretch past the file's end: silence, not an error
+        return float("-inf")
+    y = y.reshape(len(y), -1)
     return gated_lufs(k_weight(y, sr), sr) if y.shape[0] >= int(BLOCK_S * sr) else float("-inf")
 
 
