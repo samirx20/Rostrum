@@ -2,15 +2,16 @@
 
 A sync check that only asks "is there an onset within 40 ms" passes a hit that is barely there (sound-fair brief 2:
 1.6x a normal note, rank 4) and a stop the band's own beat blurs (brief 3). This reads how a listener would: the hit
-against the piece's typical onset, the beat just before a stop, where the drums really fall away before a drop, and
-where the loudest moment lands against a climax. Hits, stops and entries are read by attack.py (the finished file's
+against the piece's typical onset and the 2 s before it, the beat just before a stop and how much of the band goes on
+after it (stop_fall.py), where the drums really fall away before a drop and whether they are gone in its gap
+(drop_gap.py), and where the loudest moment lands against a climax. Hits, stops and entries are read by attack.py (the finished file's
 short attack, as a listener hears it, against the piece's typical onset and the bed before it). Each fault comes back
 as {kind, at_s, measured} (faults.py words it, with the fix)."""
 from __future__ import annotations
 
 import numpy as np
 
-from . import attack
+from . import attack, drop_gap, stop_fall
 from .brightness import growth
 from .core import load, mono, num
 from .dsp_events import find_peaks, onset_strength
@@ -21,6 +22,7 @@ NEAR_S = attack.NEAR_S     # the hit's own onset: the strongest attack within th
 WEAK_X, WEAK_RANK = 2.5, 3 # a hit under 2.5x a normal onset, or not among the file's 3 strongest, does not stand out
 WEAK_ENTRY_X = 2.0         # drums coming back are heard when their first hit is at least 2x a normal onset
 STEP_LU, STEP_X = 10.0, 1.5  # ...or a step 10 LU over the bed with an attack 1.5x a normal one (a loud entry from quiet is heard)
+CONTRAST_DB, CONTRAST_PEAK_DB = 12.0, 10.0  # ...or 12 dB over the 2 s before, peak 10 dB over the bed's, attack ≥ 1x: jumps out
 BLUR_BEFORE_S = 1.0        # a stop is blurred when an onset this close before it is nearly as strong (≥ 70 %)
 BLUR_SHARE = 0.7
 STOP_DROP_DB = 8.0         # after a stop the level should fall at least this far within 0.3–1.0 s
@@ -59,7 +61,9 @@ def _hit(wav, m, sr, at, kind):
     if s is None:
         return [{"kind": f"no_{kind}", "at_s": at, "measured": {"onset_within_ms": NEAR_S * 1000}}]
     weak = s["times_typical"] < WEAK_ENTRY_X if kind == "entry" else s["times_typical"] < WEAK_X or s["rank"] > WEAK_RANK
-    weak = weak and not ((s["jump_lu"] or 0) >= STEP_LU and s["times_typical"] >= STEP_X)
+    stands = ((s.get("over_before_db") or 0) >= CONTRAST_DB and (s.get("peak_over_bed_db") or 0) >= CONTRAST_PEAK_DB
+              and s["times_typical"] >= 1.0)       # a swell with no attack (a low boom) is not heard as a hit, however loud
+    weak = weak and not ((s["jump_lu"] or 0) >= STEP_LU and s["times_typical"] >= STEP_X) and not stands
     out = [{"kind": f"weak_{kind}", "at_s": at, "measured": {"onset_s": s["at_s"], **{k: v for k, v in s.items() if k != "at_s"}}}] if weak else []
     if kind in ("hit", "climax") and not weak and at_ceiling(s):     # a weak one's fixes lead with headroom already
         out.append({"kind": "build_at_ceiling", "at_s": at, "measured": {k: s[k] for k in ("build_peak_db", "file_peak_db", "headroom_db")}})
@@ -74,7 +78,8 @@ def _hit(wav, m, sr, at, kind):
         if (rival is not None and env[rival] >= BLUR_SHARE * h) or fall < STOP_DROP_DB:
             out.append({"kind": "blurred_stop", "at_s": at, "measured": {
                 "beat_before_s": num(t[rival], 2) if rival is not None else None,
-                "beat_before_share": num(env[rival] / h, 2) if rival is not None else None, "fall_after_db": num(fall, 1)}})
+                "beat_before_share": num(env[rival] / h, 2) if rival is not None else None, "fall_after_db": num(fall, 1),
+                **stop_fall.measure(m, sr, at)}})
     return out
 
 
@@ -148,7 +153,8 @@ def _voice(y, sr, at, end):
 
 
 def check(wav, moments) -> list[dict]:
-    """moments: [{"at": s, "kind": one of KINDS, "end": s (voice only)}] -> the faults found, in time order."""
+    """moments: [{"at": s, "kind": one of KINDS, "end": s (voice: the span; drop: the drums' return, else the first
+    entry after it, else drop_gap.DEFAULT_GAP_S)}] -> the faults found, in time order."""
     y, sr = load(wav)
     m = mono(y)
     ev = envelope(m, sr) if any(mo.get("kind") == "drop" for mo in moments) else None
@@ -160,7 +166,8 @@ def check(wav, moments) -> list[dict]:
         elif kind == "lift":
             out += _lift(y, sr, at) + _flat_top(wav, at)
         elif kind == "drop":
-            out += _drop(m, sr, ev, at)
+            end = mo.get("end")
+            out += _drop(m, sr, ev, at) + drop_gap.faults(m, sr, at, float(end) if end is not None else drop_gap.return_of(moments, at))
         elif kind == "climax":
             out += _climax(wav, m, sr, y, at) + _flat_top(wav, at)
         elif kind == "voice" and mo.get("end") is not None:

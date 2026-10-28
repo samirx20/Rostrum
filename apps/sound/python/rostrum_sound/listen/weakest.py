@@ -26,7 +26,8 @@ def from_markers(marks) -> list[dict]:
 
 
 def _order(f) -> float:
-    """Missing first, then weak by how far under (times a normal note), then the other moment faults, then the whole piece's."""
+    """Missing first, then weak by how far under (times a normal note; drums still in a drop's gap as 1x), then the
+    other moment faults, then the whole piece's."""
     k, d = f["kind"], f["measured"]
     if k.startswith("no_"):
         return -1.0
@@ -34,6 +35,8 @@ def _order(f) -> float:
         return 0.0                  # the whole piece is heard bent from its first second: right after a missing moment
     if k.startswith("weak_") or (k == "soft_stop" and d.get("weak")):
         return d["times_typical"]
+    if k == "drums_in_gap":
+        return 1.0                  # the drop does not read: heard like a hit at a normal note's strength
     return 50.0 if k in ("held_tone", "near_mono", "dull_top") else 10.0
 
 
