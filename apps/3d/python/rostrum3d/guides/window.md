@@ -3,6 +3,49 @@
 One window, five areas. The viewport is in the middle and gets all the room the controls don't need. Nothing else
 sits on top of it.
 
+## Your first character on the screen
+
+A small clay character from an empty project to a render, by clicking. The same steps through the tools:
+guide `getting-started`, which also says what a new project already has.
+
+**Moving around** works the same in every tool: **right-drag** (or two fingers on a touchpad) turns the view round
+what is selected (else round everything you made) and brings it to the middle of the picture, the
+**wheel** (or a pinch) comes closer or goes back. **F** brings the selection to the middle. Turning the view never
+moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, a stroke, a colour, a pose, a light.
+
+1. **A body.** Click **Clay** in the rail (or press **Q**). **Draw** is already chosen in the panel. Drag a closed
+   outline over the ground, about half as tall as the picture, and let go. It puffs into a soft clay body standing
+   on the ground, its front towards you. A faint line down its middle shows that **Mirror** is on. On a touchpad,
+   keep the click held for the whole outline.
+2. **Arms.** With Draw still on, start an outline **on the side of the body** (the body gets a thin outline while
+   the pencil is over it) and drag an arm out. It joins the body, and the same arm appears on the other side.
+3. **Feet.** A small oval at the bottom of the body. Mirror makes the second one.
+4. **Shape it.** Pick a brush in the panel and drag over the clay: **Smooth** evens out lumps, **Add** builds clay
+   up (a brow), **Carve** takes it away (a mouth). Hold **Shift** to smooth with any brush, **Ctrl** for the opposite.
+   **Size** is the brush's radius. Each stroke is one undo step.
+5. **Eyes.** **Shapes › Sphere**, then click on the face where one eye goes, a little off the middle. A small ball
+   sits on the face, sized for it (about a sixth of the face's width there), and its mirrored copy appears on the
+   other side and follows it. Drag it with the arrows, or type its size in the panel. Both stay on the face when
+   you pose the body later.
+6. **Colour.** Select the body and click the small coloured square beside **Base colour** (right under its **Material ▾**):
+   pick an orange. New clays share the project's grey "Clay"; the first colour change gives this clay its own copy, so
+   other clays stay grey. Select an
+   eye, click its material ball, choose **Glossy plastic** under **Start from**, then set its Base colour to black.
+   Both eyes change, because the copy follows the original.
+7. **A wave.** Select the body and click **Pose** in the rail (Shift+P). Click each foot once (an orange ring: it
+   stays put). Then drag the end of one arm up. The arm bends at the shoulder and the elbow and the body stays upright;
+   dragged past the arm's reach, the body leans a little after it. To keep the body still even then, click the chest
+   too. Bent in the wrong place: ↶, add a hold nearer to where it should bend, drag again.
+8. **A good angle.** Right-drag to look from a little to the side and above. Rest the pointer on **Make this the
+   shot** in the header: the frame Shot 1 would take shows. Click it. Choose the angle **before** the light: the
+   light is placed for what the camera sees.
+9. **A good light.** **Lights › Soft light**, then click the cheek where you want it brightest. The light is placed
+   so its shine lands there, at a sensible brightness. **Shift+F** shows the view in Final quality, with real soft
+   shadows (Shift+F again goes back to Quick).
+10. **The picture.** Click **Render** at the right of the top bar. It starts at once at final quality and says how long
+    it will take; the picture shows when done, saved in the project's Renders folder (**Show in folder**).
+    When it is done: **Show in folder**.
+
 ## The top bar, left to right
 
 | Piece | What it does |

@@ -18,8 +18,8 @@ from rostrum_core.mcp.tools import Tools, _schema_of
 from . import script_look, session_clock
 from rostrum_core.mcp.tools import Tool
 
-CHECKS = ["look_frame", "look_motion", "look_at", "look_drawing", "look_painting", "look_review", "inspect_item",
-          "inspect_project", "inspect_layout", "inspect_sounds", "inspect_fonts", "inspect_diagnose", "inspect_markers",
+CHECKS = ["look_frame", "look_motion", "look_at", "look_drawing", "look_painting", "inspect_item",
+          "inspect_project", "inspect_sounds", "inspect_fonts", "inspect_markers",
           "inspect_table", "inspect_job", "inspect_operations", "inspect_history"]
 
 DOES = ["edit_document", "run_brush", "run_import", "edit_markers", "edit_sound_cue", "run_brand_kit", "run_open_project",
@@ -115,10 +115,10 @@ def _look(full: Tools, clock):
         "additionalProperties": True}
     text = ("See the film: with no `check`, one contact sheet (`times`, default 6 moments spread over it) and the film's weakest "
             "moments (named faults with times and the fix). With `check` one detailed check and its own arguments: "
-            "look_frame (a frame, sheet, the world, what is in frame, rig, empty spans), look_motion (moves, paths, curves, "
-            "keys), look_at (what is at a point), look_drawing / look_painting (paint, coverage, strokes landed), look_review "
-            "(the faults alone), inspect_item / inspect_project / inspect_layout / inspect_markers / inspect_sounds / "
-            "inspect_fonts / inspect_table / inspect_diagnose / inspect_job / inspect_operations / inspect_history. "
+            "look_frame (a frame, sheet, the world, what is in frame, rig, empty spans, review: the faults alone, diagnose, "
+            "layout, swaps), look_motion (moves, paths, curves, keys), look_at (what is at a point), look_drawing / "
+            "look_painting (paint, coverage, strokes landed), inspect_item / inspect_project / inspect_markers / inspect_sounds / "
+            "inspect_fonts / inspect_table / inspect_job / inspect_operations / inspect_history. "
             'E.g. {"check": "look_frame", "time": 2.5}. Arguments: read_guide \'tool-reference\'.')
     return look, schema, text
 

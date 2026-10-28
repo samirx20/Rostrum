@@ -8,8 +8,9 @@ else a fresh scratch project with an empty document (rostrum_core/agent_start.py
 first reply says what is open and whose. While running, run_open_project lists the person's projects (what "recent") and
 switches. Every change is saved at once, so the 2D screen process can open the same file.
 Tools: the shared ones from rostrum_core, plus the 2D ones, few and clear (tool_groups.py joins the related ones under one
-name with a `what` argument): look_frame, look_motion, look_at, look_drawing, look_painting, inspect_layout, inspect_sounds,
-inspect_fonts, inspect_diagnose, render_video, render_export, run_import, run_brush, run_brand_kit, run_open_project, edit_sound_cue.
+name with a `what` argument): look_frame, look_motion, look_at, look_drawing, look_painting, inspect_sounds, inspect_fonts,
+render_export, run_import, run_brush, run_brand_kit, run_open_project, edit_sound_cue. The core five (CORE) come first.
+The tool list carries one short sentence per tool (tool_text.py); the full words are the guide 'tools-in-detail'.
 """
 from __future__ import annotations
 
@@ -24,85 +25,50 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, small_toolset, tool_groups
+from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, small_toolset, tool_groups, tool_text
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
-                "Read inspect_guide 'start-here', write the whole film as one run_script with look (a contact sheet and the film's weakest moments come back in the same reply), edit and re-run it under the same name; for detail, look_frame (one frame; what \"sheet\" a contact sheet, \"world\" the whole canvas with the frame's path, \"in_frame\" what is in or out of the frame) and look_motion. "
-                "Paint on any shape, text, picture or path, or on a drawing, with paint.stroke (its paint stays inside the outline and "
-                "moves with it; one call list = one undo step), fill a closed area with paint.fill {at, color, gap} (paint layers, shared by "
-                "all of a layer's drawings: paint.add, paint.set, paint.move, paint.duplicate, paint.remove; saved brushes: run_brush) and check with look_drawing "
-                "(what \"at\", \"landed\", \"change\", \"coverage\": what is painted and where bare paper shows); a wash to the canvas's or a region's edges: paint.wash; read inspect_guide 'drawing'. Frame by frame: draw a cycle once and repeat it with the drawing layer's "
-                "loop, loopTimes and loopStepX / loopStepY (inspect_guide 'drawing-and-frame-by-frame'); to paint strokes on over time (write on), key drawnSoFar 0 → 1 on the drawing layer or painted element (strokes in painting order, each along its path); a filled polygon (a ridge, a silhouette) is fill.add or ink.fill in a script. A painting (painting.add) is a canvas many shapes and paths can use as one shared fill (layer.fill type \"painted\"): paint.stroke on it (its own px, or `through` a layer using it, in that layer's px; on a seamless painting a stroke over an edge comes back on the opposite side), look_painting (repeats: 1 shows it 3 × 3), look_painting what \"facts\" (with a seam check), look_at (where a point lands in it); to make it boil, frame.add on the painting (eachFrame turns on; every use boils from its own start, always looping, `phase` in layer.fill starts a use on another drawing). "
-                "Every reply ends with a clock line (time since your first call; the minutes left when you have a budget): the time is "
-                "for making, looking and refining in passes, and inspect_project what \"session\" lists what is still unchecked. "
-                "The server starts on your own project: the one you last opened from this folder (a resumed session gets it back), else a fresh scratch project made for you, never the person's work (the first reply says which); the person's projects open only when you ask: run_open_project lists them (what \"recent\") and switches.")
+                "Read inspect_guide 'start-here' first: it gives the loop (one script, run_script with look, fix, re-run under "
+                "the same name, render_export), the core verbs and the five core tools. "
+                "The server starts on your own project (the first reply says which), never the person's work; "
+                "run_open_project lists theirs (what \"recent\") and switches. Every reply ends with a clock line.")
 
 
-SCRIPT_HELP = ("The 2D script layer. Write the whole film as one script (scenes as functions of a start time, shared timing "
-               "constants, loops, your own def helpers), run it with look, edit, re-run under the same name; the small tools are "
-               "for quick changes (guide the-film-as-one-script). item.sample(field, lambda t: …, start=, end=) keys a field "
-               "from your own Python, one key per frame (or a list of values); scramble(id, body, start=, end=) cycles characters "
-               "into words; beats() gives the scene's music beats in seconds (the music is made in RostrumSound), beats(bpm=120, start=, count=) a grid without a song. "
-               "Any time may name a marker: marker(\"reveal\", 3) makes a shared project marker and gives \"#reveal\", which adds "
-               "like a number (text(start=r + 0.5, end=\"#out\"), tap(at=), scramble(start=)); after(item, gap=) is when its last "
-               "key lands; stagger(items, every=0.1, start=) gives [(time, item), …]. "
-               "comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
-               "path / group(id, **fields), made inside `with group(...):` to go in it (their x, y are then in the group's "
-               "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
-               "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=); "
-               "item.pivot(x, y): the anchor on that comp point, nothing moves (a grown drawing's turning point); "
-               "w, h = t.measure(): a text's real box in its own px (before scale), to place things by its width; "
-               "w, h = measure_text(\"words\", size=64, font=\"…\") measures a text you have not made (no probe layer, nothing left in the picture). "
-               "The scene's frame (what is exported): f = frame(); f.key(\"x\", {0: 960, 4: 2600}); "
-               "f.fit([\"hills\", \"tree\"], at=4) frames layers as they show then (depth counted), f.fit(rect=(x, y, w, h), at=4, "
-               "ease=\"easeInOut\") (ease: how it moves into that framing; a fit where it already is changes nothing), "
-               "f.cut(at=6, to=\"rect\", rect=(3200, 0, 1920, 1080)) or f.cut(at=\"#logo lands\") jumps it, f.home(at=8); "
-               "the same as the operations frame.fit, frame.cut, frame.home (target \"frame\"). "
-               "Fields: x, y (the anchor, default the centre), w, h, scale, rotation, opacity 0-1; shape: shape=\"rect\" | "
-               "\"ellipse\" …, fill, radius, filled, stroke=\"#fff\", strokeWidth; text: body, size, weight, color, align (a text's x is its left edge, middle or right edge as align says); "
-               "path: d (SVG; with no x, y, w, h its points are comp px), fill=\"none\". Colours \"#rrggbb\" or \"#rgb\". "
-               "Drawings: d = drawing(id, w=, h=, eachFrame=True); f = d.frame(at); f.paint(); p.stroke(points, **brush); p.letters(text, x=, y=, height=, font=\"script\", **brush) paints hand-lettered words as brush strokes in writing order (write on with drawnSoFar) "
-               "(every drawing's paint joins the layer's one set of paint layers). "
-               "No import except math and random (seeded: the same numbers every run; random(7) is your own seeded generator "
-               "with .uniform/.randint/.choice/.random) and no classes: use functions and dicts. "
-               "Equations, graphs and charts: plot_area, curve_points, param_points, polar_points, line_d, lines_d, "
-               "nice_ticks, tick_label, view3d, surface_lines, parse_table; math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers, one per symbol (inspect_guide 'data-math-and-graphs'). "
-               "Before a field's first key it holds that key's value. Every field and the first-time surprises: "
-               "inspect_guide 'start-here'. An error names the line and what to write instead. "
-               "layer(\"id\") gives back an item made earlier in the script. Characters (guide character-rigging-and-lip-sync): "
-               "limb(id, x=, y=, lengths=, widths=, kind=\"arm\"|\"leg\", parent=, color=) makes a bending arm or leg (bones, IK, "
-               "parts in the body's colour unless color= is given; without widths= sized to the body: the upper part 0.26 x its width, "
-               "a leg 0.3 x; a mitten hand with a thumb, hand=\"ball\" a circle; an arm rests with its elbow bent 35° (relax=) and, keyed on arm.upper alone, "
-               "its forearm bends and trails by itself; arm.out is the rotation sign that swings it away from the body; it tapers "
-               "from widths[0] at the shoulder to a thinner wrist (taper=0.2), has a joint= \"round\"|\"ball\"|\"none\" at the elbow / knee and a "
-               "darker outline= so a bent arm reads in a small still, even across the body); make legs with limb(kind=\"leg\") "
-               "so they can act: "
-               "pose({limb or bone: turn}, at=) hits a key pose with anticipation and overshoot (pose({hip: {\"moveY\": 40}}) "
-               "crouches: IK feet stay planted, knees bend); step(legs=[a, b], by=px, at=) steps to a new spot foot by foot; "
-               "walk(legs=[a, b], arms=, body=, start=, end=, step=, stride=), idle(chest, head=, arms=, legs=) (legs: weight "
-               "shifts foot to foot), follow(bone), "
-               "blink(eyes, open=, closed=) write plain keys. Lay things out like React (guide lay-out-a-screen): with "
-               "row / column / grid / stack(padding=, gap=, align=, justify=, w=px|\"50%\"|\"fill\"|\"fit\", tw=\"flex-col gap-4 p-6\"): "
-               "layers made inside are placed and sized for you (grow=, span=; x / y only with apart=True); anchor=\"top-left\"|\"left\"|\"center\"|… names any layer's pivot, and a layer with no x / y sits at its parent's centre. "
-               "Screens (guide ui-and-product-animation): device(id, kind=\"phone\"|"
-               "\"laptop\"|\"browser\", fit=share of the picture's height, anchor=, screen=colour) sizes and centres itself and "
-               "returns its screen, a column; status_bar, nav_bar, tab_bar, list_rows, card, button, toggle, bars made in it "
-               "(or any container) go one under the other, full width; pointer() and tap(pointer, target, at=) land the tip beside a button's words with a press; "
-               "counter(id, start, to, at=, duration=, decimals=, prefix=) is one text that counts (never stack texts).")
+SCRIPT_HELP = ("2D script layer: lay out first with row / column / grid / stack(padding=, gap=, align=); a layer with no "
+               "x / y sits at its parent's centre; anchor=\"top-left\"|…. Time by name: marker(\"reveal\", 3) -> \"#reveal+0.5\", "
+               "after(item, gap=), stagger(items, every=), beats(). item.key(field, {time: value}, ease=). Every function: "
+               "inspect_guide 'script-reference'.")
+
+
+CORE = ["run_script", "look_frame", "look_motion", "inspect_guide", "render_export"]
+
+
+def part_tools():
+    """Every 2D tool as written, before the short words and the joining (their full text: guide 'tools-in-detail')."""
+    first, *rest = TOOLS.attrs("tools")
+    return reduce(lambda merged, tools: merged.merged_with(tools), rest, first)
 
 
 def app_tools():
-    first, *rest = TOOLS.attrs("tools")
-    return tool_groups.group(reduce(lambda merged, tools: merged.merged_with(tools), rest, first))
+    tools = tool_text.tidy(tool_groups.group(tool_text.shorten(part_tools())), [g[0] for g in tool_groups.GROUPS])
+    tools.core = CORE
+    return tools
+
+
+def guides() -> Guides:
+    """The guide folder, plus 'tools-in-detail' made from the tools' own full words (always in step with the code)."""
+    out = Guides().load_folder(GUIDES)
+    out.add("tools-in-detail", tool_text.detail_page(part_tools()))
+    return out
 
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:
     docs = documents if documents is not None else (open_documents(project, items or []) if project else {})
     lead = small_toolset.INSTRUCTIONS if small_toolset.wanted() else INSTRUCTIONS
     instructions = lead if docs else f"{lead} {small_toolset.NO_PROJECT if small_toolset.wanted() else project_tool.NO_PROJECT}"
-    return App("rostrum-2d", docs, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES),
+    return App("rostrum-2d", docs, run_source=run_source, instructions=instructions, guides=guides(),
                folder=project, script_help=SCRIPT_HELP, script_look=script_look.after_run)
 
 
@@ -114,7 +80,7 @@ def make_runtime(app: App) -> Runtime:
     library.use_project(app.folder)                  # the project's own tip and paper pictures are brush choices
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
-    export_wait.with_wait(runtime)                  # render_video / render_export wait for their job in the same call (wait_s)
+    export_wait.with_wait(runtime)                  # render_export (both what) waits for their job in the same call (wait_s)
     inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
     clock = session_clock.with_clock(runtime)        # every reply ends with the session's clock line
     export_beats.with_beats(runtime, clock)          # the exports take the brief's beats; the clock keeps them

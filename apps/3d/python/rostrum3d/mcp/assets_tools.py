@@ -10,7 +10,7 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum3d import assets
 
 tools = Tools()
-SOURCE = {"type": "string", "description": "The source's id from inspect_asset_sources (polyhaven, ambientcg)."}
+SOURCE = {"type": "string", "description": "The source's id (what \"sources\" lists them)."}
 
 
 def _fail(ctx, subject: str, e: assets.AssetError):
@@ -20,9 +20,7 @@ def _fail(ctx, subject: str, e: assets.AssetError):
 
 @tools.tool("inspect_asset_sources", {"properties": {}})
 def asset_sources(ctx, args):
-    """The asset library's sources of free models: each one's id, name, licence (CC0: free to use, no credit needed) and
-    web site, and whether it is on. Every source is off until the person switches it on in Import › Asset library;
-    you can't switch one on (ask the person). Nothing is fetched from a site while its source is off."""
+    """The sources: id, licence, site, on or off (only the person switches one on)."""
     rows = [assets.facts(s) for s in assets.sources()]
     lines = [f'{r["name"]} ({r["id"]}, {r["licence"]}, {r["site"]}): {"on" if r["on"] else "off"}' for r in rows]
     return Reply("Asset sources: " + "; ".join(lines) + ("." if any(r["on"] for r in rows) else
@@ -31,11 +29,10 @@ def asset_sources(ctx, args):
 
 @tools.tool("inspect_assets", {"required": ["source"], "properties": {
     "source": SOURCE,
-    "query": {"type": "string", "default": "", "description": "Words that must all match the model's name or tags (\"chair wood\"); empty lists all."},
+    "query": {"type": "string", "default": "", "description": "Words that must all match name or tags; empty lists all."},
     "page": {"type": "integer", "minimum": 0, "default": 0, "description": "Which page of 40 results (0 first)."}}})
 def asset_search(ctx, args):
-    """Search one asset source's models (an on source only; it fails plainly while the source is off). Each result has
-    its id (for edit_import_asset), name and thumbnail address. Nothing is downloaded."""
+    """Search a switched-on source's models (id, name, thumbnail); nothing is downloaded."""
     try:
         found = assets.search(args["source"], args.get("query", ""), args.get("page", 0))
     except assets.AssetError as e:
@@ -47,14 +44,11 @@ def asset_search(ctx, args):
 
 @tools.tool("edit_import_asset", {"required": ["source", "id"], "properties": {
     "source": SOURCE,
-    "id": {"type": "string", "description": "The model's id from inspect_assets."},
-    "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
-    **{k: {"type": "number", "default": 0, "description": f"Where the model's base (bottom middle) lands: {k} in metres."} for k in "xyz"}}})
+    "id": {"type": "string", "description": "The model's id (what \"search\" finds it)."},
+    "item": {"type": "string", "description": "The document's item id; optional with one document open."},
+    **{k: {"type": "number", "default": 0, "description": f"The base's {k} in metres."} for k in "xyz"}}})
 def asset_import(ctx, args):
-    """Bring a model from an asset source into the scene: its files are downloaded into the project folder
-    (assets/<source>/<id>/, reused when already there) and imported with import.add, its base at x y z. One change in the
-    history. Fails plainly while the source is off (the person switches it on in Import › Asset library) or when the
-    download fails (no network, the site said 404 …). Look at the result with look_frame."""
+    """Download a model into the project and import it, its base at x y z (default; one undo step)."""
     doc = ctx.document(args.get("item"))
     try:
         src = assets.source(args["source"])

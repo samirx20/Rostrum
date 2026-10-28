@@ -44,7 +44,7 @@ with row("lower_third", x=120, y=900, anchor="left", padding=18, bg="#1d4ed8", r
 
 Layout uses each layer's own box (`w` × `h`) before scale and turn: animate `scale` for a pop that doesn't push the
 others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Texts are
-measured by the engine that draws them and wrap at the width the layout gives them. While laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
+measured by the engine that draws them and wrap at the width the layout gives them. While laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `look_frame` `what: "layout"`
 (each placed layer's x, y and size at a time) and `look_frame` (`what: "sheet"`).
 
 `clip=True` on a group hides children outside its box (a scrolling list, a window). The box is a plain rectangle: for
@@ -315,6 +315,6 @@ sheet over the flip (`look_frame` with `what: "sheet"`).
 - `look_at x y time`: the layers whose box covers a point, top first, with values (effects and masks are not counted).
 - Animate toward the final layout you already placed: look at the last frame first, then key the way into it.
 - Use `value.set` when a person says "make it bigger": a still field changes, an animated one gets a key at `at`.
-- `look_review` names, with times, the room faults a viewer sees first in a product piece: a title running past or within 2.5 % of the frame edge (`text_edge` / `text_margin`: "runs 14 px past the right edge"), a title whose box nearly touches the layer stacked right above or below it for 1.5 s or more (`crowded`: a wordmark against its logo, a tagline against the wordmark), a small layer (a cursor, a badge) that sits in a screen most of the time but shows outside it (`outside`: "cursor shows outside phone 17–17.5 s"), and a shape parked as a dot for seconds before it grows (`speck`: a wipe circle left showing from 0 s).
+- `look_frame` with `what: "review"` names, with times, the room faults a viewer sees first in a product piece: a title running past or within 2.5 % of the frame edge (`text_edge` / `text_margin`: "runs 14 px past the right edge"), a title whose box nearly touches the layer stacked right above or below it for 1.5 s or more (`crowded`: a wordmark against its logo, a tagline against the wordmark), a small layer (a cursor, a badge) that sits in a screen most of the time but shows outside it (`outside`: "cursor shows outside phone 17–17.5 s"), and a shape parked as a dot for seconds before it grows (`speck`: a wipe circle left showing from 0 s).
 - **A cursor** belongs to the screen it taps: make it with `pointer()` inside the screen, move it in while it is still see-through and fade it out inside the screen, so it never floats beside the device.
 - **A circle wipe** (an end card covering the screen): give it opacity 0 or size 0 until its start, and start it where it cannot be mistaken for content: a circle in the bars' own colour growing out of a chart reads as the bars melting into a blob.

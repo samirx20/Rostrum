@@ -13,14 +13,12 @@ from rostrum_core.mcp import Reply
 from rostrum_core.mcp.tools import _schema_of
 
 SEES_PICTURE = {"look_motion", "look_drawing", "look_painting"}
-EXPORTS = {"render_video", "render_export"}        # an export the agent should look at (render_export: an mp4's reply has `quiet_stretches`)
+EXPORTS = {"render_video", "render_export"}        # (render_video: a job's label for render_export what "video") an export the agent should look at (render_export: an mp4's reply has `quiet_stretches`)
 KINDS = {"full-size frame": "a full-size single frame (look_frame time)", "motion": "the motion (look_motion)"}     # named after an export until done     # looks that reset "edits since the last look"
 PASS_S = 150.0                # a look-fix-export pass besides the export itself: looks, a script change, thinking
 MOMENT = 2.0                  # a looked-at time stands for this many seconds either side of it
 SESSION_ARG = {"what": {"enum": ["project", "session"], "default": "project", "description":
-               '"project" (default): the project\'s items. "session": the clock: time since your first call, calls, edits since you last '
-               "looked at the picture, the times of the piece you have never looked at (a look at a time covers 2 s either side), whether the "
-               "export has been looked at, and the stretches the last empty check named."}}
+               '"session": the clock and what is still unchecked.'}}
 
 
 def said_time(seconds: float) -> str:
@@ -86,7 +84,7 @@ class Clock:
             if who == "look_motion":
                 self.seen.add("motion")
         rows = payload.get("stretches") or payload.get("quiet_stretches")
-        if who in ("look_frame", "render_video") and rows is not None:
+        if who in ("look_frame", "render_video", "render_export") and rows is not None:
             self.quiet = [r["text"] for r in rows]
 
     def unlooked(self, span: float) -> list[list[float]]:
@@ -210,7 +208,7 @@ def _fix_pass(ctx, args, reply: Reply, clock: Clock) -> str:
         said = review.after_export(doc.data, comp, payload.get("quiet_stretches") or [], payload.get("edge_cuts") or [],
                                    beats=clock.beats.get(comp["id"]))
     except Exception as e:      # noqa: BLE001  (the export stands; the review's failure is said, not hidden)
-        said = f"(The review could not run: {e}; call look_review.)"
+        said = f"(The review could not run: {e}; call look_frame what \"review\".)"
     left = clock.left_said()
     if said.startswith("Weakest") and left.startswith("Time left"):
         # gaps2 benchmark: agents copied the named faults into their summary as "weak spots" and ended the turn with

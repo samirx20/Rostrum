@@ -43,9 +43,8 @@ def register(tools: Tools):
     @tools.tool("inspect_markers", {"properties": {
         "name": {"type": "string", "description": "One marker by name or id; with an offset (\"drop+0.5\") gives its time."}}})
     def inspect_markers(ctx, args):
-        """The project's named markers (every app reads the same list): id, name, time in seconds, who made it. Then
-        the songs' own markers (`song_markers`: made in RostrumSound, e.g. marker() in its script): read-only here,
-        found by name like any marker (look_frame, "#name" times); change them in RostrumSound."""
+        """The project's named markers every app shares (id, name, seconds, who made it), then the songs' own markers
+        (read-only outside RostrumSound); any of them works as a "#name" time."""
         folder = _folder(ctx)
         every = M.listing(folder)
         songs = song_markers.times(folder) if args.get("songs", True) else {}
@@ -66,7 +65,7 @@ def register(tools: Tools):
     @tools.tool("edit_markers", {"required": ["ops"], "properties": {
         "ops": {"type": "array", "minItems": 1, "items": _CALL}, "label": {"type": "string"}}})
     def edit_markers(ctx, args):
-        """Add, move, rename or delete the project's named markers, all or nothing, as one step in their history. marker.move is the one name for moving a marker; a target may be its id or its name (marker.move is also what edit_document takes for a marker that is only in one song; marker.set is read as it)."""
+        """Add, move, rename or delete the project's named markers (every app shares them), all or nothing, as one undo step. A target is a marker's id or name."""
         folder = _folder(ctx)
         change = M.edit(folder, _by_id(folder, args["ops"]), ctx.who, args.get("label"))
         names = [c["op"] for c in args["ops"]]

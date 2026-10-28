@@ -23,16 +23,12 @@ def _words(out: dict, shot: str) -> str:
 
 
 @tools.tool("render_send_shot", {"properties": {**ITEM_SHOT,
-                                                 "target": {"enum": list(send.TARGETS), "default": "2d", "description": "2d = a 3D render layer in a 2D scene. editor: not built yet (fails)."},
-                                                 "scene": {"type": "string", "description": "The 2D scene: \"<2D item>/<scene id>\" or a scene id. Default: the scene this shot was sent to before, else the project's only 2D scene."},
+                                                 "target": {"enum": list(send.TARGETS), "default": "2d", "description": "2d = a render layer in a 2D scene; editor is not built yet."},
+                                                 "scene": {"type": "string", "description": "\"<2D item>/<scene id>\" or a scene id. Default: the last one, else the only one."},
                                                  "quality": {**QUALITY_ARG, "default": "final"}, **{k: SETTINGS[k] for k in ("width", "samples")}}})
 def render_send_shot(ctx, args):
-    """Send a shot to 2D: its render of the scene as it is now becomes a 3D render layer in a 2D scene (one step in that 2D
-    document's history, seen live by an open 2D window), linked by content: 2D marks it "out of date" when this 3D
-    document changes, and a re-send (a new render) clears it. Sending again keeps the same layer and what a person did to it
-    in 2D. With no current render the job renders the shot first (render_video with EXR frames; the shot's own render settings
-    unless quality / width / samples are given). Always a job: ask with inspect_job. Returns the link (2D item, scene,
-    layer) and the render used."""
+    """Send a shot to 2D as a 3D render layer in a 2D `scene` (one step in its history), using the newest matching render
+    or rendering first (a job). Sending again updates the same layer."""
     doc, info = doc_and_shot(ctx, args)
     folder, shot = ctx.app.folder, next(s for s in doc.data["shots"] if s["id"] == info["id"])
     try:                                            # target, folder and scene are checked here, loudly, before any render

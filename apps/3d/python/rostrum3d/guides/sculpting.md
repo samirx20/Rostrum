@@ -194,7 +194,7 @@ How the points work:
 - **Spin axis.** Two points; left out, straight up (+Y) through the profile's first point. Each profile point counts
   by its distance from the axis and its height along it; the ends close to the axis.
 - **Hidden and names.** `claystep.set hidden=True` leaves a step out of the shape (kept); `name` names it.
-- **Looking at it.** `look_shape target="clay_1"` gives its outlines from the front, side and top with its measures
+- **Looking at it.** `look_frame what "shape" target="clay_1"` gives its outlines from the front, side and top with its measures
   (height, width and depth, the width at each tenth of its height, the left–right difference, thin spots);
   `look_at` on a pixel names the step that made the surface there ("arm, drawn"); `look_frame
   highlight="steps:arm"` outlines all of what that step made. Name your steps (`name="arm"`) so these replies read.

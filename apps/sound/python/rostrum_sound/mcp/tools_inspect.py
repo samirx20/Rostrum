@@ -170,7 +170,7 @@ def _short(d: dict, made: dict, effects: dict, master: list) -> Reply:
                  f"Effects: {', '.join(effects)}. Master settings: {', '.join(r['name'] for r in master)}. Reverb spaces: {', '.join(d['spaces'])}. "
                  f"Tones: {', '.join(d['tones'])}. EQ shapes: {', '.join(d['eqShapes'])}. "
                  f"Details of one thing: inspect_engine with name (an effect, `master`, an instrument or a kit); one instrument's range: what \"instrument\"; "
-                 f"every name with what it is: inspect_guide 'start-here' › Instrument and kit names; everything at once: detail \"full\".",
+                 f"every name with what it is: inspect_guide 'agent-reference' › Instrument and kit names; everything at once: detail \"full\".",
                  {"instruments": names.BUILT_INS, "instrument_groups": names.BUILT_IN_GROUPS, "aliases": names.BUILT_IN_ALIASES, "kits": names.KITS,
                   "effects": list(effects), "master": [r["name"] for r in master], "spaces": d["spaces"], "tones": d["tones"],
                   "eqShapes": d["eqShapes"], "drums": [g["name"] for g in d["gmDrums"]], "synthDrums": names.SYNTH_DRUMS,

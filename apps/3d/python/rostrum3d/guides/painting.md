@@ -103,7 +103,7 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
 Five tools look at paint. Canvas coordinates are always pixels of the item's paint picture (0..paintSize, x right,
 y down) or a `uv` (x = u × paintSize, y = (1 − v) × paintSize).
 
-- `look_paint target=<mesh or clay>`: the paint picture itself, flat. All layers together, one `layer`, or one
+- `look_frame what "paint" target=<mesh or clay>`: the paint picture itself, flat. All layers together, one `layer`, or one
   `channel` (`roughness`, …); `zoom` [x0, y0, x1, y1] and `grid` label canvas pixels, the same numbers `stroke.add`'s
   `points` use. Unpainted shows as a checkerboard. A clay's anchored strokes, strokes from the view and projected
   pictures are shown laid, as the render gets them. The reply gives each layer and the box that holds paint.
@@ -117,11 +117,11 @@ y down) or a `uv` (x = u × paintSize, y = (1 − v) × paintSize).
   most 2 more pieces than the line, covering at least 80 % of it; otherwise it says what went wrong, e.g. `painted in
   30 pieces, up to 49 screen px outside the line on lid`: look at it with `look_frame`, undo, and draw it again. Each
   row also has `uvBox`, and for a view stroke `share` (how much of the drawn path is on this item).
-- `look_coverage shot=<id> frame=<n>`: through the shot camera, how much of each mesh and clay it sees is painted
+- `look_frame what "coverage" shot=<id> frame=<n>`: through the shot camera, how much of each mesh and clay it sees is painted
   ("lid: 62 % painted (41 000 of 66 000 px seen)"), and the frame with what is seen but unpainted hatched orange. A
   spot counts as painted where any shown layer is at least half opaque, as the screen counts. A mesh seen but never
   unfolded is named: `mesh.unfold` it first.
-- `look_where target=<item> px=[x, y]` (or `uv=[u, v]`): the reverse of `look_at`. Where that canvas spot shows on
+- `look_frame what "where" target=<item> px=[x, y]` (or `uv=[u, v]`): the reverse of `look_at`. Where that canvas spot shows on
   the shot's picture (its pixel), the world point and which way the surface faces there; or that it isn't seen (behind
   something, facing away, out of frame), with the nearest pixel where the item is seen.
 - `look_at` gives on every hit `normal` (the surface direction, "facing [0, 1, 0]" is a top), `faceSet` on a mesh
@@ -155,10 +155,10 @@ time the paint is made. One stroke can cross several items.
    `size` is in pixels of that picture (screen px), not of the paint picture: the painted line is that wide on the
    screen, also on a surface seen at a slant. Leave out `points`.
 4. Check: `inspect_paint_strokes` on each item says it landed there and how far outside the line, or what went wrong;
-   `look_frame` shows it; `look_coverage` shows what the shot still sees unpainted.
+   `look_frame` shows it; `look_frame what "coverage"` shows what the shot still sees unpainted.
 
 A stroke on the surface (`points` in canvas px) is the other way: work out the canvas pixels from `look_at`'s `uv`,
-or read them off `look_paint` with a `grid`.
+or read them off `look_frame what "paint"` with a `grid`.
 
 ## How view strokes, projected pictures and coverage are kept
 

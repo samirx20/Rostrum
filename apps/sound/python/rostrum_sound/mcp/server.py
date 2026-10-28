@@ -17,8 +17,7 @@ from mcp.server.stdio import stdio_server
 from rostrum_core import agent_start
 from rostrum_core.mcp import Runtime, Tools, build_server
 
-from rostrum_sound.modules import TOOLS
-from . import script_render, session_clock, tool_groups, tools_project
+from . import script_render, session_clock, tool_groups, tool_text, tools_project
 from .marker_lead import with_marker_lead, with_song_markers
 from .song_line import with_song_line
 from .track_line import with_track_feel
@@ -26,9 +25,9 @@ from .app import make_app
 
 
 def sound_tools() -> Tools:
-    tools = Tools()
-    TOOLS.call("register", tools)
-    return tool_groups.group(tools)
+    """Every Sound tool with its short words (tool_text.py), joined (tool_groups.py); the full words: guide 'tools-in-detail'."""
+    names = [g[0] for g in tool_groups.GROUPS]
+    return tool_text.tidy(tool_groups.group(tool_text.shorten(tool_text.part_tools())), names)
 
 
 def make_runtime(app) -> Runtime:
