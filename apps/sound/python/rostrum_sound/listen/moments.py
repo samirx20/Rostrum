@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from . import attack
+from .brightness import growth
 from .core import load, mono, num
 from .dsp_events import find_peaks, onset_strength
 from .speech_room import TARGET_DB, room
@@ -28,6 +29,7 @@ CLIMAX_LATE_S, CLIMAX_EARLY_S = 3.0, 0.5   # an orchestra blooms 1–2 s after a
 HOLD_S = 3                 # a climax holds while each 1 s after it is at least as loud as the 3 s before; under 3 s it is cut short
 CEILING_NEAR_DB, CEILING_DBFS = 1.5, -3.0  # the build's peak within 1.5 dB of a file peak at -3 dBFS or more: at the ceiling
 LIFT_LU = 2.0              # a lift: the 3 s after it at least this much louder than the 3 s before
+GROW_DB = 6.0              # the top end of a climax or lift at least this much brighter than the start (open builds: +11 to +15)
 KINDS = ("hit", "stop", "drop", "climax", "lift", "entry", "voice")
 
 
@@ -131,6 +133,12 @@ def _climax(wav, m, sr, y, at):
     return out
 
 
+def _flat_top(wav, at):
+    """A build heard as opening up gets brighter, not only louder: the top end from the moment against the start."""
+    g = growth(wav, at)
+    return [{"kind": "flat_top", "at_s": at, "measured": g}] if g and g["grew_db"] < GROW_DB else []
+
+
 def _voice(y, sr, at, end):
     r = room(y[int(at * sr):int(end * sr)], sr)
     gap = r.get("db")
@@ -150,11 +158,11 @@ def check(wav, moments) -> list[dict]:
         if kind in ("hit", "stop", "entry"):
             out += _hit(wav, m, sr, at, kind)
         elif kind == "lift":
-            out += _lift(y, sr, at)
+            out += _lift(y, sr, at) + _flat_top(wav, at)
         elif kind == "drop":
             out += _drop(m, sr, ev, at)
         elif kind == "climax":
-            out += _climax(wav, m, sr, y, at)
+            out += _climax(wav, m, sr, y, at) + _flat_top(wav, at)
         elif kind == "voice" and mo.get("end") is not None:
             out += _voice(y, sr, at, float(mo["end"]))
     return sorted(out, key=lambda f: f["at_s"])

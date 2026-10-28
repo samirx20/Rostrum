@@ -10,6 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from .core import load, mono, num
+from .brightness import brightest
 from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
@@ -18,6 +19,7 @@ from .moments import at_ceiling, check as moment_faults
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
 HELD_MOVED_DB = 12.0   # ...unless its level moves this much (a long swell or a fade is movement the ear follows)
+DULL_DB = -20.0       # the brightest tenth of the piece's top end (4–16 kHz) under this against 250 Hz–1 kHz: dull
 MONO_CORR = 0.9        # left and right this alike: the mix is near mono (wide mixes measure 0.4–0.8)
 SQUASH_DB = 3.0        # the master's limiter holding one moment down this far flattens its attack
 _SR = 22050
@@ -166,6 +168,17 @@ def _words(f) -> str:
         return (f"near-mono mix: left/right correlation {d['correlation']:g} (wide mixes 0.4–0.8); give a mono source its own "
                 "left and right: a `chorus` effect with spread 1, a `tremolo` with stereo above 0 (1 = auto-pan) or a stereo "
                 "reverb; pan the mono parts apart; `width` cannot widen a mono recording")
+    if k == "dull_top":
+        return (f"dull top end: even the brightest tenth of the piece has its 4–16 kHz at {d['brightest_db']:g} dB "
+                "against 250 Hz–1 kHz (benchmark: bright pop and lo-fi -2 to -9, orchestral and dark cues -13 to -19, dull mixes "
+                "under -20); what brightens it: a bright part up an octave, higher velocity on recorded instruments (their "
+                "loud layers are brighter), a cymbal, glockenspiel or bell at an audible level, less build-up of parts in "
+                "250 Hz–1 kHz")
+    if k == "flat_top":
+        return (f"top end did not grow into {t:.2f} s: 4–16 kHz against 250 Hz–1 kHz {d['start_db']:g} dB at the start "
+                f"({d['start_s']:g} s) and {d['at_db']:g} dB from the moment ({d['grew_db']:+g} dB; builds that open up "
+                "measure +11 to +15); what brightens it as it grows: add parts in register order (high ones last), raise "
+                "recorded instruments' velocity through the build, a cymbal swell or high octave into the moment")
     if k == "squashed_hit":
         b = f" the 10 s before sit {d['build_under_lu']:g} LU under it, so" if d.get("build_under_lu") is not None else ""
         by = f" ({', '.join(d['drivers'])})" if d.get("drivers") else ""
@@ -183,6 +196,9 @@ def _whole(wav) -> list[dict]:
     corr = _correlation(y)
     if corr is not None and corr > MONO_CORR:
         out.append({"kind": "near_mono", "at_s": 0.0, "measured": {"correlation": num(corr, 2)}})
+    top = brightest(wav)
+    if top is not None and top < DULL_DB:
+        out.append({"kind": "dull_top", "at_s": 0.0, "measured": {"brightest_db": top}})
     return out
 
 

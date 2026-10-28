@@ -32,7 +32,7 @@ def _order(f) -> float:
         return -1.0
     if k.startswith("weak_"):
         return d["times_typical"]
-    return 50.0 if k in ("held_tone", "near_mono") else 10.0
+    return 50.0 if k in ("held_tone", "near_mono", "dull_top") else 10.0
 
 
 def _line(f) -> str:

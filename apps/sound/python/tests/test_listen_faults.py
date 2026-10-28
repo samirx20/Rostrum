@@ -89,3 +89,15 @@ def test_weak_hit_with_the_build_at_the_ceiling_leads_with_headroom(tmp_path):
     r = check(_piece(tmp_path / "flat.wav", hit_amp=0.2), [{"at": 10.0, "kind": "hit"}], whole=False)
     f = next(f for f in r["faults"] if f["kind"] == "weak_hit")
     assert f["measured"]["headroom_db"] < 1.5 and "fix: make headroom" in f["words"] and "raise the build" not in r["words"]
+
+
+def test_dull_top_end_named_and_a_bright_mix_passes(tmp_path):
+    """Sound-gaps 2: dull mixes (top end -20 dB and under against the low middle) were never named."""
+    t = np.arange(12 * SR) / SR
+    dull = 0.2 * sum(np.sin(2 * np.pi * f * t) for f in (220.0, 330.0, 440.0)) * (1 + 0.5 * np.sin(2 * np.pi * 0.7 * t))
+    bright = dull + 0.05 * np.random.default_rng(1).normal(0, 1, t.size)
+    for name, y in (("dull", dull), ("bright", bright)):
+        sf.write(tmp_path / f"{name}.wav", np.stack([y, np.roll(y, 480)], axis=1), SR, subtype="PCM_24")
+    r = check(str(tmp_path / "dull.wav"))
+    assert "dull_top" in kinds(r) and "4–16 kHz" in r["words"] and "up an octave" in r["words"]
+    assert "dull_top" not in kinds(check(str(tmp_path / "bright.wav")))
