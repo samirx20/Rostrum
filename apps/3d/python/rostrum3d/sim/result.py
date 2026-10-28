@@ -58,6 +58,12 @@ class Result:
     def rows_of(self, item: str) -> list[int]:
         return sorted(b["row"] for b in self.bodies if b["item"] == item)
 
+    def appear_of(self, item: str) -> list[int]:
+        """Per row of `item` (rows_of order): the shot frame each copy of a stream appears and falls (before it, it is
+        not there); [] when none waits hidden (no stream)."""
+        mine = sorted((b for b in self.bodies if b["item"] == item), key=lambda b: b["row"])
+        return [int(b.get("appear", self.start)) for b in mine] if any("appear" in b for b in mine) else []
+
 
 def read(folder) -> Result:
     folder = Path(folder)

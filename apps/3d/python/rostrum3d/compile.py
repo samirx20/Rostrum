@@ -119,6 +119,9 @@ def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
     node["props"]["seenBy"], node["props"]["seenSize"] = (camera, size) if seen else ("", size)
     if not node["props"].get("varyStart"):                     # sent only when set: every stored fall keeps its key
         node["props"].pop("varyStart", None)
+    if node["props"]["layout"] != "pour":                       # a pour's own, likewise
+        for k in copies_fields.POUR_KEYS:
+            node["props"].pop(k, None)
 
 
 def _outline_props(id_: str, values: dict, props: dict, folder):

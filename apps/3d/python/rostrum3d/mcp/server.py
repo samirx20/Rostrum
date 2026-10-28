@@ -36,6 +36,11 @@ INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined li
                 "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'getting-started' first for the five-minute character. "
                 "Read inspect_guide 'agents', build with run_script, then check "
                 "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video.")
+SCRIPT_HELP = ("In Rostrum3D: write the whole scene as ONE script, look, edit that script, and re-run it whole under the same name. "
+               "Any id already in the scene (another script's, or left by an undo) is taken over by the script that makes it again, "
+               "under any name; edit(id) / item(id) gives a handle to anything in the scene. A re-run that leaves out most of what "
+               "its last run made is refused with the list (send the whole script, or remove(...) what you mean to drop). "
+               "Guide: inspect_guide 'script'.")
 
 
 @dataclass
@@ -66,7 +71,7 @@ def open_documents(project: str, items: list[str]) -> dict:
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None, engine: Engine | None = None) -> App:
     docs = documents if documents is not None else open_documents(project, items or [])
-    app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES), folder=project)
+    app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, script_help=SCRIPT_HELP, guides=Guides().load_folder(GUIDES), folder=project)
     app.state = ThreeDState(engine or Engine())          # the process starts on the first request, not now
     atexit.register(app.state.engine.close)
     ops_mesh.use_engine(app.state.engine, project)          # mesh.edit and mesh.unfold read a shape's mesh from this engine

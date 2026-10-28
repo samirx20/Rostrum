@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 6;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 7;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;
@@ -27,6 +27,7 @@ struct Body {
   double bounce = 0.2, friction = 0.6;
   bool asleep = false;          // Starts: Asleep until hit
   int wake = 0;                 // Falls from: frames after the start it holds still (others land on it), then falls
+  bool appears = false;         // a copy in a stream: not there at all until its wake frame (collides with nothing), then falls
   enum Shape { Exact, Box, Sphere } shape = Exact;
   std::vector<V3> points;       // its surface, in its own frame (metres, its scale already in): hull, box, sphere
   std::vector<V3> triangles;    // a still body's Exact shape: three points per triangle, same frame
@@ -43,6 +44,8 @@ struct Cloth {
   double stiffness = 0.3;       // 0 folds like silk, 0.3 hangs in folds like cotton, 1 bends like thin card
   double friction = 0.6;
   double air = 1;               // air drag: 0 none (falls like a stone), 1 room air, up to 4 (a parachute)
+  double wind = 0;              // Breeze (cloth_wind.h): m/s of moving air in slow gusts, 0 still air
+  double windTurn = 0;          // its direction, degrees about up: 0 towards +x, 90 towards -z
   enum Pin { None, Top, Bottom, Left, Right, Front, Back } pinned = None;  // that side of its world bounds at the start
   std::vector<V3> points;                       // world, at the start (after refine)
   std::vector<std::array<int, 3>> triangles;    // into points

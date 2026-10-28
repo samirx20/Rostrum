@@ -21,7 +21,7 @@ struct ItemsContext;
 namespace copies {
 
 struct Params {
-  std::string layout = "line";  // line | grid | circle | surface
+  std::string layout = "line";  // line | grid | circle | surface | pour
   int count = 6, columns = 4;
   double spacing[3] = {0.2, 0, 0};
   double radius = 0.5;
@@ -34,6 +34,9 @@ struct Params {
   unsigned seed = 0;
   double varyMove = 0, varyTurn = 0, varyScale = 0;
   double varyStart = 0;         // s: a falling copy waits up to this much longer before it falls (from the seed)
+  // pour: every copy starts in a disc of `radius` round the item's origin (its own XZ) and leaves its own -Y at pourSpeed
+  // m/s, within pourSpread degrees of it; one after another, evenly over pourTime s from Falls from
+  double pourTime = 2, pourSpeed = 0, pourSpread = 10;
   std::string seenBy;           // camera id: only the copies it sees are drawn ("" = all)
   int seenW = 1920, seenH = 1080;
 };
@@ -84,7 +87,10 @@ struct SimTrack {
   std::string file;
   int row = 0, rows = 0, of = 0, start = 0, end = 0, step = 1, smooth = 1;
   std::vector<float> data;
+  std::vector<int> appear;  // per row: the shot frame it appears (a copy in a stream, hidden until it falls); empty = all
   bool on() const { return !file.empty(); }
+  // copy c is not there yet at shot frame f (waiting for its start in a stream)
+  bool waiting(int c, int f) const { return c >= 0 && c < int(appear.size()) && f < appear[size_t(c)]; }
   // copy c's pose at shot frame f (c < rows)
   void pose(int c, int f, int shot_start, PXR_NS::GfVec3f* pos, PXR_NS::GfQuatf* rot) const;
 };
@@ -133,9 +139,15 @@ std::vector<PXR_NS::GfVec3d> seen_points(const PXR_NS::UsdStageRefPtr& stage, co
 // Everything the copies take at `frame` as drawn (drawn_at), world, aligned: each copy's source bounds moved with it
 // (framing a copies item, the `copies_box` request). Empty when there are no copies.
 PXR_NS::GfRange3d world_box(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
-// The frames copy `copy` waits before it falls, on top of its item's Falls from: up to varyStart seconds, from the seed.
+// The frames copy `copy` waits before it falls, on top of its item's Falls from: its place in a pour (evenly over
+// pourTime), plus up to varyStart seconds from the seed.
 int start_delay(const Params& p, int copy, double fps);
-// Writes invisibleIds from s.shown.
+// A stream (varyStart or a pour): each falling copy is not there until it starts to fall (hidden, collides with nothing).
+bool streams(const Params& p);
+// The speed a copy leaves with, m/s in the copies item's own space (a pour; else zero).
+PXR_NS::GfVec3f start_velocity(const Params& p, int copy);
+// Writes invisibleIds: the copies the seen test left out (s.shown). A stored stream's waiting copies are shrunk to
+// nothing in write_values instead (a per-frame invisibleIds crashed Cycles).
 void write_shown(const PXR_NS::UsdStageRefPtr& stage, const State& s);
 
 // The copy under a picked world point at `frame`: `hint` (Hydra's instance index) when it holds the point, else the

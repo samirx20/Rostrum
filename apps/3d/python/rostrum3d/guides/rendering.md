@@ -92,6 +92,9 @@ was measured ("from a test frame just rendered on this computer", or "kept" when
 - The test is kept for the scene, so opening the sheet again on the same scene answers at once ("kept").
 - **Another render on the graphics card** (another app, another window) makes everything slower. The row says so in
   amber when the test ran while the card was busy, and that test is not kept, so the next one measures a free card.
+  A busy-card figure already holds the slowdown: on a free card the render is faster, often several times (a cloth drape
+  tested at 54 s a frame while four other renders shared the card drew in 4–5 s a frame on its own at 1280×720, 16 samples).
+  Test again once the card is free before giving up Cycles for Storm.
   The sheet never tests while one of this window's own renders is running; it waits for it.
 - **The Render button** says "measuring the time" until it has a measured number for this scene or Cycles' own progress gives one
   ("about 25 s left"); it never shows a first guess, and a kept number under what Cycles can do (about a second) is not shown.
@@ -151,7 +154,11 @@ is an immediate error naming settings that fit. The estimate counts what a chang
 next frame is timed by the probe), and learns from your own renders: when the last full render of a shot took 10 % or more over its
 estimate, the next estimate of that shot (same project, same session) is raised by that much (never lowered) and its reply says
 "raised ×1.6". It is still a guide, not a promise: leave margin under a tight `budget_min`, and a many-polygon cloth or a busy card
-runs over. A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
+runs over. A cloth itself costs little in Cycles (an 18k-triangle drape adds about 0.6 s a frame at 1280×720, 16 samples, over the
+same scene without it); the samples, the picture's size and the lights are what cost the time. A refine export with no `quality`,
+`renderer` or `samples` never renders lower than your last export of the shot (its reply says "Rendered as your last export …");
+asking for lower is done, and the reply names what it loses (Storm: no fabric sheen, no soft bounce light, hard shadows).
+A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
 `look_motion`), and every reply ends with a time line that counts the passes the time left allows ([Working with an AI agent](agents.md), "Your time").
 
 Looking before you render: `look_frame` (one frame, with its clipped share and the text reading direction), `look_sheet` (one shot over

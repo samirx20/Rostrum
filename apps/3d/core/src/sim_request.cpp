@@ -113,6 +113,8 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   if (r.has("wakeFrame")) c.wake = r.count("wakeFrame", 0, 1000000);
   c.friction = r.num("friction");
   if (r.has("air")) c.air = r.num("air");
+  if (r.has("wind")) c.wind = r.num("wind");
+  if (r.has("windTurn")) c.windTurn = r.num("windTurn");
   const std::string pin = r.one_of("pinned", {"none", "top", "bottom", "left", "right", "front", "back"});
   const char* pins[] = {"none", "top", "bottom", "left", "right", "front", "back"};
   for (int k = 0; k < 7; ++k)
@@ -120,6 +122,7 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   if (!(c.weight > 0)) fail(r.at("weight"), "is not above 0", "kg per m², e.g. 0.2 (cotton)");
   if (c.stiffness < 0 || c.stiffness > 1) fail(r.at("stiffness"), "is outside 0..1", "0 (silk) .. 1 (thin card)");
   if (!(c.air >= 0 && c.air <= 4)) fail(r.at("air"), "is outside 0..4", "0 (no air) .. 1 (room air) .. 4");
+  if (!(c.wind >= 0 && c.wind <= 5)) fail(r.at("wind"), "is outside 0..5", "0 (still air) .. 0.5 (a draught) .. 5 m/s");
   r.finish();
   return c;
 }
@@ -282,8 +285,15 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
       for (size_t c = 0; c < laid.size(); ++c) {
         sim::Body b = base;
         b.copy = int(c);
-        if (b.falls)  // Vary › Start: each copy falls a little later than the item's Falls from, from the seed
+        if (b.falls) {  // Vary › Start and a pour: each copy falls a little later than the item's Falls from
           b.wake = std::min(b.wake + copies::start_delay(s.p, int(c), setup.fps), setup.end - setup.start + 1);
+          b.appears = copies::streams(s.p);  // a stream: not there until it starts
+          const GfVec3f leave = copies::start_velocity(s.p, int(c));  // a pour's: its own space, turned to the world's
+          if (const float speed = leave.GetLength(); speed > 0) {
+            const GfVec3d dir = world.TransformDir(GfVec3d(leave)).GetNormalized() * double(speed);
+            for (int k = 0; k < 3; ++k) b.velocity[size_t(k)] += dir[k];
+          }
+        }
         const copies::Copy& cp = laid[c];
         GfMatrix4d inst = GfMatrix4d().SetScale(GfVec3d(cp.scale)) * GfMatrix4d().SetRotate(GfRotation(GfQuatd(cp.rot))) *
                           GfMatrix4d().SetTranslate(GfVec3d(cp.pos));
@@ -361,7 +371,9 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
   JsArray rows;
   for (size_t j = 0; j < res.rows.size(); ++j) {
     const sim::Body& b = bodies[size_t(res.rows[j])];
-    rows.push_back(JsValue(JsObject{{"item", JsValue(b.item)}, {"copy", JsValue(b.copy)}, {"row", JsValue(int(j))}}));
+    JsObject row{{"item", JsValue(b.item)}, {"copy", JsValue(b.copy)}, {"row", JsValue(int(j))}};
+    if (b.appears && b.wake > 0) row["appear"] = JsValue(setup.start + b.wake);  // the shot frame it appears and falls
+    rows.push_back(JsValue(row));
   }
   const auto r1 = [](double v) { return std::round(v * 10) / 10; };
   return JsObject{{"ok", JsValue(true)}, {"jolt", JsValue(sim::jolt_version())}, {"sim", JsValue(sim::kVersion)},

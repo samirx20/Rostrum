@@ -58,9 +58,9 @@ def run_simulation(ctx, args):
     done: the stored result's key, frames, how many fell, came to rest and end inside the camera's picture, each cloth's point
     count and what it ends on (endsOn; a warning when it starts over nothing it can land on, or slides off what it started
     over), and the engine's time per frame (frameMs). A thing set to Falls with fallStart holds still until then, then
-    falls. Whether each fall is seen: onScreen {item: [frames of its drop (until it first lands) the shot camera shows,
+    falls; in a stream (a copies item's varyStart, or layout pour) each copy is not there until it starts. Whether each fall is seen: onScreen {item: [frames of its drop (until it first lands) the shot camera shows,
     frames of its drop]}, and a warning when the drop happens above or outside the picture, is on screen under 4 frames, or the thing starts
-    already at rest, with the fix (sim.start_in_view raises it into the picture; fallStart gives the shot a moment first). A failure names the
+    already at rest (a copies item is judged copy by copy: a staggered stream is fine, named only when over a quarter of its copies drop unseen or for under 4 frames), with the fix (sim.start_in_view raises it into the picture; fallStart gives the shot a moment first). A failure names the
     thing, the frame and what to do (e.g. it starts inside another one: move it up or set Starts: asleep). To nudge the result
     by hand, the sim.to_keys operation turns it into plain keys (a copies item: keys on every copy, copies.key nudges one);
     cloth stays a simulation (its folds are not keys). A cloth that tears apart, flies apart or falls past everything fails

@@ -73,6 +73,8 @@ def apply(scene: dict, data: dict, shot_id: str, folder=None, mode: str = "use")
         if node["type"] == "copies":
             node["sim"] = {"file": str(res.folder / BIN), "row": rows[0], "rows": len(rows), "of": res.rows,
                            "start": res.start, "end": res.end, "step": step, "smooth": simplify}
+            if appear := res.appear_of(item):                   # a stream: each copy hidden until it starts to fall
+                node["sim"]["appear"] = appear
             continue
         per = trs(stylized(res, rows[0], frames, s0, step, simplify))
         anim = node.setdefault("anim", {})

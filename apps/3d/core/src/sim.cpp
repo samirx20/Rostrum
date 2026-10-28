@@ -4,6 +4,7 @@
 // Cloth (brief 26b) is a Jolt soft body in the same world: it lands on the still bodies, the falling ones and the ground
 // (Jolt soft bodies don't collide with each other or with themselves).
 #include "sim.h"
+#include "cloth_wind.h"
 
 #include <Jolt/Jolt.h>
 
@@ -382,17 +383,18 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   for (size_t i = 0; i < bodies.size(); ++i) {
     const Body& b = bodies[i];
     JPH::RefConst<JPH::Shape> shape = shape_of(b, k);
+    const bool later = b.falls && b.appears && b.wake > 0;  // added to the world only at its frame
     JPH::BodyCreationSettings s(shape, JPH::RVec3(b.pos[0] * k, b.pos[1] * k, b.pos[2] * k),
                                 JPH::Quat(float(b.rot[0]), float(b.rot[1]), float(b.rot[2]), float(b.rot[3])).Normalized(),
-                                !b.falls ? JPH::EMotionType::Static : b.wake > 0 ? JPH::EMotionType::Kinematic
-                                                                                 : JPH::EMotionType::Dynamic,
+                                !b.falls ? JPH::EMotionType::Static : b.wake > 0 && !later ? JPH::EMotionType::Kinematic
+                                                                                           : JPH::EMotionType::Dynamic,
                                 b.falls ? kMoving : kStill);
-    s.mAllowDynamicOrKinematic = b.falls && b.wake > 0;  // held still (kinematic) until its Falls from frame
+    s.mAllowDynamicOrKinematic = b.falls && b.wake > 0 && !later;  // held still (kinematic) until its Falls from frame
     s.mRestitution = float(std::clamp(b.bounce, 0.0, 1.0));
     s.mFriction = float(std::max(0.0, b.friction));
     if (b.falls) {
       s.mMotionQuality = JPH::EMotionQuality::LinearCast;  // a small fast thing never tunnels through a thin wall
-      s.mLinearVelocity = b.wake > 0 ? JPH::Vec3::sZero() : v3(b.velocity, k);  // a held one gets it when it falls
+      s.mLinearVelocity = b.wake > 0 && !later ? JPH::Vec3::sZero() : v3(b.velocity, k);  // a held one gets it when it falls
       if (b.mass > 0) {
         s.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         s.mMassPropertiesOverride.mMass = float(b.mass * k * k * k);
@@ -402,7 +404,12 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       for (const V3& p : b.points.empty() ? b.triangles : b.points)  // its lowest point (world)
         floor = std::min(floor, b.pos[1] + double((q * v3(p, 1.0)).GetY()));
     }
-    ids[i] = bi.CreateAndAddBody(s, b.falls && !b.asleep && b.wake == 0 ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+    if (later) {
+      const JPH::Body* made = bi.CreateBody(s);
+      ids[i] = made ? made->GetID() : JPH::BodyID();
+    } else {
+      ids[i] = bi.CreateAndAddBody(s, b.falls && !b.asleep && b.wake == 0 ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+    }
     if (ids[i].IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size()) + ")");
     which[ids[i]] = i;
     if (b.falls) out.rows.push_back(int(i));
@@ -509,7 +516,9 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   out.frames.resize(size_t(frames));
   for (int f = 0; f < frames; ++f) {
     for (int r : out.rows)  // Falls from: held still until its frame, then it falls (with its keyed speed)
-      if (const Body& b = bodies[size_t(r)]; b.wake > 0 && b.wake == f) {
+      if (const Body& b = bodies[size_t(r)]; b.wake > 0 && b.wake == f && b.appears) {
+        bi.AddBody(ids[size_t(r)], b.asleep ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);  // with its speed
+      } else if (b.wake > 0 && b.wake == f) {
         bi.SetMotionType(ids[size_t(r)], JPH::EMotionType::Dynamic, b.asleep ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
         if (!b.asleep) bi.SetLinearVelocity(ids[size_t(r)], v3(b.velocity, k));
       }
@@ -521,7 +530,10 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     if (f > 0)
       for (int s = 0; s < steps; ++s) {
         for (size_t c = 0; c < cloths.size(); ++c)
-          if (cloths[c].wake <= f) air_drag(physics, cloth_ids[c], cloths[c], k, double(dt));
+          if (cloths[c].wake <= f) {
+            air_drag(physics, cloth_ids[c], cloths[c], k, double(dt));
+            cloth_wind(physics, bi, cloth_ids[c], cloths[c], k, double(dt), (double(f - 1) * steps + s + 1) * double(dt));
+          }
         const JPH::EPhysicsUpdateError e = physics.Update(dt, 1, &temp, &jobs);
         if (e != JPH::EPhysicsUpdateError::None)
           throw Error("simulate: the physics ran out of room at frame " + std::to_string(setup.start + f) +

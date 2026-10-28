@@ -1,4 +1,4 @@
-"""Copies (brief 24): make an item many times over a line, a grid, a circle or a surface, change the copies near an
+"""Copies (brief 24): make an item many times over a line, a grid, a circle, a surface or a pour, change the copies near an
 item, and keep a copy where someone put it. The screen and agents use these same operations. `copies.set` (every field of
 the item) is the generated field operation (kind.py); the layout itself is computed by the core, one place.
 
@@ -98,9 +98,13 @@ def _make(ctx, targets, args, layout: str | None = None):
 @R.operation("copies.make", "Repeat items many times: a new copies item takes the targets' place and holds them as its source "
              "(they move to the copies item's origin, keeping their turn and size; several sources: each copy picks one, by "
              "the seed). layout line (step spacingX/Y/Z), grid (columns, spacingX/Z; count is the total), circle (radius, "
-             "faceOut) or surface (surface = item id; amountBy count|density, density, minSpacing, alongSurface, onlySeen). "
+             "faceOut), surface (surface = item id; amountBy count|density, density, minSpacing, alongSurface, onlySeen) or pour "
+             "(a stream from a mouth at the copies item's origin: radius = the mouth's, pourTime = seconds they leave over, "
+             "evenly, pourSpeed m/s along the copies item's own down (turn it to aim), pourSpread degrees; then simulate=\"falls\"). "
              "Vary with seed, varyMove, varyTurn, varyScale; varyStart (a falling copies item: each copy starts to fall up to that "
-             "many seconds after fallStart, from the seed, so they land one after another). With the id of a copies item that exists it works like copies.set: a "
+             "many seconds after fallStart, from the seed, so they land one after another). In a stream (varyStart or a pour) "
+             "each copy is not there until it starts to fall: nothing hangs in the air waiting. Colour variety: give several "
+             "sources (the same shape, different materials); each copy picks one by the seed. With the id of a copies item that exists it works like copies.set: a "
              "re-run never makes a second one and never moves a held copy. The core draws the copies as instances "
              "(10000 at most); the reply of look / inspect says how many the camera saw.",
              target=SOURCES, label="Make copies", params=[ID, NAME, *FIELDS])

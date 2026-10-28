@@ -37,17 +37,23 @@ out vec4 oColor;
 
 const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
 
-float shadowAt(int layer, vec3 P, vec3 N)
+float shadowAt(int layer, vec3 P, vec3 N, float cosL)
 {
     vec4 c = u_shadowMat[layer] * vec4(P + N * (u_shadow_offset < 0.0 ? u_shadowAuto[layer] : u_shadow_offset), 1.0);
     vec3 q = c.xyz / c.w * 0.5 + 0.5;
     if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q, vec3(1.0)))) return 1.0;
-    float s = 0.0;
+    // a surface the light grazes spreads one map texel over many pixels, and a banded look turns the blurred texel
+    // stairs into a ragged edge: widen the blur there (up to 4x), and weight the taps as a tent so the edge is round
+    float graze = clamp(1.0 / max(cosL, 0.05), 1.0, 4.0);
+    float dt = 0.5 * u_shadow_soft * u_shadowTexel * graze;
+    float s = 0.0, wsum = 0.0;
     for (int y = -2; y <= 2; ++y)
-        for (int x = -2; x <= 2; ++x)
-            s += texture(u_shadowMaps, vec4(q.xy + vec2(x, y) * 0.5 * u_shadow_soft * u_shadowTexel,
-                                            float(layer), q.z - 1e-4));
-    return s / 25.0;
+        for (int x = -2; x <= 2; ++x) {
+            float w = (3.0 - abs(float(x))) * (3.0 - abs(float(y)));
+            s += w * texture(u_shadowMaps, vec4(q.xy + vec2(x, y) * dt, float(layer), q.z - 1e-4));
+            wsum += w;
+        }
+    return s / wsum;
 }
 
 // the sky this pixel looks at (USD's lat-long: top = the dome's +Y, centre column = its +Z)
@@ -143,7 +149,7 @@ void main()
             if (type == 2) facing *= max(dot(ax.xyz, -L), 0.0);                      // a panel's face
             if (type == 1 && ex.x > -1.5) facing *= smoothstep(ex.x, ex.y, dot(ax.xyz, -L));  // spot cone
             int layer = int(ex.w);
-            if (layer >= 0 && facing > 0.0) facing *= shadowAt(layer, P, N);
+            if (layer >= 0 && facing > 0.0) facing *= shadowAt(layer, P, N, abs(dot(N, L)));
             if (!legacy) {
                 vec3 e = lc.rgb * (facing * fall);
                 light += e;

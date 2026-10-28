@@ -20,11 +20,12 @@ person moved stays where they put it).
     buddy.draw([(.07, .2, 0), (.2, .25, 0), (.2, .28, 0), (.07, .26, 0)], name="arm")   # joined; its own space
     vase = clay("vase", spin=[(0, 0, 0), (.05, 0, 0), (.04, .1, 0), (0, .12, 0)])          # spun round +Y
 
-The new scene's own things (start_scene.py: shot_1, shot_1_camera, ground, ground_material, sky) can be changed by a script:
-made again under the same id (`light("sky", kind="dome", intensity=0.5)`) it replaces that one, field by field, in the run's
-one undo step; `edit("ground", baseColor=…)` changes only the fields given, on any thing directly in the scene (an item,
-a material or a shot, made by hand, another script or the new scene); `remove("ground")` takes it out. The script then
-owns it (a re-run under its name changes it again); a field a person changed since is held back, as for any script.
+Anything directly in the scene (the new scene's shot_1, ground, sky …, another script's, one made by hand) made again under
+the same id (`light("sky", kind="dome", intensity=0.5)`) is replaced by it, field by field, in the run's one undo step;
+`edit("ground", baseColor=…)` (or `item("ground")`) is a handle on it changing only the fields given, and on anything this
+script made earlier; asked twice, the same handle. `remove("a", "b")` takes things out. The script then owns them (a re-run
+under its name changes them again); a field a person changed since is held back, as for any script. A re-run that leaves
+out most of what its last run made is refused (script_rerun.py).
 
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
 script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
@@ -40,6 +41,9 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
 from . import aim, build, clay_detail, start_lights, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
+from rostrum_core.tree import walk
+
+from . import script_rerun
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -63,10 +67,17 @@ class Item:
         build.fill(self.node, _ids(values), f"script › {self.id}")
         return self
 
-    def key(self, prop: str, keys: dict, ease: str = "smooth", **curve) -> "Item":
-        """{seconds: value}, {seconds: (value, ease)} or {seconds: {"v": value, "ease": "spring", "stiffness": 240}};
+    def key(self, prop: str, keys, ease: str = "smooth", **curve) -> "Item":
+        """{seconds: value}, {seconds: (value, ease)} or {seconds: {"v": value, "ease": "spring", "stiffness": 240}}, or
+        key.add's shape: a list of {"t": seconds, "v": value, "ease": …} ("at" is taken for "t");
         curve settings given here (x1 y1 x2 y2 for ease="custom", stiffness damping for "spring") go on every key.
-        "visible" takes True / False (1 / 0): shown or hidden from that key to the next, never in between."""
+        "visible" takes True / False (1 / 0): shown or hidden from that key to the next, never in between.
+        The first key() of a field in a run replaces that field's keys (so keys on a thing taken over with edit() are
+        never doubled); a later key() of it in the same run adds to them, a key at the same time replacing."""
+        keys = _key_dict(self.id, prop, keys)
+        if (id(self.node), prop) not in self._b.keyed:
+            self._b.keyed.add((id(self.node), prop))
+            self.node["keys"] = [k for k in self.node["keys"] if k.get("prop") != prop]
         allowed = F.animatable(self.node["type"])
         if prop not in allowed:
             raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}; animatable: '
@@ -94,7 +105,7 @@ class Item:
                 raise ValueError(f'{where}: {", ".join(sorted(set(own) - set(CURVE)))} is not a key setting; '
                                  f'a key takes v, ease and {", ".join(CURVE)}')
             build.fill(k, own, where)                      # checked, and loud when a setting doesn't fit the ease
-            self.node["keys"].append(k)
+            self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
         return self
 
     def aim(self, target, roll: float | None = None) -> "Item":
@@ -110,7 +121,7 @@ class Item:
         """Make it part of the shot's simulation (only things directly in the scene): "falls", "still", "cloth" (a shape
         only) or "off", with Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", fallStart=1.5 (seconds into the shot it holds still
         until, then falls), simShape="box";
-        cloth: clothWeight=, stiffness=, clothAir=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
+        cloth: clothWeight=, stiffness=, clothAir=, clothWind=, clothWindTurn=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
         script. Cloth with over=<item> (made earlier, or already in the scene) also places the sheet over it: centred,
         a little above its top, level, and a plane too small to drape it made big enough to reach the floor."""
         over = values.pop("over", None)
@@ -258,6 +269,21 @@ class Item:
         self._b.holders.pop()
 
 
+def _key_dict(owner: str, prop: str, keys) -> dict:
+    """key()'s keys as {seconds: value or dict}: a list of key.add-shaped dicts ({"t": 1.5, "v": 2}) becomes that."""
+    if isinstance(keys, dict):
+        return keys
+    if not isinstance(keys, (list, tuple)) or not all(isinstance(k, dict) for k in keys):
+        raise ValueError(f'{owner}.key("{prop}", …): keys are {{seconds: value}} or a list of {{"t": seconds, "v": value}}')
+    out = {}
+    for k in map(dict, keys):
+        t = k.pop("t", k.pop("at", None))
+        if t is None:
+            raise ValueError(f'{owner}.key("{prop}", …): each key in the list needs "t", its time in seconds ("at" works too)')
+        out[t] = {"v": k.pop("v", k.pop("c", k.pop("value", None))), **k}
+    return out
+
+
 def _vec(values: dict) -> dict:
     """Tuples → lists in a drawing's settings (facing, axis)."""
     return {k: ([list(p) for p in v] if k == "axis" else list(v) if k == "facing" else v) for k, v in values.items()}
@@ -319,6 +345,8 @@ class Build:
     def __init__(self, reserved=(), doc=None, name=""):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), {}      # taken: id -> kind
         self.doc, self.name, self.owned = doc, name, {}                    # owned: id -> its list, things already in the document it takes
+        self.reserved |= script_rerun.reserved(doc, name)                  # a counted id never lands on another's id
+        self.handles, self.removing, self.keyed = {}, set(), set()         # edit()'s handles; remove()'s ids; (node, field) keyed this run
 
     def _found(self, id_: str, what: str) -> tuple[str, dict]:
         """(its list, the document's node) of a thing directly in the scene, for edit / remove."""
@@ -332,24 +360,36 @@ class Build:
                          "things inside a group are changed through their own script or an operation")
 
     def edit(self, id_: str, **values) -> "Item":
-        """A thing already in the document, taken over: its fields as they are, then the ones given."""
+        """A handle on a thing by its id, with the given fields changed: one this script made earlier (anywhere), or one
+        directly in the scene (taken over: its fields as they are, then the ones given). Asked again: the same handle."""
+        id_ = _id_of(id_)
+        if id_ in self.handles:
+            return self.handles[id_].set(**values)
+        if id_ in self.taken:                                # made earlier in this script
+            node = next((n for n in walk(self.root, KIND.lists) if n.get("id") == id_), None)
+            if node is None or node.get("type") == "part":
+                raise ValueError(f'edit({id_!r}): {id_!r} is a part of an import; change it with .part()')
+            self.handles[id_] = Item(self, node)
+            return self.handles[id_].set(**values)
         lst, node = self._found(id_, "edit")
-        if id_ in self.taken:
-            raise ValueError(f'id "{id_}" is used twice in the script')
         self.taken[id_], self.owned[id_] = node.get("type", "item"), lst
         mine = copy.deepcopy(node)
         self.root[lst].append(mine)
-        return Item(self, mine).set(**values)
+        self.handles[id_] = Item(self, mine)
+        return self.handles[id_].set(**values)
 
-    def remove(self, id_: str):
-        """A thing already in the document, taken out by this run (one undo step with the rest)."""
-        if self.doc is not None and self.name in self.doc.script_bases and not any(
-                n.get("id") == id_ for lst in ROOT_LISTS for n in self.doc.data.get(lst, [])):
-            return                                           # a re-run: this script took it out already
-        lst, _ = self._found(id_, "remove")
-        if id_ in self.taken:
-            raise ValueError(f'remove({id_!r}): the script also makes {id_!r}')
-        self.owned[id_] = lst
+    def remove(self, *ids_):
+        """Things already in the document (made by hand, another script or this script's last run), taken out by this
+        run (one undo step with the rest)."""
+        for id_ in map(_id_of, ids_):
+            self.removing.add(id_)
+            if self.doc is not None and self.name in self.doc.script_bases and not any(
+                    n.get("id") == id_ for lst in ROOT_LISTS for n in self.doc.data.get(lst, [])):
+                continue                                     # a re-run: this script took it out already
+            lst, _ = self._found(id_, "remove")
+            if id_ in self.taken:
+                raise ValueError(f'remove({id_!r}): the script also makes {id_!r}')
+            self.owned[id_] = lst
 
     def take_over(self, name: str):
         """Before the merge: what this run takes over moves into its script's last output (the merge's base), out of any
@@ -359,6 +399,8 @@ class Build:
         doc = self.doc
         if doc is None:
             return
+        script_rerun.guard(self)                             # a re-run leaving out most of what it made: refused
+        script_rerun.remade(self)                            # made again under an id already in the scene: replaces it
         for lst in ROOT_LISTS:                               # made again under a new-scene id: replaces that one
             for n in self.root[lst]:
                 if n["id"] not in self.owned and _start_owned(doc, n["id"], lst):
@@ -376,8 +418,8 @@ class Build:
                 if other != name and (hit := next((n for n in b.get(lst, []) if n.get("id") == id_), None)):
                     b[lst].remove(hit)
                     was = was or hit
-            now = next(n for n in doc.data[lst] if n.get("id") == id_)
-            base[lst].append(copy.deepcopy(was if was is not None else now))
+            made = next((n for n in self.root[lst] if n.get("id") == id_), None)
+            base[lst].append(copy.deepcopy(was) if was is not None else script_rerun.unheld_copy(doc, lst, id_, made))
 
     def new_id(self, type_or_id: str, id_: str | None = None, loose=False) -> str:
         if loose:                                        # a part's id from its path: already unique per import
@@ -445,9 +487,9 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls))", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
-       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
-       "import.part(path, material=, visible=)", "edit(id, **fields) / remove(id): a thing already in the scene (shot_1, ground, sky …)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
+       "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
+       "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
@@ -462,7 +504,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              "clay": lambda id=None, **v: _clay(b, id, **v),
              "copies": lambda id=None, source=None, **v: _copies(b, id, source, **v),
-             "edit": lambda id, **v: b.edit(id, **v), "remove": lambda id: b.remove(id),
+             "edit": lambda id, **v: b.edit(id, **v), "item": lambda id: b.edit(id), "remove": lambda *ids: b.remove(*ids),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)

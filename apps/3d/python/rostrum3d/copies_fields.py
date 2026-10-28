@@ -1,5 +1,5 @@
 """Copies (brief 24): one item holds a source (a mesh, an import, a group …) and the core draws it many times with
-a UsdGeomPointInstancer, laid out in a line, a grid, a circle or over a surface. An `effector` inside it changes the
+a UsdGeomPointInstancer, laid out in a line, a grid, a circle, over a surface or as a pour. An `effector` inside it changes the
 copies near an item (bigger, turned, pushed away, tinted). The layout is computed in the core; this is the document's side:
 the fields, the held copies (a copy someone put by hand: layout changes never move it) and the checks.
 """
@@ -9,14 +9,16 @@ from rostrum_core import Param
 
 from .field_kit import CH, C, D, IS, N, NOT, P, S, T, TRANSFORM, X
 
-LAYOUTS = ["line", "grid", "circle", "surface"]
+LAYOUTS = ["line", "grid", "circle", "surface", "pour"]
 AMOUNT_BY = ["count", "density"]
 KINDS = ["scale", "turn", "push", "colour"]
 FALLOFFS = ["smooth", "linear"]
 AXES = ["x", "y", "z"]
 MAX_COUNT = 10000
 
-LINE, GRID, CIRCLE, SURFACE = (IS("layout", v) for v in LAYOUTS)
+LINE, GRID, CIRCLE, SURFACE, POUR = (IS("layout", v) for v in LAYOUTS)
+CIRCLE_OR_POUR = {"any": [CIRCLE, POUR]}
+POUR_KEYS = ("pourTime", "pourSpeed", "pourSpread")      # sent to the core only on a pour (compile.py)
 BY_DENSITY = {"all": [SURFACE, IS("amountBy", "density")]}
 LINE_OR_GRID = {"any": [LINE, GRID]}
 VARIED = {"any": [NOT("varyMove", 0.0), NOT("varyTurn", 0.0), NOT("varyScale", 0.0)]}
@@ -26,7 +28,8 @@ COPY_KEYS, COPY_KEYS_FROM = "copyKeys", "copyKeysFrom"   # keyed copies (copy_ke
 
 COPIES = [
     CH("layout", LAYOUTS, "Layout", "Copies", "line", P,
-       help="Line: one after another. Grid: columns and rows. Circle: round a ring. Surface: scattered over another item"),
+       help="Line: one after another. Grid: columns and rows. Circle: round a ring. Surface: scattered over another item. "
+            "Pour: a stream from a mouth at the copies item's origin (falling: each appears when it leaves)"),
     N("count", "Count", "Copies", 1, MAX_COUNT, 1, "", P, {"not": BY_DENSITY}, integer=True, default=6,
       help="How many copies (a grid: the total, filled row by row)"),
     N("columns", "Columns", "Copies", 1, MAX_COUNT, 1, "", P, GRID, integer=True, default=4),
@@ -35,7 +38,14 @@ COPIES = [
     N("spacingY", "Space Y", "Copies", -1e4, 1e4, 0.001, "m", S, LINE),
     N("spacingZ", "Space Z", "Copies", -1e4, 1e4, 0.001, "m", S, LINE_OR_GRID,
       help="A line: the step from one copy to the next. A grid: the step between rows"),
-    N("radius", "Radius", "Copies", 0, 1e4, 0.001, "m", P, CIRCLE, default=0.5),
+    N("radius", "Radius", "Copies", 0, 1e4, 0.001, "m", P, CIRCLE_OR_POUR, default=0.5,
+      help="A circle: the ring's radius. A pour: the mouth's radius (each copy leaves from somewhere inside it)"),
+    N("pourTime", "Pour for", "Copies", 0, 3600, 0.01, "s", P, POUR, default=2.0,
+      help="The copies leave one after another, evenly over this long from Falls from (0: all at once)"),
+    N("pourSpeed", "Speed", "Copies", 0, 100, 0.01, "m/s", P, POUR, default=0.0,
+      help="How fast each leaves the mouth, along the copies item's own down (turn the copies item to aim it; 0: they drop)"),
+    N("pourSpread", "Spread", "Copies", 0, 90, 0.1, "°", S, POUR, default=10.0,
+      help="Each leaves up to this many degrees off the aim, so the stream fans out"),
     T("faceOut", "Face outward", "Copies", True, S, CIRCLE, help="Each copy turns to face away from the middle"),
     X("surface", "Surface", "Copies", "", P, SURFACE, refers="item",
       help="The item the copies are scattered over (a plane, a mesh, a clay, an import)"),
@@ -56,7 +66,8 @@ COPIES = [
     N("varyTurn", "Turn", "Vary", 0, 360, 0.1, "°", P, help="Each copy turns round up by up to this much"),
     N("varyScale", "Size", "Vary", 0, 1, 0.01, "", P, help="Each copy is up to this share smaller or bigger"),
     N("varyStart", "Start", "Vary", 0, 3600, 0.01, "s", P, FALLING,
-      help="Each copy starts to fall up to this much later than Falls from, so they land one after another"),
+      help="Each copy starts to fall up to this much later than Falls from, so they land one after another; each is "
+           "hidden until it starts (no copies hanging in the air waiting)"),
     Param.points(HELD, label="Held copies", group="Copies data", importance=D, min=8, max=8, default=None, nullable=True, shown="script",
                  help="Rows [copy, x, y, z, rx, ry, rz, scale] in the copies item's own space: a copy put by hand. "
                       "A layout change never moves it; copies.release lets it go. Set by copies.hold"),

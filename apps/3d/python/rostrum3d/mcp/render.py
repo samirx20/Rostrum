@@ -29,7 +29,7 @@ from rostrum_core.mcp.files import render_cache_folder
 from ..render_fields import QUALITIES, STYLIZED
 from ..sim.compute import ready_for_render
 from ..sim.fall_view import fall_note             # a fall the shot camera does not show
-from .. import estimate_job, estimate_learn
+from .. import estimate_job, estimate_learn, render_last
 from . import draw, estimate, layers, resume
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
@@ -218,7 +218,9 @@ def render_video(ctx, args):
     again (nothing rendered changed) continues from them and draws only the missing frames; the reply says "Continues from N finished frames". Always a
     job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frame n of m'. With `budget_min` or `estimate_only` the reply waits
     (up to 25 s) for the measured estimate: over the budget it is an error at once that names the settings that fit, and `estimate_only` returns the figures
-    (never a failed job), also when over the budget."""
+    (never a failed job), also when over the budget. With no quality, renderer or samples it never renders lower than your
+    last export of this shot (a refine keeps the first video's Cycles and samples even if the shot's Quality is lower) and says so;
+    asking for lower is done, and the reply says what it loses (Storm: no fabric sheen, no soft bounce light)."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
     if gate is None or not gate.wait(ESTIMATE_WAIT_S):
@@ -371,8 +373,11 @@ def video_job(ctx, args, gate: Gate | None = None):
     scene0, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
+    last_key = render_last.key(ctx.app.folder, item, info["id"])     # a refine is never quietly worse than the last export
+    renderer, cycles, same_note = render_last.keep(last_key, renderer, _cycles(args, renderer, s), args)
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
-    cycles, exposure = _cycles(args, renderer, s), args.get("exposure", 0)
+    exposure = args.get("exposure", 0)
+    said = [same_note] if same_note else []
 
     def run(job):
         t_start = time.perf_counter()
@@ -383,7 +388,7 @@ def video_job(ctx, args, gate: Gate | None = None):
         budget_s = args["budget_min"] * 60 if "budget_min" in args else None
         try:
             est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes, todo,
-                                          must=budget_s is not None or args.get("estimate_only", False), item=item)
+                                          must=budget_s is not None or args.get("estimate_only", False), item=item, cycles=cycles)
             note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
             over = budget_s is not None and est > budget_s
             fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at) if over else []
@@ -394,9 +399,9 @@ def video_job(ctx, args, gate: Gate | None = None):
             if args.get("estimate_only"):                 # the figures, also over the budget (then with the settings that fit)
                 got = Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
                             f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.'
-                            + (f" It {estimate.over_budget_text(est, budget_s, fits)}" if over else ""),
+                            + (f" It {estimate.over_budget_text(est, budget_s, fits)}" if over else "") + "".join(f" {w}" for w in said),
                             {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est, "over_budget": over, "fits": fits},
-                            warnings=[*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
+                            warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
                 if gate:
                     gate.decide(reply=got)
                 return got
@@ -414,16 +419,17 @@ def video_job(ctx, args, gate: Gate | None = None):
         learn_key = estimate_learn.key(ctx.app.folder, item, info["id"], renderer)
         if est is not None and todo > 0:         # what the guess missed, for the next guess of this shot
             estimate_learn.record(learn_key, est / estimate_learn.factor(learn_key), time.perf_counter() - t_draw)
+        render_last.remember(last_key, renderer, cycles)
         copies = _copy_out(ctx.tool, paths[0], paths[1], target) if target is not None else []
         took = time.perf_counter() - t_start
         return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {paths[0].name} (share copy {paths[1].name}), in {took:.0f} s '
                      f'({took / max(todo, 1):.2f} s a frame drawn; {note}).{kept_words}'
-                     + (f" Copied to {copies[0]} and {copies[1].name}." if copies else "")
+                     + (f" Copied to {copies[0]} and {copies[1].name}." if copies else "") + "".join(f" {w}" for w in said)
                      + " " + next_steps(count, fps, "render_video"),
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
                       **({"copies": [str(c) for c in copies]} if copies else {})},
-                     [*paths, *copies], warnings=[*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
+                     [*paths, *copies], warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
 
     def job_fn(job):
         try:
@@ -443,14 +449,14 @@ def check_ffmpeg(where: str):
 
 
 def _estimate(ctx, engine, scene: dict, info: dict, renderer: str, size: tuple[int, int], frames: tuple[int, int], args: dict, s: dict,
-              passes, todo: int, must: bool, item=None) -> tuple[float | None, dict, object]:
+              passes, todo: int, must: bool, item=None, cycles: dict | None = None) -> tuple[float | None, dict, object]:
     """The video's time, measured the way render_estimate measures it (estimate_job: its own engine, the middle frame at a quarter
     and at the real size, kept by scene, so asking again or with other samples answers at once) and scaled by estimate.scale.
     Never by drawing the same frame twice on this engine: the second is answered from the picture it already has (~0.2 s
     for a 3.4 s frame), which made the old estimates 3.5-5x low. `must` (a budget or estimate_only): a failed probe is the
     call's error; otherwise the video is rendered without an estimate. (seconds or None, reply data, at() for fitting_settings)"""
     pe = {**s, "renderer": renderer, "width": size[0], "height": size[1], "start": frames[0], "end": frames[1], "passes": passes,
-          **(_cycles(args, renderer, s) if renderer == "cycles" else {"samples": 0})}
+          **((cycles if cycles is not None else _cycles(args, renderer, s)) if renderer == "cycles" else {"samples": 0})}
     try:
         m = estimate_job.measure(scene, info, pe, ctx.tool, make_engine=lambda: type(engine)(engine.exe, engine._env, engine.args))
     except RostrumError as e:
@@ -463,7 +469,7 @@ def _estimate(ctx, engine, scene: dict, info: dict, renderer: str, size: tuple[i
     if words := estimate_learn.words(e):
         how += f"; {words}"
     if note := estimate_job.card_note(m):
-        how += f"; {note}"
+        how += f"; {estimate.busy_words(note)}"
     return e["seconds"], {"estimate_s": e["seconds"], "seconds_per_frame": e["seconds_per_frame"], "how": how,
                           "gpu_busy": estimate_job.card_note(m)}, (lambda c, v: estimate.seconds_at(m, pe, todo, True)(c, v) * e.get("learned", 1.0))
 

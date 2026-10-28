@@ -15,7 +15,7 @@ person or an agent picks the colours afterwards.
 from __future__ import annotations
 
 STARTS: dict[str, dict] = {
-    "clay": {"label": "Clay", "values": {"baseColor": "#a6a6a6", "roughness": 0.55}},
+    "clay": {"label": "Clay", "values": {"baseColor": "#a6a6a6", "roughness": 0.75}},    # modelling clay is duller than matte plastic (0.7)
     "skin": {"label": "Skin", "values": {"baseColor": "#c49a84", "roughness": 0.45, "ior": 1.4, "subsurface": 1,
                                          "subsurfaceColor": "#ffa477", "subsurfaceRadius": 3.7}},
     "wax": {"label": "Wax / soap", "values": {"baseColor": "#e8e2d4", "roughness": 0.3, "ior": 1.45, "subsurface": 1,

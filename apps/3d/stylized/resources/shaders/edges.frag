@@ -44,7 +44,10 @@ void main()
         ivec2 q = clamp(p + offs[k], ivec2(0), size - 1);
         int idq = texelFetch(u_ids, q, 0).r;
         vec4 nq = texelFetch(u_normal, q, 0);
-        bool behind = idq == 0 || nq.w > n0.w;   // only the nearer side carries the line
+        // only the nearer side carries the line; where two objects meet at the same depth (a wall corner, a box on
+        // the floor) the depths cross back and forth pixel by pixel, so the higher id carries it: one solid line
+        bool seam = idq != 0 && abs(nq.w - n0.w) < 0.25 * u_ink_depthJump * n0.w;
+        bool behind = idq == 0 || (seam ? idq < id0 : nq.w > n0.w);
         if (idq != id0 && behind) sil = 1.0;
         else if (idq == id0 && behind && (nq.w - n0.w) / n0.w > u_ink_depthJump) sil = 1.0;
         if (!creases) continue;

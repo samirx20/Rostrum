@@ -92,13 +92,14 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
 }
 
 // The stylized renderer's settings (apps/3d/stylized, renderPass.cpp): `rostrum:ss` x the picture's size (1 in the
-// viewport for video memory, the render's `stylized.supersample`), its shadow maps 2048 square. Set only on a change.
+// viewport for video memory, the render's `stylized.supersample`), its shadow maps 2048 square (4096 for a supersampled
+// render, so a banded shadow edge has no texel steps). Set only on a change.
 void stylized_settings(UsdImagingGLEngine& e, int supersample) {
   const auto set = [&](const char* key, const VtValue& v) {
     if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
   };
   set("rostrum:ss", VtValue(supersample));
-  set("rostrum:shadow:size", VtValue(2048));
+  set("rostrum:shadow:size", VtValue(supersample > 1 ? 4096 : 2048));
 }
 
 // what a white floor shows under the viewport's studio (Rec.709 luminance)
