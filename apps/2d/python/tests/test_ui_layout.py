@@ -94,3 +94,15 @@ def test_device_draws_the_asked_kind_never_a_swap():
     d = run('comp("main", width=1920, height=1080, fps=30, duration=1)\nscr = device("laptop", fit=0.74)\n')
     group = next(l for l in d.data["comps"][0]["layers"] if l["id"] == "laptop")
     assert group["name"] == "Laptop" and any(c["id"] == "laptop_base" for c in group["layers"])
+
+
+def test_a_card_hanging_off_a_device_screen_is_named_once():
+    """Canary 3E R8: a chart card hung off a laptop's screen and the look said nothing. The outermost spilling layer is
+    named (the card, not its words); a screen that clips (overflow="hidden") is not."""
+    from rostrum2d.mcp import review
+    src = ('comp("main", width=1920, height=1080, fps=30, duration=1)\nscr = device("laptop", fit=0.5{})\nwith scr:\n'
+           '    with column("box", h=900, bg="#ffffff"):\n        text("label", body="Revenue", size=30)\n')
+    for clip, named in (("", ["box"]), (', overflow="hidden"', [])):
+        d = run(src.format(clip))
+        faults, _ = review.doc_faults(d.data, d.data["comps"][0], None, "t")
+        assert [f["id"] for f in faults if f["kind"] == "screen_spill"] == named
