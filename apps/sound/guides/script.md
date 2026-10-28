@@ -5,6 +5,8 @@ check in the reply (loudness, the weakest asked moments with their fixes, faults
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
 touch-ups.
 
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; `render_mix` refuses open faults unless `keep: {id: why}` explains them.
+
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
   changes in place. **A new name that makes the same tracks is refused** (`song_v2` re-making `song`'s tracks would double every note; the

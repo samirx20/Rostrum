@@ -64,6 +64,7 @@ makes. Look after each step: `look_frame` with `quality: "fast"` takes about a s
 `run_script` `path`; after each look, edit that file and run it again (same name): it replaces what it made and keeps what a
 person moved by hand. Every step below has a script form (`clay(…, draw=[…])`, `.draw(…)`, `item.key(…)`; guide `script`).
 The steps here use single operations and pixel tools, the way to fix one thing you see in a look.
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; render_still / render_video refuse open faults unless `keep: {id: why}` explains them.
 
 ### 1. The body: an outline in metres
 
