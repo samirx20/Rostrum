@@ -33,9 +33,14 @@ keys.effect("reverb", space="hall", mix=0.3)               # 4. the mix block la
 master(loudness=-16, truePeak=-1)                          #    and the master target
 ```
 
+**Bars first.** Write notes and hits on the beat grid (`at=bar(5) + beats(1)`, `dur=beats(2)`): a tempo change then moves
+them with the music. A bare number is seconds and never moves; keep it for sync points, ideally as a marker. When nearly
+every note of a run is in seconds (8 or more, 90 %), the reply says so.
+
 **Landing on a time.** `downbeat(bar(n), at=T)` puts bar n at T seconds (music before bar 1 is a pickup, so a sync point
 lands on a bar line without a silent start); `land(bar(n), at=T, ramp_from=bar(m))` glides the tempo so bar n lands at T.
-Both are under "Landing on a time" below, with the tempo formula and the marker form (`marker("hit", at=31.5)`, `at="#hit"`).
+`T` is seconds or a marker (`at="#logo lands"`, `"#logo lands+0.5"`, `"#logo lands" + beats(1)`). Both are under
+"Landing on a time" below, with the tempo formula and the marker form (`marker("hit", at=31.5)`, `at="#hit"`).
 Render with `expect` (`{"kind": "tempo", "bpm": N}`) to be told when the tempo drifts from the brief's.
 
 **The call.** `run_script` takes `source` (the Python text, required), `name` (the script's name, default `agent_script.py`),
@@ -77,6 +82,25 @@ on the song.
 Check what you wrote when the render's check names something: `look_arrangement` draws every track's notes and hits with the bars, sections
 and markers, and says which tracks start on each marker.
 
+## Mix routing: buses, sends, ducks, dialogue
+
+```python
+verb = bus("verb", volume=0.8); verb.effect("reverb", space="hall", mix=1.0)   # a bus: a channel tracks feed, with its own effects
+keys = track("keys", builtIn="piano", output="verb")                           # plays into the bus instead of the master
+pad.send("verb", level=0.3)                                                     # part of a track goes to a bus as well
+vo = track("vo", role="dialogue"); vo.clip("media/vo.wav", at=0)               # speech: a voice-over file, an interview
+music.duck(depth=0.7)                                                           # no `under`: dips under every dialogue track
+bass.duck(under=["kick"], depth=0.5, attack=0.005, release=0.15)                # under a kick: a short pump per hit
+```
+
+- `role="dialogue"` marks a track as speech; a voice track (it speaks lines) is dialogue already. Left out, a track is music.
+- A duck under dialogue only (every track it is under is dialogue, or no `under` at all) dips for **whole lines**: it keeps
+  the bass, holds 0.3 s across the gaps between words and comes back in pauses. Under anything else it pumps per hit.
+  `voice=False` keeps a pump even under speech; `voice=True` forces whole lines. Worked out at every render, so a dialogue
+  track added later counts. `duck()` with no `under` in a song with no dialogue track fails the render, naming the fix.
+- `duck(...)` takes `under`, `depth` (0 to 1), `attack`, `release`, `hold` (seconds), `voice`, `lookahead`. To duck a bus,
+  duck each track that feeds it. Check it: the reply's fault `duck:<track>` names a dip under 3 dB while the voice speaks.
+
 ## Effects and the master: every setting, with its unit
 
 `s.effect(type, **settings)` adds an effect to a track (`inspect_operations` `effect.add` / `effect.set` take the same
@@ -111,8 +135,12 @@ master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
 `master(...)` takes `volume` (gain 0 to 4), `normalize`, `loudness` (LUFS, -60 to 0: giving it turns `normalize` on),
 `truePeak` (dBTP, -12 to 0), `gentle` (on by default) and `maxLimit` (dB, 0 to 12, default 2: with `gentle` on, the
 limiter never pulls the loudest moment down by more than this; a mix that would need more is turned down as a whole,
-so it lands under its loudness target and `render_mix` says by how much; `edit_loudness` is the one call that fixes it), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
-`safetyClip`.
+so playback lands under its loudness target; a render (`render_mix`, `look`) is pushed onto the target for that file and says how many dB of limiting it took, the song keeping this value), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
+`safetyClip`. Effects on the whole mix go on the master the same way as on a track: `master.effect("eq", bands=[{"shape":
+"highshelf", "freq": 4000, "gain": 4, "q": 0.7}])` (the dull-top fault names the gain that clears it).
+
+An instrument's playable range (a recorded one has no samples outside it, and the render refuses the note):
+`inspect_engine {"name": "<builtIn name>"}` before writing its part.
 
 There is no bit-crush effect. For a worn, lo-fi sound the tools are `tape` (wow, flutter, age, and a record's surface:
 hiss and crackle), `saturate` (drive), an `eq` low-pass (`lowpass`) and high-pass, a `reverb`, a `delay`, the `rhodes`
@@ -205,6 +233,19 @@ on 36.0 s (0.36 s early) over bars 15-21 (24 beats, 10.9 s) needs about 3.3 % on
 says "tempo 132 -> 141.2 -> 132 bpm over bar 15 - bar 21". Past 8 % it is refused and names a ramp long enough. Best
 where the music can lean in (a build, a run-up); write `tempo(...)` and the other tempo changes first, then `land`.
 
+**By name.** `downbeat` and `land` take a marker for `at` (the song's, the script's or the project's: `at="#logo lands"`,
+`"#logo lands-0.25"`, `"#logo lands" + beats(1)`), and `seconds_of("#logo lands")` gives its seconds. The marker is read
+where it is when the script runs, and the reply says the seconds it used; when 2D moves the marker, run the script again
+to land the grid on its new time (notes written `at="#logo lands"` follow it without a run). `length("#end")` and
+`section("verse", "#a", "#b")` keep the marker itself, so they follow it.
+
+**A marker 2D sees: `marker(name, at, shared=True)`.** A script's markers are the song's own; with `shared=True` the marker
+is published to the project's markers (the ones `edit_markers` changes and `inspect_markers` shows, that 2D follows),
+in seconds, when `run_script` merges the script. Run again with the same name and time: nothing changes. A project
+marker of that name at another time (someone moved it) is a loud error naming both times: write the script's marker at
+that time, or use `"#name"` without making it, or move it with `edit_markers`. Removing `shared=True` later leaves the
+project marker where it is.
+
 Order: `downbeat` and `land` work on the tempo map written so far, so write the tempo, the tempo changes and the time
 signature first. Each landing is checked again when the script ends: a tempo change written after it that moves the
 landed bar is refused, naming it. Check the result with `look_music` (`what: "events"`, `expect: [37.0]`, a tolerance
@@ -218,6 +259,29 @@ pno = track("keys", builtIn="piano")
 pno.note("D4", at=seconds_of(bar(1) - beats(1)), dur=beats(1))   # the pickup into bar 1
 pno.chord(["D3", "A3", "F4"], at=bar(21), dur=beats(4))          # on 37.0 s
 ```
+
+## Building into a moment: `build_to`
+
+`build_to(target, over, parts)` writes the run-up into a time as ordinary notes and hits, from `over` before the target up
+to it. The tracks, pitches and drum are yours; each part is a shape, not a sound:
+
+- `cymbal_roll(track, drum="cymbal", rate=(2, 8), low=0.3, peak=0.95)`: hits that get denser (hits per beat at the start,
+  at the end; per second when `over` is seconds) and louder (velocity `low` to `peak`), stopping just before the target;
+- `crescendo(track, pitches, low=0.3, peak=1.0, vel=0.8)`: a held note or chord tied to the target, its own `dynamics`
+  rising from `low` to `peak`;
+- `reverse_swell(track, pitch, peak=1.0, vel=0.8)`: one note swelling from silence to `peak`, ending exactly on the target;
+- `sub_hit(track, pitch_or_drum, vel=1.0, dur=beats(2))`: a note (or, on a kit, a drum) struck on the target.
+
+```python
+marker("impact", at=bar(17))
+build_to("#impact", over=beats(8), parts=[cymbal_roll(drums), crescendo(strings, ["D3", "A3", "F4"]),
+                                          reverse_swell(pad, "D5"), sub_hit(low, "D1"), sub_hit(drums, "kick")])
+```
+
+Every note is written against the target in its own form (`"#impact-3.5beats"`, `bar(17) - beats(3.5)`), so moving the
+marker moves the whole build. `over` is beats on a marker or a bar, or seconds on a marker or a seconds time; a bar with
+seconds is refused (say the beats). The reply lists what each part wrote; edit or delete those notes like any other.
+Listen to the result: a part sounds only as well as the instrument on its track plays held, swelling notes.
 
 ## Moments that read
 

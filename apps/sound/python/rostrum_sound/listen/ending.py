@@ -53,3 +53,22 @@ def ending(y, sr):
     words += f" Audible end {heard:.2f} s (under {HEARD_DBFS:g} dBFS for good after it; the file is {len(m) / sr:.2f} s)."
     return {"audible_end_s": num(heard, 2), "last_0_5s_dbfs": num(level, 1), "finished": bool(finished), "last_50ms_dbfs": num(last, 1),
             "last_50ms_drop_db": num(drop, 1), "fade_drop_db_per_50ms": num(fade, 1), "cut": cut, "words": words}
+
+
+DEAD_AIR_S = 0.95       # silence this long before the file ends reads as the piece stopping early (bench 3e: 1.0 s faulted; 0.85 s twice, and a 0.5 s decay, not)
+
+
+def dead_air(y, sr) -> list[dict]:
+    """[{"kind": "dead_air_end", ...}] when the last DEAD_AIR_S or more of the file is under HEARD_DBFS."""
+    total = len(y) / sr
+    heard = audible_end(y, sr)
+    gap = total - heard
+    return [{"kind": "dead_air_end", "at_s": num(heard, 2), "measured": {"silent_s": num(gap, 2), "file_s": num(total, 2)}}] \
+        if heard > 0 and gap >= DEAD_AIR_S else []
+
+
+def dead_air_words(f) -> str:
+    d, t = f["measured"], f["at_s"]
+    return (f"dead air at the end: nothing sounds from {t:g} s to the file's end at {d['file_s']:g} s ({d['silent_s']:g} s); "
+            "a listener hears the piece stop early; let the last notes, a drone or the reverb run to the end "
+            "(end=\"#end\" on the held notes, or a later release), or make the length end with the sound")

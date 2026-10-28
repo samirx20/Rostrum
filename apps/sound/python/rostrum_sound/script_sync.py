@@ -1,5 +1,6 @@
 """Landing a beat on a time without bending the music: the script's `downbeat`, `land` and `seconds_of`.
 
+    downbeat(bar(21), at="#logo lands")            # at= is seconds or a marker ("#hit+0.5", "#hit" + beats(1)), read now
     downbeat(bar(21), at=36.0)                     # moves the whole grid: bar 1 starts later (gridStart), the tempo stays
     land(bar(21), at=36.0, ramp_from=bar(17))      # a tempo glide over bars 17-21 (out and back), so bar 21 lands at 36.0
     s.note("G4", at=seconds_of(bar(1) - beats(1)), dur=beats(1))     # a pickup note before bar 1, in seconds
@@ -14,7 +15,7 @@ import math
 
 from rostrum_core import RostrumError, codes
 
-from .doc import meter, tempo
+from .doc import markers, meter, tempo
 from .script_scope import say
 from .script_time import Beat
 
@@ -31,9 +32,16 @@ def _beat(t, name: str, where: str) -> float:
                        "It lands a beat or bar; a sound at a time in seconds is written at that time (at=36.0).")
 
 
-def _seconds(at, where: str) -> float:
+def _seconds(song, at, where: str) -> float:
+    """`at` in seconds: a number, or a marker ("#logo lands", "#hit+0.5", "#hit" + beats(1)) read where it is now,
+    through the one marker reader (the script's markers, the song's and the project's); the reply names what it used."""
+    if markers.ref(at) is not None:
+        got = markers.resolve({**song.root, "markers": song.marks()}, at, where)
+        say(f"{where}: at={at!r} is {got:g} s (where the marker is now; moving it later doesn't move the grid: run the script again).")
+        return float(got)
     if isinstance(at, bool) or not isinstance(at, (int, float)) or at < 0:
-        raise RostrumError(codes.BAD_ARGUMENT, where, f"at={at!r}", "is not a time in seconds (≥ 0)", ["at=36.0"])
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"at={at!r}", "is not a time in seconds (≥ 0) or a marker",
+                           ["at=36.0", 'at="#logo lands"', 'at="#logo lands+0.5"', 'at="#logo lands" + beats(1)'])
     return float(at)
 
 
@@ -63,7 +71,7 @@ def downbeat(song, time, at) -> None:
     """Sets the song's gridStart so `time` (a beat or bar) lands exactly at `at` seconds, at the tempo map written so far;
     the music before bar 1 is a pickup (seconds_of(bar(1) - beats(n))). Refused when bar 1 would start before 0 s."""
     where = "downbeat"
-    beat, at = _beat(time, "time", where), _seconds(at, where)
+    beat, at = _beat(time, "time", where), _seconds(song, at, where)
     root = {k: v for k, v in song.root.items() if k != "gridStart"}
     g = _grid_for(root, beat, at)
     if g < -EXACT:
@@ -107,7 +115,7 @@ def land(song, time, at, ramp_from) -> None:
     there). The two halves last the same: 60·(n/2)·(ln(p/a)/(p−a) + ln(c/p)/(c−p)) seconds over n beats, p solved
     exactly. Refused past an 8 % change, naming a ramp long enough."""
     where = "land"
-    b1, b0, at = _beat(time, "time", where), _beat(ramp_from, "ramp_from", where), _seconds(at, where)
+    b1, b0, at = _beat(time, "time", where), _beat(ramp_from, "ramp_from", where), _seconds(song, at, where)
     root = song.root
     if b0 >= b1 - 1e-9:
         raise RostrumError(codes.BAD_ARGUMENT, where, f"ramp_from={_show(root, b0)}", f"is not before {_show(root, b1)}",
@@ -160,7 +168,9 @@ def _too_far(root, b0, b1, a, at, shift):
 
 def seconds_of(song, time) -> float:
     """The file time of a beat on the tempo map written so far, a beat before bar 1 included (a pickup):
-    seconds_of(bar(1) - beats(1)). Write tempo, tempo changes and downbeat(...) before it."""
+    seconds_of(bar(1) - beats(1)), or of a marker: seconds_of("#hit"). Write tempo, tempo changes and downbeat(...) before it."""
+    if markers.ref(time) is not None:
+        return markers.resolve({**song.root, "markers": song.marks()}, time, "seconds_of")
     return round(tempo.seconds_at(song.root, _beat(time, "time", "seconds_of")), 9)
 
 

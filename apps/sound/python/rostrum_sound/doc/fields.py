@@ -64,7 +64,7 @@ FIELDS = {
                           "milliseconds held within 15 dB of its loudness, so one drum's spike does not pull the master "
                           "down. Off: the kit as recorded."),
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
-        Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
+        Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT, FB.ROLE,
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb (a gain: 1 = 0 dB).", display="db"),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary", labels=TONE_WORDS, label="Tone filter",
                      help="One filter over the whole track: muffled (as if behind a wall), warm, bass boost, bright, clear voice, "
@@ -131,8 +131,9 @@ FIELDS = {
           help="True peak ceiling (dBTP): no moment of the mix goes above it, so it never distorts after re-encoding."),
         Param.toggle("gentle", group="Loudness", label="Gentle limiting",
                      help="On: the limiter pulls the loudest moments down by at most Most limiting; a mix that would "
-                          "need more is turned down as a whole instead (the balance stays, the loudness lands under "
-                          "its target and the render says by how much). Off: the limiter pulls as hard as it must."),
+                          "need more is turned down as a whole instead (the balance stays, playback lands under its "
+                          "target; an agent's render raises the limit for its file to reach the target and says by how "
+                          "much). Off: the limiter pulls as hard as it must."),
         N("maxLimit", 0, 12, "Loudness", "dB", "secondary", when=IS("gentle", True), label="Most limiting",
           help="The most the limiter may pull the loudest moment down (dB): 1-2 keeps the master clean."),
         N("glue", 0, 1, "Master", imp="secondary", label="Smooth the mix", display="percent",
@@ -167,7 +168,7 @@ for _type, _params in FIELDS.items():
                      for p in _params]
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}
+REQUIRED = {"note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}
 
 
 def params(type_: str, required=False) -> list[Param]:

@@ -11,14 +11,26 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import rows
 from rostrum_gui.edits import Scrub, edit_label, field_call
 from rostrum_gui.model import RowsModel
+from rostrum_core import RostrumError
+from rostrum_sound import dialogue
 
 OP = "duck.set"
+
+
+def effective(duck: dict, owner: str, tracks: list[dict]) -> dict:
+    """The duck as it plays (dialogue.py): an empty `under` is every dialogue track, and `voice` / `hold` left out are
+    worked out, so the panel shows what is heard, not the stored blanks. With no dialogue track: nothing it is under."""
+    try:
+        return dialogue.resolve(duck, owner, tracks, "duck")
+    except RostrumError:
+        return {**duck, "under": []}
 
 
 def strip_ducks(track: dict, tracks: list[dict], label) -> dict:
     """What a track's strip shows: its ducks as chips, and the tracks a new duck could sit under."""
     names = {t["id"]: label(t) for t in tracks}
-    chips = [{"id": d["id"], "label": "Dips under " + ", ".join(names.get(u, u) for u in d["under"])} for d in track.get("ducks", [])]
+    chips = [{"id": d["id"], "label": "Dips under " + (", ".join(names.get(u, u) for u in effective(d, track["id"], tracks)["under"])
+                                                       or "dialogue (none yet)")} for d in track.get("ducks", [])]
     return {"ducks": chips, "duckTargets": [{"id": t["id"], "name": label(t)} for t in tracks if t["id"] != track["id"]]}
 
 
@@ -68,11 +80,11 @@ class DuckHub(QObject):
 
     @Slot(str, result=bool)
     def addUnder(self, track_id):
-        return self._set_under([*self._item()["under"], track_id], "Dip under another track")
+        return self._set_under([*self._shown()["under"], track_id], "Dip under another track")
 
     @Slot(str, result=bool)
     def removeUnder(self, track_id):
-        return self._set_under([u for u in self._item()["under"] if u != track_id], "Dip under fewer tracks")
+        return self._set_under([u for u in self._shown()["under"] if u != track_id], "Dip under fewer tracks")
 
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
@@ -119,6 +131,9 @@ class DuckHub(QObject):
     def _item(self):
         return self.doc.item(self._duck)
 
+    def _shown(self):
+        return effective(self._item(), self.doc.parent_of(self._duck)[0], self.doc.data.get("tracks", []))
+
     def _set_under(self, under, label):
         return self._call({"op": OP, "target": [self._duck], "args": {"under": under}}, label)
 
@@ -138,7 +153,7 @@ class DuckHub(QObject):
                 self._rows.reset([])
                 self.changed.emit()
             return
-        d = self._item()
+        d = self._shown()
         track = self.doc.parent_of(self._duck)[0]
         names = {t["id"]: self.bridge.label_of(t) for t in self.doc.data.get("tracks", [])}   # (never every note)
         self._panel = {"id": self._duck, "track": track, "trackName": names[track],

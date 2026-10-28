@@ -19,7 +19,15 @@ it adds the sentence the Export sheet shows ("Will land at -16.4 LUFS: reaching 
 drums and piano, so for acoustic music tame the peaks (`edit_loudness tame_peaks`) rather than push the limiter. `maxLimit` is in dB, 0 to 12 in the
 document (`master.set`; the screen's **Most limiting**).
 
-**Reaching the target, first step: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target
+**A render reaches the target by itself.** A mastered `render_mix` (and `run_script` `look`) measures the song first and,
+when gentle limiting would leave it more than 0.5 LU under the target, renders that file with `maxLimit` raised as far as
+the target needs (at most 6 dB, so hits and stops keep their attack; a higher `maxLimit` of the song's own is used as it is). The song keeps its own `maxLimit`, so playback stays transparent; the reply says how far
+the limit went and how many dB of limiting it took (`data.loudness.pushed`), and how to make it the song's own. When that
+is short the file lands under and the `loudness` fault names the fix (tame the peaks, turn a track down, or a lower
+target). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
+are in the file. `edit_loudness` is for when the limiting a render reports is too much for the music.
+
+**Making the master need less limiting: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target
 on, raising every track's volume changes nothing (the master brings the mix to the target anyway); only the peaks over the average decide how much
 limiting the target takes. `edit_loudness` reads the last render and answers three exact edits, each with `ops` for `edit_document`:
 `keep_balance` (the `maxLimit` that reaches the target; no track moves; the master gets flatter and denser, 4–6 dB is a loud, pressed master)
@@ -51,7 +59,7 @@ off, so they sound as they did.
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_engine (what "plugins")).
 - **Ducks (sidechain):** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue; for a dance track's pumping, a bass or pad under the kick), and `depth`,
-  `attack`, `release`, `hold`. **Under a spoken voice line track the dip lasts the whole line** (`voice` mode, turned on for you when every `under` track is a voice track, with the default 0.02 s attack and 0.3 s release; `hold` is set to 0.3 s for you so the music does not swell back between words). Under anything else (a kick, a drum) the duck is a pump: a short dip of about `attack` + `release` per hit, however long the sound rings: that is the 0.15 s dip people see when a duck is set under a voice with `voice` off. On the screen: **+ Dip under…** on a strip.
+  `attack`, `release`, `hold`. **Under dialogue the dip lasts the whole line**: a track is dialogue when its `role` is `"dialogue"` (a voice-over file: `track.set {"role": "dialogue"}`) or it is a voice track. `under` left out or empty = every dialogue track (one added later too; none at all fails the render and says how to fix it). `voice` mode is on by itself when every `under` track is dialogue, with the default 0.02 s attack and 0.3 s release and a 0.3 s `hold` so the music does not swell back between words; `voice: false` keeps a pump. Under anything else (a kick, a drum) the duck is a pump: a short dip of about `attack` + `release` per hit, however long the sound rings: that is the 0.15 s dip people see when a duck is set under a voice with `voice` off. On the screen: **+ Dip under…** on a strip.
 - **A bed under a voice:** `look_sound` (`what: "loudness"` or `"levels"`) gives the **room for speech**: how many dB a
   voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a
   standard speech spectrum, ANSI S3.5, compared band by band). Aim for **+6 dB or more** for a voice-over bed. Make room
@@ -130,7 +138,7 @@ that plays now; when the master can't reach the target it says where the file wi
 Most limiting, one undo step) or **Keep it dynamic** (the file stays at the level it reaches, and the sheet says so). When reaching it takes over ~3 dB of limiting, **Tame the peaks first** adds a measured gentle compressor to the peakiest track (one undo step), so the push needs far less. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
-target allows comes out under the target (the reply says how far; `edit_loudness` gives the exact edit) rather than squeezed; with it off the limiter works
+target allows plays under the target; a render pushes that file onto it and says how many dB of limiting it took (`edit_loudness` when that is too much); with it off the limiter works
 as hard as it must. Either way the fix is at the source: turn the loud parts down rather than squeezing harder.
 
 ## Checking (agents)

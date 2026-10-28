@@ -34,6 +34,7 @@ RATE_LABELS = {r["id"]: f'{r["label"]} ({r["detail"]})' for r in RATES}   # one 
 BY_FORMAT = {f["id"]: f for f in FORMATS}
 MP3_RATES = (44100, 48000)              # the MP3 encoder inside libsndfile makes these two of ours
 DEFAULT_FORMAT = "wav24"
+ALIASES = {"wav": "wav24"}     # what a person means by plain "wav": the default WAV
 
 AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb tail in a quiet room
 TAIL = 0.25             # seconds kept after the last audible sound
@@ -82,6 +83,7 @@ class Options:
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
         args = args or {}
         fmt = args.get("format") or DEFAULT_FORMAT
+        fmt = ALIASES.get(fmt, fmt)
         if fmt not in BY_FORMAT:
             raise RostrumError(codes.BAD_ARGUMENT, "render", f'format "{fmt}"', "is not one we write",
                                hint="Use one of: " + ", ".join(BY_FORMAT) + ".")

@@ -16,7 +16,9 @@
     s.dynamics([(0, 0.5), ("#drop", 1.2)]); s.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)
     s.humanize(seed=1, timing=0.012, velocity=0.06); s.phrase(bar(1), bar(5), vel=[(0, 0.5), (1, 0.9)])
     f = vel_curve([(0, 0.5), (1, 0.9)], bar(1), bar(5)); s.note("D3", at=beat(2), dur=1, vel=f(beat(2)) + 0.1)
-    downbeat(bar(21), at=36.0); land(bar(21), at=36.0, ramp_from=bar(17)); seconds_of(bar(1) - beats(1))   # script_sync.py
+    downbeat(bar(21), at=36.0); land(bar(21), at="#logo lands", ramp_from=bar(17)); seconds_of(bar(1) - beats(1))   # script_sync.py
+    marker("logo lands", at=bar(21), shared=True)     # a project marker 2D follows (published by run_script)
+    build_to("#hit", over=beats(8), parts=[cymbal_roll(d), crescendo(s, ["D3", "A3"])])   # script_build.py
     m = moment("hit", at=31.5); m.rest(s, before=0.4); m.stop(d, until=37.5); m.strike(p, ["C2", "G2"], vel=1, ring=4)   # script_moment.py
 
 A script error is a loud BAD_ARGUMENT naming the script and line; nothing is merged.
@@ -25,6 +27,7 @@ from __future__ import annotations
 
 import re
 import sys
+import threading
 
 from rostrum_core import RostrumError, codes
 from rostrum_core.merge import check_output
@@ -32,13 +35,14 @@ from rostrum_core.merge import check_output
 from . import expression as EX
 from .builder import Song, Track
 from .doc import KIND, meter
-from . import script_moment, script_ops, script_scope, script_sync, writing
+from . import script_build, script_moment, script_ops, script_scope, script_seconds, script_sync, writing
 from .script_time import Beat, Beats, plain, until
 
+_asked = threading.local()
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)", "bus(id, **fields)",
-       "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
+       "marker(name, at, shared=False)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)",
-       *script_sync.API, *script_moment.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
+       *script_sync.API, *script_moment.API, *script_build.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
 
 
 def scope(song: Song) -> dict:
@@ -62,7 +66,7 @@ def scope(song: Song) -> dict:
         "track": song.track, "bus": song.bus, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
         "beat": Beat, "beats": Beats, "bar": bar, "until": until, "vel_curve": vel_curve,
-        **script_sync.scope(song), **script_moment.scope(song), **writing.scope(song),
+        **script_sync.scope(song), **script_moment.scope(song), **script_build.scope(song), **writing.scope(song),
     }
 
 
@@ -109,11 +113,14 @@ def run_source(source: str, name: str, doc=None) -> dict:
     """Run a Sound script; the tree it makes (checked like operation arguments, ready for Document.run_script).
     `doc`: the open document the tree merges into: its own markers (marker.add) are the script's to name too."""
     song = Song()
+    _asked.markers = []
     song.known = list(doc.data.get("markers", [])) if doc is not None else []
     try:
         exec(compile(source, name, "exec"), {**script_scope.scope(), **scope(song)})
         script_sync.check(song)            # every downbeat / land still lands on the finished tempo map
         script_moment.apply(song)          # each moment's rest / stop / choke / swell / strike, on every note written
+        script_seconds.check(song)         # a script written in seconds is told a tempo change won't move it
+        _asked.markers = song.shared_asked()   # marker(..., shared=True): run_script publishes these (mcp/script_shared.py)
         tree = plain(song.tree())          # the document holds plain values only
     except RostrumError as e:
         raise e.within(_line(name)) from e
@@ -124,6 +131,11 @@ def run_source(source: str, name: str, doc=None) -> dict:
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f'script "{name}"', "the song", "; ".join(problems))
     return tree
+
+
+def shared_asked() -> list[tuple[str, float]]:
+    """[(name, seconds)] the last run on this thread asked to publish as project markers (marker(..., shared=True))."""
+    return list(getattr(_asked, "markers", []))
 
 
 run_source.wants_doc = True          # the MCP server's run_script passes the open document (rostrum_core/mcp/shared_edit.py)

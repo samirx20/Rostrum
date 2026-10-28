@@ -25,7 +25,10 @@ effects), sections, markers and a master. You build it from ONE Python script an
 - **Sync points are markers.** Name each moment the music must meet (`marker("hit", at=bar(9))`) and write parts against it:
   `at="#hit"`, `"#hit+0.5"` (half a second after). Checks find them by name (`expect: ["#hit"]`).
 - **A moment fixed to a picture** (a cut at 12.4 s): land a bar on it without bending the music,
-  `downbeat(bar(5), at=12.4)`, or glide the tempo into it, `land(bar(9), at=31.5, ramp_from=bar(5))`. Then keep writing in bars.
+  `downbeat(bar(5), at=12.4)` (or `at="#cut"`), or glide the tempo into it, `land(bar(9), at="#cut", ramp_from=bar(5))`.
+  Then keep writing in bars. `marker("cut", at=12.4, shared=True)` publishes it so 2D follows it.
+- **A build into a moment:** `build_to("#hit", over=beats(8), parts=[cymbal_roll(drums), crescendo(strings, ["D3", "A3"])])`
+  writes plain notes you can edit.
 - **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
   rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).
 
@@ -51,8 +54,9 @@ comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 - `look_sound`: the mix as numbers: loudness and faults (default), each track's level, low end, clashes, spectrum, stereo.
 - `look_music`: the music as facts: where sounds start against `expect`, beats and swing, pitch, key and chords.
 - `inspect_guide`: these guides by `topic` (`{"topic": "script"}`); with no topic, the list.
-- `render_mix`: the delivered file and stems; under the loudness target, `edit_loudness {"apply": "best"}` fixes it.
+- `render_mix`: the delivered file and stems; it lands on the master's loudness target and says how much limiting that took.
 
+Speech under music: `track("vo", role="dialogue")`, then `music.duck()` dips under every dialogue track for whole lines.
 Every other tool: `inspect_tools`. `look_arrangement` shows the written song as a picture without rendering;
 `edit_document` is for one-off touch-ups on a song no script owns.
 

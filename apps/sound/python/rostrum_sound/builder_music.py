@@ -1,15 +1,53 @@
-"""The script layer's music map: tempo changes, time signature changes, key changes and sections, checked by the same fields the
-operations use (doc/fields_music.py). Mixed into `builder.Song`; the items live in the song's root lists."""
+"""The script layer's music map: markers, tempo changes, time signature changes, key changes and sections, checked by the same
+fields the operations use (doc/fields_music.py). Mixed into `builder.Song`; the items live in the song's root lists.
+
+`marker(name, at, shared=True)` is a project marker (the one list edit_markers changes and 2D follows): the script
+names it like its own, the song's tree leaves it out, and run_script publishes it, in seconds, before the merge
+(mcp/script_shared.py; `shared_asked` says which). A script itself never writes a file."""
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 from rostrum_core import ids as core_ids
 
 from .builder_parts import checked
+from .doc import ids, markers
 
 
 class MusicMap:
     root: dict
+    markers: list[dict]
+    known: list[dict]
+    shared: set[str]
+
+    def marker(self, name, at, id=None, shared=False):
+        """A marker; the same name again at the same time is the same marker (marker("hit") then moment("hit") at
+        it), at another time a loud error naming both. shared=True: a project marker (published by run_script)."""
+        same = next((m for m in self.markers if m["id"] == (id or ids.marker(name))), None)
+        if same is not None:
+            if same["at"] == at:
+                return
+            raise RostrumError(codes.BAD_ARGUMENT, f"marker {name}", f"at={at!r}",
+                               f"is a second time for the marker \"{name}\", already at {same['at']!r}",
+                               hint=f'One time per name: moment("{name}") without at uses the marker already there.')
+        self.markers.append({"id": id or ids.marker(name), "type": "marker",
+                             **checked("marker", {"name": name, "at": at}, f"marker {name}")})
+        if shared:
+            self.shared.add(markers.key(name))
+
+    def marks(self) -> list[dict]:
+        """The markers a time in the script can name: its own, then the document's it doesn't restate (one list
+        of markers, the document's, so a marker added with marker.add is found by a later script)."""
+        mine = {markers.key(m["name"]) for m in self.markers}
+        return self.markers + [m for m in self.known if markers.key(m.get("name", m["id"])) not in mine]
+
+    def own_markers(self) -> list[dict]:
+        """The markers the song's tree holds: the script's, less the shared ones (those live in the project)."""
+        return [m for m in self.markers if markers.key(m["name"]) not in self.shared]
+
+    def shared_asked(self) -> list[tuple[str, float]]:
+        """[(name, seconds)] of the shared markers, on the finished tempo map (a project marker is in seconds)."""
+        root = {**self.root, "markers": self.marks()}
+        return [(m["name"], markers.seconds_of(root, m["at"])) for m in self.markers if markers.key(m["name"]) in self.shared]
 
     def _add(self, key, type_, fields, id_, where):
         items = self.root.setdefault(key, [])

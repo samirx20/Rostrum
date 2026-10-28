@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError, plugin_parts
 
-from . import clean_clips, names, voice_lines
+from . import clean_clips, dialogue, names, voice_lines
 from .doc import effects as FX
 from .doc import playing as PL
 from .doc import preset_level
@@ -127,7 +127,7 @@ class _Compiler:
         if track.get("output", names.MASTER_OUT) != names.MASTER_OUT:
             out["output"] = track["output"]
         out.update(_nonempty("sends", [self.send(s, w) for s in track.get("sends", [])]),
-                   **_nonempty("ducks", [{k: d[k] for k in DUCK_KEYS if k in d} for d in track.get("ducks", [])]))
+                   **_nonempty("ducks", [self.duck(d, track, w) for d in track.get("ducks", [])]))
         return out
 
     def match_level(self, track, out):
@@ -140,6 +140,11 @@ class _Compiler:
         lane = out.get("automation", {}).get("volume")
         if lane:
             out["automation"]["volume"] = preset_level.scaled(lane, g, cap=4.0)
+
+    def duck(self, d, track, where):
+        """A duck as written, its `under` (empty: every dialogue track), `voice` and `hold` worked out (dialogue.py)."""
+        d = dialogue.resolve(d, track["id"], self.root.get("tracks", []), f"{where}.ducks[{d['id']}]")
+        return {k: d[k] for k in DUCK_KEYS if k in d}
 
     def send(self, s, where):
         """A send: its level is a number, or the points of its `level` lane when it has one."""
@@ -220,8 +225,9 @@ def _kept(memo, c, track, muted, around):
     """A track's part as made last time when it is the very same track (the document is never changed in place: an
     edit makes new objects only along its path) with the same song around it (every top-level value but the tracks,
     the project's markers: compared by identity). A track with clips or voice lines reads takes on disk (a cleaned or
-    spoken take can land with the track unchanged): always made again."""
-    if memo is None or track.get("clips") or track.get("lines"):
+    spoken take can land with the track unchanged) or ducks (they read the other tracks: a dialogue track added
+    later): always made again."""
+    if memo is None or track.get("clips") or track.get("lines") or track.get("ducks"):
         return c.track(track, muted)
     was = memo.get(track["id"])
     if (was is not None and was[0] is track and was[1] == muted and len(was[2]) == len(around)

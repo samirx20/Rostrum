@@ -31,8 +31,8 @@ def _order(f) -> float:
     k, d = f["kind"], f["measured"]
     if k.startswith("no_"):
         return -1.0
-    if k in ("leading_silence", "off_tempo"):
-        return 0.0                  # the whole piece is heard bent from its first second: right after a missing moment
+    if k in ("leading_silence", "off_tempo", "early_rival"):
+        return 0.0                 # the whole piece is heard bent from its first second: right after a missing moment
     if k.startswith("weak_") or (k == "soft_stop" and d.get("weak")):
         return d["times_typical"]
     if k == "drums_in_gap":
