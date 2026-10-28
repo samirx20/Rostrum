@@ -31,7 +31,7 @@ OPS = ModuleList("rostrum2d", [
 ])
 
 TOOLS = ModuleList("rostrum2d.mcp", [      # the agent server's tool modules, each with a `tools`; the order is the tools' order
-    ".look", ".look_empty", ".motion", ".at", ".video", ".draw", ".coverage_tool", ".rig", ".lipsync", ".curves", ".export_tool", ".layout_tool", ".swap_tool",
+    ".look", ".look_empty", ".review", ".motion", ".at", ".video", ".draw", ".coverage_tool", ".rig", ".lipsync", ".curves", ".export_tool", ".layout_tool", ".swap_tool",
     ".import_tool", ".diagnose_tool", ".fonts_tool", ".background_tool", ".project_tool", ".soundtrack_tool", ".sound_cue_tool",
     ".brand_tool", ".picture_tool", ".brush_tool", ".painting_tool", ".world", ".data_tool",
 ])
