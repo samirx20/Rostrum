@@ -52,7 +52,8 @@ Counts that look low after you moved the camera are right: look again after the 
 
 ## Change the ones near something
 
-`effector.add` on a copies item: `kind`, `near` (the item the change is centred on), `radius`, `amount`, `falloff`.
+`effector.add` on a copies item: `kind`, `near` (the item the change is centred on), `radius`, `amount`, `falloff`. To centre it on a point you move rather than a real thing, add a small sphere with
+`"guide": true` (Display › Only in the view): the view draws it as a handle, renders and `look_frame` never show it.
 
 | kind | amount | also |
 |---|---|---|

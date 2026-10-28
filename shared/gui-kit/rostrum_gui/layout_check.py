@@ -15,6 +15,9 @@ What counts as a fault (AGENTS.md › Rules: every look pass runs it, at several
   small     something clickable smaller than MIN_CLICK in either direction
   stray     text that shows as a mark, not words: a sliver of a half-scrolled line, or text elided to "…" or one character
             (see stray())
+  cramped   a popup's scrolling list squeezed to a sliver (or running off the window: an "outside" fault): it shows under CRAMP of what it could (its whole list, or
+            half the window when longer), e.g. a picker opened under a row at the window's bottom with the room above
+            left unused (see cramped())
   zone      the merged title bar (window_chrome.py): a clickable thing in the top bar outside every zone the bar handed to
             `windowChrome.setZones` (on screen a click there would move the window: a dead button), or a zone over the
             maximise button or reaching into the window buttons (see zones())
@@ -35,6 +38,7 @@ SLACK = 2                 # px: anti-aliasing and rounding never count
 SHORT = 80                # px: a text taller than this is a block of text, not a row (a sliver of it is just scrolling)
 CONTAIN = 4               # a control wholly inside one this many times its area is layered on it, not crossing it
 CLICK = ("QQuickMouseArea", "QQuickTapHandler", "QQuickDragHandler", "QQuickTextInput", "QQuickTextEdit")
+CRAMP = 0.6              # a popup list showing less than this share of its room (see cramped()) is squeezed
 FLICK = ("QQuickFlickable", "QQuickListView", "QQuickGridView", "QQuickScrollView")
 
 
@@ -259,8 +263,27 @@ def check(win, ignore=()) -> list[Fault]:
         if clickable(a) and min(a.rect.width(), a.rect.height()) < MIN_CLICK:
             say("small", a, f"clickable area {a.rect.width():.0f}x{a.rect.height():.0f} px (under {MIN_CLICK} px)", a.rect)
     grid(nodes, say)
+    cramped(win, nodes, say)
     zones(win, nodes, say)
     return found
+
+
+def cramped(win, nodes: list[Node], say) -> None:
+    """A scrolling list in a popup or menu (not the page) that shows less than CRAMP of the room it should get: its
+    whole content, or half the window when the content is longer. Nothing in it is "outside" or "cut" (the list just
+    scrolls), yet a person sees two rows of a long list at the window's edge and can't reach the rest (3D sweep M1)."""
+    win_rect = QRectF(0, 0, win.width(), win.height())
+    for n in nodes:
+        if n.layer == "page" or not scrolls(n.item):
+            continue
+        if not inside(n.rect, win_rect):        # its rows are clipped by the list itself, so none of them is "outside"
+            say("outside", n, "a popup list runs off the window", n.rect)
+            continue
+        full = n.item.property("contentHeight") or 0.0
+        shown = n.seen.height()
+        want = min(full, win.height() / 2)
+        if full > shown + SLACK and shown < CRAMP * want:
+            say("cramped", n, f"a popup list shows {shown:.0f} px of its {full:.0f} px in a {win.height():.0f} px window")
 
 
 def zones(win, nodes: list[Node], say) -> None:

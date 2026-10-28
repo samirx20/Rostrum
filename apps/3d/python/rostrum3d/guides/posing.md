@@ -15,7 +15,8 @@ the body bends to follow, each joint turning as little as it can.
 3. **Drag** any part: a hand, the head, a tail tip. The chip by the pointer shows the part and its biggest bend.
    **Esc** while dragging puts everything back as it was.
 4. Bent in the wrong place: undo, add a hold nearer to where it should bend, drag again. Holds are how you choose
-   where the body bends: it bends only between the nearest hold and the spot you drag.
+   where the body bends: it bends only between the nearest hold and the spot you drag. A limb does what it can reach
+   on its own; the body's own joints (chest, body) lean only for the rest, and then only a few degrees.
 5. A joint in the wrong place: **Alt+drag** its dot. A joint you placed stays where you put it when the joints are
    found again.
 
@@ -99,7 +100,9 @@ a drag's result with `look_frame` (a hand that didn't reach shows as an arm stre
   same for `foot` on a short leg. `grab` is a world point on the clay as it stands at `at`.
 - **Holds** (`holds`, names or bone ids) replace the clay's own holds for one drag; left out, the clay's holds
   (`pose.hold`) apply. A held joint and every joint that carries it (its parents) never turn, so holding both feet
-  keeps the body still and only the arm bends. With no holds the body (root) doesn't turn.
+  leaves only the arm bending for a `to` within its reach. Out of reach, the chest leans a little too (at most 8°,
+  the joints nearer the root half as much each); hold `"chest"` as well to keep it still. With no holds the body
+  (root) doesn't turn.
 - **miss** above 0 means the spot couldn't reach `to` (the chain is fully stretched): move `to` closer, or release a
   hold so more of the body can bend.
 - **Keys.** A drag keys `rx`, `ry`, `rz` of each moved bone at `at`: absolute turns, the bone's rest turn plus the

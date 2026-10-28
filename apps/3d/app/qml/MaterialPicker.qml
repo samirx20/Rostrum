@@ -15,6 +15,7 @@ MaterialPopup {
     readonly property int ballSize: Theme.row
     readonly property int tileHeight: ballSize + Theme.rowDense + Theme.gap
 
+    natural: col.height + 2 * padding
     contentItem: Flickable {
         id: flick
         objectName: "materialPickerScroll"

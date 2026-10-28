@@ -132,7 +132,8 @@ def _key_frames(res, s0: int, s1: int, step: int, simplify: int) -> tuple[list[i
              "stops simulating, in one undo step; then nudge any key by hand. Running it again never changes a key it "
              "already wrote for that result (a nudge stays) and never touches keys a person made. Computes first when "
              "needed. A falling copies item gets keys on each copy instead (copies.key nudges one) and stops "
-             "simulating. Cloth is left (its folds are not keys: it stays a simulation).",
+             "simulating. Cloth is left as it is (its folds are not keys: it stays a simulation); a shot whose only "
+             "simulated thing is cloth fails with that reason.",
              target="shot", label="Turn into keys")
 def sim_to_keys(ctx, targets, args):
     from ..compile import _shot, shot_info
@@ -143,6 +144,12 @@ def sim_to_keys(ctx, targets, args):
             if _turned(ctx, shot_id):
                 continue                                     # already turned into keys: a re-run changes nothing
             ctx.fail(codes.BAD_ARGUMENT, f'shot "{shot_id}"', "has nothing that falls", hint="Simulate › Falls first.")
+        if not any(value(b, "simulate") == "falls" for b in bodies(ctx.doc)):
+            if _turned(ctx, shot_id):
+                continue                                     # the falling things are keys already; the cloth stays
+            ctx.fail(codes.BAD_ARGUMENT, f'shot "{shot_id}"', "has only cloth simulated, and cloth never becomes keys (its "
+                     "folds are not keys: it stays a simulation)", hint="Nothing to turn into keys; set something to "
+                     "Simulate › Falls for that.")
         key = _compute(ctx, shot_id)
         res, shot, info = read(CACHE.get(KIND, key)), _shot(ctx.doc, shot_id), shot_info(ctx.doc, shot_id)
         step, simplify = SF.TIMINGS[shot.get("simTiming", "every")], int(shot.get("simSimplify", 1))

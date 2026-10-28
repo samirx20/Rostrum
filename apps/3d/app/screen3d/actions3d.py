@@ -93,7 +93,9 @@ ACTIONS.append(Action(
     why="Offered when the engine refused a text's or logo's bevel as too big for its outline."))
 ACTIONS.append(Action(
     "clay:from", "Turn into clay", kinds=SOURCES, importance="secondary", rank=9, group="shape",
-    do="clay-from", why="Turn into clay works on shapes, combines, imports and their parts: a clay copy to sculpt, the original hidden."))
+    valid=lambda f: not any(it.get("backdrop") for it in f.items), do="clay-from",
+    why="Turn into clay works on shapes, combines, imports and their parts (not the floor a scene stands on): a clay "
+        "copy to sculpt, the original hidden."))
 ACTIONS.append(Action(
     "mesh:edit", "Edit mesh", kinds=F.SOLIDS, max_targets=1, importance="primary", rank=8, group="shape", do="edit-mesh",
     job="go_in", icon="", why="Edit mesh works on one shape or combine (Enter): its points, edges and faces."))

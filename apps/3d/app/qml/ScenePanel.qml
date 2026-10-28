@@ -153,7 +153,7 @@ Panel {
                     visible: backend.sim.canKeys; text: ""
                     Button { objectName: "sceneSimKeys"; anchors.verticalCenter: parent.verticalCenter
                              text: "Turn into keys"
-                             help: "Each falling item gets the stored result as ordinary keys, and stops being simulated."
+                             help: "Each falling item gets the stored result as ordinary keys, and stops being simulated. Cloth stays simulated."
                              onClicked: backend.sim.turnIntoKeys() }
                 }
 

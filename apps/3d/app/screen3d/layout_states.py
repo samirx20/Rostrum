@@ -19,7 +19,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
                "so nothing was shown; check the render folder and try again.")
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
-QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
+QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-picker-low", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
@@ -149,6 +149,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("camera-dof", s, ["select cam", "set dof true"]),
         ("material-selected", s, ["select glass"]),
         ("material-picker", s, ["select block", "picker", "wait 300"]),
+        # the Material row low in a long panel (an eye: Rotation and Follow open above it, 3D sweep M1): the picker opens
+        # upward with its whole list, never squeezed under the row at the window's bottom (the check's `cramped`)
+        ("material-picker-low", s, ["add mesh:sphere", "set rx 59.56", "set rz -87.18", "set follow block",
+                                    "picker", "wait 300"]),
         ("material-shared", s, ["select vase", "assign clay"]),
         ("material-started", s, ["select block", "startfrom matte plastic"]),
         ("blocks-view", s, ["select glass", "wait 500", "click Edit as blocks", "wait 400"]),              # the bottom panel's block view

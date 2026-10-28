@@ -49,6 +49,7 @@ def _check_node(node, n_frames):
     want = {p.name for p in F.FIELDS[type_]} - RESOLVED | ({"parts"} if type_ == "import" else set())
     want -= {"turn"} if type_ == "light" else set()                          # a dome's turn is sent as its ry
     want -= DOCUMENT_ONLY if type_ == "mesh" else set()                      # words, fonts, files: compiled to the outline
+    want -= {"guide"} if type_ == "mesh" and not node["props"].get("guide") else set()   # sent only when on
     assert set(node["props"]) == want, node["id"]
     assert all(len(v) == n_frames for v in node.get("anim", {}).values()), node["id"]
     for child in node.get("children", []):

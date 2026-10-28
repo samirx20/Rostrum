@@ -102,14 +102,15 @@ def _and(names: list[str]) -> str:
 
 
 def stroke_line(r: dict) -> str:
-    """One stroke's report: "stroke s3 (From the view, Hero 01): landed on case and lid, 1.2 px off"."""
+    """One stroke's report: "stroke s3 (From the view, Hero 01): landed on case and lid, at most 1.2 screen px outside the
+    line"; one not landed: its verdict ("painted in 30 pieces, up to 49 screen px outside the line on lid")."""
     how = "From the view" + (f', {r["shot"]}' if r.get("shot") else "") if r.get("view") else (
         "on the surface, by anchors" if r.get("anchored") else "on the surface")
     head = f'stroke {r["stroke"]} ({how}, layer {r["layer"]})'
     if not r.get("landed"):
         return f'{head}: {r.get("verdict") or "laid no paint"}'
-    unit = "screen px" if r.get("view") else "canvas px"
-    off = f', {r["offPx"]:.1f} {unit} off' if r.get("offPx") is not None else ""
+    off = "" if r.get("offPx") is None else f', at most {r["offPx"]:.1f} screen px outside the line' if r.get("view") \
+        else f', {r["offPx"]:.1f} canvas px off'
     where = f' on {_and(r["items"])}' if r.get("items") else ""
     at = f' (canvas x {r["box"][0]}–{r["box"][2]}, y {r["box"][1]}–{r["box"][3]})' if r.get("box") else ""
     worse = f'; {r["verdict"]}' if r.get("verdict") and r["verdict"] != "landed" else ""

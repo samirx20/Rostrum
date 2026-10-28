@@ -73,10 +73,13 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
 ## For agents
 
 - `mesh.unfold` with `target: [mesh id]` lays the mesh flat into its paint picture (stored as `uvs` on the mesh, one
-  undo step). Paint mode does it by itself; an agent calls it once before painting a mesh with no `uvs`. Again after
-  changing the shape: a mesh whose shape changed since it was unfolded is refused by the engine with a message saying so.
-- `paint.add` with `target: [mesh or clay id]`, `args: {name, channel}` adds a paint layer; `channel` is `colour`,
-  `roughness`, `height` (shown as Relief), `metal` or `glow` (`paint.set` changes it).
+  undo step). Paint mode and `paint.add` do it by themselves for a mesh with no `uvs` (a shape's own surface
+  coordinates are not a paint picture: a box's top shares its walls' part of it, so paint there shows in both places).
+  Call it yourself again after changing the shape: a mesh whose shape changed since it was unfolded is refused by the
+  engine with a message saying so.
+- `paint.add` with `target: [mesh or clay id]`, `args: {name, channel}` adds a paint layer (unfolding a mesh never
+  unfolded, in the same change); `channel` is `colour`, `roughness`, `height` (shown as Relief), `metal` or `glow`
+  (`paint.set` changes it).
 - `stroke.add` with `target: [paint layer id]`, `args: {points: [[x, y, pressure], …], color, size, brush, opacity}`
   paints one stroke, in pixels of the paint picture (0..paintSize, y down). Several `stroke.add` calls in one
   `edit_document` call list are one undo step.
@@ -105,10 +108,15 @@ y down) or a `uv` (x = u × paintSize, y = (1 − v) × paintSize).
   `points` use. Unpainted shows as a checkerboard. A clay's anchored strokes, strokes from the view and projected
   pictures are shown laid, as the render gets them. The reply gives each layer and the box that holds paint.
 - `inspect_paint_strokes target=<mesh, clay or paint layer>`: one line per stroke, where it landed and how far off:
-  `stroke s3 (From the view, layer paint_1): landed on case and lid, 1.2 screen px off (canvas x 410–980, y 220–260)`.
-  A stroke on the surface is measured on the canvas (canvas px between its paint's centre and its path); a stroke from
-  the view through its own camera (screen px between where the paint shows and where you drew it). Each row also has
-  `uvBox`, and for a view stroke `share` (how much of the drawn path is on this item).
+  `stroke s3 (From the view, layer paint_1): landed on case and lid, at most 1.2 screen px outside the line (canvas x
+  410–980, y 220–260)`. A stroke on the surface is measured on the canvas (canvas px between its paint's centre and its
+  path). A stroke from the view is measured by where its paint **shows** through its own camera, every pixel of the
+  item whose spot it painted: `offPx` / `offMedianPx` how far outside the line you drew (screen px, 0 = inside the
+  brush), `pieces` how many separate patches (`wantPieces`: the line's own on that item), `covered` how much of the line
+  it covers. It says "landed" only when nothing shows more than 3 px (or a quarter of the brush) outside the line, in at
+  most 2 more pieces than the line, covering at least 80 % of it; otherwise it says what went wrong, e.g. `painted in
+  30 pieces, up to 49 screen px outside the line on lid`: look at it with `look_frame`, undo, and draw it again. Each
+  row also has `uvBox`, and for a view stroke `share` (how much of the drawn path is on this item).
 - `look_coverage shot=<id> frame=<n>`: through the shot camera, how much of each mesh and clay it sees is painted
   ("lid: 62 % painted (41 000 of 66 000 px seen)"), and the frame with what is seen but unpainted hatched orange. A
   spot counts as painted where any shown layer is at least half opaque, as the screen counts. A mesh seen but never
@@ -131,7 +139,9 @@ time the paint is made. One stroke can cross several items.
 2. `look_at` with those pixels as `points` (same width): each hit names the item under it. Its reply's `view` holds
    `viewEye`, `viewTarget`, `viewFov`, `viewSize`, `viewFrame`: the camera as stroke.add takes it.
 3. One `stroke.add` per item the path crosses, all in one `edit_document` call list (one undo step), each on a paint
-   layer of that item (`paint.add` first if it has none), each with the same view fields and the same `viewPoints`:
+   layer of that item (`paint.add` first if it has none: it unfolds a mesh never unfolded), each with the same view
+   fields and the same `viewPoints`. A few points are enough for a straight or gently bending line: the path between
+   them is followed pixel by pixel on the picture before it is laid on the surfaces.
 
    ```json
    [{"op": "stroke.add", "target": ["case_colour"], "args": {"viewPoints": [[300, 410, 1], [520, 380, 1], [700, 300, 0.6]],
@@ -142,9 +152,10 @@ time the paint is made. One stroke can cross several items.
      "size": 14, "color": "#c23b22", "brush": "round"}}]
    ```
 
-   `size` is in pixels of that picture (screen px), not of the paint picture. Leave out `points`.
-4. Check: `inspect_paint_strokes` on each item says it landed there and how far off; `look_frame` shows it;
-   `look_coverage` shows what the shot still sees unpainted.
+   `size` is in pixels of that picture (screen px), not of the paint picture: the painted line is that wide on the
+   screen, also on a surface seen at a slant. Leave out `points`.
+4. Check: `inspect_paint_strokes` on each item says it landed there and how far outside the line, or what went wrong;
+   `look_frame` shows it; `look_coverage` shows what the shot still sees unpainted.
 
 A stroke on the surface (`points` in canvas px) is the other way: work out the canvas pixels from `look_at`'s `uv`,
 or read them off `look_paint` with a `grid`.
@@ -156,7 +167,8 @@ or read them off `look_paint` with a `grid`.
   was drawn through a shot. `stroke.add` also takes them as one `view` {eye, target, fov, frame, width, height,
   points, shot}; they are stored as the flat fields. Each time the paint is made it is laid from the camera's texel
   picture (which spot of which item every pixel sees): every screen pixel of the path takes the canvas pixel under it,
-  the brush `size` goes from screen px to canvas px by how big the surface looks there, pressure is kept, and the path
+  the brush `size` goes from screen px to canvas px by how much the surface stretches across the path there (so the
+  line is as wide on the screen as drawn), pressure is kept, and the path
   is cut where it leaves the item or crosses a seam (a jump on the canvas). Move or reshape the item and the stroke
   lands where the camera now sees it. A path that the camera sees on none of the item paints nothing there.
 - **A projected picture** is a paint layer with `projectSource` (a picture file, or `2d:<2D item id>`: that item's

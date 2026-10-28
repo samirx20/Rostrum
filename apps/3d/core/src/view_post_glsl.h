@@ -30,7 +30,9 @@ bool empty(ivec2 p) { return texelFetch(depthTex, clamp(p, ivec2(0), isize - 1),
 // floor the darkness lives in the last few centimetres, and evenly spread samples (up to 160 px out) all but missed
 // it, so a ball on the ground looked lit underneath and floating (3d-cl7). Squared at the end: Storm's sky light is
 // unshadowed, so this pass is the only thing that takes it away, and a straight estimate came out about half as dark
-// as Cycles at a contact.
+// as Cycles at a contact. A sample hides sin² of its rise above the surface (the share of cosine-weighted sky below
+// that rise): with the plain sine, a shallow carved dent (rim ~10° above its floor) came out ~55% dark, a black hole
+// where Cycles draws a soft dent (3d sweep S5); steep contacts (rise 60°+) stay nearly as dark as before.
 constexpr const char* kAo = R"(
 uniform float radius;     // scene units
 uniform float pxPerUnit;  // picture pixels per scene unit at distance 1
@@ -54,7 +56,8 @@ void main() {
     vec3 v = viewPos(p + ivec2(round(vec2(cos(a), sin(a)) * max(rpx * t * sqrt(t), 1.0)))) - P;
     float vv = dot(v, v);
     float near = vv / r2;
-    occ += max(0.0, 1.0 - near * near) * max(0.0, dot(v, N) * inversesqrt(vv + 1e-12) - 0.05) / 0.95;
+    float up = max(0.0, dot(v, N) * inversesqrt(vv + 1e-12) - 0.05) / 0.95;
+    occ += max(0.0, 1.0 - near * near) * up * up;
   }
   float open = clamp(1.0 - 2.0 * occ / float(n), 0.0, 1.0);
   ao = open * open;

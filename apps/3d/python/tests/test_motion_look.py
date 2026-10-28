@@ -49,3 +49,60 @@ def test_unknown_item_too_few_frames_and_nothing_moving_fail_with_the_reason():
 def reply_error(reply: dict) -> str:
     assert not reply["ok"], reply
     return reply["error"]["code"]
+
+
+FALL = '''
+camera("cam", z=4, y=0.5)
+shot("drop", camera="cam", fps=10, start=0, end=11)
+mesh("bowl", shape="box", width=1, height=0.1, depth=1).simulate("still")
+mesh("bud", shape="sphere", radius=0.05, y=1).simulate("falls")
+'''
+
+
+def _sim_doc(tmp_path, monkeypatch):
+    from rostrum_core.cache import CACHE
+    from rostrum3d.sim import ops as sim_ops
+    from test_sim import FakeEngine
+    monkeypatch.setattr(CACHE, "root", tmp_path / "cache")
+    sim_ops.use_engine_factory(FakeEngine)
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(FALL, "s.py"))
+    return doc
+
+
+def _look(doc, args=None):
+    return Runtime(App("rostrum-3d", {"scene": doc}), motion_look.tools).call("look_motion", args or {}, AGENT)[0]
+
+
+def test_a_stored_fall_is_travelling_and_its_pass_through_is_found(tmp_path, monkeypatch):
+    from rostrum3d.sim import ops as sim_ops
+    doc = _sim_doc(tmp_path, monkeypatch)
+    try:
+        out = _look(doc)                                   # not computed: said, never an all-clear
+        assert reply_error(out) == "NOT_FOUND" and "NOT COMPUTED" in str(out)
+        doc.apply([{"op": "sim.run", "target": ["drop"]}], Who.person())
+        out = _look(doc)
+        assert out["ok"], out
+        moving = [i["id"] for i in out["data"]["items"] if i["moves"]]
+        assert moving == ["bud"] and out["data"]["simulation"] == "stored"
+        # the stand-in core drops it 0.1 m a frame from y 1: through the bowl (y ±0.05) around frame 10
+        assert any(f["kind"] == "passes_through" and "bud" in f["items"] for f in out["data"]["findings"]), out["summary"]
+        doc.apply([{"op": "mesh.set", "target": ["bowl"], "args": {"x": 0.3}}], Who.person())     # out of date now
+        out = _look(doc)
+        assert out["ok"] and "OUT OF DATE" in out["summary"] and "No findings: nothing" not in out["summary"]
+    finally:
+        sim_ops.use_engine_factory(None)
+
+
+def test_a_rolled_ball_resting_on_a_box_does_not_pass_through_it():
+    """A ball turned 45° (a simulated ball rolls) and sitting on the box's top: its turned box would reach ~3 cm into the
+    box, a false 'passes through' on every simulated ball (3D sweep fixes)."""
+    src = '''
+camera("cam", z=3)
+mesh("slab", shape="box", width=1, height=0.1, depth=1)
+mesh("ball", shape="sphere", radius=0.05, y=0.1001, rx=45, rz=45).key("x", {0: -0.2, 1: 0.2}, ease="linear")
+shot("hero", camera="cam", fps=24, start=0, end=1)
+'''
+    reply = call({}, src)
+    assert reply["ok"], reply
+    assert not [f for f in reply["data"]["findings"] if f["kind"] == "passes_through"], reply["summary"]

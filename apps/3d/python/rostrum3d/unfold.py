@@ -49,7 +49,7 @@ def _drop_uvs(nodes: list, id_: str) -> bool:
 
 @R.operation("mesh.unfold", "Lay the mesh's surface flat into its paint picture (paintSize, 2048 px unless set), cut "
              "into a few pieces where it must (xatlas), so it can be painted; stored on the mesh as `uvs`. Paint mode "
-             "does it by itself for a mesh that has none. Again after changing the shape. One undo step.",
+             "and paint.add do it by themselves for a mesh that has none. Again after changing the shape. One undo step.",
              target="mesh", label="Unfold", importance="secondary")
 def mesh_unfold(ctx, targets, args):
     if _UNFOLD is None:
@@ -65,3 +65,22 @@ def mesh_unfold(ctx, targets, args):
         ctx.set(t, "uvs", reply["uvs"])
         out[t] = {"pieces": reply.get("charts"), "covered": reply.get("used"), "split faces": reply.get("split")}
     return {"unfolded": out}
+
+
+def _unfolding(fn):
+    """paint.add on a mesh never unfolded unfolds it first, in the same change (as Paint mode does on the screen):
+    a primitive's own surface coordinates are not a paint picture (a box's top and bottom share its walls' square and a
+    thin wall is stretched over the whole height), so paint laid on them shows in the wrong places. Without an engine
+    (a bare document) it is left as it was."""
+    def paint_add(ctx, targets, args):
+        if _UNFOLD is not None:
+            todo = [t for t in targets or [] if ctx.item(t).get("type") == "mesh" and not ctx.item(t).get("uvs")]
+            if todo:
+                mesh_unfold(ctx, todo, {})
+        return fn(ctx, targets, args)
+    return paint_add
+
+
+for _op in R.ops():
+    if _op.name == "paint.add":
+        _op.fn = _unfolding(_op.fn)
