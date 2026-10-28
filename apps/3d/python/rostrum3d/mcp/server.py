@@ -34,7 +34,7 @@ from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
-from . import project_tool, session_clock
+from . import project_tool, script_look, session_clock
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
@@ -79,7 +79,8 @@ def open_documents(project: str, items: list[str]) -> dict:
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None, engine: Engine | None = None) -> App:
     docs = documents if documents is not None else open_documents(project, items or [])
-    app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, script_help=SCRIPT_HELP, guides=Guides().load_folder(GUIDES), folder=project)
+    app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, script_help=SCRIPT_HELP, guides=Guides().load_folder(GUIDES), folder=project,
+              script_look=script_look.after_run)
     app.state = ThreeDState(engine or Engine())          # the process starts on the first request, not now
     atexit.register(app.state.engine.close)
     ops_mesh.use_engine(app.state.engine, project)          # mesh.edit and mesh.unfold read a shape's mesh from this engine

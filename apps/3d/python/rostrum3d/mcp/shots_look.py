@@ -11,7 +11,7 @@ from rostrum_core.mcp.files import look_path
 
 from rostrum3d.compile import shot_info
 
-from . import draw
+from . import draw, shot_faults
 from .look import _settings
 from .shot import LOOK, look_renderer, seconds, size_of
 
@@ -62,7 +62,7 @@ def look_shots(ctx, args):
     """One contact sheet for several shots, ONE ROW PER SHOT: `count` frames spread over that shot, each tile labelled with the shot's
     name, the frame and its time. Each shot is drawn through its own camera by the same render path as export (Storm for quality fast,
     Cycles for final; renderer picks by name; neither, when every shot's Quality is Stylized: stylized). Use it to compare shots side by side, check a cut's two ends or a whole sequence's
-    framing, before look_frame on one of them. An unknown shot fails, listing the document's shots."""
+    framing, before look_frame on one of them. An unknown shot fails, listing the document's shots. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground)."""
     doc = ctx.document(args.get("item"))
     ids = chosen(ctx, doc, args.get("shots"))
     infos = [dict(shot_info(doc.data, i)) for i in ids]
@@ -76,7 +76,7 @@ def look_shots(ctx, args):
     dest = look_path(f'{doc.item_id or "doc"}_shots_{renderer}', project=doc.folder)
 
     def job_fn(job):
-        done, rows, per = 0, [], {}
+        done, rows, per, found = 0, [], {}, []
         with tempfile.TemporaryDirectory(prefix="rostrum3d_shots_") as tmp:
             for info in infos:
                 frames, scene = frames_of(info, count), draw.scene_of(doc, info["id"])
@@ -89,6 +89,7 @@ def look_shots(ctx, args):
                     tiles.append((png, f'{names[info["id"]]}  f{f}  {seconds(info, f):.2f} s'))
                     done += 1
                     job.progress(done, count * len(infos))
+                found += shot_faults.check(doc.data, info, frames, {f: Path(tmp) / f'{info["id"]}_f{f}.png' for f in frames}, ctx.app.folder)
                 row = Path(tmp) / f'row_{info["id"]}.png'
                 sheet.contact_sheet(tiles, tile_w, len(tiles), row)
                 rows.append(row)
@@ -96,6 +97,7 @@ def look_shots(ctx, args):
             sw, sh = stack(rows, dest)
         said = "; ".join(f'{names[i]} ({len(per[i]["frames"])} frames, {per[i]["times"][0]:g}–{per[i]["times"][-1]:g} s)' for i in ids)
         return Reply(f"Contact sheet of {len(ids)} shots, one row each, top to bottom: {said}. {renderer}, {sw}×{sh}.",
-                     {"shots": per, "rows": ids, "width": sw, "height": sh, "renderer": renderer}, [dest], [dest], engine.take_notices())
+                     {"shots": per, "rows": ids, "width": sw, "height": sh, "renderer": renderer}, [dest], [dest], engine.take_notices(),
+                     faults=list({x["id"]: x for x in reversed(found)}.values())[::-1])        # one per id (a shot's faults name the shot)
 
     return ctx.long(f"look_shots {', '.join(ids)}", job_fn)

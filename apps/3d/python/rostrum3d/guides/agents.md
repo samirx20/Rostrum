@@ -7,6 +7,8 @@ replaces what the script made (values, keys, things you deleted from it) and kee
 script in a .py file (`run_script` `path`) so each edit is the whole scene. `edit_document` is for one-off fixes a script can't
 reach. Guide `script`: the API on one page.
 
+**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_sheet`, `look_shots`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
+
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
 `{"ops": [{"op": "mesh.add", "args": {"id": "ball", "shape": "sphere", "radius": 0.1}},

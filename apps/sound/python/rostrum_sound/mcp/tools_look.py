@@ -12,6 +12,7 @@ from .. import listen, roles
 from ..doc.markers import seconds_of
 from ..doc.times import seconds
 from ..ears.written import instrument_spec
+from ..listen import fault_shape
 from ..listen.faults import check as fault_check
 from ..listen.loudness import loudest_line
 from . import start_level
@@ -86,7 +87,7 @@ def _resolve(doc, t, where):
 def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV, **WINDOW, **EXPECT}})
     def look_loudness(ctx, args):
-        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished), whether the file is cut off (the last 50 ms fall faster than the fade before them) and the audible end (data.ending.audible_end_s: where the sound falls under -60 dBFS for good, so "it rings out by 52 s" can be checked). For the whole song with sections, the loudness of each section (data.sections: name, from_s, to_s, integrated_lufs, true_peak_dbtp; in the summary), so "the build is louder than the verse" is a number. Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz. Faults (data.faults, each {kind, at_s, measured, words}; first in the summary): what a listener would complain about, with the time, the number and what to change: one harmony held 12 s or more with little level movement (heard as one flat tone), a dull top end (4–16 kHz against 250 Hz–1 kHz under -20 dB even in the brightest tenth of the piece), a top end that did not grow into a climax or lift (under +6 dB from the start), a near-mono mix (left/right correlation over 0.9; the fix for a mono source: chorus with spread 1, tremolo with stereo above 0 or a stereo reverb, not width), a hit the master's limiter squashed 3 dB or more (on a render; the fix is a longer loud moment and a build 4–6 dB under the ceiling, not a louder build), and with `expect` moments ({"at": 31.5, "kind": "hit"}) whether each comes across: a weak hit or stop (its ~21 ms attack in the finished file under 2.5x a normal note, or not among the 3 strongest; drums coming back under 2x), with its bright attack (2 kHz up), its strength against the notes of the 2 s before and its loudness jump over the 1.5 s before, and the fix those numbers point to (a bright transient on it, silence or a duck before it, shorter bed notes into it; headroom first when the build already peaks at the ceiling), the build into a hit or climax already at the ceiling (its peak in the 3 s before within 1.5 dB of the file's), a blurred stop, drums dropping early, a weak climax downbeat, a climax that holds under 3 s, the loudest moment over 3 s after the climax or 0.5 s before it, a lift under +2 LU, a busy speech band in a voice span. "No faults found" means none of these, not that the music is good."""
+        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished), whether the file is cut off (the last 50 ms fall faster than the fade before them) and the audible end (data.ending.audible_end_s: where the sound falls under -60 dBFS for good, so "it rings out by 52 s" can be checked). For the whole song with sections, the loudness of each section (data.sections: name, from_s, to_s, integrated_lufs, true_peak_dbtp; in the summary), so "the build is louder than the verse" is a number. Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz. Faults (data.faults, each {kind, at_s, measured, words}; first in the summary): what a listener would complain about, with the time, the number and what to change: one harmony held 12 s or more with little level movement (heard as one flat tone), a dull top end (4–16 kHz against 250 Hz–1 kHz under -20 dB even in the brightest tenth of the piece), a top end that did not grow into a climax or lift (under +6 dB from the start), a near-mono mix (left/right correlation over 0.9; the fix for a mono source: chorus with spread 1, tremolo with stereo above 0 or a stereo reverb, not width), a hit the master's limiter squashed 3 dB or more (on a render; the fix is a longer loud moment and a build 4–6 dB under the ceiling, not a louder build), and with `expect` moments ({"at": 31.5, "kind": "hit"}) whether each comes across: a weak hit or stop (its ~21 ms attack in the finished file under 2.5x a normal note, or not among the 3 strongest; drums coming back under 2x), with its bright attack (2 kHz up), its strength against the notes of the 2 s before and its loudness jump over the 1.5 s before, and the fix those numbers point to (a bright transient on it, silence or a duck before it, shorter bed notes into it; headroom first when the build already peaks at the ceiling), the build into a hit or climax already at the ceiling (its peak in the 3 s before within 1.5 dB of the file's), a blurred stop, drums dropping early, a weak climax downbeat, a climax that holds under 3 s, the loudest moment over 3 s after the climax or 0.5 s before it, a lift under +2 LU, a busy speech band in a voice span. Replies open NOT DONE: with each fault (id, when, fix) or DONE:; on the whole last render the faults also include loudness more than 0.5 LU off the master target (loudness), a duck under a voice dipping under 3 dB (duck:<track>), a marker named for a moment with nothing starting within 30 ms (marker_onset:<marker>) and sound above -50 dBFS after the song's end (rings_past_end); render_mix refuses open faults unless keep: {id: why} explains them. "No faults found" means none of these, not that the music is good."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
@@ -113,7 +114,7 @@ def register(tools: Tools):
                      if r["limiter"]["seconds_working"] else " Limiter: not working.")
             if r["limiter"].get("advice"):
                 said += " " + r["limiter"]["advice"]["words"]
-        return Reply(said, r, [r["png"]], [r["png"]])
+        return Reply(said, r, [r["png"]], [r["png"]], faults=_faults(ctx, doc, args, wav, f["faults"], win, r["integrated_lufs"]))
 
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
@@ -183,7 +184,7 @@ def register(tools: Tools):
             f = fault_check(wav, moments, whole=False)
             r["faults"] = f["faults"]
             line += " " + f["words"]
-        return Reply(line, r)
+        return Reply(line, r, faults=fault_shape.shape(f["faults"], doc) if moments else None)
 
     @tools.tool("look_spectrum", {"properties": {**ITEM, **WAV,
         "track": {"type": "string", "description": "One track's stem instead of the mix."},
@@ -220,6 +221,19 @@ def register(tools: Tools):
         each = ", ".join(f"{k} {v['low_end_pct']:.0f}% / {v['low_mid_pct']:.0f}%" for k, v in r["tracks"].items())
         flags = "; ".join(f["detail"] + f" ({f['track']})" for f in r["flags"]) or "none"
         return Reply(f"Under 150 Hz / 150–500 Hz: {each}. Flagged: {flags}.", r)
+
+
+def _faults(ctx, doc, args, wav, found, win, lufs):
+    """look_sound (loudness)'s shared faults: the listening faults, and (on the whole last render) loudness against the
+    master's target, ducks under a voice and sound past the song's end."""
+    if win is not None or args.get("wav"):
+        return fault_shape.shape(found, doc)
+    master = (doc.data.get("master") or [{}])[0]
+    try:
+        ducks = ctx.app.state.last_render(doc.item_id, "look_sound").get("ducks")
+    except RostrumError:
+        ducks = None
+    return fault_shape.all_faults(doc, found, wav, lufs, master.get("loudness", -16) if master.get("normalize") else None, ducks)
 
 
 def _is_low_part(doc, track_id: str) -> bool:
