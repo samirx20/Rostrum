@@ -61,3 +61,11 @@ def test_the_ground_is_a_backdrop_the_engine_never_hears_of(tmp_path):
     assert d.item("ground")["backdrop"] is True
     ground = next(n for n in describe(d.data, "shot_1")["items"] if n["id"] == "ground")
     assert "backdrop" not in ground["props"]
+
+
+def test_guide_reaches_the_engine_only_when_on(tmp_path):
+    """`guide` is read only where a mesh is drawn; sent off it broke every combine's inputs (the engine refused the
+    scene: 'bowl_outer.guide: unknown field')."""
+    d = _start(tmp_path)
+    ground = next(n for n in describe(d.data, "shot_1")["items"] if n["id"] == "ground")
+    assert "guide" not in ground["props"]
