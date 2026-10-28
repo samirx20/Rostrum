@@ -38,7 +38,8 @@ def render_export(ctx, args):
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
     before any job, as the Export button refuses it. An mp4's reply ends, as render_video's does, with the time left and the film's
-    weakest moments (look_review); `quiet_stretches` and `edge_cuts` carry the file's checks as data."""
+    weakest moments (look_review), with the brief's `beats` (kept for the session) that never happen or come too soon;
+    `quiet_stretches` and `edge_cuts` carry the file's checks as data."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),

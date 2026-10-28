@@ -49,6 +49,7 @@ class Clock:
         self.export_s: float | None = None          # how long the last export took (render_video's `seconds`)
         self.quiet: list[str] = []
         self.seen: set[str] = set()
+        self.beats: dict[str, list[dict]] = {}       # composition id -> the brief's beats last declared (export_beats)
 
     def begin(self) -> None:
         self.started = self.started if self.started is not None else self.now()
@@ -203,7 +204,8 @@ def _fix_pass(ctx, args, reply: Reply, clock: Clock) -> str:
         from . import review
         from .pick import doc_and_comp
         doc, comp = doc_and_comp(ctx, {"comp": comp_id} if comp_id else {})
-        said = review.after_export(doc.data, comp, payload.get("quiet_stretches") or [], payload.get("edge_cuts") or [])
+        said = review.after_export(doc.data, comp, payload.get("quiet_stretches") or [], payload.get("edge_cuts") or [],
+                                   beats=clock.beats.get(comp["id"]))
     except Exception as e:      # noqa: BLE001  (the export stands; the review's failure is said, not hidden)
         said = f"(The review could not run: {e}; call look_review.)"
     left = clock.left_said()
