@@ -26,9 +26,9 @@ ALIGNS = ["start", "center", "end", "stretch", "baseline"]
 ALIGN_WORDS = {"start": "Start", "center": "Centre", "end": "End", "stretch": "Stretch", "baseline": "Text baseline"}
 
 
-def _n(name, label, default, when, lo=0, hi=20000, step=1, unit="px", imp="primary", integer=False, help=""):
+def _n(name, label, default, when, lo=0, hi=20000, step=1, unit="px", imp="primary", integer=False, help="", words=None):
     return Param.number(name, label=label, group=G, min=lo, max=hi, step=step, unit=unit, importance=imp,
-                        valid_when=when, integer=integer, default=default, help=help)
+                        valid_when=when, integer=integer, default=default, help=help, words=words or {})
 
 
 def _c(name, options, label, default, when, labels=None, imp="primary", help=""):
@@ -59,10 +59,10 @@ GROUP = [
             "frame (a layer that grows pushes the others along)"),
     _n("gap", "Gap", 16.0, ON, help="Space between layers (between columns in a grid)"),
     _n("padding", "Padding", 10.0, ON, help="Space inside the group's edge, all round"),
-    _n("paddingX", "Padding left / right", -1.0, ON, lo=-1, imp="secondary",
-       help="Overrides Padding at the left and right (-1 = use Padding)"),
-    _n("paddingY", "Padding top / bottom", -1.0, ON, lo=-1, imp="secondary",
-       help="Overrides Padding at the top and bottom (-1 = use Padding)"),
+    _n("paddingX", "Padding left / right", -1.0, ON, lo=-1, imp="secondary", words={-1.0: "Same as padding"},
+       help="Overrides Padding at the left and right (Same as padding: left out)"),
+    _n("paddingY", "Padding top / bottom", -1.0, ON, lo=-1, imp="secondary", words={-1.0: "Same as padding"},
+       help="Overrides Padding at the top and bottom (Same as padding: left out)"),
     _c("justify", ["start", "center", "end", "between", "around", "evenly"], "Spread", "start", ON,
        {"start": "From the start", "center": "Centred", "end": "To the end", "between": "Space between",
         "around": "Space around", "evenly": "Space evenly"},
