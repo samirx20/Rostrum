@@ -16,6 +16,9 @@ from types import SimpleNamespace
 from .. import fit_loudness as fit
 from ..compile import compile as compile_doc
 
+AUTO_MOST_DB = 6.0     # the most a render raises the limiter by itself: past it a hit or a stop loses its attack (3E bench,
+                       # Vault r2: pushed to 12 dB, both judges heard the 31.5 s hit as soft); more is the song's own maxLimit
+
 
 def push(state, doc, item: str, options: dict) -> tuple[dict, dict | None]:
     """-> (fit_loudness.reach's answer ({} when the song already lands on its target or has none), the schedule at the
@@ -25,7 +28,7 @@ def push(state, doc, item: str, options: dict) -> tuple[dict, dict | None]:
     home = Path(state.renders(item))
     home.mkdir(parents=True, exist_ok=True)          # a song's first render: its renders folder is not made yet
     with tempfile.TemporaryDirectory(prefix="push_", dir=home) as tmp:
-        got = fit.reach(song, state.engine, Path(tmp), span)
+        got = fit.reach(song, state.engine, Path(tmp), span, top=AUTO_MOST_DB)
     if not got.get("ops"):
         return got, None
     song.data["master"][0].update(got["ops"][0]["args"])
@@ -43,14 +46,16 @@ def words(got: dict) -> str:
 
 
 def fix_when_short(found: list[dict] | None, got: dict) -> None:
-    """The loudness fault after a push that hit the master's top limit: raising the limit is no longer a fix."""
+    """The loudness fault after a push that stopped at AUTO_MOST_DB short of the target: the fixes that need less limiting."""
     if not got or got.get("reaches"):
         return
     for f in found or []:
         if f["id"] == "loudness":
-            f["fix"] = (f"the limiter already pulls at its top ({got['max_limit_db']:g} dB): tame the peaks "
+            f["fix"] = (f"reaching it needs more than the {got['max_limit_db']:g} dB of limiting a render adds by itself (more "
+                        f"flattens the hits): tame the peaks "
                         f"(edit_loudness {{\"apply\": \"tame_peaks\"}}), turn the most peaked track down (edit_loudness "
-                        f"{{\"apply\": \"trim_track\"}}), or lower the master's loudness target to {got['lufs']:.0f}")
+                        f"{{\"apply\": \"trim_track\"}}), lower the master's loudness target to {got['lufs']:.0f}, or, for a "
+                        f"dense sound on purpose, set master(maxLimit=...) yourself")
 
 
 def master_as_rendered(master: dict, got: dict) -> dict:

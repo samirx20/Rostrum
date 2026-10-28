@@ -62,9 +62,9 @@ track down (or tame it) first. After any export the result line says what the fi
 loudest peak −1.3 dBTP, 4.3 dB of limiting".
 
 **Agents (`render_mix`, `run_script` `look`):** the same push happens by itself. A render whose master has a loudness
-target is measured first and written with Most limiting raised as far as the target needs (within 0.5 LU, at most 12 dB);
+target is measured first and written with Most limiting raised as far as the target needs (within 0.5 LU, at most 6 dB so hits keep their attack, or the song's own `maxLimit` when higher);
 the song keeps its own limit (no undo step), and the reply says the limit and the dB of limiting it took
-(`data.loudness.pushed`). Short even at 12 dB: the `loudness` fault names the fix. `format: "wav"` is 24-bit WAV.
+(`data.loudness.pushed`). Short at that: the `loudness` fault names the fix. `format: "wav"` is 24-bit WAV.
 
 When the master's numbers match none of the choices the picker reads "As the mix plays now" and the check line is not shown:
 there is no target to meet or miss until you pick one.

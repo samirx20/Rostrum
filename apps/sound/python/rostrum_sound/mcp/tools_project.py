@@ -21,7 +21,7 @@ from .. import KIND
 from .. import lastproject as last
 from .. import note_ranges, script_scope
 from ..diagnose import FIXES
-from . import edit_examples, range_target, script_twins
+from . import edit_examples, range_target, script_shared, script_twins
 from .app import NO_PROJECT, open_project
 
 
@@ -128,6 +128,7 @@ def with_script_print(runtime) -> None:
 
     def run_script(ctx, args):
         script_twins.refuse_second_copy(ctx.document(args.get("item")), args)
+        script_shared.publish(ctx, ctx.document(args.get("item")), args)      # marker(..., shared=True), before the merge
         script_scope.forget_printed()         # after the check: its dry run printed too
         try:
             out = old.fn(ctx, args)

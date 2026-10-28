@@ -78,11 +78,11 @@ def landing(master: dict, r: dict | None) -> dict:
                      + a_lot(need)}
 
 
-def reach(doc, engine, scratch: Path, span=None, most: int = 4) -> dict:
+def reach(doc, engine, scratch: Path, span=None, most: int = 4, top: float = MAX_LIMIT) -> dict:
     """The `maxLimit` that lands this song on its master's loudness target, measured on the song as it is now (never
     predicted from another render): the song is measured, then each try at the limit it says it needs, until it lands
     within SHORT_OK of the target (the need grows faster than dB for dB under deep limiting: a peaky solo piano), or the
-    master's top MAX_LIMIT. {} when there is no target to push to or the song already reaches it; else
+    master's top MAX_LIMIT (or `top`, the most an automatic push may go). {} when there is no target to push to or the song already reaches it; else
     {max_limit_db, was_db, target, lufs, limit_db, reaches, renders, ops, words}. `doc`: anything with `data` (and
     `folder`, for the project's markers); never changed. `span`: the exported stretch, measured alone."""
     data = copy.deepcopy(doc.data)
@@ -90,6 +90,7 @@ def reach(doc, engine, scratch: Path, span=None, most: int = 4) -> dict:
     if not (m.get("normalize") and m.get("gentle", True)):
         return {}
     goal, was = m.get("loudness", -16), m.get("maxLimit", 2)
+    top = max(top, was)                     # never below the song's own limit
     trials = Trials(engine, scratch, span)
     view = SimpleNamespace(data=data, folder=getattr(doc, "folder", None))
 
@@ -100,17 +101,17 @@ def reach(doc, engine, scratch: Path, span=None, most: int = 4) -> dict:
     land = landing(m, r)
     if not land or land["reaches"]:
         return {}
-    ask = land["push"]["max_limit_db"] if land.get("push") else MAX_LIMIT
+    ask = min(top, land["push"]["max_limit_db"]) if land.get("push") else top
     for _ in range(most):
         r = try_at(ask)
         short = goal - r["lufs"]
-        if short < SHORT_OK or ask >= MAX_LIMIT:
+        if short < SHORT_OK or ask >= top:
             break
-        ask = min(MAX_LIMIT, math.ceil((ask + short + 0.05) * 10) / 10)
+        ask = min(top, math.ceil((ask + short + 0.05) * 10) / 10)
     lim = (r.get("master") or {}).get("limiterMaxReductionDb") or 0
     reaches = goal - r["lufs"] < REACH_OK
     words = (f"Most limiting raised to {ask:g} dB to reach {_n(goal)} LUFS" if reaches else
-             f"Most limiting raised to {ask:g} dB, the most it goes: the file measures {_n(r['lufs'])} LUFS, under {_n(goal)}")
+             f"Most limiting raised to {ask:g} dB, the most a render adds by itself: the file measures {_n(r['lufs'])} LUFS, under {_n(goal)}")
     return {"max_limit_db": ask, "was_db": was, "target": goal, "lufs": round(r["lufs"], 2), "limit_db": round(lim, 2),
             "reaches": reaches, "renders": trials.renders, "words": words + "." + a_lot(lim),
             "ops": [{"op": "master.set", "target": ["master"], "args": {"maxLimit": ask, "gentle": True}}]}

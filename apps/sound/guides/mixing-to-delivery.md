@@ -21,9 +21,9 @@ document (`master.set`; the screen's **Most limiting**).
 
 **A render reaches the target by itself.** A mastered `render_mix` (and `run_script` `look`) measures the song first and,
 when gentle limiting would leave it more than 0.5 LU under the target, renders that file with `maxLimit` raised as far as
-the target needs (at most 12 dB). The song keeps its own `maxLimit`, so playback stays transparent; the reply says how far
-the limit went and how many dB of limiting it took (`data.loudness.pushed`), and how to make it the song's own. When even
-12 dB is short the file lands under and the `loudness` fault names the fix (tame the peaks, turn a track down, or a lower
+the target needs (at most 6 dB, so hits and stops keep their attack; a higher `maxLimit` of the song's own is used as it is). The song keeps its own `maxLimit`, so playback stays transparent; the reply says how far
+the limit went and how many dB of limiting it took (`data.loudness.pushed`), and how to make it the song's own. When that
+is short the file lands under and the `loudness` fault names the fix (tame the peaks, turn a track down, or a lower
 target). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
 are in the file. `edit_loudness` is for when the limiting a render reports is too much for the music.
 
