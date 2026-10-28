@@ -111,9 +111,9 @@ def _rows_view(ctx, doc, scene, item, layer) -> list[dict]:
                    and any(paint_view.view_of(s) == v for p in i.get("paints", []) for s in p.get("strokes", []))]
         box = PS.box([q for run in r["canvasPx"] for q in run], 0, PC.size_of(item))
         rows.append({"stroke": r["stroke"], "layer": layer["id"], "view": True, "items": holders, "runs": r["runs"], "share": r["share"],
-                     "landed": r["runs"] > 0, "offPx": r["offPx"]["mean"], "offMaxPx": r["offPx"]["max"], "box": box,
-                     "uvBox": PS.uv_box(box, PC.size_of(item)),
-                     "verdict": "landed" if r["runs"] else f'laid no paint: {item["id"]} is not under its path from that view'})
+                     "landed": r["landed"], "offPx": r["offPx"]["max"], "offMedianPx": r["offPx"]["median"], "offMaxPx": r["offPx"]["max"],
+                     "pieces": r["pieces"], "wantPieces": r["wantPieces"], "covered": r["covered"], "seenPx": r["seenPx"],
+                     "box": box, "uvBox": PS.uv_box(box, PC.size_of(item)), "verdict": r["verdict"]})
     return rows
 
 
@@ -121,11 +121,15 @@ def _rows_view(ctx, doc, scene, item, layer) -> list[dict]:
     **ITEM_SHOT, "target": {"type": "string", "description": "A mesh's or clay's id (every layer), or one paint layer's id."}}})
 def inspect_paint_strokes(ctx, args):
     """Where each stroke of a mesh or clay (or of one paint layer) landed and how far off, one plain line each:
-    "stroke s3 (From the view, layer paint_1): landed on case and lid, 1.2 screen px off". A stroke on the surface
+    "stroke s3 (From the view, layer paint_1): landed on case and lid, at most 1.2 screen px outside the line". A stroke on the surface
     (canvas `points`, or a clay's `anchors` laid as the render lays them) is measured on the canvas: how far its paint's
     centre sits from its path, in canvas px (landed = within a tenth of the brush, at least 2 px). A stroke From the view is
-    measured through its own camera: how far the paint lands from the path you drew, in screen px of that view, and which
-    items it landed on. Each row has the canvas px box and uv box it covers."""
+    measured by where its paint shows through its own camera (every pixel of the item whose canvas spot it painted, so
+    paint that also shows somewhere else counts): how far outside the line you drew it shows (screen px; offPx the
+    worst, offMedianPx), in how many separate pieces (pieces; wantPieces: the line's own on that item) and how much of
+    the line it covers (covered, 0..1). It says "landed" only when none shows more than max(3 px, a quarter of the brush)
+    outside the line, at most 2 more pieces than the line has, covering at least 80 % of it; otherwise what went wrong:
+    "painted in 30 pieces, up to 49 screen px outside the line on lid". Each row has the canvas px box and uv box."""
     doc, info = doc_and_shot(ctx, args)
     tid = args["target"]
     owner = next((i for i in doc.items() if i.get("type") in PC.PAINTABLE and any(p["id"] == tid for p in i.get("paints", []))), None)

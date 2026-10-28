@@ -113,6 +113,23 @@ def test_drag_bends_shoulder_and_elbow_and_leaves_holds():
     assert nothing["moved"] == []                                        # a held part doesn't move
 
 
+def test_wave_with_only_the_feet_held_leaves_the_body_upright():
+    """The real egg, feet held, the right hand dragged up: within the arm's reach only the arm turns (the chest stays
+    exactly as it was); far out of reach the chest leans only gently (pose_ik.TRUNK_MAX), never folding the body."""
+    bits = np.unpackbits(np.frombuffer(zlib.decompress(base64.b64decode("".join(EGG["bits"]))), np.uint8))
+    nx, ny, nz = EGG["dims"]
+    clay = _clay(PJ.find({**EGG, "inside": base64.b64encode(bits[:nx * ny * nz].tobytes()).decode()}))
+    r = pose_ik.Rig(clay)
+    g = r.find("hand.R")
+    tip = pose_ik.skin.segment(r.frames()[g], r.bones[g])[3:]
+    near = pose_ik.solve(clay, r.ids[g], tip, [tip[0] + 0.03, tip[1] + 0.1, tip[2]], holds=["foot.L", "foot.R"])
+    assert near["miss"] < 0.01 and set(near["moved"]) == {"c_arm_R", "c_forearm_R"}
+    far = pose_ik.solve(clay, r.ids[g], tip, [tip[0] + 0.03, tip[1] + 0.4, tip[2]], holds=["foot.L", "foot.R"])
+    chest = r.index["c_chest"]
+    lean = pose_ik._angle(pose_ik._rot(*r.turn[chest]), pose_ik._rot(*pose_ik._as_turn(far["turns"]["c_chest"])))
+    assert math.degrees(lean) <= math.degrees(pose_ik.TRUNK_MAX) + 0.1
+
+
 def _doc(tmp_path):
     d = Document.new(KIND, folder=tmp_path, item="scene")
     d.run_script("t.py", run_source('''

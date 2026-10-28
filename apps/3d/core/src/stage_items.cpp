@@ -103,6 +103,10 @@ void build_mesh(Item& it, const SdfPath& path, const JsObject* skin, const JsObj
   write_mesh(m, d);
   if (cloth) cloth_mesh(it, m, *cloth);
   if (skin && !cloth) skin_mesh(m, d, *skin, it.ctx.start, it.id + ".skin");
+  // `guide` (sweep fix 7): a handle to move, like Change near's ball: USD's guide purpose, which the viewport draws
+  // (hydra.cpp view / view_final / pick show guides) and a render, a look_frame or the shot's pictures never do
+  if (it.props.has("guide") && it.props.flag("guide"))
+    UsdGeomImageable(m.GetPrim()).CreatePurposeAttr().Set(UsdGeomTokens->guide);
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);
   if (cloth) return;

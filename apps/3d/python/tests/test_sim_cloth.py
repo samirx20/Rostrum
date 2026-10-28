@@ -78,3 +78,16 @@ def test_a_stored_drape_reaches_the_cloths_node_and_holds_its_place(doc):
     assert Path(c["file"]).stat().st_size == cloth_bytes(3, 1, info["end"] - info["start"] + 1)
     assert "x" not in node.get("anim", {}) and node["props"]["x"] == pytest.approx(0.0)    # held at the first frame
 
+
+
+def test_turn_into_keys_on_a_cloth_only_shot_refuses_and_says_the_cloth_stays_a_simulation(doc):
+    from rostrum_core.errors import RostrumError
+    from rostrum3d.sim.state import state
+    doc.apply([{"op": "sim.run", "target": ["drape"]}], Who.person())
+    st = state(doc.data, "drape")
+    assert st["state"] == "stored" and (st["falling"], st["cloth"]) == (0, 1)     # the window offers no Turn into keys
+    import copy
+    before = copy.deepcopy(doc.data)
+    with pytest.raises(RostrumError, match="only cloth.*stays a simulation"):
+        doc.apply([{"op": "sim.to_keys", "target": ["drape"]}], Who.person())
+    assert doc.item("sheet")["simulate"] == "cloth" and doc.data == before      # nothing changed, no step

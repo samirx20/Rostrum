@@ -106,6 +106,8 @@ class Viewport(QObject):
         self._r.picked.connect(self._on_picked)
         self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
+        self._rebuilding = False
+        self._r.rebuilding.connect(self._on_rebuilding)
         bridge.docChanged.connect(self._on_doc)
         bridge.shotChanged.connect(self._on_shot)
         bridge.frameChanged.connect(self._on_frame)
@@ -170,10 +172,16 @@ class Viewport(QObject):
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
     # the free view shows the frame Make this the shot would take (while the pointer rests on it)
     previewShot = Property(bool, lambda s: s._preview and s.cam.mode != "shot", notify=settingsChanged)
+    # a changed clay is being built again (frames.ViewRenderer.rebuilding): "Updating the clay…" shows meanwhile
+    rebuilding = Property(bool, lambda s: s._rebuilding, notify=settingsChanged)
     onionSkin = Property(QObject, lambda s: s.onion, constant=True)
     clay = Property(QObject, lambda s: s.clay_tool, constant=True)        # QML: viewport.clay (clay_tool_qt.py)
     bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)
     pose = Property(QObject, lambda s: s.pose_tool, constant=True)        # QML: viewport.pose (pose_qt.py)
+
+    def _on_rebuilding(self, on: bool):
+        self._rebuilding = on
+        self.settingsChanged.emit()
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -477,9 +485,17 @@ class Viewport(QObject):
         self._setting("_dof", bool(b))
 
     @Slot(float, float)
+    def rightClick(self, x, y):
+        """A right-click at (x, y) device pixels: the click's pick, but the floor the scene stands on (a backdrop mesh:
+        start_scene.py) answers as empty space, so its menu is empty space's and nothing gets selected."""
+        self._right_next = True
+        self.click(x, y)
+
+    @Slot(float, float)
     def click(self, x, y):
         """A click at (x, y) device pixels: select what is there, or place the shape the Shapes flyout armed there (placing
         or linking a light: that instead)."""
+        self._right_pick, self._right_next = getattr(self, "_right_next", False), False
         if self._size is not None and self.focus.wants_click():
             self._guard(lambda: self.focus.click(x, y))
         elif self._size is not None and self.copies.wants_click():             # On a surface…: that click names the surface
@@ -568,6 +584,9 @@ class Viewport(QObject):
         drop, self._drop = getattr(self, "_drop", ""), ""
         if drop:
             return self.bridge.mats.dropOn(drop, item)
+        right, self._right_pick = getattr(self, "_right_pick", False), False
+        if right and item and self._backdrop(item):
+            item = ""                                        # a right-click on the floor: empty space's menu
         if self.bridge.add.armed:
             return self._guard(lambda: self._place(item, reply or {}))
         if self.copies.picked(item, reply):                  # one copy of a copies item: the item and that copy
@@ -575,6 +594,10 @@ class Viewport(QObject):
         if item != self.bridge.selected:
             self.bridge.select(item)
         self.picked.emit(item or "")
+
+    def _backdrop(self, item) -> bool:
+        doc = self.bridge.doc
+        return doc.has(item) and bool(doc.item(item).get("backdrop"))
 
     def _place(self, item, reply):
         """The armed shape onto the surface the click hit (the engine's point and normal), else onto the ground."""

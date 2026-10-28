@@ -10,6 +10,7 @@ MaterialPopup {
     width: 280
     readonly property int ballSize: Theme.row
 
+    natural: col.height + 2 * padding
     contentItem: Flickable {
         id: flick
         implicitHeight: Math.min(col.height, list.fit - 2 * list.padding)

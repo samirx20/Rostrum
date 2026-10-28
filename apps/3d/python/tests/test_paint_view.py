@@ -9,7 +9,7 @@ import numpy as np
 from rostrum_core import Document, Who
 from rostrum_core.cache import CACHE
 
-from rostrum3d import KIND, compile as C, coverage, paint_scene, paint_view
+from rostrum3d import KIND, compile as C, coverage, paint_scene, paint_view, unfold
 from rostrum3d.texels import Picture
 
 SAM = Who.person()
@@ -50,7 +50,56 @@ def test_a_view_stroke_lands_on_each_item_it_crosses():
     assert "viewPoints" not in case[0] and lid[0]["points"][-1][0] < 30 * scale
     got = paint_view.landed_on({"id": "case", "paintSize": SIZE, "paints": [{"id": "p", "strokes": [s]}]},
                                lambda req: pic)
-    assert got[0]["runs"] == 1 and got[0]["offPx"]["max"] < 1.0 and 0.4 < got[0]["share"] < 0.6
+    assert got[0]["runs"] == 1 and got[0]["pieces"] == 1 and got[0]["offPx"]["max"] < 1.0 and 0.4 < got[0]["share"] < 0.6
+    assert got[0]["landed"] and got[0]["verdict"] == "landed" and got[0]["covered"] > 0.9
+
+
+def test_sparse_view_points_are_laid_every_screen_pixel():
+    """An agent gives a few points far apart: the path between them is sampled every screen pixel before it is looked
+    up on the surface (never joined up on the canvas, where a slanted or cut surface would carry it elsewhere)."""
+    s = paint_view._samples([[4, 16, 1.0], [30, 10, 1.0], [60, 20, 0.8]])
+    assert len(s) > 55 and np.linalg.norm(np.diff(s[:, :2], axis=0), axis=1).max() <= 1.0
+    lid = paint_view.lay(_stroke([[4, 16, 1.0], [30, 10, 1.0], [60, 20, 0.8]]), _two_items(), "lid", SIZE)
+    pts = np.asarray([p[:2] for r in lid for p in r["points"]])
+    assert len(pts) > 20 and np.linalg.norm(np.diff(pts, axis=0), axis=1).max() < 1.5 * SIZE / (W / 2)
+
+
+def test_view_brush_is_as_wide_on_screen_as_drawn_on_a_stretched_surface():
+    """A surface whose canvas stretches 8× more down than across (a thin wall laid over the whole height): the brush
+    is sized by the stretch across the path, so a stroke along it is as wide on the screen as drawn, not 8× wider."""
+    pic = _picture(["wall"], lambda x, y: np.zeros_like(x), lambda x, y: (x / W, 1 - y / (H * 8)))
+    s = _stroke([[4, 2], [60, 2]], size=4.0)                          # along x: across it is the 8× stretched way
+    laid = paint_view.lay(s, pic, "wall", SIZE)
+    assert abs(laid[0]["size"] - 4 * SIZE / H / 8) < 0.5              # 4 screen px × (SIZE / (8 H)) canvas px each
+    got = paint_view.landed_on({"id": "wall", "paintSize": SIZE, "paints": [{"id": "p", "strokes": [s]}]}, lambda req: pic)
+    assert got[0]["landed"] and got[0]["offPx"]["max"] <= 1.0
+
+
+def test_the_report_says_landed_only_when_its_numbers_do():
+    """Paint that also shows elsewhere (a box's top sharing its wall's square of the canvas: a mesh never unfolded) is
+    measured where it shows, and the verdict follows the numbers."""
+    pic = _picture(["lid"], lambda x, y: np.zeros_like(x),            # left half: the wall; right half: the top,
+                   lambda x, y: ((x % (W / 2)) / (W / 2), 1 - y / H))  # laid on the very same canvas square
+    s = _stroke([[4, 16, 1.0], [12, 16, 1.0]])
+    got = paint_view.landed_on({"id": "lid", "paintSize": SIZE, "paints": [{"id": "p", "strokes": [s]}]}, lambda req: pic)[0]
+    assert got["runs"] == 1 and got["offPx"]["max"] > 20 and got["pieces"] == 2 and not got["landed"]
+    assert "outside the line" in got["verdict"] and "landed" not in got["verdict"]
+    row = {"item": "lid", "runs": 30, "seenPx": 800, "pieces": 30, "wantPieces": 1, "covered": 0.4,
+           "offPx": {"median": 3.0, "max": 48.6}}
+    ok, words = paint_view.verdict(row, 7.0)
+    assert not ok and words.startswith("painted in 30 pieces, up to 49 screen px outside the line, covering 40 %")
+    assert paint_view.verdict({**row, "pieces": 2, "covered": 0.95, "offPx": {"median": 0, "max": 1.0}}, 7.0) == (True, "landed")
+    assert paint_view.verdict({**row, "runs": 0, "seenPx": 0}, 7.0)[0] is False
+
+
+def test_paint_add_unfolds_a_mesh_never_unfolded(tmp_path, monkeypatch):
+    asked = []
+    monkeypatch.setattr(unfold, "_UNFOLD", lambda doc, id_, size: asked.append(id_) or {"uvs": [0.5, 0.5] * 24})
+    d = Document.new(KIND, folder=tmp_path, item="scene")
+    d.apply([{"op": "mesh.add", "args": {"id": "lid", "shape": "box"}},
+             {"op": "paint.add", "target": ["lid"], "args": {"id": "lid_p"}}], SAM)
+    d.apply([{"op": "paint.add", "target": ["lid"], "args": {"id": "lid_q"}}], SAM)
+    assert asked == ["lid"] and d.item("lid")["uvs"]                   # once, in the same change; not again
 
 
 def test_a_view_stroke_splits_at_a_seam():
@@ -85,6 +134,7 @@ def test_coverage_counts_what_the_shot_sees_painted():
 
 def test_view_paint_waits_for_its_texel_picture_then_paints(tmp_path, monkeypatch):
     monkeypatch.setattr(CACHE, "root", tmp_path / "cache")
+    monkeypatch.setattr(unfold, "_UNFOLD", None)                      # a bare document: paint.add unfolds nothing
     d = Document.new(KIND, folder=tmp_path, item="scene")
     d.apply([{"op": "mesh.add", "args": {"id": "case", "shape": "box"}},
              {"op": "mesh.add", "args": {"id": "lid", "shape": "box"}},

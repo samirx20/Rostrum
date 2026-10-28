@@ -41,8 +41,9 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
    eye, click its material ball, choose **Glossy plastic** under **Start from**, then set its Base colour to black.
    Both eyes change, because the copy follows the original.
 7. **A wave.** Select the body and click **Pose** in the rail (Shift+P). Click each foot once (an orange ring: it
-   stays put) and click the chest so the body stays upright. Then drag the end of one arm up. The arm bends at the
-   shoulder and the elbow. Bent in the wrong place: ↶, add a hold nearer to where it should bend, drag again.
+   stays put). Then drag the end of one arm up. The arm bends at the shoulder and the elbow and the body stays upright;
+   dragged past the arm's reach, the body leans a little after it. To keep the body still even then, click the chest
+   too. Bent in the wrong place: ↶, add a hold nearer to where it should bend, drag again.
 8. **A good angle.** Right-drag to look from a little to the side and above. Rest the pointer on **Make this the
    shot** in the header: the frame Shot 1 would take shows. Click it. Choose the angle **before** the light: the
    light is placed for what the camera sees.
@@ -123,11 +124,11 @@ All through `edit_document`:
 2. `pose.drag` with `part: "hand.R"` (the end of the arm, whatever its last joint is), `to` a world point and
    `holds`. Keep `to` **within the arm's reach**: no farther from the shoulder joint's head than the arm's joints
    are long together (about 10–13 cm for the arm above). Up and a little out from the shoulder reads as a wave. A
-   point out of reach stretches the arm straight and pulls the body after it; drag again nearer.
-3. **Hold the feet**: `holds: ["foot.L", "foot.R"]`. The chest then leans a little with the arm, and the eyes lean
-   with it (parts placed on a clay follow its pose). Add the body's upper joint (`"chest"`, or `"body"` when that is
-   its only one) to keep it upright and bend only the arm. Only the arm and the shoulder round it move: the body's
-   side stays where it is.
+   point out of reach stretches the arm straight and leans the body a little after it (a few degrees at most, the
+   eyes with it: parts placed on a clay follow its pose); drag again nearer.
+3. **Hold the feet**: `holds: ["foot.L", "foot.R"]`. Within reach only the arm and the shoulder round it move: the
+   body stays upright and its side stays where it is. Holding the body's upper joint too (`"chest"`, or `"body"`
+   when that is its only one) is optional: it keeps the body still even for a point out of reach.
 
 ```json
 {"op": "pose.drag", "target": ["buddy"], "args": {"part": "hand.R", "to": [-0.14, 0.27, 0.04], "at": 0,
@@ -154,7 +155,7 @@ Guide `posing` has the rest (keys at several times, `pose.rest`).
 ### 6. Render
 
 `render_still` (`shot: "shot_1"`) is a job: it answers with a `job_id` at once. Ask `inspect_job` with that `job_id`
-and `wait_s` (at most 25) until it says "Rendered"; the reply carries the picture. Before a big render, ask
+and `wait_s` (at most 25) until it says "Rendered"; the reply names the picture's file (open that file to see it). Before a big render, ask
 `render_estimate` (guide `agents`, "Render settings and the time estimate").
 
 ### When something looks wrong

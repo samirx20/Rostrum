@@ -39,10 +39,13 @@ sits on top of it.
   field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
   mesh each shape shows, Apply: one undo step, keys on the timeline), **Make copies ›** (a shape, group, import or clay),
-  **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected) and **Change near ›** (a
+  **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected; onto the ground: Make
+  copies › On a surface…, then click the ground) and **Change near ›** (a
   copies item), see *Copies and scatter* below, **Simulate ›** (Falls, Stays still, Cloth on a shape, Off; the ✓ is what it is now), see
   *Simulate* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
-  outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
+  outside the selection is selected alone first. Right-click empty space (nothing there, or the ground a new scene
+  stands on: a right-click never picks it; click it or its scene-list row to change it, and selected it offers no Turn
+  into clay or Make copies): Make this the shot (Ctrl+Alt+0),
   Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
   while something is selected.
 
@@ -216,7 +219,8 @@ One thing, many times, without making a thousand items (the guide *copies* has t
   copies** in the right-click menu lets them go back). One undo step.
 - **Change near ›** (right-click a copies item): **Scale**, **Turn**, **Push** or **Colour** the copies close to something.
   With another item selected too (Ctrl+click), the change follows that item; alone, a small sphere is added beside the copies
-  and selected: move it and the copies near it change. Its settings (Radius, Amount, Falloff) are the effector's row under
+  and selected: move it and the copies near it change. The sphere is a handle (Display › Only in the view): the view
+  draws it, a render and the shot's pictures never do. Its settings (Radius, Amount, Falloff) are the effector's row under
   the copies in the scene list; key Amount or Radius for change over time.
 
 ## Simulate
@@ -236,7 +240,8 @@ tool). By hand, twelve buds dropping into a bowl:
   renders read the stored result; nothing recomputes on its own. The record is one undo step.
 - **Out of date:** move the bowl, change a mass, key a body: the bar turns striped, "Out of date", with Simulate. The
   viewport keeps showing the old result until you simulate again. A render with it out of date computes it first (the
-  render sheet says so on its top line); it never renders a stale one.
+  render sheet says so on its top line); it never renders a stale one. Once the render is done the row says Stored and
+  the viewport shows the fall it rendered (one undo step, "Simulate … (for the render)").
 - **When it fails** (a bud starts inside the bowl, something flies away, nothing under them): the row says so in red,
   with the body, the frame and what to do ("buds copy 7 starts inside bowl at frame 0: move it up 4 mm or set Starts:
   Asleep until hit"), until you try again.
@@ -244,9 +249,10 @@ tool). By hand, twelve buds dropping into a bowl:
   to date"), with Simulate and the **Ground** switch. Ctrl+K: "Simulate Drop 03", and Falls / Stays still / Off.
 - **Stylize it** (the same group): **Timing** Every frame · On 2s · On 3s moves the bodies in steps like hand animation
   while the camera stays smooth; **Simplify** keeps every nth frame of the result and moves smoothly between them. Neither
-  makes the result out of date. **Turn into keys** (while it is stored; also in Ctrl+K) gives each falling item the result
-  as ordinary keys and sets it Off, one undo step: nudge a key by hand after it. A falling copies item gets keys on each
-  copy instead. Only the keys that matter are written (within 1 mm / 0.1°), not one per frame.
+  makes the result out of date. **Turn into keys** (while it is stored and something in it falls; also in Ctrl+K) gives
+  each falling item the result as ordinary keys and sets it Off, one undo step: nudge a key by hand after it. A falling
+  copies item gets keys on each copy instead. Only the keys that matter are written (within 1 mm / 0.1°), not one per
+  frame. Cloth never becomes keys: it stays simulated (the line says so), and a shot with only cloth has no Turn into keys.
 
 ## The settings panel (right)
 

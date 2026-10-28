@@ -32,14 +32,15 @@ def count(req: dict, scene: dict) -> int:
 
 
 def state(data: dict, shot_id: str, folder=None, scene: dict | None = None) -> dict:
-    """{"bodies", "state", "frames", "key", "storedKey", "line", "inside"}: `key` the inputs' key now, `storedKey` the
-    shot's simKey, `inside` the items set to simulate that can't (inside a group …)."""
+    """{"bodies", "falling", "cloth", "state", "frames", "key", "storedKey", "line", "inside"}: `key` the inputs' key now,
+    `storedKey` the shot's simKey, `inside` the items set to simulate that can't (inside a group …); `falling` the things
+    that fall (each copy counts; what Turn into keys can key), `cloth` the cloths (never keys)."""
     from ..compile import describe, shot_info
     shot, info = _shot(data, shot_id), shot_info(data, shot_id)
     name, frames, inside = shot.get("name") or shot_id, info["end"] - info["start"] + 1, nested(data)
     stored_key = shot.get(SF.KEY, "")
     if not any(value(b, "simulate") in MOVING for b in bodies(data)):
-        return {"bodies": 0, "state": "none", "frames": frames, "key": "", "storedKey": stored_key, "inside": inside,
+        return {"bodies": 0, "falling": 0, "cloth": 0, "state": "none", "frames": frames, "key": "", "storedKey": stored_key, "inside": inside,
                 "line": f"{name}: nothing falls (Simulate › Falls or Cloth on an item)"}
     scene = scene if scene is not None else describe(data, shot_id, folder, sim="none")
     req, key = sim_inputs(data, shot_id, folder, scene)
@@ -50,5 +51,12 @@ def state(data: dict, shot_id: str, folder=None, scene: dict | None = None) -> d
         st, words = "out of date", "out of date · Simulate"
     else:
         st, words = "not computed", "not computed · Simulate"
-    return {"bodies": n, "state": st, "frames": frames, "key": key, "storedKey": stored_key, "inside": inside,
+    return {"bodies": n, "falling": n - len(cloths(req)), "cloth": len(cloths(req)), "state": st, "frames": frames, "key": key, "storedKey": stored_key, "inside": inside,
             "line": f"{name}: {n} {'body' if n == 1 else 'bodies'} · {words}"}
+
+
+def adoptable(st: dict) -> bool:
+    """A result for the inputs as they are is stored but the shot's simKey names an older one (or none): a render path
+    computed it. Recording it (sim.run: the result is in the cache, nothing is computed) makes it the shot's stored result,
+    so the row says Stored and the viewport shows the fall the render used."""
+    return st.get("state") == "stored" and bool(st.get("key")) and st.get("key") != st.get("storedKey")

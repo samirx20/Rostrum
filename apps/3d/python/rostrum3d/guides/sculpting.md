@@ -146,7 +146,8 @@ clay.spin(target="clay_1", profile=[[x, y, z], …], axis=[[0, 0, 0], [0, 1, 0]]
 clay.from_item(target=["box_1"])                       -> Turn into clay: a clay copy, the box hidden
 clay.lump(target="clay_1", at=[0.1, 0.05, 0], radius=0.06)   -> a ball joined on (at: in the clay's own space)
 clay.shape(target="clay_1", shape="capsule", at=[..], to=[..], radius=0.03, mode="carve")
-clay.stroke(target="clay_1", brush="add", path=[[x, y, z], …], dir=[0, 0, -1])   -> a stroke along a path
+clay.stroke(target="clay_1", brush="add", path=[[x, y, z], …], dir=[0, 0, -1], size=0.02)   -> a stroke along a path
+                                                       # (size: this stroke's radius in m; left out, clay.set's brushSize)
 clay.set(target="clay_1", brush="smooth", brushSize=0.02, brushStrength=0.4, symmetry="off",
          brushFalloff=0.5, brushSpacing=0.3, frontOnly=True)    # brush: add carve smooth pull flatten crease mask
 claystep.set(target="clay_1.step_3", name="nose") · claystep.set(target="clay_1.step_2", hidden=True)

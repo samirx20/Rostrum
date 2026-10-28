@@ -92,6 +92,18 @@ class Scrubs:
     InspectorRow: scrubStarted, then `scrub` per move, scrubEnded); here the moves go to the view, and the release is
     one `copies.set`-style change through the bridge's own edit call."""
     _live = None                       # the open live drag: {param, send, value, start, item}
+    _dropped = ""                      # the field whose drag Esc cancelled: its moves change nothing until the release
+
+    @property
+    def scrubbing(self) -> bool:
+        """A field's number is being dragged (live or through the kit): what Esc cancels (esc3d.py)."""
+        return self._live is not None or self._kit.scrub is not None
+
+    def cancel_drag(self):
+        """Esc in the middle of a number drag: the value goes back, no history step, and the rest of this drag (the
+        field still has the mouse) changes nothing until it is let go."""
+        self._dropped = self._live["param"] if self._live is not None else self._kit.scrub.name
+        self.cancelScrub()
 
     def _live_req(self, param: str):
         """The live request maker for a drag of `param` on the one selected item: a copies item's numbers, a material's
@@ -108,6 +120,9 @@ class Scrubs:
 
     @Slot(str)
     def beginScrub(self, param):
+        if self._dropped == param:
+            return
+        self._dropped = ""
         self._live_end(commit=False)
         req = self._live_req(param)
         if req is None:
@@ -118,6 +133,8 @@ class Scrubs:
 
     @Slot(str, "QVariant")
     def scrub(self, param, value):
+        if self._dropped == param:
+            return
         lv = self._live
         if lv is not None and lv["param"] == param:
             lv["value"] = value
@@ -127,6 +144,9 @@ class Scrubs:
 
     @Slot()
     def endScrub(self):
+        if self._dropped:
+            self._dropped = ""
+            return
         if self._live is not None:
             return self._live_end(commit=True)
         super().endScrub()

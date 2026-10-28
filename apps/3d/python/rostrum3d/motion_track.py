@@ -55,10 +55,24 @@ class Track:
     """The items of a shot over frames `frames` (shot frame numbers): `rows[id]` per frame {frame, world, screen, shown,
     solid, view}. `skipped[id]`: why a shape item's solid could not be measured (an import, copies)."""
 
-    def __init__(self, data: dict, info: dict, frames: range, folder=None):
+    def __init__(self, data: dict, info: dict, frames: range, folder=None, sim: dict | None = None):
         self.fr = Frames(data, range(info["start"], frames.stop), info["fps"], folder)
         self.data, self.info, self.frames, self.built, self.skipped = data, info, frames, {}, {}
+        if sim:                                 # mcp/motion_sim.moves: the simulated things where the stored result has them
+            self.skipped.update(sim["skip"])
+            self._lay_over(sim["moves"], info["start"])
         self.cams = {f: Camera(self.fr, info["camera"], f, info["width"], info["height"]) for f in frames}
+
+    def _lay_over(self, moves: dict, s0: int):
+        """A falling item's x y z rx ry rz per frame (from the shot's first frame) replace its keyed ones."""
+        resolve = self.fr._resolve
+
+        def resolved(id_: str, f: int) -> dict:
+            v = resolve(id_, f)
+            if per := moves.get(id_):
+                v = {**v, **{k: vals[min(max(f - s0, 0), len(vals) - 1)] for k, vals in per.items()}}
+            return v
+        self.fr._resolve = resolved
 
     def ids(self) -> list[str]:
         """Every item drawn as itself (not the shot camera, not an input inside a combine or a copies item), in the document's order."""
