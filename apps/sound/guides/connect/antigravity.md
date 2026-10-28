@@ -10,7 +10,7 @@ In Rostrum click the **?** button in the top bar and choose **Connect an AI agen
 
 ### Rostrum2D (`rostrum-2d`)
 
-File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
+File: `C:\Users\<you>\.gemini\config\mcp_config.json`
 
 ```json
 {
@@ -29,7 +29,7 @@ File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
 }
 ```
 
-1. Open C:\Users\<you>\.gemini\antigravity\mcp_config.json (make the file if it isn't there).
+1. Open C:\Users\<you>\.gemini\config\mcp_config.json (make the file if it isn't there).
 2. Paste the block above inside “mcpServers”. If “mcpServers” is already there, add only the “rostrum-2d” part, and keep your other servers.
 3. Save the file.
 4. In Antigravity open the “…” menu of the Agent panel → MCP Servers → Manage MCP Servers and press Refresh (or start a new `agy` session).
@@ -37,7 +37,7 @@ File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
 
 ### RostrumSound (`rostrum-sound`)
 
-File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
+File: `C:\Users\<you>\.gemini\config\mcp_config.json`
 
 ```json
 {
@@ -56,7 +56,7 @@ File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
 }
 ```
 
-1. Open C:\Users\<you>\.gemini\antigravity\mcp_config.json (make the file if it isn't there).
+1. Open C:\Users\<you>\.gemini\config\mcp_config.json (make the file if it isn't there).
 2. Paste the block above inside “mcpServers”. If “mcpServers” is already there, add only the “rostrum-sound” part, and keep your other servers.
 3. Save the file.
 4. In Antigravity open the “…” menu of the Agent panel → MCP Servers → Manage MCP Servers and press Refresh (or start a new `agy` session).
@@ -70,7 +70,7 @@ In the Agent panel's “…” menu choose MCP Servers → Manage MCP Servers (o
 
 Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to Antigravity.
 
-By hand, for Rostrum2D: open C:\Users\<you>\.gemini\antigravity\mcp_config.json and delete the “rostrum-2d” block (keep everything else).
-By hand, for RostrumSound: open C:\Users\<you>\.gemini\antigravity\mcp_config.json and delete the “rostrum-sound” block (keep everything else).
+By hand, for Rostrum2D: open C:\Users\<you>\.gemini\config\mcp_config.json and delete the “rostrum-2d” block (keep everything else).
+By hand, for RostrumSound: open C:\Users\<you>\.gemini\config\mcp_config.json and delete the “rostrum-sound” block (keep everything else).
 
 More about Antigravity and MCP servers: https://codelabs.developers.google.com/google-workspace-mcp-antigravity
