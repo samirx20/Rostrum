@@ -55,12 +55,13 @@ bool linear_only() {
 // 3e-3d: dual quaternions keep a joint's thickness but swell its inner side: a high-raised arm grew a lump between
 // the shoulder and the neck (the Hello judges: "the waving arm grows out of a lumpy shoulder bulge"); linear blending
 // pinches the same place in. Each posed point takes this share of the linear blend and the rest of the dual one, so
-// the two errors cancel round the joint while a point on one bone (both blends the same) is unchanged.
+// the two errors cancel round the joint while a point on one bone (both blends the same) is unchanged. 0.75 (renders of
+// the Hello figure at 65° and 110°: 0 balloons the shoulder, 0.5 still bulges at 110°, 1 is clean but a little thin).
 // ROSTRUM3D_CLAY_SKIN_LINEAR_SHARE sets it (0 = dual quaternions alone, 1 = linear alone).
 double linear_share() {
   static const double v = [] {
     const char* env = std::getenv("ROSTRUM3D_CLAY_SKIN_LINEAR_SHARE");
-    return env ? std::clamp(std::atof(env), 0.0, 1.0) : 0.5;
+    return env ? std::clamp(std::atof(env), 0.0, 1.0) : 0.75;
   }();
   return v;
 }
