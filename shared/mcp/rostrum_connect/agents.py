@@ -38,7 +38,7 @@ class Agent:
     button_cli: bool = True        # False: the agent's CLI rewrites the person's whole file, so Add / Remove edit it ourselves
     know_by_module: bool = False   # True: a hand-made entry that runs our server (`-m <module>`) also counts as ours
     restart: str = "Close and reopen {name}."
-    check: str = "Ask {name} to list its tools; rostrum-2d and rostrum-sound should be there."
+    check: str = "Ask {name} to list its tools; rostrum-2d, rostrum-sound and rostrum-3d should be there."
 
 
 _ALL = {"win": "", "mac": "", "linux": ""}
@@ -56,7 +56,7 @@ AGENTS = (
           cli_remove=("claude", "mcp", "remove", "--scope", "user", "{name}"),
           cli_list=("claude", "mcp", "list"),
           restart="Start a new Claude Code session (servers load when it starts).",
-          check="In Claude Code type /mcp (or run `claude mcp list`); rostrum-2d and rostrum-sound should be listed as connected."),
+          check="In Claude Code type /mcp (or run `claude mcp list`); rostrum-2d, rostrum-sound and rostrum-3d should be listed as connected."),
     Agent("claude-desktop", "Claude Desktop", "https://modelcontextprotocol.io/docs/develop/connect-local-servers", (),
           {"win": "%APPDATA%/Claude/claude_desktop_config.json",
            "mac": "~/Library/Application Support/Claude/claude_desktop_config.json",
@@ -65,7 +65,7 @@ AGENTS = (
           candidates=("%LOCALAPPDATA%/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Roaming/Claude/claude_desktop_config.json",),  # Store install
           restart="Quit Claude Desktop completely (also from the tray) and open it again.",
           check="Click the “+” (Add files, connectors, and more) at the bottom-left of the message box, then Connectors; "
-                "rostrum-2d and rostrum-sound should be listed. (The Microsoft Store version reads a different file than "
+                "rostrum-2d, rostrum-sound and rostrum-3d should be listed. (The Microsoft Store version reads a different file than "
                 "Settings → Developer → Edit Config opens; Rostrum uses the one the app reads.)"),
     Agent("codex", "Codex", "https://developers.openai.com/codex/mcp", ("codex",),
           _same("~/.codex/config.toml"), "toml", ("mcp_servers",), "std",
@@ -73,14 +73,14 @@ AGENTS = (
           cli_add=("codex", "mcp", "add", "{name}", "{env:--env}", "--", "{cmd}"),
           cli_remove=("codex", "mcp", "remove", "{name}"), cli_list=("codex", "mcp", "list"),
           button_cli=False,        # `codex mcp add/remove` re-sorts and re-types every table (H26 proof); tomlkit keeps it
-          restart="Start a new Codex session.", check="Run `codex mcp list`; both servers should be listed."),
+          restart="Start a new Codex session.", check="Run `codex mcp list`; all three servers should be listed."),
     Agent("cursor", "Cursor", "https://cursor.com/docs/context/mcp", ("cursor",),
           _same("~/.cursor/mcp.json"), "json", ("mcpServers",), "std",
           detect_paths=("~/.cursor", "%LOCALAPPDATA%/Programs/cursor", "/Applications/Cursor.app"),
           project_file=".cursor/mcp.json",
           deeplink="cursor://anysphere.cursor-deeplink/mcp/install?name={name}&config={b64}",
           restart="Quit Cursor and open it again.",
-          check="Look under Customize in Cursor's sidebar; both servers should be listed with their switch on."),
+          check="Look under Customize in Cursor's sidebar; all three servers should be listed with their switch on."),
     Agent("vscode", "VS Code", "https://code.visualstudio.com/docs/copilot/customization/mcp-servers", ("code",),
           {"win": "%APPDATA%/Code/User/mcp.json", "mac": "~/Library/Application Support/Code/User/mcp.json",
            "linux": "~/.config/Code/User/mcp.json"},
@@ -88,32 +88,33 @@ AGENTS = (
           cli_add=("code", "--add-mcp", "{json}"),
           button_cli=False,        # `code --add-mcp` also writes its own "inputs": [] (H26 proof); a file edit leaves only ours
           restart="Nothing to restart: run the command “MCP: List Servers”, pick the server and choose Start.",
-          check="Run the command “MCP: List Servers”; both should be listed."),
+          check="Run the command “MCP: List Servers”; all three should be listed."),
     Agent("windsurf", "Windsurf", "https://docs.windsurf.com/windsurf/cascade/mcp", ("windsurf",),
           _same("~/.codeium/windsurf/mcp_config.json"), "json", ("mcpServers",), "std",
           detect_paths=("~/.codeium/windsurf",), candidates=("%APPDATA%/devin/mcp_config.json", "~/.config/devin/mcp_config.json"),
           restart="In Cascade press the refresh button next to the plugins, or restart Windsurf.",
-          check="Open the “…” menu in the Cascade panel → MCPs; both servers should be listed. "
+          check="Open the “…” menu in the Cascade panel → MCPs; all three servers should be listed. "
                 "(Unsure which file your Windsurf reads? Use its “Open MCP config file” button.)"),
     # Gemini CLI is not listed: Google stopped it for personal accounts on 2026-06-18 and sends people to Antigravity.
     Agent("antigravity", "Antigravity", "https://codelabs.developers.google.com/google-workspace-mcp-antigravity", ("agy",),
           _same("~/.gemini/config/mcp_config.json"), "json", ("mcpServers",), "std",   # the file the app reads
           fallback="~/.gemini/antigravity/mcp_config.json",                            # older setups without config/
           detect_paths=("~/.gemini/config", "~/.gemini/antigravity"), know_by_module=True,
+          files_env=("GEMINI_HOME", "config/mcp_config.json"),                         # a home of its own (one per account)
           restart="In Antigravity open the “…” menu of the Agent panel → MCP Servers → Manage MCP Servers and press Refresh "
                   "(or start a new `agy` session).",
           check="In the Agent panel's “…” menu choose MCP Servers → Manage MCP Servers (or type /mcp in `agy`); "
-                "rostrum-2d and rostrum-sound should be listed. “View raw config” shows the file Antigravity reads."),
+                "rostrum-2d, rostrum-sound and rostrum-3d should be listed. “View raw config” shows the file Antigravity reads."),
     Agent("opencode", "opencode", "https://opencode.ai/docs/mcp-servers/", ("opencode",),
           _same("~/.config/opencode/opencode.json"), "jsonc", ("mcp",), "opencode",
           detect_paths=("~/.config/opencode",), candidates=("~/.config/opencode/opencode.jsonc",), restart="Start a new opencode session.",
-          check="Run `opencode mcp list`; both servers should be listed."),
+          check="Run `opencode mcp list`; all three servers should be listed."),
     Agent("zed", "Zed", "https://zed.dev/docs/ai/mcp", ("zed",),
           {"win": "%APPDATA%/Zed/settings.json", "mac": "~/.config/zed/settings.json",
            "linux": "~/.config/zed/settings.json"},
           "jsonc", ("context_servers",), "zed", detect_paths=("%APPDATA%/Zed", "~/.config/zed"),
           restart="Zed picks the change up by itself.",
-          check="Open the Agent panel's settings; both servers should show a green dot."),
+          check="Open the Agent panel's settings; all three servers should show a green dot."),
 )
 BY_ID = {a.id: a for a in AGENTS}
 

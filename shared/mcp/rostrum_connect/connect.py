@@ -39,8 +39,8 @@ class Result:
     used_cli: bool
 
 
-def _cli(a: agents.Agent) -> str | None:
-    if os.environ.get("ROSTRUM_CONNECT_NO_CLI") == "1" or not a.button_cli:
+def _cli(a: agents.Agent, file: Path | None = None) -> str | None:
+    if file is not None or os.environ.get("ROSTRUM_CONNECT_NO_CLI") == "1" or not a.button_cli:   # a CLI writes only its own file
         return None
     return next((p for c in a.clis if (p := shutil.which(c))), None)
 
@@ -69,8 +69,13 @@ def _ours(entry, a: agents.Agent | None = None, name: str = "") -> bool:
     return bool(app) and "serverUrl" not in entry and list(args[:2]) == ["-m", app[1]]
 
 
-def _entries(a: agents.Agent) -> dict:
-    doc = read(agents.user_file(a), a.fmt)
+def _file(a: agents.Agent, file: Path | None) -> Path:
+    """The settings file to use: `file` (another account's folder, profiles.py), else the agent's usual one."""
+    return Path(file) if file is not None else agents.user_file(a)
+
+
+def _entries(a: agents.Agent, file: Path | None = None) -> dict:
+    doc = read(_file(a, file), a.fmt)
     return dict(table(doc.data, a.key, fmt=a.fmt) or {})
 
 
@@ -80,11 +85,11 @@ def entries(agent_id: str) -> dict:
     return {n: _ours(e, a, n) for n, e in _entries(a).items()}
 
 
-def status(agent_id: str, app: str) -> Status:
+def status(agent_id: str, app: str, file: Path | None = None) -> Status:
     a, name = agents.get(agent_id), servers.entry(app).name
-    e = _entries(a).get(name)
+    e = _entries(a, file).get(name)
     ours = e is not None and _ours(e, a, name)
-    return Status(a, app, _found(a).installed, agents.user_file(a), ours,
+    return Status(a, app, _found(a).installed, _file(a, file), ours,
                   e is not None and not ours, None if e is None else _plain(e))
 
 
@@ -101,25 +106,26 @@ def _run(argv: list[str]) -> None:
         raise ConnectError(f"{argv[0]} said no (exit {p.returncode}): {(p.stdout + p.stderr).strip() or 'no message'}")
 
 
-def _edit(a: agents.Agent, mutate, hand: str = "") -> None:
-    path = agents.user_file(a)
+def _edit(a: agents.Agent, mutate, hand: str = "", file: Path | None = None) -> None:
+    path = _file(a, file)
     doc = read(path, a.fmt)
     mutate(doc)
     write(path, a.fmt, doc, hand)
 
 
-def _check_listed(a: agents.Agent, app: str, expect: bool, via: str) -> None:
-    st = status(a.id, app)
+def _check_listed(a: agents.Agent, app: str, expect: bool, via: str, file: Path | None = None) -> None:
+    st = status(a.id, app, file)
     if st.ours != expect:
         raise ConnectError(f"I tried {via} but {st.file} doesn't show {servers.entry(app).name} "
                            f"{'added' if expect else 'removed'} afterwards. Nothing more was changed; "
                            f"use “Show me how to do it by hand”.")
 
 
-def add(agent_id: str, app: str, ask=None, project: str | None = None) -> Result:
+def add(agent_id: str, app: str, ask=None, project: str | None = None, file: Path | None = None) -> Result:
+    """`file`: another settings file of this agent (an account folder a launcher made, profiles.py), else its usual one."""
     from .byhand import by_hand
     a, srv = agents.get(agent_id), servers.entry(app, project)
-    st = status(agent_id, app)
+    st = status(agent_id, app, file)
     if st.foreign:
         raise ConnectError(f"{st.file} already has a server called {srv.name} that Rostrum didn't add. "
                            f"I won't touch it. Remove or rename it first, then try again.")
@@ -127,7 +133,7 @@ def add(agent_id: str, app: str, ask=None, project: str | None = None) -> Result
         return Result(False, f"Left {a.name} alone.", st.file, None, False)
     if ask and not st.file.exists() and not ask(f"{st.file} doesn't exist yet. Create it?"):
         return Result(False, f"Left {a.name} alone.", st.file, None, False)
-    saved, cli = backup(st.file, a.id), _cli(a)
+    saved, cli = backup(st.file, a.id), _cli(a, file)
     before.note(st.file, a.fmt, a.key)
     hand = by_hand(a.id, app)["snippet"]
     if cli and a.cli_add:
@@ -138,26 +144,26 @@ def add(agent_id: str, app: str, ask=None, project: str | None = None) -> Result
         _run([cli, *agents.render_argv(a.cli_add, srv, a.shape)[1:]])
     else:
         entry = agents.to_entry(a.shape, srv)
-        _edit(a, lambda d: table(d.data, a.key, True, a.fmt).__setitem__(srv.name, entry), hand)
-    _check_listed(a, app, True, f"to add it with {'its command' if cli and a.cli_add else 'a file edit'}")
+        _edit(a, lambda d: table(d.data, a.key, True, a.fmt).__setitem__(srv.name, entry), hand, file)
+    _check_listed(a, app, True, f"to add it with {'its command' if cli and a.cli_add else 'a file edit'}", file)
     return Result(True, f"{srv.name} is now in {a.name}'s settings ({st.file}). {a.restart.format(name=a.name)}",
                   st.file, saved, bool(cli and a.cli_add))
 
 
-def remove(agent_id: str, app: str) -> Result:
+def remove(agent_id: str, app: str, file: Path | None = None) -> Result:
     a, srv = agents.get(agent_id), servers.entry(app)
-    st = status(agent_id, app)
+    st = status(agent_id, app, file)
     if st.foreign:
         raise ConnectError(f"{srv.name} in {st.file} wasn't added by Rostrum, so I won't remove it.")
     if not st.ours:
         return Result(True, f"{srv.name} wasn't in {a.name}'s settings. Nothing to remove.", st.file, None, False)
-    saved, cli = backup(st.file, a.id), _cli(a)
+    saved, cli = backup(st.file, a.id), _cli(a, file)
     if cli and a.cli_remove:
         _run([cli, *agents.render_argv(a.cli_remove, srv, a.shape)[1:]])
     else:
-        _edit(a, lambda d: table(d.data, a.key).pop(srv.name, None))
+        _edit(a, lambda d: table(d.data, a.key).pop(srv.name, None), file=file)
     before.tidy(st.file, a.fmt, a.key, _drop_table, lambda e: _ours(e, a, srv.name))   # the last of ours gone: the file as it was before us
-    _check_listed(a, app, False, "to remove it")
+    _check_listed(a, app, False, "to remove it", file)
     return Result(True, f"{srv.name} is removed from {a.name}'s settings ({st.file}). {a.restart.format(name=a.name)}",
                   st.file, saved, bool(cli and a.cli_remove))
 
@@ -167,3 +173,14 @@ def _drop_table(data, key: tuple) -> None:
     for k in key[:-1]:
         parents.append(parents[-1][k])
     del parents[-1][key[-1]]
+
+
+def everywhere(fn, agent_id: str, app: str, **kw) -> Result:
+    """`fn` (add / remove) on the agent's usual file and on every account folder a launcher made for it (profiles.py),
+    as one Result. The Connect dialog uses this: an agent run through a launcher reads only its account's file."""
+    from . import profiles
+    first = fn(agent_id, app, **kw)
+    usual = Path(first.file).resolve()
+    done = [p for p in profiles.found(agent_id) if p.file.resolve() != usual and fn(agent_id, app, file=p.file, **kw).ok]
+    more = f" Also in {len(done)} account folder(s): {', '.join(p.label for p in done)}." if done else ""
+    return Result(first.ok, first.summary + more, first.file, first.backup, first.used_cli)
