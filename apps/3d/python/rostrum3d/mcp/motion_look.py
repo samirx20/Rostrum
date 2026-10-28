@@ -98,7 +98,7 @@ def look_motion(ctx, args):
     wait with inspect_job, then look again. A cloth's folds and each copy of a falling copies item are not measured here
     (named under not measured). For every falling thing and cloth of the stored result (copies and cloth included) an
     "On screen" line says over which frames it drops (until it first lands) and how far, how many of those frames the
-    shot camera's picture shows it in and how many it drops outside (above, below, beside), when it enters and lands, or that it starts already at rest, with the fix
+    shot camera's picture shows it in and how many it drops outside (above, below, beside), when it enters and lands, or that it starts already at rest (a copies item: judged copy by copy, how many fall, over which frames they start, the median drop and time seen), with the fix
     when the fall isn't seen well (sim.start_in_view, fallStart); data `fallsOnScreen`. Fails with the reason on an unknown item, fewer than two frames, or nothing moving."""
     doc, info = doc_and_shot(ctx, args)
     frames = _range(ctx, info, args)
@@ -112,7 +112,7 @@ def look_motion(ctx, args):
     turning = {i for i in every if any(x["solid"] != rows[i][0]["solid"] for x in rows[i])}
     moving = {i for i in every if known[i]["moves"]} | turning
     falls = [r for r in fall_view.views(doc.data, info, ctx.app.folder) if not args.get("items") or r["item"] in ids] if sim else []
-    if not moving & set(ids):
+    if not moving & set(ids) and not any(r.get("moving") for r in falls):   # copies falling in a simulation count as motion
         unseen = f' ({"; ".join(sim["skip"].values())})' if sim and sim["skip"] else ""
         raise RostrumError(codes.NOT_FOUND, ctx.tool, f"frames {frames[0]}–{frames[-1]}", ("nothing measured moves in them" if sim else "nothing moves in them") +
                            (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else "") +

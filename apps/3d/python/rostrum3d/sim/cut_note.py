@@ -7,6 +7,7 @@ from __future__ import annotations
 
 MIN_TAIL_S = 2.0       # a still stretch at least this long ...
 MIN_TAIL_SHARE = 0.4   # ... and at least this share of the cut is named
+HOLD_S = 1.0           # the settled hold the "start it later" figure leaves at the cut's end
 _CUT = "start the cut at or before {a:.1f} s (render_video `start`, the shot's start)"
 _TAIL = ("shorten the cut to end soon after {m:.1f} s (render_video `end`, the shot's end), or slow the fall (a lighter cloth: "
          "clothWeight; a later fallStart; a higher drop), or key the camera or other things so the shot has something to show")
@@ -31,13 +32,18 @@ def cut_lines(rows: list[dict], f0: int, f1: int, s0: int, fps: float) -> list[s
                        "'Falls from'), or start it higher.")
     if not movers:
         return out
-    last = max(r["moving"][1] for r in movers)
+    # a cloth in a Breeze (clothWind) keeps stirring to the end after it lands, below what counts as a fall's motion
+    last = max(f1 if r.get("breeze") else r["moving"][1] for r in movers)
     if f0 > last:
         out.append(f"Everything settled by {t(last):.1f} s, before this cut starts at {t(f0):.1f} s: nothing falling or draping moves in it "
                    "(only the camera, if it moves).")
         return out
     tail, length = (f1 - last) / fps, (f1 - f0 + 1) / fps
     if tail >= max(MIN_TAIL_S, MIN_TAIL_SHARE * length):
+        r = max(movers, key=lambda r: r["moving"][1])
+        later, takes = tail - HOLD_S, (r["moving"][1] - r["moving"][0]) / fps
+        breeze = " or give the cloth a Breeze (clothWind 0.3–0.8 m/s) so it keeps stirring after it lands," if r["kind"] == "cloth" else ""
         out.append(f"Everything settles at {t(last):.1f} s: the last {tail:.1f} s of this {length:.1f} s cut don't move (only the camera, if it "
-                   f"moves); {_TAIL.format(m=t(last))}.")
+                   f"moves). {r['item']} moves for {takes:.1f} s; to have it settle about {HOLD_S:g} s before the end, start it {later:.1f} s later "
+                   f"(its fallStart + {later:.1f}),{breeze} or {_TAIL.format(m=t(last))}.")
     return out

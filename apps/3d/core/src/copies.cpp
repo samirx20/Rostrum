@@ -42,7 +42,7 @@ constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no ma
 const char* const kKeys[] = {"layout", "count", "columns", "spacingX", "spacingY", "spacingZ", "radius", "faceOut",
                              "surface", "amountBy", "density", "minSpacing", "alongSurface", "onTop", "seed", "varyMove",
                              "varyTurn", "varyScale", "seenBy", "seenSize"};
-const char* const kOptionalKeys[] = {"onlySeen", "varyStart"};
+const char* const kOptionalKeys[] = {"onlySeen", "varyStart", "pourTime", "pourSpeed", "pourSpread"};
 
 // A number from (seed, copy, channel), 0..1, the same on every run and machine: each copy's chances are its own, so
 // changing the count or the layout never reshuffles the others.
@@ -92,7 +92,7 @@ std::string choice(const JsValue& v, const std::string& where, const std::vector
 
 // One prop into p; the same checks for the scene and the live request.
 void set_param(Params& p, const std::string& key, const JsValue& v, const std::string& where) {
-  if (key == "layout") p.layout = choice(v, where, {"line", "grid", "circle", "surface"});
+  if (key == "layout") p.layout = choice(v, where, {"line", "grid", "circle", "surface", "pour"});
   else if (key == "count") p.count = whole(v, where, 1, 10000);
   else if (key == "columns") p.columns = whole(v, where, 1, 10000);
   else if (key == "spacingX") p.spacing[0] = number(v, where);
@@ -113,6 +113,12 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
     p.varyScale = at_least(v, where, 0);
     if (p.varyScale > 1) fail(where, std::to_string(p.varyScale) + " is too big", "0 .. 1");
   } else if (key == "varyStart") p.varyStart = at_least(v, where, 0);
+  else if (key == "pourTime") p.pourTime = at_least(v, where, 0);
+  else if (key == "pourSpeed") p.pourSpeed = at_least(v, where, 0);
+  else if (key == "pourSpread") {
+    p.pourSpread = at_least(v, where, 0);
+    if (p.pourSpread > 90) fail(where, std::to_string(p.pourSpread) + " is too big", "0 .. 90 degrees");
+  }
   else if (key == "seenBy") p.seenBy = text(v, where);
   else if (key == "onlySeen") flag(v, where);  // the document's switch; `seenBy` carries it
   else if (key == "seenSize") {
@@ -364,6 +370,9 @@ std::vector<Copy> lay_out(const State& s) {
       } else if (p.layout == "grid") {
         const int col = i % p.columns, row = i / p.columns;
         c.pos = GfVec3f(float(col * p.spacing[0]), 0.f, float(row * p.spacing[2]));
+      } else if (p.layout == "pour") {  // the mouth: anywhere in a disc of radius round the origin, evenly by area
+        const double r = p.radius * std::sqrt(rnd(p.seed, i, 8)), a = 2 * kPi * rnd(p.seed, i, 9);
+        c.pos = GfVec3f(float(r * std::cos(a)), 0.f, float(r * std::sin(a)));
       } else {  // circle, round Y; facing out turns the source's +Z outward
         const double a = 2 * kPi * i / p.count;
         c.pos = GfVec3f(float(p.radius * std::sin(a)), 0.f, float(p.radius * std::cos(a)));
@@ -502,7 +511,7 @@ bool moves(const UsdStageRefPtr& stage, const State& s) {
 
 // Writes the copies onto the instancer: plain values, or (an effector or a keyed copy moving) per-frame samples of what
 // they change.
-void write(const UsdStageRefPtr& stage, State& s) {
+void write_values(const UsdStageRefPtr& stage, State& s) {
   const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
   const size_t n = s.laid.size();
   VtIntArray protos(n);
@@ -587,6 +596,12 @@ void write(const UsdStageRefPtr& stage, State& s) {
   }
 }
 
+// The copies and which are hidden (invisibleIds: the seen test's, and a stored stream's waiting copies).
+void write(const UsdStageRefPtr& stage, State& s) {
+  write_values(stage, s);
+  write_shown(stage, s);
+}
+
 }  // namespace
 
 namespace {
@@ -601,6 +616,11 @@ SimTrack read_sim(const JsObject& o, const std::string& where) {
   t.end = int(r.num("end"));
   t.step = r.count("step", 1, 3);
   t.smooth = r.count("smooth", 1, 100);
+  if (r.has("appear")) {
+    const JsArray& a = r.list("appear");
+    if (a.size() != size_t(t.rows)) fail(r.at("appear"), std::to_string(a.size()) + " values", "one frame per row");
+    for (size_t i = 0; i < a.size(); ++i) t.appear.push_back(int(number(a[i], r.at("appear") + "[" + std::to_string(i) + "]")));
+  }
   r.finish();
   if (t.end < t.start || t.row + t.rows > t.of) fail(where, "rows or frames don't fit", "row + rows <= of, start <= end");
   const size_t want = size_t(t.end - t.start + 1) * size_t(t.of) * 7;
@@ -774,7 +794,9 @@ GfRange3d world_box(const UsdStageRefPtr& stage, const State& s, int frame) {
   GfMatrix4d world;
   const std::vector<Copy> copies = drawn_at(stage, s, frame, &world);
   GfRange3d out;
-  for (const Copy& c : copies) {
+  for (size_t i = 0; i < copies.size(); ++i) {
+    const Copy& c = copies[i];
+    if (s.sim.waiting(int(i), frame)) continue;  // not there yet
     const GfRange3d& b = s.bounds.empty() ? GfRange3d() : s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
     if (b.IsEmpty()) {
       out.UnionWith(world.Transform(GfVec3d(c.pos)));
@@ -788,14 +810,21 @@ GfRange3d world_box(const UsdStageRefPtr& stage, const State& s, int frame) {
 
 void write_shown(const UsdStageRefPtr& stage, const State& s) {
   const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
-  VtInt64Array hidden;
-  for (size_t i = 0; i < s.shown.size(); ++i)
-    if (!s.shown[i]) hidden.push_back(int64_t(i));
-  if (hidden.empty()) {
-    if (UsdAttribute a = pi.GetInvisibleIdsAttr()) a.Clear();
+  const size_t n = s.laid.size();
+  const auto hidden = [&](int f) {  // f < 0: the seen test's alone
+    VtInt64Array out;
+    for (size_t i = 0; i < n; ++i)
+      if ((i < s.shown.size() && !s.shown[i]) || (f >= 0 && s.sim.on() && s.sim.waiting(int(i), f))) out.push_back(int64_t(i));
+    return out;
+  };
+  if (UsdAttribute a = pi.GetInvisibleIdsAttr()) a.Clear();  // its default and every frame's
+  const bool waits = s.sim.on() && std::any_of(s.sim.appear.begin(), s.sim.appear.end(), [&](int f) { return f > s.start; });
+  if (!waits) {
+    if (const VtInt64Array h = hidden(-1); !h.empty()) pi.CreateInvisibleIdsAttr().Set(h);
     return;
   }
-  pi.CreateInvisibleIdsAttr().Set(hidden);
+  UsdAttribute a = pi.CreateInvisibleIdsAttr();
+  for (int f = s.start; f <= s.end; ++f) a.Set(hidden(f), UsdTimeCode(f));
 }
 
 int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3d& point, int hint, int proto) {
@@ -805,7 +834,7 @@ int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3
   // how far inside copy i's bounds the point is (< 1 inside, as a share of their half size); -1 = not a candidate
   const auto score = [&](int i) -> double {
     if (i < 0 || i >= int(copies.size())) return -1;
-    if (i < int(s.shown.size()) && !s.shown[i]) return -1;
+    if ((i < int(s.shown.size()) && !s.shown[i]) || s.sim.waiting(i, frame)) return -1;
     const Copy& c = copies[i];
     if (proto >= 0 && c.proto != proto) return -1;
     if (c.scale <= 1e-6f) return -1;
@@ -826,7 +855,20 @@ int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3
 }
 
 int start_delay(const Params& p, int copy, double fps) {
-  return p.varyStart > 0 ? int(std::lround(rnd(p.seed, copy, 7) * p.varyStart * fps)) : 0;
+  double wait = p.varyStart > 0 ? rnd(p.seed, copy, 7) * p.varyStart : 0;
+  if (p.layout == "pour" && p.count > 1) wait += p.pourTime * copy / (p.count - 1);  // the last leaves at pourTime
+  return int(std::lround(wait * fps));
+}
+
+bool streams(const Params& p) { return p.varyStart > 0 || (p.layout == "pour" && p.pourTime > 0); }
+
+GfVec3f start_velocity(const Params& p, int copy) {
+  if (p.layout != "pour" || p.pourSpeed <= 0) return GfVec3f(0.f);
+  // within pourSpread of straight down its own -Y, evenly over the cone's cap
+  const double cos_max = std::cos(p.pourSpread * kPi / 180);
+  const double c = 1 - rnd(p.seed, copy, 10) * (1 - cos_max), sn = std::sqrt(std::max(0.0, 1 - c * c));
+  const double a = 2 * kPi * rnd(p.seed, copy, 11);
+  return GfVec3f(float(sn * std::cos(a)), float(-c), float(sn * std::sin(a))) * float(p.pourSpeed);
 }
 
 }  // namespace copies

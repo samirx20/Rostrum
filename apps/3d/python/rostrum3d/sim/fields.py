@@ -67,6 +67,12 @@ CLOTH_ITEM = [
     N("clothAir", "Air", "Simulation", 0, 4, 0.05, "", S, CLOTH, default=1.0,
       help="How much the air holds it up as it falls: 1 room air (a light sheet floats down and its edges lift), "
            "0 none (drops like a stone), 2–4 slower and softer still"),
+    N("clothWind", "Breeze", "Simulation", 0, 5, 0.05, "m/s", S, CLOTH, default=0.0,
+      help="A moving air in slow gusts that keeps the cloth breathing after it lands (its edges and hanging sides stir): "
+           "0.3–0.8 a room's draught, 1–2 an open window, 3–5 outdoors. 0: still air, it settles and stays"),
+    N("clothWindTurn", "Breeze from", "Simulation", -360, 360, 1, "°", S, CLOTH,
+      default=0.0, help="Which way the breeze blows, turned about the up axis: 0 towards +x (left to right seen from the "
+                        "front), 90 towards −z (away from the front), 180 towards −x, −90 towards the front"),
     dataclasses.replace(
         CH("pinned", PINS, "Pinned edge", "Simulation", "none", S, CLOTH,
            help="The points along that side (as seen in the scene at the first frame) are held in place, like a "

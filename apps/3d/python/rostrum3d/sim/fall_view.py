@@ -8,7 +8,8 @@ and the window.
 
 "Moving" here is moving enough to see: a step of at least MOVE_M a frame by the thing's fastest point (a cloth: by its
 points on average), so a cloth's last settling and a ball's tiny roll at rest don't count. A thing is "on screen" at a
-frame when any of its box (a cloth: the box round its points; a copies item: each copy's pivot) is in the picture.
+frame when any of its box (a cloth: the box round its points) is in the picture. A copies item is judged copy by copy
+(copies_fall.py: a staggered stream is many short falls, not one).
 Measured from the stored result as the viewport plays it (Timing and Simplify applied, like look_motion).
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ from ..motion_track import Camera
 from ..resolve import Frames
 from . import fields as SF
 from .cloth_check import frames_of
+from .copies_fall import judge
 from .inputs import KIND, bodies, shot_value, value
 from .result import read, stylized
 from .state import state
@@ -56,8 +58,9 @@ def _paths(data: dict, info: dict, folder, where, fr: Frames) -> dict[str, dict]
         if kind == "falls" and (rows := res.rows_of(id_)):
             per_row = [[p for p, _ in stylized(res, r, span, s0, step, simplify)] for r in rows]
             if item["type"] == "copies":                         # a copy's row is in its copies item's own space
-                per_row = [[aim.point(fr.world(id_, f), p) for f, p in zip(span, ps)] for ps in per_row]
-                pts = [[ps[i] for ps in per_row] for i in range(len(span))]
+                out[id_] = {"kind": "copies", "tracks": [[aim.point(fr.world(id_, f), p) for f, p in zip(span, ps)]
+                                                         for ps in per_row]}
+                continue
             else:
                 try:
                     lo, hi = world_box(data, [id_], s0 / info["fps"])
@@ -67,7 +70,7 @@ def _paths(data: dict, info: dict, folder, where, fr: Frames) -> dict[str, dict]
                 offs = [[c[k] - pivot[k] for k in range(3)] for c in _corners(lo, hi)]
                 pts = [[[p[k] + o[k] for k in range(3)] for o in offs] for p in per_row[0]]
             pace = [max(_step(a, b) for a, b in zip(pts[i - 1], pts[i])) for i in range(1, len(pts))]
-            out[id_] = {"kind": "copies" if item["type"] == "copies" else "falls", "frames": pts, "pace": pace,
+            out[id_] = {"kind": "falls", "frames": pts, "pace": pace,
                         "low": [min(q[1] for q in ps) for ps in pts]}
         elif kind == "cloth":
             try:
@@ -176,11 +179,16 @@ def views(data: dict, info: dict, folder=None) -> list[dict]:
     fr = Frames(data, range(s0, s1 + 1), info["fps"], folder)
     cams = {f: Camera(fr, info["camera"], f, info["width"], info["height"]) for f in range(s0, s1 + 1)}
     out = []
+    breezes = {b["id"]: float(value(b, "clothWind")) for b in bodies(data) if value(b, "simulate") == "cloth"}
     for id_, p in _paths(data, info, folder, where, fr).items():
+        if p["kind"] == "copies":
+            facts, text, fix = judge(id_, p["tracks"], list(range(s0, s1 + 1)), lambda f, q: _seen(cams[f], [q]), info["fps"])
+            out.append({"item": id_, "kind": "copies", **facts, "line": text, "fix": fix})
+            continue
         seen = [_seen(cams[f], c) for f, c in zip(range(s0, s1 + 1), p["frames"])]
         facts = classify(list(range(s0, s1 + 1)), p["pace"], seen, info["fps"], p["low"])
         text, fix = line(id_, p["kind"], facts, info["fps"])
-        out.append({"item": id_, "kind": p["kind"], **facts, "line": text, "fix": fix})
+        out.append({"item": id_, "kind": p["kind"], **facts, "line": text, "fix": fix, "breeze": breezes.get(id_, 0.0)})
     return out
 
 

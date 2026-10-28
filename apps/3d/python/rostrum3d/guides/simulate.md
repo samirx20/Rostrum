@@ -15,6 +15,24 @@ and what it lands on, compute once, and the result is stored and played back lik
 Only things directly in the scene can fall or stay still, not something inside a group or copies (move it out first with
 `item.arrange`). A **copies** item that falls makes every copy fall on its own: twelve buds in one item are twelve falling things.
 
+A spill or a pour, written as one script you re-run and look at (the fields are in the guide *copies*):
+
+```python
+mesh("table", shape="box", width=1.0, height=0.04, depth=0.6, y=0.38).simulate("still")
+red = material("red", start="glossy plastic", baseColor="#c8321e")
+cream = material("cream", start="glossy plastic", baseColor="#efe6d2")
+# a few sources, same shape, different materials: each copy picks one by the seed (colour variety)
+a = mesh("die_a", shape="box", width=0.03, height=0.03, depth=0.03, bevel=0.003, y=0.9, material=red)
+b = mesh("die_b", shape="box", width=0.03, height=0.03, depth=0.03, bevel=0.003, y=0.9, material=cream)
+copies("dice", [a, b], layout="pour", count=40, radius=0.03, pourTime=3, pourSpeed=0.6, pourSpread=15,
+       varyTurn=180).simulate("falls", fallStart=0.5, bounce=0.3)
+```
+
+Then `run_simulation`, a contact sheet, change, run the script again. In a stream (a pour, or `varyStart` on any layout) a copy
+is **not there until it starts to fall**: it appears at its start point and drops, and until then it neither shows nor
+collides (renders, looks and framing all agree), so nothing hangs in the air waiting. Without a stream (all copies start
+together) every copy holds still where it is until `fallStart`.
+
 Each one's settings (`sim.set`, or the item's own `.set`):
 
 | field | what it does |
@@ -23,7 +41,7 @@ Each one's settings (`sim.set`, or the item's own `.set`):
 | `bounce` 0–1 | 0 lands dead, 1 bounces back as high as it fell |
 | `friction` 0–2 | 0 slides like ice, 1 grips like rubber |
 | `starts` | `moving`, or `asleep`: stays put until something hits it (a stack waiting to be knocked over) |
-| `fallStart` (seconds into the shot) | holds still where it is until then (others land on it and bounce off it), then falls; 0 = from the start. Stagger drops with it: `a.simulate("falls", fallStart=1)`, `b.simulate("falls", fallStart=2.5)`. On a copies item every copy waits, and its `varyStart` (Vary › **Start**, the guide *copies*) spreads each copy's start over that many seconds after it, from the seed; in the window it is the Simulation group's **Falls from** row, shown while it falls. To see the drop: *Stage a fall people see* below |
+| `fallStart` (seconds into the shot) | holds still where it is until then (others land on it and bounce off it), then falls; 0 = from the start. Stagger drops with it: `a.simulate("falls", fallStart=1)`, `b.simulate("falls", fallStart=2.5)`. On a copies item every copy waits, and its `varyStart` (Vary › **Start**, the guide *copies*) spreads each copy's start over that many seconds after it, from the seed (each copy then appears only when it starts); a pour leaves them one after another over `pourTime` after it; in the window it is the Simulation group's **Falls from** row, shown while it falls. To see the drop: *Stage a fall people see* below |
 | `simShape` | `exact` (its own outline; for one that falls, with the dents filled in), `box` or `sphere` (faster, rougher) |
 
 A thing that has keys at the start keeps its speed: key it moving and it is thrown. Keys after the first frame are not used
@@ -43,6 +61,8 @@ cloth (a plane is the usual one), and only one directly in the scene.
 | `pinned` | `none`, or the side held in place like a curtain on its rail: `top`, `bottom`, `left`, `right`, `front`, `back` (as the scene sees it at the first frame: `top` is its highest edge, `back` the edge furthest back) |
 | `friction` 0–2 | how much it grips what it lies on |
 | `fallStart` (seconds into the shot) | Falls from, as for a falling thing: the cloth keeps its first shape where it is until then (things that fall land on it as on something still), then drops. In the window: the Simulation group's **Falls from** row |
+| `clothWind` 0–5 (m/s) | Breeze: moving air in slow travelling gusts, so the cloth keeps breathing after it lands (free edges lift and fall, hanging sides sway) instead of freezing. 0 (the default) is still air: it settles and stays. 0.3–0.8 a room's draught, 1–2 an open window, 3–5 outdoors (a light cloth may blow off). A lighter `clothWeight` or more `clothAir` moves more in the same breeze. In the window: **Breeze** |
+| `clothWindTurn` (degrees) | which way the breeze blows, turned about the up axis: 0 towards +x (left to right seen from the front), 90 away from the front (−z), −90 towards the front. In the window: **Breeze from** |
 
 A plane is made fine enough to fold on its own (a 96 × 96 grid of points, so wrinkles a couple of centimetres wide on a
 1.5 m sheet); another shape has its faces split until they are small enough. At the default `stiffness` 0.3 a sheet hangs in soft folds and gathers where it meets the floor; go towards 0
@@ -51,6 +71,12 @@ shape is closed and has no dents (a box, a ball, a plinth) is solid to cloth; on
 is draped by its own faces. The sheet rests about 0.6 of a grid square (under 1 cm on a 1 m sheet) off what it lies on, so
 sharp corners don't poke through it. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
 fails); pin its `back` instead. Start it just above what it should land on, not touching it.
+
+**Timing the drape in a long shot:** a sheet takes about 1.5–2.5 s from letting go to lying still. In a 10 s shot with
+`fallStart` 1 it is still from about 3.5 s on, and `run_simulation` says so: "Everything settles at 3.5 s … start it 5.5 s
+later (its fallStart + 5.5)". Choose what the shot is about, then write it in the script and run it again: a later
+`fallStart` (the drop as the climax), a `clothWind` of 0.3–0.8 so the settled cloth keeps stirring for the rest of the
+shot, a shorter shot, or all of them. Look with `look_motion` (its **On screen** and moving lines) after each run.
 
 **Make it read as fabric (Final):** the simulation gives the folds; the material gives the cloth. Start its material from
 **Fabric** (`material.from` with `start: "fabric"`, `to: ["sheet"]`): high roughness and `sheen` (the soft glow fibres
@@ -107,7 +133,7 @@ lands a couple of frames later; a sheet placed right on what it covers barely mo
 | what | how |
 |---|---|
 | start it inside the picture | `sim.start_in_view` on things set to Falls or Cloth (script: `sheet.simulate("cloth", over=box, fallStart=1).start_in_view(0.1)`, after the shot and its camera), `fromTop` 0–0.9 (default 0.1): moves each one up or down so its top sits that share of the picture's height below the picture's top edge, as the shot camera sees it at the frame it starts falling. Only its height changes, so it still lands where it did. A copies item moves as a whole (its highest copy goes there). In the window: right-click its row › Simulate › **Start in view**, or select it › settings panel › **Start in view** (0.1 from the top; scripts and agents set `fromTop`) |
-| give the shot a moment first | `fallStart` (Falls from, seconds; a falling thing or a cloth): the thing hangs in the picture until then, so the viewer sees it before it drops; a copies item's `varyStart` spreads the copies' starts after that |
+| give the shot a moment first | `fallStart` (Falls from, seconds; a falling thing or a cloth): the thing hangs in the picture until then, so the viewer sees it before it drops; a copies item's `varyStart` (or a pour's `pourTime`) spreads the copies' starts after that, each copy appearing as it starts |
 | check it | `run_simulation` warns, and `look_motion` has an **On screen** line per falling thing and cloth: how far and over which frames it drops (until it first lands), how many of those frames the picture shows it in and how many it drops outside (above, below, beside), the frame it comes into the picture and the frame it lands, or "starts already at rest". Its data: `fallsOnScreen` (`run_simulation`: `onScreen` {item: [drop frames on screen, drop frames]}) |
 
 `sim.start_in_view` fails with the reason when no height can show the thing: it is beside the picture (move it sideways
@@ -117,7 +143,10 @@ the fall takes (gravity does the rest: about 0.45 s for 1 m, 0.3 s for 0.5 m); a
 lighter one (`clothWeight`) or more air drifts down slower: a 0.2 kg/m² sheet falls at most about 1.4 m/s flat on, a
 0.05 one about 0.7 m/s. The check counts the **drop**: from its first move until it stops going down (its first landing); bounces,
 rolls and a cloth's settling after that are "moves until frame n". A drop that is mostly above the picture, wholly
-outside it, or on screen for fewer than 4 frames is named, with the fix.
+outside it, or on screen for fewer than 4 frames is named, with the fix. A falling **copies** item is judged copy by copy
+(a pour is many short falls one after another): the line says how many copies fall, over which frames they start, the median
+drop and how long each is seen dropping, and names the item only when more than a quarter of its copies drop unseen or for
+under 4 frames (`run_simulation`'s `onScreen` for it counts the frames in which some copy is seen dropping).
 
 ## When it fails
 

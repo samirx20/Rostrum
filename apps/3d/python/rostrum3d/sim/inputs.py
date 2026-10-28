@@ -21,7 +21,7 @@ from rostrum_core.cache import cache_key
 
 from . import fields as SF
 
-SIM_VERSION = 6                                  # the core's `sim` in its reply; bump both together
+SIM_VERSION = 7                                  # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
@@ -93,6 +93,8 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
                     "stiffness": float(value(item, "stiffness")), "air": float(value(item, "clothAir")),
                     "pinned": value(item, "pinned"),
                     "friction": float(value(item, "friction"))}
+            if (wind := float(value(item, "clothWind"))) > 0:
+                body.update(wind=wind, windTurn=float(value(item, "clothWindTurn")))
             if (wake := _wake(item, info)) > 0:
                 body["wakeFrame"] = wake
             reqs.append(body)
