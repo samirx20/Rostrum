@@ -135,12 +135,20 @@ stroke, and every render, show the full detail.
 
 ## For agents
 
+**A character is one clay.** Start it as a ball and join its head, arms and feet as pieces of it, in a script:
+`c = clay("buddy", radius=0.07)` (no `at` / `y`: it rests on the ground when the script ends), then
+`c.lump((0, 0.125, 0), 0.055, name="head")` and `c.lump(at, 0.02, to=…, name="arm")` from inside the body outwards.
+Every piece blends into one surface, so nothing floats or drifts apart, and the joints (`body`, `chest`, `head`,
+`arm.R` …) are found from that one shape for `c.bend` / `c.pose` (guides `posing`, `script`). Separate clays or
+meshes for limbs only touch, with a hard line, and don't bend together.
+
 The Clay tool makes the same operations an agent calls (guides `agents` and `script`):
 
 ```
 clay.add(draw=[[x, y, z], …], facing=[0, 0, 1])        -> a new clay from a drawn outline (points in the scene)
 clay.add(spin=[[x, y, z], …], axis=[[x, y, z], [x, y, z]])   -> a new clay from a spun profile
 clay.add(at=[0, 0.15, 0], radius=0.15)                 -> a new clay with one ball (at: in the scene)
+script: clay("c", radius=0.15) / clay("c", at=(0, 0.15, 0), radius=0.15) / clay("c", at=.., to=.., radius=..)  (capsule)
 clay.draw(target="clay_1", outline=[[x, y, z], …], puff=1, name="arm")   -> a drawn shape joined on (clay's own space)
 clay.spin(target="clay_1", profile=[[x, y, z], …], axis=[[0, 0, 0], [0, 1, 0]])
 clay.from_item(target=["box_1"])                       -> Turn into clay: a clay copy, the box hidden

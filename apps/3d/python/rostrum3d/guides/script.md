@@ -1,8 +1,8 @@
 # The 3D script: `run_script` on one page
 
 A script is Python that describes the scene. `run_script` runs it, checks the whole result, and merges it into the document, so
-running it again changes only what the script now says differently and leaves what a person moved. The script never touches the
-engine or a USD file; the same fields work in `edit_document` (`mesh.set`, `light.add` …).
+running it again changes only what the script now says differently and leaves what a person moved. The script never touches a USD
+file (only posing a clay asks the engine to measure its shape); the same fields work in `edit_document` (`mesh.set`, `light.add` …).
 
 ## The way to work: one script, look, edit, re-run
 
@@ -15,6 +15,23 @@ engine or a USD file; the same fields work in `edit_document` (`mesh.set`, `ligh
 A re-run that leaves out most of what its last run made (2 or more things, more than half) is refused, naming them, so a
 one-line tweak sent under the script's name never wipes the scene. For a small change on its own, use a **new** name and
 `edit("ball", y=0.3)`; to really take things out, `remove("wall", "ball")`.
+
+## A character: one clay, posed by its joints
+
+A figure is **one clay**: body, head, arms and feet are pieces of it, so it holds together and its joints are found
+from its shape. Not separate meshes in groups (they drift apart and need moving together by hand).
+
+```python
+c = clay("buddy", radius=0.07)                         # a ball; no at / y: it rests on the ground when the script ends
+c.lump((0, 0.125, 0), 0.055, name="head")             # a head on a narrower neck: read as `head`
+c.lump((0.055, 0.04, 0), 0.02, to=(0.13, 0, 0), name="arm")   # held a little out; Mirror makes the other side
+c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -100)})      # degrees about the clay's X, Y, Z from rest, at each time
+c.pose("hand.L", {2: (0.15, 0.2, 0.05)})              # or drag a part's end to a world point (pose.drag)
+mesh("eye", shape="sphere", radius=0.01, x=0.02, y=0.14, z=0.05, attach_to=c)   # rides the head's bone
+```
+
+Pose after the last piece (the first `bend` / `pose` finds the joints; a piece added after fails). Names: `body`,
+`chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side. Guide `posing`.
 
 ## The shape of a script
 
@@ -44,13 +61,16 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `copies(id, source, layout=, count=, **fields)` | one thing many times: `source` (an item or list made earlier in the same list) goes inside; or `with copies(...):` and make it inside (guide `copies`) |
 | `copies.effector(kind=, near=, radius=, amount=)` | change the copies near an item: `scale turn push colour` |
-| `clay(id, **fields)` | a clay: a lump to sculpt, its shape built from its steps in order (guide `sculpting`) |
+| `clay(id, radius=, at=, to=, **fields)` | a clay starting as a ball of `radius` (a capsule from `at` to `to`); with neither, empty for `.lump` / `.draw`. No `at` / `y`: it rests on the ground when the script ends (its lowest point on the ground's top; what is attached to it moves with it) (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |
 | `clay.draw(outline, facing=, puff=, mode=, blend=, symmetry=, name=)` | a drawn shape joined on (the clay's own space); a tiny one is a lump |
 | `clay.spin(profile, axis=, mode=, blend=, symmetry=, name=)` | a spun shape joined on (the clay's own space) |
 | `clay.lump(at, radius, to=, mode=, blend=, symmetry=, name=)` | a piece: a sphere at `at`, a capsule to `to`; `mode="carve"` cuts it out (the clay's own space) |
 | `clay.shape(shape, at, radius, to=, mode=, …)` | the same piece with its shape named, as the `clay.shape` operation: `"sphere"` or `"capsule"` (needs `to`) |
 | `clay.stroke(path=, dir=, brush=, size=, strength=, symmetry=, accumulate=, name=)` | a brush stroke: each dab where a ray from a `path` point along `dir` meets the clay |
+| `clay.bend(joint, {seconds: (x, y, z)}, ease=)` | turn a clay's joint by those degrees about the clay's own X, Y, Z (from rest) at each time; finds its joints the first time |
+| `clay.pose(part, {seconds: (x, y, z)}, holds=[…], ease=)` | `pose.drag` at each time: the part's end (`"hand.R"`) goes to that world point |
+| any item: `attach_to=<item>` | it moves and turns with that item (`follow`); on a clay it bends with the bone nearest it (`followPose`) |
 | `material(id, **fields)` | a material (lists at the top level, not in a group) |
 | `shot(id, camera=, fps=, start=, end=, width=, height=, background=)` | a shot |
 

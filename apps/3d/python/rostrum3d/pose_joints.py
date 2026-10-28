@@ -320,13 +320,17 @@ def _carry(nodes, kids, radius0, side) -> int | None:
     return middle[0] if middle and len(middle) < len(kids) else None
 
 
+BACK = 2.5                     # a limb's base is at most this many times its thickness (radius) behind its first point
+
+
 def _base(pts, radius, occ, dist) -> np.ndarray:
     """Where a limb leaves the body: back from its first middle point, against its way, while the clay there is no
-    deeper than the limb is thick."""
+    deeper than the limb is thick, and never farther back than about its thickness (a limb leaving a round body at a
+    slant would otherwise slide along the body's skin, where the clay stays shallow, to the neck or the back)."""
     d = pts[min(2, len(pts) - 1)] - pts[0]
     d = d / max(np.linalg.norm(d), 1e-12)
     p, hi = pts[0].copy(), np.array(occ.shape) - 1
-    for _ in range(200):
+    for _ in range(int(2 * (BACK * radius + 1))):
         q = p - 0.5 * d
         c = tuple(np.clip(np.rint(q).astype(int), 0, hi))
         if not occ[c] or dist[c] > 1.4 * radius + 0.5:
@@ -443,10 +447,10 @@ def find_parts(grid: dict, mirror: bool | None = None) -> tuple[list[dict], dict
         stops.append(("chest", sum(arms) / len(arms)))
     radii = np.array([nodes[j].radius for j in body] + [0.0])
     after = [n for n, m in enumerate(marks) if m > stops[-1][1] + 1.0][:-1]
-    if len(after) > 3:
-        n_ = after[int(np.argmin(radii[after][:-1]))]
-        if radii[n_] < 0.75 * radii[: n_ + 1].max() and radii[n_ + 1:].max() > 1.2 * radii[n_]:
-            stops.append(("head", float(marks[n_])))
+    if len(after) > 3:                                          # the thinnest neck with a wider head above it
+        necks = [n for n in after[:-1] if radii[n] < 0.75 * radii[: n + 1].max() and radii[n + 1:].max() > 1.2 * radii[n]]
+        if necks:
+            stops.append(("head", float(marks[min(necks, key=lambda n: radii[n])])))
     joints = []
     for n, (name, x) in enumerate(stops):
         head = root_pos if n == 0 else at_along(x)
