@@ -21,7 +21,8 @@ START_HERE = """# Start here: how every Rostrum server answers
 - Your changes carry your client name and are grouped per turn, so a person can review or undo them together.
 - `run_script` merges what the script makes into the document. Anything a person moved by hand stays where they put it
   and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite.
-- Long work comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
+- Long work comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`. Every `look_*` and
+  `render_*` tool also takes `"wait": true` (or seconds): it waits for its job and answers with the finished file.
 """
 
 CAP = 8000      # characters of a guide one inspect_guide reply carries before it lists the remaining sections

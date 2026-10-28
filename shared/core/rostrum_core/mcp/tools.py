@@ -15,6 +15,7 @@ from typing import Any, Callable
 import jsonschema
 
 from ..errors import RostrumError, codes, did_you_mean
+from . import job_wait
 
 VERBS = ("run", "inspect", "edit", "render", "look")
 _NAME = re.compile(r"^(" + "|".join(VERBS) + r")_[a-z][a-z0-9]*(_[a-z0-9]+)*$")
@@ -85,6 +86,7 @@ class Tools:
         if name in self._tools:
             raise RostrumError(codes.BAD_ARGUMENT, "tool registration", f'"{name}"', "is already registered")
         spec, model = _schema_of(schema or {})
+        spec = job_wait.with_wait_schema(name, spec)       # look_/render_: `wait` for a job in the same call (the server does it)
         text = (description or fn.__doc__ or "").strip()
         if not text:
             raise RostrumError(codes.BAD_ARGUMENT, "tool registration", f'"{name}"', "has no description; agents choose tools by it")

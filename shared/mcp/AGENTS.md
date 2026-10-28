@@ -1,9 +1,9 @@
 # Connecting coding agents to Rostrum
 
-`rostrum_connect` (this folder) puts Rostrum2D's server (`rostrum-2d`) and RostrumSound's server (`rostrum-sound`) into a person's coding agent, each agent in its own way. The table below is written from the data in `rostrum_connect/agents.py` (`python -m rostrum_connect table`); change the data, not this page by hand. Sources: each agent's own docs (the Docs column), checked 2026-10-22.
+`rostrum_connect` (this folder) puts Rostrum2D's server (`rostrum-2d`), RostrumSound's (`rostrum-sound`) and Rostrum3D's (`rostrum-3d`) into a person's coding agent, each agent in its own way. Every server starts with no options: in the agent's own project from earlier in the session (same working folder), else in a fresh scratch project made for it, never in the person's last project. The table below is written from the data in `rostrum_connect/agents.py` (`python -m rostrum_connect table`); change the data, not this page by hand. Sources: each agent's own docs (the Docs column), checked 2026-10-22.
 
 ```
-python -m rostrum_connect found | status | add --agent A --app 2d|sound [--yes] | remove … | entries --agent A | hand --agent A --app … | guides --out <folder>
+python -m rostrum_connect found | profiles | status [--everywhere] | add --agent A [--app 2d|sound|3d] [--everywhere] [--yes] | remove … | remove-all | entries --agent A | hand --agent A --app … | guides --out <folder>
 ```
 
 | Agent | Added with | Settings file (Windows) | Table key | Needs a restart? | Docs |
@@ -28,6 +28,7 @@ python -m rostrum_connect found | status | add --agent A --app 2d|sound [--yes] 
 
 ## Things that differ from what people expect
 
+- **Launchers with one settings folder per account** (`rostrum_connect/profiles.py`, data: one `Launcher` per launcher). Agent Hub runs Claude Code with `CLAUDE_CONFIG_DIR` = the account's `config.homePath` (e.g. `~/.claude-seats/seat2`) and Antigravity with `GEMINI_HOME` = `<Agent Hub state>/providers/antigravity/<sha256 of the account id>`, and on purpose shares no MCP servers into those folders. An agent there reads only `<folder>/.claude.json` or `<folder>/config/mcp_config.json`, so a server in the person's usual file never reaches it (why no Agent Hub child thread had Rostrum's tools in the 2026-10-28 canary). `--everywhere` (and the Connect dialog's Add / Remove) also writes every such folder; `profiles` lists them; `remove-all` always includes them.
 - **Claude Code**: the default scope is "local" (one project), so Rostrum always passes `--scope user`. `--env` swallows the next word, so `--transport stdio` sits between it and the name. With `CLAUDE_CONFIG_DIR` set, the file is `<dir>/.claude.json`.
 - **Antigravity** (replaces Gemini CLI, which Google stopped for personal accounts on 2026-06-18, so it is not listed): the file is `~/.gemini/config/mcp_config.json`; remote servers there use `serverUrl`, local ones `command` + `args`. Sam's app reads this file, not `~/.gemini/antigravity/mcp_config.json`, which is used only when the `~/.gemini/config` folder does not exist; “View raw config” in Antigravity shows the live file. A server someone put in by hand that runs our module (`-m rostrum2d.mcp`) counts as added (`know_by_module`). The file also holds other servers and tokens: never print or log it.
 - **Claude Desktop**: the Microsoft Store version reads `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`, not the file "Edit Config" opens. Rostrum uses the Store file when it exists.
@@ -36,3 +37,7 @@ python -m rostrum_connect found | status | add --agent A --app 2d|sound [--yes] 
 - **opencode**: no non-interactive add or remove, so always a file edit. `command` is one list, the environment key is `environment`, and Rostrum sets `timeout` to 30 s (the default is 5 s).
 - **Cursor**: also has a one-click link (base64 of the entry). **Zed**: the Windows settings path isn't documented.
 - **Codex**: project `.codex/config.toml` only works in trusted projects; Rostrum edits the user file.
+
+## Agents with no MCP setting at all
+
+An agent that can't attach a server uses [`call.py`](call.py) from a shell: `python shared/mcp/call.py --name <agent> -- python -m rostrum2d.mcp --project <folder> :: look_frame '{"time": 1.2, "wait": true}'`. Each call is a real MCP call, recorded as `agent:<name>`. The first command starts a background session that keeps the server running; later commands reuse it, so jobs survive from one command to the next. `:: stop` ends it (30 min idle ends it too). The server gets the caller's environment (`PYTHONPATH`, `ROSTRUM_*`), which the MCP SDK's stdio client otherwise drops. Full help: `python shared/mcp/call.py`.
