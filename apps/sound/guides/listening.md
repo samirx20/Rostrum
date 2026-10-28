@@ -12,6 +12,7 @@ with notes written.
 | The render landed under the loudness target: what exactly do I change? | `edit_loudness` (a job; it re-renders offline to search) | the exact edits, ready for `edit_document`: `keep_balance` (the `maxLimit` that reaches the target, no track moves), `tame_peaks` (a gentle compressor on the most peaked track, threshold and makeup measured: the target inside the master's `maxLimit`, balance kept) and `trim_track` (the smallest cut of the most peaked track that reaches it inside the master's `maxLimit`), and when it needs over ~3 dB of limiting `lift_quiet` (the quiet passages ridden up on the master's volume lane, measured); `{"apply": "best"}` makes the one it names best |
 | Is one track buried or too loud? | `look_sound` (`what: "levels"`) | each stem's LUFS, dB under the loudest / the mix, and the track's volume in dB (move a track N dB: volume + N); flags (a float stem over 0 dBFS is held, not clipped) |
 | Do sounds land on time (a hit on a cut, a footstep on a frame)? | `look_music` (`what: "events"`) with `expect` | each expected time's nearest onset and offset in ms; pass within `tolerance`; with `by_stem`, which stem hits each time |
+| Does each moment come across, not just land? What would a listener complain about? | `look_music` (`what: "events"`) or `look_sound` (`what: "loudness"`) with `expect` moments: `{"at": 31.5, "kind": "hit"}` (kinds `hit`, `stop`, `drop`, `climax`, `lift`, `entry`, `voice` with `end`) | `faults`, each with its time, the measured number and what to change (see *Faults* below). `look_sound` loudness also names the whole-piece faults every time, with or without `expect` |
 | Is there hum, a whistle, or masking? | `look_sound` (`what: "spectrum"`) (with `marks`) | `hum_lines` are the steady lines that are unwanted (flat level, on two or more multiples of 50 or 60 Hz together; a lone held note, even a very low one, is a tone, not hum); `tones` lists every steady line with its note name, so a held note shows as a note, not hum; marks show where events should be |
 | Does it lean left or right, or fall apart in mono? | `look_sound` (`what: "stereo"`) | balance per section, correlation, mono warnings |
 | Is there boom where the picture has none, or mud? | `look_sound` (`what: "low_end"`) | each track's and the mix's share under 150 Hz, under 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy) |
@@ -27,6 +28,27 @@ reads a written note as there when it is also an overtone of a lower note soundi
 a note played an octave low passes; a very low note (under about E2) can read missing when its sample has little
 fundamental: listen there before changing it.
 
+## Faults: what a listener would complain about
+
+Landing within 40 ms is not the same as being heard. Give the moments the brief asks for with their kind and read
+`faults` (the summary says them first). Each names the time, the number and the usual fixes; it is measured, so a
+drone meant as a drone may stay, but say why in your report.
+
+| Fault | Measured | Usual fixes |
+|---|---|---|
+| weak hit / stop at 31.50 s | the hit's onset against the piece's typical onset ("1.6x a normal note", rank among all onsets); under 2.5x or not in the top 3 | a breath of silence just before, more instruments or a brighter attack on the hit, a lower build into it |
+| no hit at … | nothing starts within 80 ms | put the notes on the time; `by_stem` names the nearest part |
+| blurred stop | an onset in the second before at 70 % of the stop's strength or more, or the level falling under 8 dB in the second after | rest the band on the beat before; end held notes, ride and pedal at the stop; short notes on the hit |
+| drums drop early | the last beat before a `drop` more than 1.5 beat-gaps (and 0.35 s) before it | a last hit or fill ending on the time |
+| loudest moment after / before the climax | where the loudest 0.4 s starts, against a `climax` (late over 0.75 s, early over 0.5 s) | accents on the downbeat, shorter sustains after, slow-attack strings started a little early; or hold the build back |
+| lift barely lifts | the 3 s after a `lift` against the 3 s before, under +2 LU | add parts, open a filter, thin the bars before |
+| busy speech band | room for speech in a `voice` span under +6 dB | low-pass pads and keys lower, dip 2–4 kHz |
+| one harmony held (whole piece) | the same pitch classes every second for 12 s or more with the level moving under 12 dB: heard as one flat tone | change the chord or bass note every few bars, a moving inner line, let the sound open (filter, swells, a second texture) |
+| near-mono mix (whole piece) | left/right correlation over 0.9 (wide mixes 0.4–0.8) | pan the mono parts apart (keys a little one way, a second part the other; the kits are already spread from the audience's view), stereo instruments, a wider room; `width` does nothing to a mono recording |
+| hit squashed by the limiter (render only) | the master's limiter held a moment down 3 dB or more; how far the 10 s before sat under it | raise the build (`edit_loudness` `lift_quiet`, or the quiet parts' volumes) or lower the hit's parts |
+
+"No faults found" means none of these, not that the music is good.
+
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a
 recording sounds like the object on screen. Say so in your report; a person decides those by listening.
 
@@ -36,4 +58,5 @@ recording sounds like the object on screen. Say so in your report; a person deci
   around a time to check one event frame by frame.
 - `inspect_library` (`what: "cuts"`) cuts recordings into single sounds with facts (peak, attack, brightness, low-end share), cached,
   so you can pick a cut by its measurements and place it with a clip (`in` = the cut's start).
-- After placing sounds, `look_music` (`what: "events"`) with the event times as `expect` checks sync within a frame.
+- After placing sounds, `look_music` (`what: "events"`) with the event times as `expect` checks sync within a frame; give
+  the big ones a kind (`{"at": 12.5, "kind": "hit"}`) and the faults say whether each stands out.
