@@ -136,7 +136,11 @@ master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
 `truePeak` (dBTP, -12 to 0), `gentle` (on by default) and `maxLimit` (dB, 0 to 12, default 2: with `gentle` on, the
 limiter never pulls the loudest moment down by more than this; a mix that would need more is turned down as a whole,
 so playback lands under its loudness target; a render (`render_mix`, `look`) is pushed onto the target for that file and says how many dB of limiting it took, the song keeping this value), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
-`safetyClip`.
+`safetyClip`. Effects on the whole mix go on the master the same way as on a track: `master.effect("eq", bands=[{"shape":
+"highshelf", "freq": 4000, "gain": 4, "q": 0.7}])` (the dull-top fault names the gain that clears it).
+
+An instrument's playable range (a recorded one has no samples outside it, and the render refuses the note):
+`inspect_engine {"name": "<builtIn name>"}` before writing its part.
 
 There is no bit-crush effect. For a worn, lo-fi sound the tools are `tape` (wow, flutter, age, and a record's surface:
 hiss and crackle), `saturate` (drive), an `eq` low-pass (`lowpass`) and high-pass, a `reverb`, a `delay`, the `rhodes`
