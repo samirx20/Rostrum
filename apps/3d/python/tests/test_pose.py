@@ -239,6 +239,38 @@ def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
     # shoulder's band (3d-28: the body spread back into it, and the raised upper arm came apart from the shoulder)
 
 
+def test_an_arm_is_all_arm_from_its_joint_out():
+    """The finder's arm starts where it leaves the body, past the shoulder joint; the clay between counted as the
+    body's, stayed behind as the arm turned and a raised arm tore from the shoulder (3d-gaps, the Hello wave). From
+    the joint out along the upper arm the clay is the arm's."""
+    from rostrum3d import skin, skin_parts as SP
+    joints, parts = PJ.find_parts(_buddy(STRAIGHT))
+    clay = _clay(joints)
+    clay["jointParts"] = PJ.pack_parts(parts)
+    core = skin.skin(clay, [0.0])
+    rest, P = core["rest"], core["parts"]
+    names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
+    arm = {names.index(n) for n in names if n.endswith(".R") and n.startswith(("arm.", "forearm.", "hand."))}
+    head, tail = (np.array(x) for x in (rest[names.index("arm.R")][:3], rest[names.index("arm.R")][3:]))
+    along = [head + t * (tail - head) for t in np.linspace(0.15, 0.95, 9)]
+    assert all(sum(v for b, v in w.items() if b in arm) > 0.95 for w in SP.weights(along, rest, P))
+
+
+def test_the_head_beside_a_raised_arm_keeps_none_of_the_arm():
+    """The arm's share spreads round its joint inside a tube round the upper arm only (3d-gaps2): spread round the
+    whole joint, the head beside the shoulder turned with a raised arm and creased (the parked 3d-gaps patch)."""
+    from rostrum3d import skin, skin_parts as SP
+    joints, parts = PJ.find_parts(_buddy(STRAIGHT))
+    clay = _clay(joints)
+    clay["jointParts"] = PJ.pack_parts(parts)
+    core = skin.skin(clay, [0.0])
+    rest, P = core["rest"], core["parts"]
+    names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
+    arm = {names.index(n) for n in names if n.endswith(".R") and n.startswith(("arm.", "forearm.", "hand."))}
+    head = [[x, y, z] for x in (-0.03, 0.0) for y in (0.2, 0.22, 0.24) for z in (-0.02, 0.0, 0.02)]
+    assert max(sum(v for b, v in w.items() if b in arm) for w in SP.weights(head, rest, P)) < 0.05
+
+
 def test_a_part_on_the_body_rides_a_body_bone_not_the_arm_beside_it():
     """follow.nearest_bone weighs as the core bends (skin_parts): a part on the body's side (on it, or sitting just
     off its surface) rides the body, though the hanging arm's bone is nearer through the air (the mirrored eye that

@@ -31,6 +31,10 @@ using BoneMove = std::array<double, 12>;
 // arm and left "+" marks where the arms rest on the belly. Beyond the joint a touching limb keeps its own cells.
 // 3d-28: the spread goes out from a limb into the body only (its own cells keep all their share), and the body leans
 // on a limb's bones only through its share of it: a raised arm stays joined at the shoulder, no dented rim.
+// 3d-gaps: a limb's share is whole from its joint out (its root inside the body counts as its own, kRootWidth), so
+// the shared band sits round the joint and an arm raised 90-140 degrees bends the shoulder instead of tearing from it.
+// 3d-gaps2: that spread stays in a tube round the limb's first bone (kShareTube), so the head beside a raised arm
+// keeps still instead of creasing.
 struct SkinParts {
   std::array<double, 3> origin{};  // the grid's low corner; cell (i, j, k)'s centre is origin + (i + 0.5) × cell
   double cell = 1;

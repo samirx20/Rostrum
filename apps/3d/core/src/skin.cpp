@@ -102,6 +102,16 @@ constexpr int kShareMost = 256;  // spreading steps at most (a very fine grid's 
 // the body (make_shares); elsewhere (an arm resting on the belly, a hanging forearm by the hip) each cell keeps its
 // own piece, sharpened (shares_at), so a touching limb neither drags the body along nor leaves "+" marks
 constexpr double kShareReach = 3.0;
+// 3d-gaps: a limb's root, the cells of the piece it hangs from past its joint along its first bone and within this ×
+// its radius (blend / 1.5) of that bone, are the limb's own. The finder's limb starts where it leaves the body, often
+// well past the joint; the clay between counted as the body's and stayed behind as the arm turned about the joint, so
+// a raised arm tore from the shoulder. Now its share is whole from the joint out and the shared band lies round the
+// joint, where a turn moves the surface least
+constexpr double kRootWidth = 1.0;
+// 3d-gaps2: the spread round a limb's joint stays inside a tube this × its radius round its first bone (and round the
+// joint itself): the root rule alone let the share spread from the joint into whatever clay sat beside it, so the head
+// next to a raised arm turned with it and creased. 1.5 (renders at 1-3, root 0.8-1.5): no head crease, the shoulder bends
+constexpr double kShareTube = 1.5;
 
 double fade(double x) {  // 1 up to 1, smoothly down to 0 at 2
   if (x <= 1) return 1;
@@ -196,9 +206,28 @@ void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
   share.assign(size_t(P - 1) * N, std::numeric_limits<float>::quiet_NaN());
   tbb::parallel_for(1, P, [&](int n) {
     float* out = share.data() + size_t(n - 1) * N;
-    std::vector<float> f(N, 0.0f);
-    for (size_t i = 0; i < N; ++i) f[i] = cells[i] == n ? 1.0f : 0.0f;
     const Piece& pc = pieces[size_t(n)];
+    std::vector<char> own(N, 0);  // the limb's cells and its root (kRootWidth): all its share, never spread
+    for (size_t i = 0; i < N; ++i) own[i] = cells[i] == n;
+    if (pc.first >= 0 && size_t(pc.first) < rest.size() && pc.blend > 0) {
+      const double* s = rest[size_t(pc.first)].data();
+      const double ab[3] = {s[3] - s[0], s[4] - s[1], s[5] - s[2]}, len2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+      const int parent = pc.from >= 0 && size_t(pc.from) < bone.size() ? bone[size_t(pc.from)] : 0;
+      const double width = kRootWidth * pc.blend / 1.5;
+      if (len2 > 0)
+        for (size_t i = 0; i < N; ++i) {
+          if (cells[i] != parent) continue;
+          const int x = int(i % size_t(nx)), y = int((i / size_t(nx)) % size_t(ny)), z = int(i / (size_t(nx) * size_t(ny)));
+          const double q[3] = {origin[0] + (x + 0.5) * cell - s[0], origin[1] + (y + 0.5) * cell - s[1],
+                               origin[2] + (z + 0.5) * cell - s[2]};
+          const double t = (q[0] * ab[0] + q[1] * ab[1] + q[2] * ab[2]) / len2;
+          if (t < 0) continue;
+          const double c = std::min(t, 1.0), dx = q[0] - c * ab[0], dy = q[1] - c * ab[1], dz = q[2] - c * ab[2];
+          own[i] = dx * dx + dy * dy + dz * dz <= width * width;
+        }
+    }
+    std::vector<float> f(N, 0.0f);
+    for (size_t i = 0; i < N; ++i) f[i] = own[i] ? 1.0f : 0.0f;
     if (joint[size_t(n)][3] > 0) {
       // spread through the inside round the joint only: each step an inside cell there takes the mean of itself and
       // its inside neighbours (a blur of about sqrt(2 × steps / 7) cells along the clay, never across air); the
@@ -215,7 +244,13 @@ void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
       auto by_joint = [&](int x, int y, int z) {
         const double dx = origin[0] + (x + 0.5) * cell - at_joint[0], dy = origin[1] + (y + 0.5) * cell - at_joint[1],
                      dz = origin[2] + (z + 0.5) * cell - at_joint[2];
-        return dx * dx + dy * dy + dz * dz <= reach * reach;
+        if (dx * dx + dy * dy + dz * dz > reach * reach) return false;
+        const double* s = rest[size_t(pc.first)].data();
+        const double ab[3] = {s[3] - s[0], s[4] - s[1], s[5] - s[2]}, len2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+        const double q[3] = {origin[0] + (x + 0.5) * cell - s[0], origin[1] + (y + 0.5) * cell - s[1], origin[2] + (z + 0.5) * cell - s[2]};
+        const double t = len2 > 0 ? std::clamp((q[0] * ab[0] + q[1] * ab[1] + q[2] * ab[2]) / len2, 0.0, 1.0) : 0.0;
+        const double ex = q[0] - t * ab[0], ey = q[1] - t * ab[1], ez = q[2] - t * ab[2], w = kShareTube * pc.blend / 1.5;
+        return ex * ex + ey * ey + ez * ez <= w * w;
       };
       std::vector<float> g = f;
       for (int it = 0; it < steps; ++it) {
@@ -223,7 +258,7 @@ void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
           for (int y = lo[1]; y <= hi[1]; ++y)
             for (int x = lo[0]; x <= hi[0]; ++x) {
               const size_t i = at(x, y, z);
-              if (cells[i] == 255 || cells[i] == n || !by_joint(x, y, z)) continue;
+              if (cells[i] == 255 || own[i] || !by_joint(x, y, z)) continue;
               double sum = f[i];
               int cnt = 1;
               const int nb[6][3] = {{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z},
