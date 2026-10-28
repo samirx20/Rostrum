@@ -52,6 +52,8 @@ class Engine:
         return self._proc.pid if self._proc else None
 
     def _start(self):
+        from . import packs                  # Rostrum's own kit maps, as this version writes them
+        packs.refresh_generated()
         self._proc = subprocess.Popen([str(self.exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1,
                                       creationflags=BELOW_NORMAL if self.background else 0)

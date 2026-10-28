@@ -501,30 +501,30 @@
 <region> sample=rusty/Samples/snare_14/sidestick/oh/sn_ss_vl4_rr3.flac lovel=96 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/snare_14/sidestick/oh/sn_ss_vl4_rr4.flac lovel=96 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=42 hikey=42 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=1
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/cl/cl/ht_cl_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <region> sample=rusty/Samples/hihat_14/cl/oh/ht_cl_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/hihat_14/cl/oh/ht_cl_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/hihat_14/cl/oh/ht_cl_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=-6
@@ -550,26 +550,26 @@
 <region> sample=rusty/Samples/hihat_14/cl/oh/ht_cl_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/hihat_14/cl/oh/ht_cl_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=44 hikey=44 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=1
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/chik/cl/ht_chik_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <region> sample=rusty/Samples/hihat_14/chik/oh/ht_chik_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/hihat_14/chik/oh/ht_chik_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/hihat_14/chik/oh/ht_chik_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-6
@@ -591,30 +591,30 @@
 <region> sample=rusty/Samples/hihat_14/chik/oh/ht_chik_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/hihat_14/chik/oh/ht_chik_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=46 hikey=46 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=2 off_by=1
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=rusty/Samples/hihat_14/open/cl/ht_open_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <region> sample=rusty/Samples/hihat_14/open/oh/ht_open_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/hihat_14/open/oh/ht_open_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/hihat_14/open/oh/ht_open_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=-6
@@ -640,30 +640,30 @@
 <region> sample=rusty/Samples/hihat_14/open/oh/ht_open_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/hihat_14/open/oh/ht_open_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=50 hikey=50 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-25
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-25
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=-6
@@ -689,30 +689,30 @@
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=48 hikey=48 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl1_rr4.flac lovel=1 hivel=21 seq_length=4 seq_position=4 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr1.flac lovel=22 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr2.flac lovel=22 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr3.flac lovel=22 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl2_rr4.flac lovel=22 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr1.flac lovel=43 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr2.flac lovel=43 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr3.flac lovel=43 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl3_rr4.flac lovel=43 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr1.flac lovel=65 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr2.flac lovel=65 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr3.flac lovel=65 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl4_rr4.flac lovel=65 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr1.flac lovel=86 hivel=106 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr2.flac lovel=86 hivel=106 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr3.flac lovel=86 hivel=106 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl5_rr4.flac lovel=86 hivel=106 seq_length=4 seq_position=4 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr1.flac lovel=107 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr2.flac lovel=107 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr3.flac lovel=107 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-15
+<region> sample=rusty/Samples/tom_14/center/cl/t14_vl6_rr4.flac lovel=107 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-15
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr1.flac lovel=1 hivel=21 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr2.flac lovel=1 hivel=21 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/tom_14/center/oh/t14_vl1_rr3.flac lovel=1 hivel=21 seq_length=4 seq_position=3 volume=-6
@@ -795,34 +795,34 @@
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=45 hikey=45 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0 pan=15
+<region> sample=rusty/Samples/tom_15/center/cl/t15_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0 pan=15
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=-6
@@ -852,34 +852,34 @@
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/tom_15/center/oh/t15_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=43 hikey=43 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0 pan=35
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0 pan=35
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=-6
@@ -909,34 +909,34 @@
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=41 hikey=41 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl1_rr4.flac lovel=1 hivel=18 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr1.flac lovel=19 hivel=36 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr2.flac lovel=19 hivel=36 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr3.flac lovel=19 hivel=36 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl2_rr4.flac lovel=19 hivel=36 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr1.flac lovel=37 hivel=54 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr2.flac lovel=37 hivel=54 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr3.flac lovel=37 hivel=54 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl3_rr4.flac lovel=37 hivel=54 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr1.flac lovel=55 hivel=73 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr2.flac lovel=55 hivel=73 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr3.flac lovel=55 hivel=73 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl4_rr4.flac lovel=55 hivel=73 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr1.flac lovel=74 hivel=91 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr2.flac lovel=74 hivel=91 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr3.flac lovel=74 hivel=91 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl5_rr4.flac lovel=74 hivel=91 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr1.flac lovel=92 hivel=109 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr2.flac lovel=92 hivel=109 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr3.flac lovel=92 hivel=109 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl6_rr4.flac lovel=92 hivel=109 seq_length=4 seq_position=4 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr1.flac lovel=110 hivel=127 seq_length=4 seq_position=1 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr2.flac lovel=110 hivel=127 seq_length=4 seq_position=2 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=0 pan=40
+<region> sample=rusty/Samples/tom_22/center/cl/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=0 pan=40
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr1.flac lovel=1 hivel=18 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr2.flac lovel=1 hivel=18 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl1_rr3.flac lovel=1 hivel=18 seq_length=4 seq_position=3 volume=-6
@@ -966,26 +966,26 @@
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl7_rr3.flac lovel=110 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/tom_22/center/oh/t22_vl7_rr4.flac lovel=110 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=49 hikey=49 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-2
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-2 pan=-45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-2 pan=-45
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-6
@@ -1007,26 +1007,26 @@
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=57 hikey=57 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-2
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl1_rr4.flac lovel=1 hivel=25 seq_length=4 seq_position=4 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr1.flac lovel=26 hivel=51 seq_length=4 seq_position=1 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr2.flac lovel=26 hivel=51 seq_length=4 seq_position=2 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr3.flac lovel=26 hivel=51 seq_length=4 seq_position=3 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl2_rr4.flac lovel=26 hivel=51 seq_length=4 seq_position=4 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr1.flac lovel=52 hivel=76 seq_length=4 seq_position=1 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr2.flac lovel=52 hivel=76 seq_length=4 seq_position=2 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr3.flac lovel=52 hivel=76 seq_length=4 seq_position=3 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl3_rr4.flac lovel=52 hivel=76 seq_length=4 seq_position=4 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr1.flac lovel=77 hivel=102 seq_length=4 seq_position=1 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr2.flac lovel=77 hivel=102 seq_length=4 seq_position=2 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr3.flac lovel=77 hivel=102 seq_length=4 seq_position=3 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl4_rr4.flac lovel=77 hivel=102 seq_length=4 seq_position=4 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr1.flac lovel=103 hivel=127 seq_length=4 seq_position=1 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr2.flac lovel=103 hivel=127 seq_length=4 seq_position=2 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-2 pan=45
+<region> sample=rusty/Samples/crash_17/cr/cl/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-2 pan=45
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr1.flac lovel=1 hivel=25 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr2.flac lovel=1 hivel=25 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl1_rr3.flac lovel=1 hivel=25 seq_length=4 seq_position=3 volume=-6
@@ -1048,36 +1048,36 @@
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl5_rr3.flac lovel=103 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/crash_17/cr/oh/cr_vl5_rr4.flac lovel=103 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=51 hikey=51 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr1.flac lovel=1 hivel=13 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr2.flac lovel=1 hivel=13 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr3.flac lovel=1 hivel=13 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr1.flac lovel=14 hivel=25 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr2.flac lovel=14 hivel=25 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr3.flac lovel=14 hivel=25 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr1.flac lovel=26 hivel=38 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr2.flac lovel=26 hivel=38 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr3.flac lovel=26 hivel=38 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr1.flac lovel=39 hivel=51 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr2.flac lovel=39 hivel=51 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr3.flac lovel=39 hivel=51 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr1.flac lovel=52 hivel=64 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr2.flac lovel=52 hivel=64 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr3.flac lovel=52 hivel=64 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr1.flac lovel=65 hivel=76 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr2.flac lovel=65 hivel=76 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr3.flac lovel=65 hivel=76 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr1.flac lovel=77 hivel=89 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr2.flac lovel=77 hivel=89 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr3.flac lovel=77 hivel=89 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr1.flac lovel=90 hivel=102 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr2.flac lovel=90 hivel=102 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr3.flac lovel=90 hivel=102 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr1.flac lovel=103 hivel=114 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-2
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr1.flac lovel=1 hivel=13 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr2.flac lovel=1 hivel=13 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr3.flac lovel=1 hivel=13 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr1.flac lovel=14 hivel=25 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr2.flac lovel=14 hivel=25 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr3.flac lovel=14 hivel=25 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr1.flac lovel=26 hivel=38 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr2.flac lovel=26 hivel=38 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr3.flac lovel=26 hivel=38 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr1.flac lovel=39 hivel=51 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr2.flac lovel=39 hivel=51 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr3.flac lovel=39 hivel=51 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr1.flac lovel=52 hivel=64 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr2.flac lovel=52 hivel=64 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr3.flac lovel=52 hivel=64 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr1.flac lovel=65 hivel=76 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr2.flac lovel=65 hivel=76 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr3.flac lovel=65 hivel=76 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr1.flac lovel=77 hivel=89 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr2.flac lovel=77 hivel=89 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr3.flac lovel=77 hivel=89 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr1.flac lovel=90 hivel=102 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr2.flac lovel=90 hivel=102 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr3.flac lovel=90 hivel=102 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr1.flac lovel=103 hivel=114 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-2 pan=35
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-6
@@ -1109,36 +1109,36 @@
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-6
 <group> lokey=59 hikey=59 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr1.flac lovel=1 hivel=13 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr2.flac lovel=1 hivel=13 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr3.flac lovel=1 hivel=13 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr1.flac lovel=14 hivel=25 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr2.flac lovel=14 hivel=25 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr3.flac lovel=14 hivel=25 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr1.flac lovel=26 hivel=38 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr2.flac lovel=26 hivel=38 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr3.flac lovel=26 hivel=38 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr1.flac lovel=39 hivel=51 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr2.flac lovel=39 hivel=51 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr3.flac lovel=39 hivel=51 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr1.flac lovel=52 hivel=64 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr2.flac lovel=52 hivel=64 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr3.flac lovel=52 hivel=64 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr1.flac lovel=65 hivel=76 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr2.flac lovel=65 hivel=76 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr3.flac lovel=65 hivel=76 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr1.flac lovel=77 hivel=89 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr2.flac lovel=77 hivel=89 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr3.flac lovel=77 hivel=89 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr1.flac lovel=90 hivel=102 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr2.flac lovel=90 hivel=102 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr3.flac lovel=90 hivel=102 seq_length=3 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr1.flac lovel=103 hivel=114 seq_length=3 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-2
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr1.flac lovel=1 hivel=13 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr2.flac lovel=1 hivel=13 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl1_rr3.flac lovel=1 hivel=13 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr1.flac lovel=14 hivel=25 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr2.flac lovel=14 hivel=25 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl2_rr3.flac lovel=14 hivel=25 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr1.flac lovel=26 hivel=38 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr2.flac lovel=26 hivel=38 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl3_rr3.flac lovel=26 hivel=38 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr1.flac lovel=39 hivel=51 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr2.flac lovel=39 hivel=51 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl4_rr3.flac lovel=39 hivel=51 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr1.flac lovel=52 hivel=64 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr2.flac lovel=52 hivel=64 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl5_rr3.flac lovel=52 hivel=64 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr1.flac lovel=65 hivel=76 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr2.flac lovel=65 hivel=76 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl6_rr3.flac lovel=65 hivel=76 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr1.flac lovel=77 hivel=89 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr2.flac lovel=77 hivel=89 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl7_rr3.flac lovel=77 hivel=89 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr1.flac lovel=90 hivel=102 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr2.flac lovel=90 hivel=102 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl8_rr3.flac lovel=90 hivel=102 seq_length=3 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr1.flac lovel=103 hivel=114 seq_length=3 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/rd/cl/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-2 pan=35
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr1.flac lovel=115 hivel=127 seq_length=3 seq_position=1 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr2.flac lovel=115 hivel=127 seq_length=3 seq_position=2 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl10_rr3.flac lovel=115 hivel=127 seq_length=3 seq_position=3 volume=-6
@@ -1170,22 +1170,22 @@
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl9_rr2.flac lovel=103 hivel=114 seq_length=3 seq_position=2 volume=-6
 <region> sample=rusty/Samples/ride_22/rd/oh/rd_vl9_rr3.flac lovel=103 hivel=114 seq_length=3 seq_position=3 volume=-6
 <group> lokey=53 hikey=53 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr1.flac lovel=1 hivel=32 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr2.flac lovel=1 hivel=32 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr3.flac lovel=1 hivel=32 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr4.flac lovel=1 hivel=32 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr1.flac lovel=33 hivel=64 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr2.flac lovel=33 hivel=64 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr3.flac lovel=33 hivel=64 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr4.flac lovel=33 hivel=64 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr1.flac lovel=65 hivel=95 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr2.flac lovel=65 hivel=95 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr3.flac lovel=65 hivel=95 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr4.flac lovel=65 hivel=95 seq_length=4 seq_position=4 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr1.flac lovel=96 hivel=127 seq_length=4 seq_position=1 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr2.flac lovel=96 hivel=127 seq_length=4 seq_position=2 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr3.flac lovel=96 hivel=127 seq_length=4 seq_position=3 volume=-2
-<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr4.flac lovel=96 hivel=127 seq_length=4 seq_position=4 volume=-2
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr1.flac lovel=1 hivel=32 seq_length=4 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr2.flac lovel=1 hivel=32 seq_length=4 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr3.flac lovel=1 hivel=32 seq_length=4 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl1_rr4.flac lovel=1 hivel=32 seq_length=4 seq_position=4 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr1.flac lovel=33 hivel=64 seq_length=4 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr2.flac lovel=33 hivel=64 seq_length=4 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr3.flac lovel=33 hivel=64 seq_length=4 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl2_rr4.flac lovel=33 hivel=64 seq_length=4 seq_position=4 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr1.flac lovel=65 hivel=95 seq_length=4 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr2.flac lovel=65 hivel=95 seq_length=4 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr3.flac lovel=65 hivel=95 seq_length=4 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl3_rr4.flac lovel=65 hivel=95 seq_length=4 seq_position=4 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr1.flac lovel=96 hivel=127 seq_length=4 seq_position=1 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr2.flac lovel=96 hivel=127 seq_length=4 seq_position=2 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr3.flac lovel=96 hivel=127 seq_length=4 seq_position=3 volume=-2 pan=35
+<region> sample=rusty/Samples/ride_22/bl/cl/rd_bl_vl4_rr4.flac lovel=96 hivel=127 seq_length=4 seq_position=4 volume=-2 pan=35
 <region> sample=rusty/Samples/ride_22/bl/oh/rd_bl_vl1_rr1.flac lovel=1 hivel=32 seq_length=4 seq_position=1 volume=-6
 <region> sample=rusty/Samples/ride_22/bl/oh/rd_bl_vl1_rr2.flac lovel=1 hivel=32 seq_length=4 seq_position=2 volume=-6
 <region> sample=rusty/Samples/ride_22/bl/oh/rd_bl_vl1_rr3.flac lovel=1 hivel=32 seq_length=4 seq_position=3 volume=-6
@@ -1203,15 +1203,15 @@
 <region> sample=rusty/Samples/ride_22/bl/oh/rd_bl_vl4_rr3.flac lovel=96 hivel=127 seq_length=4 seq_position=3 volume=-6
 <region> sample=rusty/Samples/ride_22/bl/oh/rd_bl_vl4_rr4.flac lovel=96 hivel=127 seq_length=4 seq_position=4 volume=-6
 <group> lokey=39 hikey=39 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr1.wav lovel=1 hivel=127 seq_length=6 seq_position=1 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr2.wav lovel=1 hivel=127 seq_length=6 seq_position=2 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr3.wav lovel=1 hivel=127 seq_length=6 seq_position=3 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr4.wav lovel=1 hivel=127 seq_length=6 seq_position=4 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr5.wav lovel=1 hivel=127 seq_length=6 seq_position=5 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr6.wav lovel=1 hivel=127 seq_length=6 seq_position=6 volume=0
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr1.wav lovel=1 hivel=127 seq_length=6 seq_position=1 volume=0 pan=10
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr2.wav lovel=1 hivel=127 seq_length=6 seq_position=2 volume=0 pan=10
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr3.wav lovel=1 hivel=127 seq_length=6 seq_position=3 volume=0 pan=10
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr4.wav lovel=1 hivel=127 seq_length=6 seq_position=4 volume=0 pan=10
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr5.wav lovel=1 hivel=127 seq_length=6 seq_position=5 volume=0 pan=10
+<region> sample=vcsl/Idiophones/Struck Idiophones/Claps/Clap_rr6.wav lovel=1 hivel=127 seq_length=6 seq_position=6 volume=0 pan=10
 <group> lokey=70 hikey=70 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr1.wav lovel=1 hivel=127 seq_length=2 seq_position=1 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr2.wav lovel=1 hivel=127 seq_length=2 seq_position=2 volume=0
+<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr1.wav lovel=1 hivel=127 seq_length=2 seq_position=1 volume=0 pan=-20
+<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr2.wav lovel=1 hivel=127 seq_length=2 seq_position=2 volume=0 pan=-20
 <group> lokey=82 hikey=82 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr1.wav lovel=1 hivel=127 seq_length=2 seq_position=1 volume=0
-<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr2.wav lovel=1 hivel=127 seq_length=2 seq_position=2 volume=0
+<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr1.wav lovel=1 hivel=127 seq_length=2 seq_position=1 volume=0 pan=25
+<region> sample=vcsl/Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr2.wav lovel=1 hivel=127 seq_length=2 seq_position=2 volume=0 pan=25

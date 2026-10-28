@@ -166,6 +166,21 @@ def install(name: str, note: Note | None = None) -> dict:
     return {"pack": name, "folder": str(root), "installed": True, "files": len(files), "credit": p.get("credit")}
 
 
+def refresh_generated() -> list[str]:
+    """Bring Rostrum's own SFZ files in every installed pack up to the repo's copy (an update that changes a kit's map
+    or pans reaches packs installed before it); the engine reads them on its next start. Returns what was rewritten."""
+    done = []
+    for name in _records():
+        name = name.split(":", 1)[1] if name.startswith("sounds:") else None
+        root = sounds_dir() / name if name else None
+        for repo_file, rel in (cat.generated(name) if root and root.is_dir() else []):
+            dst = root / rel
+            if dst.is_file() and dst.read_bytes() != repo_file.read_bytes():
+                shutil.copyfile(repo_file, dst)
+                done.append(f"{name}/{rel}")
+    return done
+
+
 def install_many(what: str, note: Note | None = None) -> list[dict]:
     return [install(n, note) for n in _expand(what, "pack install")]
 
