@@ -165,7 +165,7 @@ fn a_model_rendered_ahead_plays_as_an_sfz() {
         let keys = if name == "model.kit" { 26 } else { 18 };
         assert_eq!(regions.len(), keys * 3, "{name}");
         assert!(samples.values().all(|s| s.frames.iter().any(|f| f[0].abs() > 1e-3)), "{name}: a silent sample");
-        let strike = |key: u8, velocity: f64| crate::instruments::sfz::strike(&regions, &samples, key, velocity, 0, false, 48000.0);
+        let strike = |key: u8, velocity: f64| crate::instruments::sfz::strike(&regions, &samples, key, velocity, 0, false, 0.0, 48000.0);
         if name == "model.marimba" {
             // 61 lies in the region of the sample rendered at 60.
             let r = crate::instruments::sfz::select(&regions, 61, 100, 0, 0.0);

@@ -116,6 +116,10 @@ plain. Swing is not written into the steps: write them straight and swing the dr
 | `quantize[:grid]`, `gate:f`, `legato`, `staccato`, `ratchet:n`, `cut:beats`, `rest` | timing and length |
 | `accent:X..xo.x.`, `dynamics:0.6>1.0`, `velocity:v` | velocity: accent pattern per 16th, a swell across the line, or one level |
 
+Velocity sets brightness as well as level on every recorded instrument: a crescendo from 0.3 to 1.0 opens up the top
+end (the strings gain 4 to 11 dB of 2–8 kHz against the mids, a grand piano 6 to 17), so a swell written in velocity sounds like players
+digging in. The organs and the drum kits are the same at every velocity apart from level.
+
 Timing feel (swing, small timing differences, varied velocity) comes from the performance layer, which is on by
 default. You don't need to write it in. To set a swing on a track: `track.feel {swing: 0.55, swingGrid: 0.25}`
 (0.25 = 16ths, 0.5 = 8ths). `track.feel` changes only what it names, so a person's other feel settings stay;

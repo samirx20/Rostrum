@@ -47,7 +47,7 @@ ROLES: dict[str, Role] = {
     "builtIn:violin": Role(("lead",), "G3", "C7", "a recorded solo violin"),
     "builtIn:cello": Role(("lead", "bass"), "C2", "F5", "a recorded solo cello"),
     "builtIn:harp": Role(("comp", "lead"), "E1", "F7", "a recorded concert harp"),
-    "builtIn:brass": Role(("pad", "lead"), "F1", "C6", "a recorded brass section (tuba, trombone, horn, trumpet by pitch)"),
+    "builtIn:brass": Role(("pad", "lead"), "F1", "C6", "a recorded brass section (tuba, trombone, trumpet by pitch)"),
     "builtIn:horn": Role(("pad", "lead"), "A1", "F5", "a recorded French horn"),
 
     "builtIn:trumpet": Role(("lead",), "E3", "C6", "a recorded trumpet"),

@@ -53,7 +53,8 @@ pub fn read(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<(Resolved, Val
         "sfz" => {
             let file = file_arg(&mut o, "sfz")?;
             let (legato, swell) = (o.bool("legato", false)?, o.bool("swell", false)?);
-            let spec = |f: &str| json!({ "file": f, "legato": legato, "swell": swell });
+            let tone = o.num("velocityTone", 0.0, 48.0, Some(crate::instruments::sfz::tone::DEFAULT_DEPTH))?;
+            let spec = |f: &str| json!({ "file": f, "legato": legato, "swell": swell, "velocityTone": tone });
             let arts = articulations(&mut o)?;
             own(Inst::Sfz(vec![Zone { hikey: 127, main: spec(&file), arts: arts.iter().map(|(n, f)| (n.clone(), spec(f))).collect() }]), "keys")
         }

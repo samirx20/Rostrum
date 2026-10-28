@@ -56,7 +56,7 @@ with `name` (one instrument), `inspect_engine` what `instrument` (its recorded r
 | `violin` | | solo violin |
 | `cello` | | solo cello |
 | `harp` | | concert harp |
-| `brass` | `cinematicBrass` | brass section: tuba, trombone, horn, trumpet by pitch |
+| `brass` | `cinematicBrass` | brass section: tuba, trombone to D4, trumpet above (each recorded soft and loud; the horn is `horn`) |
 | `horn` | | French horn (the name is singular) |
 | `trumpet` | | trumpet |
 | `mutedTrumpet` | | trumpet with a straight mute: soft, nasal |

@@ -23,7 +23,7 @@ impl Instrument {
             }
             Kind::Sampler(synth, ch) => synth.note_on(*ch, key as i32, (velocity * 127.0).round().clamp(1.0, 127.0) as i32),
             Kind::Plugin(p) => p.on(key, velocity),
-            Kind::Sfz(regions, samples, legato, struck, offset) => {
+            Kind::Sfz(regions, samples, legato, struck, offset, tone) => {
                 let nth = struck.entry(key).or_insert(0);
                 // Legato: a key struck while another is held takes over from it in a crossfade.
                 let over = *legato && self.playing.iter().any(|p| matches!(p, Playing::Sfz { voice, .. } if voice.held()));
@@ -34,7 +34,7 @@ impl Instrument {
                         }
                     }
                 }
-                let voices = crate::instruments::sfz::strike(regions, samples, (key as i16 + *offset as i16).clamp(0, 127) as u8, velocity, *nth, over, self.rate);
+                let voices = crate::instruments::sfz::strike(regions, samples, (key as i16 + *offset as i16).clamp(0, 127) as u8, velocity, *nth, over, *tone, self.rate);
                 *nth += 1;
                 if voices.is_empty() {
                     let _ = self.reports.send(Report::Ignored { key });

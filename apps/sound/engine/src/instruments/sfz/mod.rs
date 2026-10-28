@@ -31,6 +31,7 @@ mod flac;
 pub mod onset;
 mod preprocess;
 pub mod tame;
+pub mod tone;
 
 use crate::instruments::expression::Expression;
 
@@ -51,12 +52,20 @@ pub struct SfzSpec {
     /// the file for its own key plus this.
     #[serde(default)]
     pub key_offset: i8,
+    /// Brightness with velocity on keys with fewer than three recorded layers (tone.rs): the high shelf's depth in dB
+    /// at velocity 0; 0 off.
+    #[serde(default = "default_tone")]
+    pub velocity_tone: f64,
+}
+
+fn default_tone() -> f64 {
+    tone::DEFAULT_DEPTH
 }
 
 impl SfzSpec {
     /// The same file played the same way: its notes render together (legato hands over between them).
     pub fn plays_as(&self, o: &SfzSpec) -> bool {
-        self.file == o.file && self.legato == o.legato && self.swell == o.swell && self.key_offset == o.key_offset
+        self.file == o.file && self.legato == o.legato && self.swell == o.swell && self.key_offset == o.key_offset && self.velocity_tone == o.velocity_tone
     }
 
     /// The file's key for a pitch (MIDI, fractional).
@@ -301,6 +310,7 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
                 let sample = if spec.even { cached(&r.sample, tame::read)?.0.clone() } else { cached(&r.sample, read_wav)? };
                 let mut v = SfzVoice::new(r, sample, midi, n.velocity, n.pan, legato, spec.swell, n.len as f64 / sr, n.expression.cloned(), sr);
                 v.gain *= 10f64.powf(level / 20.0);
+                v.tone = tone::shelf_db(&regions, key, n.velocity, spec.velocity_tone).map(|db| tone::Tone::new(db, sr));
                 // It starts its attack early so it is heard on its time (onset.rs; a legato note enters past its attack;
                 // a note in the song's first moments starts at 0, as late as its attack); it is still let go at its end.
                 let at = if legato { n.start } else { n.start.saturating_sub(v.lead()) };
@@ -375,6 +385,8 @@ pub struct SfzVoice {
     dur: f64,
     swell: bool,
     expression: Option<Expression>,
+    /// Brightness with velocity (tone.rs), when the file has few layers.
+    pub tone: Option<tone::Tone>,
     pos: f64,
     i: usize,
     sr: f64,
@@ -399,7 +411,7 @@ impl SfzVoice {
             let span = (end * 0.45).min(4.0 * s.rate).max(0.8 * s.rate);
             (end, span, (0.3 * s.rate).min(span * 0.5))
         });
-        SfzVoice { gain, pl: pl as f32, pr: pr as f32, step, looped, auto, release: r.release.max(0.002), attack: if legato { LEGATO_FADE } else { r.attack }, note_end: usize::MAX, dur, swell, expression, pos, i: 0, sr, r: r.clone(), s }
+        SfzVoice { gain, pl: pl as f32, pr: pr as f32, step, looped, auto, release: r.release.max(0.002), attack: if legato { LEGATO_FADE } else { r.attack }, note_end: usize::MAX, dur, swell, expression, tone: None, pos, i: 0, sr, r: r.clone(), s }
     }
 
     /// Output samples from the voice's start to where it is heard (onset.rs): the sample's attack at the note's pitch,
@@ -451,6 +463,7 @@ impl SfzVoice {
         let g = (self.gain * env) as f32;
         // `width`: the side signal scaled (1 = as recorded, 0 = mono).
         if self.r.ext.width != 1.0 { let (m, d) = ((x[0] + x[1]) * 0.5, (x[0] - x[1]) * 0.5 * self.r.ext.width as f32); x = [m + d, m - d]; }
+        if let Some(t) = &mut self.tone { let (a, b) = t.tick(x[0], x[1]); x = [a, b]; }
         let out = (x[0] * g * self.pl, x[1] * g * self.pr);
         self.pos += self.step * self.expression.as_ref().map_or(1.0, |e| e.ratio(t));
         if let Some((a, b)) = self.looped { if self.pos >= b as f64 { self.pos -= (b - a) as f64; } }
@@ -488,10 +501,17 @@ pub fn preload(file: &str) -> Result<(Arc<Vec<Region>>, HashMap<PathBuf, Arc<Sam
 }
 
 /// A key struck live: its regions (round robin by strike count, `rand` from the strike).
-pub fn strike(regions: &[Region], samples: &HashMap<PathBuf, Arc<Sample>>, key: u8, velocity: f64, nth: u32, legato: bool, sr: f64) -> Vec<SfzVoice> {
+/// `tone`: the file's brightness with velocity (SfzSpec `velocity_tone`).
+#[allow(clippy::too_many_arguments)]
+pub fn strike(regions: &[Region], samples: &HashMap<PathBuf, Arc<Sample>>, key: u8, velocity: f64, nth: u32, legato: bool, tone: f64, sr: f64) -> Vec<SfzVoice> {
     let vel = (velocity.clamp(0.0, 1.0) * 127.0).round().clamp(1.0, 127.0) as u8;
     let rand = ((nth as u64 * 0x9E37_79B9 + key as u64) % 10007) as f64 / 10007.0;
-    select(regions, key, vel, nth, rand).into_iter().filter_map(|r| samples.get(&r.sample).map(|s| SfzVoice::new(r, s.clone(), key as f64, velocity, 0.0, legato, false, 0.0, None, sr))).collect()
+    let shelf = tone::shelf_db(regions, key, velocity, tone);
+    select(regions, key, vel, nth, rand).into_iter().filter_map(|r| samples.get(&r.sample).map(|s| {
+        let mut v = SfzVoice::new(r, s.clone(), key as f64, velocity, 0.0, legato, false, 0.0, None, sr);
+        v.tone = shelf.map(|db| tone::Tone::new(db, sr));
+        v
+    })).collect()
 }
 
 #[cfg(test)]
