@@ -41,7 +41,7 @@ def for_script(build) -> dict:
             g = L("group", id, x=x, y=y, w=s, h=s)
             with g:
                 part = L("shape", f"{id}_dot", shape="ellipse", x=s / 2, y=s / 2, w=s, h=s, fill=color, fillOpacity=0.55,
-                         stroke=True, strokeColor=outline, strokeWidth=max(s * 0.04, 1.5), strokeOpacity=0.35)
+                         stroke=True, strokeColor=outline, strokeWidth=max(s * 0.04, 1.5))
         if shadow:
             part.effect("shadow", f"{id}_shadow", dy=s * 0.12, radius=s * 0.22, strength=0.35)
         made[id] = {"parent": build.holders[-1]["id"], "x": x, "y": y, "t": None, "size": s, "kind": kind, "taps": 0, "outline": outline}
@@ -57,11 +57,11 @@ def for_script(build) -> dict:
                 yield c["id"]
             yield from texts(c)
 
-    def landing(p, target, given):
-        bx, by, bw, bh = U.box_in(build.root, target.id, p["parent"])
+    def landing(p, target, given, at):
+        bx, by, bw, bh = U.box_in(build.root, target.id, p["parent"], at)
         if given is not None:
             return bx + bw * given[0], by + bh * given[1]
-        labels = [U.box_in(build.root, t, p["parent"]) for t in texts(target.node)]
+        labels = [U.box_in(build.root, t, p["parent"], at) for t in texts(target.node)]
         best = None
         for fx, fy in SPOTS:
             tx, ty = bx + bw * fx, by + bh * fy
@@ -78,13 +78,13 @@ def for_script(build) -> dict:
         p = made.get(pointer.id)
         if p is None:
             raise ValueError(f"tap: {pointer.id} is not a pointer made in this script; make one with pointer()")
-        tx, ty = landing(p, target, spot)
+        tx, ty = landing(p, target, spot, at)
         t0 = max(at - move, p["t"] + 0.05 if p["t"] is not None else 0.0)
         pointer.key("x", {t0: (p["x"], ease), at: tx}).key("y", {t0: (p["y"], ease), at: ty})
         pointer.key("scale", {at: 1, at + 0.08: 0.86, at + 0.26: 1}, ease="easeOut")
         if press:
-            bx, by, bw, bh = U.own_box(target.node)
-            target.pivot(bx + bw / 2, by + bh / 2)
+            bx, by, bw, bh = U.own_box(target.node, at)
+            target.pivot(bx + bw / 2, by + bh / 2, at=at)
             target.key("scale", {at: 1, at + 0.08: press, at + 0.3: 1}, ease="easeOut")
         holder = U.chain(build.root, p["parent"])[-1]["layers"]
         holder.remove(pointer.node)

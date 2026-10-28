@@ -12,6 +12,9 @@ the other in their parent, so raw coordinates are the exception.
 from __future__ import annotations
 
 from . import fields as F
+from rostrum_core.keys import keys_of
+
+from .evaluate import value_at
 
 SHAPES = {"phone": (430, 900), "laptop": (1240, 800), "browser": (1280, 800)}
 FIT = {"phone": 0.82, "laptop": 0.74, "browser": 0.74}
@@ -128,32 +131,45 @@ def chain(root, id_) -> list:
     raise ValueError(f'no layer "{id_}" made yet in this script')
 
 
-def own_box(node) -> tuple[float, float, float, float]:
-    """An item's box in its parent's px (a text's from its size and length: a close guess, no engine call)."""
+MOVES = ("x", "y", "scale", "scaleX", "scaleY")
+
+
+def _at(node, k, t, default) -> float:
+    """Field k of node: its value at t when keyed (t given), else its own value, else `default`."""
+    if t is not None and keys_of(node, k):
+        return float(value_at(node, k, t))
+    return float(node.get(k, default))
+
+
+def own_box(node, t=None) -> tuple[float, float, float, float]:
+    """An item's box in its parent's px (a text's from its size and length: a close guess, no engine call); with `t`,
+    where its keys have moved it by then."""
     d = F.defaults(node["type"])
-    g = lambda k: float(node.get(k, d.get(k, 0)))
+    d = {**d, "scaleX": d.get("scaleX", 1), "scaleY": d.get("scaleY", 1), "scale": d.get("scale", 1)}
+    g = lambda k: _at(node, k, t, d.get(k, 0)) if k in MOVES else float(node.get(k, d.get(k, 0)))
     if node["type"] == "text":
         w, h = len(str(node.get("body", ""))) * g("size") * 0.6, g("size") * 1.2
     else:
         w, h = g("w"), g("h")
-    sx, sy = g("scale") * float(node.get("scaleX", 1)), g("scale") * float(node.get("scaleY", 1))
+    sx, sy = g("scale") * g("scaleX"), g("scale") * g("scaleY")
     return g("x") - g("anchorX") * w * sx, g("y") - g("anchorY") * h * sy, w * sx, h * sy
 
 
-def to_scene(nodes, box):
-    """A box in the px of nodes[-1] (a group) up to the scene's px."""
+def to_scene(nodes, box, t=None):
+    """A box in the px of nodes[-1] (a group) up to the scene's px (with `t`: where the groups are then)."""
     x, y, w, h = box
     for g in reversed(nodes[1:]):
-        gx, gy, _, _ = own_box(g)
-        s = float(g.get("scale", 1))
-        x, y, w, h = gx + x * s * float(g.get("scaleX", 1)), gy + y * s * float(g.get("scaleY", 1)), w * s, h * s
+        gx, gy, _, _ = own_box(g, t)
+        v = lambda k: _at(g, k, t, 1)
+        sx, sy = v("scale") * v("scaleX"), v("scale") * v("scaleY")
+        x, y, w, h = gx + x * sx, gy + y * sy, w * sx, h * sy
     return x, y, w, h
 
 
-def box_in(root, id_, holder_id) -> tuple[float, float, float, float]:
-    """Item `id_`'s box in the px of group `holder_id` (or the scene)."""
+def box_in(root, id_, holder_id, t=None) -> tuple[float, float, float, float]:
+    """Item `id_`'s box in the px of group `holder_id` (or the scene); with `t`, where keys have moved them by then."""
     path = chain(root, id_)
-    sx, sy, sw, sh = to_scene(path[:-1], own_box(path[-1]))
+    sx, sy, sw, sh = to_scene(path[:-1], own_box(path[-1], t), t)
     hold = chain(root, holder_id)
-    ox, oy, ow, oh = to_scene(hold, (0, 0, 1, 1))
+    ox, oy, ow, oh = to_scene(hold, (0, 0, 1, 1), t)
     return (sx - ox) / ow, (sy - oy) / oh, sw / ow, sh / oh

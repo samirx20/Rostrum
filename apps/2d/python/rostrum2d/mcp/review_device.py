@@ -97,7 +97,8 @@ def facts(s: Sampled) -> list[dict]:
             at = f'at={key if key is not None else c["start"]:g}, '
             onto = f', or push further onto the part: frame().fit(["{c["part"]}"], {at}pad=0.04)' if c["part"] else ""
             text = (f'{spans}: camera push-ins cut device "{did}" at the {edges} edge (up to {pct} % of it outside while its sides '
-                    f'still show, {share}): reads as an accident. Longest at {c["start"]:g} s'
+                    f'still show, {share}): even when the push is meant, a device sliced at the top or bottom with its sides in view '
+                    f'reads to a client as a framing mistake; a meant close-up fills the frame with one part. Longest at {c["start"]:g} s'
                     f'{f" (frame key at {key:g} s)" if key is not None else ""}: show it whole with frame().fit(["{did}"], {at}pad=0.06){onto}')
         else:
             text = (f'{spans}: deep push-ins into device "{did}" (up to {pct} % of it outside, it fills most of the picture): '

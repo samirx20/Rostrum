@@ -66,3 +66,12 @@ def test_a_rerun_keeps_the_same_ids():
                           "tabs", "cursor", "cursor_arrow", "cursor_ripple1") if d.item(i)}
     d.run_script("s.py", run_source(SRC, "s.py", d))
     assert {i for i in before if d.item(i)} == before and len(before) == 12
+
+
+def test_a_tap_lands_where_a_moving_target_is_at_that_time_and_the_touch_pointer_builds():
+    src = SRC.replace("    tap(cur, pay, at=1.5)\n", "    pay.key(\"y\", {0: pay.y + 600, 1.0: pay.y})\n    tap(cur, pay, at=1.5)\n")
+    src = src.replace("cur = pointer()", 'cur = pointer(kind="touch")')
+    d = run(src)
+    bx, by, bw, bh = U.own_box(d.item("button"), 1.5)
+    tip_y = [k for k in d.item("cursor")["keys"] if k["prop"] == "y" and abs(k["t"] - 1.5) < 1e-9][0]["v"]
+    assert by <= tip_y <= by + bh       # on the button where it has slid to, not 600 px below where it started

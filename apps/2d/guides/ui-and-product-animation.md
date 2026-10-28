@@ -150,7 +150,8 @@ round see-through fingertip (`<id>_dot`). Its `x`, `y` is its **tip**, and it sc
 landing at `at`, then presses: the pointer and the target scale down and back (`press=0.95`, `False` for none) and a
 ring spreads under the tip (`ripple=False` for none). The tip lands **beside the target's words**, never on them: on a
 button its right part, on a card its lower right; `spot=(0.3, 0.8)` picks the spot yourself as a share of the target's
-box. Each tap moves the pointer to the top of its group, so it draws over everything. Fade it in and out yourself
+box. The tip aims at where the target **is at `at`** (a button that slides up with a sheet is tapped where it has
+arrived; key its move before the tap). Make the pointer and the target in the same screen. Each tap moves the pointer to the top of its group, so it draws over everything. Fade it in and out yourself
 (`cur.key("opacity", ...)`) inside the screen.
 
 ## Counting numbers

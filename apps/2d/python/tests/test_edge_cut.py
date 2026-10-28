@@ -23,3 +23,10 @@ def test_stretches_are_joined_and_worded():
     rows = edge_cut.scan(comp, times, [{}, {}, {}], 0.5)
     assert [(r["id"], r["edge"], r["start"], r["end"]) for r in rows] == [("hero", "bottom", 0.0, 1.5)] and rows[0]["cut_pct"] == 17
     assert "hero (shape) cut at the bottom edge" in edge_cut.tell(rows) and "0–1.5 s" in edge_cut.tell(rows)
+
+
+def test_a_soft_blurred_blob_past_the_edge_is_atmosphere_not_a_cut_subject():
+    from rostrum2d.mcp import edge_cut
+    comp = {"id": "c", "type": "comp", "width": 1920, "height": 1080, "duration": 2, "layers": [
+        {"id": "blob", "type": "shape", "x": 100, "y": 100, "w": 800, "h": 800, "effects": [{"type": "blur", "radius": 90}]}]}
+    assert edge_cut.soft(comp["layers"][0]) and not edge_cut.soft({"effects": [{"type": "blur", "radius": 4}]})
