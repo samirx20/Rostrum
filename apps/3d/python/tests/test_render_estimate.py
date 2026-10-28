@@ -11,7 +11,7 @@ from rostrum_core.errors import RostrumError
 
 from rostrum3d import estimate_job, gpu_busy
 from rostrum3d.engine import Engine
-from rostrum3d.mcp.estimate import scale
+from rostrum3d.mcp.estimate import fitting_settings, scale, seconds_at
 from rostrum3d.render_fields import settings
 
 FAKE = Path(__file__).with_name("fake_core.py")
@@ -107,3 +107,20 @@ def test_samples_follow_the_measured_curve_and_size_rescales():
     neg = dict(m, fixed_ms=-500.0, probe={"size": [960, 540]})                       # a line below 0 under the quarter size
     tiny = scale(neg, settings({"renderQuality": "good"}, dict(INFO, width=480, height=270)), 1, mp4=False)
     assert tiny["seconds_per_frame"] == pytest.approx((-500 + 960 * 540 * 0.001) / 4 / 1000, abs=1e-3)
+
+
+def test_fewer_samples_never_longer_and_fits_follow_the_measurement():
+    # The 13d probe of a glass + gloss scene at 1280x720 (real: 128 / 32 / 8 samples took 3.4 / 1.75 / 0.88 s a frame).
+    # Its few-sample point came out at 1.02 once (noise): that must not make 8 samples cost more than 128.
+    m = {"samples": 128, "curve": [[8, 1.02], [128, 1.0]], "fixed_ms": -146.0, "per_px_ms": 0.0039, "load_ms": 127.0,
+         "warmup_ms": 568.0, "probe": {"size": [640, 360]}}
+    s = settings({"renderQuality": "custom", "renderSamples": 128}, dict(INFO, width=1280, height=720))
+    times = [scale(m, {**s, "samples": n}, 240, mp4=True)["seconds"] for n in (1, 4, 8, 12, 28, 64, 128, 512)]
+    assert times == sorted(times)
+    m["curve"] = [[8, 0.2521], [128, 1.0]]
+    at = seconds_at(m, s, 240, True)
+    est = at("samples", 128)
+    fits = {f["change"]: f["to"] for f in fitting_settings(est, est / 2, "cycles", 128, 1280, at)}
+    assert at("samples", fits["samples"]) <= est / 2 < at("samples", fits["samples"] + 1)   # the most samples that fit, measured
+    assert at("samples", 128 // 2) > est / 2             # time grows less than in step: half the samples would not fit
+    assert at("width", fits["width"]) <= est / 2
