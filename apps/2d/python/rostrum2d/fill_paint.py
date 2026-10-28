@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import copy
 
+from rostrum_core.ids import counted
 from rostrum_core.keys import keys_of
 
 from . import fill_fields as FF
@@ -184,15 +185,13 @@ def upgrade(data: dict, lists: dict):
     ids = set(index(work, lists))
     moved = 0
 
-    def new_id(type_):
-        n = 1
-        while f"{type_}_{n}" in ids:
-            n += 1
-        ids.add(f"{type_}_{n}")
-        return f"{type_}_{n}"
     for layer in list(walk(work, lists)):
         fx = _gradient(layer)
         if fx is not None:
+            def new_id(type_, _of=layer["id"]):     # named after its layer: unique in the whole document, not just in
+                id_ = counted(ids, f"{_of}_{type_}")    # what one script made (two scripts' "stop_1" collided, and the
+                ids.add(id_)                            # second gradient was saved with no colours)
+                return id_
             _move(layer, fx, new_id)
             moved += 1
     return (work, f"Gradient effect{'s' * (moved > 1)} moved into the fill") if moved else None
