@@ -23,7 +23,7 @@ Each one's settings (`sim.set`, or the item's own `.set`):
 | `bounce` 0–1 | 0 lands dead, 1 bounces back as high as it fell |
 | `friction` 0–2 | 0 slides like ice, 1 grips like rubber |
 | `starts` | `moving`, or `asleep`: stays put until something hits it (a stack waiting to be knocked over) |
-| `fallStart` (seconds into the shot) | holds still where it is until then (others land on it and bounce off it), then falls; 0 = from the start. Stagger drops with it: `a.simulate("falls", fallStart=1)`, `b.simulate("falls", fallStart=2.5)`. On a copies item every copy waits; in the window it is the Simulation group's **Falls from** row, shown while it falls |
+| `fallStart` (seconds into the shot) | holds still where it is until then (others land on it and bounce off it), then falls; 0 = from the start. Stagger drops with it: `a.simulate("falls", fallStart=1)`, `b.simulate("falls", fallStart=2.5)`. On a copies item every copy waits, and its `varyStart` (Vary › **Start**, the guide *copies*) spreads each copy's start over that many seconds after it, from the seed; in the window it is the Simulation group's **Falls from** row, shown while it falls. To see the drop: *Stage a fall people see* below |
 | `simShape` | `exact` (its own outline; for one that falls, with the dents filled in), `box` or `sphere` (faster, rougher) |
 
 A thing that has keys at the start keeps its speed: key it moving and it is thrown. Keys after the first frame are not used
@@ -41,6 +41,7 @@ cloth (a plane is the usual one), and only one directly in the scene.
 | `stiffness` 0–1 | 0 folds like silk, 0.3 like cotton, 1 bends like thin card |
 | `pinned` | `none`, or the side held in place like a curtain on its rail: `top`, `bottom`, `left`, `right`, `front`, `back` (as the scene sees it at the first frame: `top` is its highest edge, `back` the edge furthest back) |
 | `friction` 0–2 | how much it grips what it lies on |
+| `fallStart` (seconds into the shot) | Falls from, as for a falling thing: the cloth keeps its first shape where it is until then (things that fall land on it as on something still), then drops. In the window: the Simulation group's **Falls from** row |
 
 A plane is made fine enough to fold on its own (a 64 × 64 grid of points); another shape has its faces split until they are
 small enough. At the default `stiffness` 0.3 a sheet hangs in soft folds and gathers where it meets the floor; go towards 0
@@ -74,12 +75,32 @@ and `inspect_simulation` says **out of date**: the viewport keeps showing the ol
 window, the result a render computed becomes the shot's stored one (the row says Stored, the viewport shows that fall; one
 undo step, "Simulate … (for the render)"). Put the change back and the earlier result is used again without computing.
 
-`look_motion` measures a falling thing where the stored result has it, and checks it for passing through like any shape.
+`look_motion` measures a falling thing where the stored result has it, and checks it for passing through like any shape;
+its **On screen** lines (and `run_simulation`'s warnings) say whether each fall and cloth is seen (*Stage a fall people see*).
 While the simulation is out of date (it measures the older result) or not computed (the things stay at their keyed
 places) its reply says so first and gives no all-clear: run the simulation, wait for it, look again.
 
 Changing only colours or materials never makes it out of date. A cloth's `clothWeight`, `stiffness`, `pinned` and `friction`
 do.
+
+## Stage a fall people see
+
+A fall only reads when the shot camera sees it move. A thing placed far above the picture drops through the top edge and
+lands a couple of frames later; a sheet placed right on what it covers barely moves. Two controls and one check:
+
+| what | how |
+|---|---|
+| start it inside the picture | `sim.start_in_view` on things set to Falls or Cloth (script: `sheet.simulate("cloth", over=box, fallStart=1).start_in_view(0.1)`, after the shot and its camera), `fromTop` 0–0.9 (default 0.1): moves each one up or down so its top sits that share of the picture's height below the picture's top edge, as the shot camera sees it at the frame it starts falling. Only its height changes, so it still lands where it did. A copies item moves as a whole (its highest copy goes there). In the window: select it, settings panel › **Start in view** (its ▾ sets **From the top**) |
+| give the shot a moment first | `fallStart` (Falls from, seconds; a falling thing or a cloth): the thing hangs in the picture until then, so the viewer sees it before it drops; a copies item's `varyStart` spreads the copies' starts after that |
+| check it | `run_simulation` warns, and `look_motion` has an **On screen** line per falling thing and cloth: how far and over which frames it drops (until it first lands), how many of those frames the picture shows it in and how many it drops outside (above, below, beside), the frame it comes into the picture and the frame it lands, or "starts already at rest". Its data: `fallsOnScreen` (`run_simulation`: `onScreen` {item: [drop frames on screen, drop frames]}) |
+
+`sim.start_in_view` fails with the reason when no height can show the thing: it is beside the picture (move it sideways
+first), behind the camera, the camera looks straight down, the picture's top is below the floor there, that low it would
+start inside or under what it falls onto (a smaller `fromTop`), or its height has keys. How far it falls decides how long
+the fall takes (gravity does the rest: about 0.45 s for 1 m, 0.3 s for 0.5 m); a lighter cloth (`clothWeight`) drifts down
+slower. The check counts the **drop**: from its first move until it stops going down (its first landing); bounces,
+rolls and a cloth's settling after that are "moves until frame n". A drop that is mostly above the picture, wholly
+outside it, or on screen for fewer than 4 frames is named, with the fix.
 
 ## When it fails
 

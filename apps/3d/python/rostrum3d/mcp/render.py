@@ -28,6 +28,7 @@ from rostrum_core.mcp.files import render_cache_folder
 
 from ..render_fields import QUALITIES, STYLIZED
 from ..sim.compute import ready_for_render
+from ..sim.fall_view import fall_note             # a fall the shot camera does not show
 from .. import estimate_job
 from . import draw, estimate, layers, resume
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
@@ -414,13 +415,11 @@ def video_job(ctx, args, gate: Gate | None = None):
         return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {paths[0].name} (share copy {paths[1].name}), in {took:.0f} s '
                      f'({took / max(todo, 1):.2f} s a frame drawn; {note}).{kept_words}'
                      + (f" Copied to {copies[0]} and {copies[1].name}." if copies else "")
-                     + " " + next_steps(count, fps, "render_video")
-                     # FALL_NOTE HOOK (lead: wire member A's fall_note(...) here as one more `+ " " + fall_note(...)` line)
-                     ,
+                     + " " + next_steps(count, fps, "render_video"),
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
                       **({"copies": [str(c) for c in copies]} if copies else {})},
-                     [*paths, *copies], warnings=engine.take_notices())
+                     [*paths, *copies], warnings=[*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder)])])
 
     def job_fn(job):
         try:

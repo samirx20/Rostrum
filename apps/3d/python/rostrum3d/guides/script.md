@@ -59,7 +59,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
-- **copies** `layout count columns spacingX spacingY spacingZ radius faceOut surface amountBy density minSpacing alongSurface onlySeen seed varyMove varyTurn varyScale` (guide `copies`); **effector** `kind near radius falloff amount axis colour`.
+- **copies** `layout count columns spacingX spacingY spacingZ radius faceOut surface amountBy density minSpacing alongSurface onlySeen seed varyMove varyTurn varyScale varyStart` (guide `copies`); **effector** `kind near radius falloff amount axis colour`.
 - **import** `file prim material`; **part** `path material visible`.
 - **Simulation** (mesh, combine, import, group, clay, copies, directly in the scene only) `simulate` (`off falls still`) `massFromSize mass bounce friction starts simShape`,
   or `item.simulate("falls", bounce=0.4)`; on a shot `simGround simTiming simSimplify`. A script never computes it: the `run_simulation` tool does (guide `simulate`).

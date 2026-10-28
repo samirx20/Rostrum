@@ -3,6 +3,7 @@
     sim.body    {kind: falls | still | cloth | off} on top-level items (cloth: shapes only)
     sim.set     the Simulation fields of items (Mass, Bounce …) and shots (Ground, Timing, Simplify), checked
     sim.run     compute the shot's simulation if needed and record it as the shot's stored result (simKey)
+    sim.start_in_view  a falling thing or cloth raised (or lowered) to start inside the shot camera's picture (in_view.py)
     sim.to_keys the stored result becomes ordinary keys on each falling item, which stops simulating (one undo step)
 
 How it stands (stored, out of date …) is a read, not an operation: sim/state.py `state`, the inspect_simulation tool.
@@ -42,7 +43,7 @@ def _folder(ctx):
              "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Cloth with `over` "
              "(an item's id) also places the sheet over that item: centred above it, a little over its top, level, and a "
              "plane too small to drape it made big enough to reach the floor; set that item to still too. Then sim.set for Mass, "
-             "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, pinned, friction), and sim.run "
+             "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, pinned, friction), sim.start_in_view to start it inside the shot camera's picture, and sim.run "
              "to compute.",
              target=SF.TYPES, label="Simulate",
              params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True, labels=SF.WORDS),
@@ -81,7 +82,7 @@ _SHOT = [p for p in F.unconditional("shot") if p.name in SF.SHOT_NAMES and p.nam
 
 @R.operation("sim.set", "Change Simulation settings. On an item: massFromSize, mass (kg), bounce (0–1), friction (0–2), "
              "starts (moving | asleep: until something hits it), fallStart (seconds into the shot it holds still until, "
-             "then falls; others land on it meanwhile; on a copies item every copy waits), simShape (exact | box | sphere); on cloth: clothWeight "
+             "then falls; others land on it meanwhile; on a copies item every copy waits; a cloth keeps its first shape until then), simShape (exact | box | sphere); on cloth: clothWeight "
              "(kg per m²: silk 0.05, cotton 0.2, denim 0.4), stiffness (0 silk … 1 thin card), pinned (none | top | bottom | "
              "left | right | front | back: that side, as seen in the scene at the first frame, held in place), friction. "
              "On a shot: simGround (a "
@@ -224,3 +225,6 @@ def _copies_to_keys(ctx, copies_id: str, res, shot: tuple, frames: list[int], ea
     ctx.set(copies_id, CK.KEYS, CK.rows(keyed))
     ctx.set(copies_id, CK.FROM, tag)
     ctx.set(copies_id, "simulate", "off")
+
+
+from . import in_view  # noqa: E402,F401  registers sim.start_in_view

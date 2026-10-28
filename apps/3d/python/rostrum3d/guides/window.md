@@ -214,6 +214,10 @@ One thing, many times, without making a thousand items (the guide *copies* has t
   grey line says how many: "212 of 400 in Hero 01" (or "400 copies" before the camera has been asked).
 - **Drag a number:** drag **Count**, **Space X / Z**, **Radius** or **Keep apart** in the settings panel and the copies
   follow the pointer live; letting go is one undo step (Esc puts it back).
+- **Not in neat rows:** the settings panel's **Vary** rows, right under the layout's, shift (**Move**), turn (**Turn**) and
+  size (**Size**) each copy by a different amount up to the number you give; **Seed** shuffles which copy gets what. While
+  the copies item falls (Simulate › Falls) a **Start** row joins them: each copy starts to fall up to that many seconds
+  after Falls from, so they land one after another.
 - **One copy:** click a copy; the copies item is selected and the line at the top says "Copy 7 of Buds". The arrows move,
   turn and size just that copy; the drop keeps it there (it never moves again when you change the count or the layout; **Release held
   copies** in the right-click menu lets them go back). One undo step.
@@ -235,6 +239,9 @@ tool). By hand, twelve buds dropping into a bowl:
 - **Their settings:** the settings panel gains a **Simulation** group: Mass from size (as solid plastic) or Mass, Bounce,
   Friction, Starts (Moving, or Asleep until hit) and Shape (Exact, Box, Sphere); on a Cloth: Weight, Stiffness, Pinned edge
   and Friction. Simulate › Off takes an item out again.
+- **See it fall:** with things that Fall or are Cloth selected, the settings panel's **Start in view** raises each one into
+  the shot camera's picture, its top near the picture's top edge (its ▾: **From the top**, the share of the picture's height),
+  so the drop happens on screen. One undo step. Falls from (on a falling thing or a cloth) holds it there until that second.
 - **Compute it:** a **Simulation** row appears under the timeline's rows: "Not computed" and **Simulate**. Click it: the bar
   fills left to right as frames are computed (you can scrub meanwhile), then reads "Stored · 120 frames". Scrubbing and
   renders read the stored result; nothing recomputes on its own. The record is one undo step.

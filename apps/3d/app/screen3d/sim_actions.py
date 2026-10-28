@@ -10,6 +10,10 @@ dropping one of the others would take away something people use. The current kin
 
 Only top-level items can be bodies (sim.body refuses an item inside a group, copies or rig): the actions are absent
 for one. No Qt.
+
+Start in view (round 2 of the 3D gaps): on the settings panel while every picked item Falls or is Cloth, one change made
+of `sim.start_in_view` (its ▾: From the top, the share of the picture's height its top starts below the picture's top edge),
+for the shot shown. It raises the thing so the shot camera sees it fall.
 """
 from __future__ import annotations
 
@@ -57,3 +61,19 @@ ACTIONS = [
            "move an item out of its group first.")
     for n, k in enumerate(WORDS)
 ]
+
+
+def _moving(f) -> bool:
+    return _valid(f) and all(it.get("simulate", "off") in ("falls", "cloth") for it in f.items)
+
+
+def _in_view(f, amounts=None) -> list[dict]:
+    args = {**({"shot": f.screen["shot_id"]} if f.screen.get("shot_id") else {}), **(amounts or {})}
+    return [{"op": "sim.start_in_view", "target": list(f.ids), "args": args}]
+
+
+ACTIONS.append(Action("sim:in_view", "Start in view", kinds=KINDS, min_targets=1, importance="secondary", rank=62,
+                      group="simulate", valid=_moving, calls=_in_view, amounts=("fromTop",),
+                      done="{what} starts inside the shot's picture",
+                      why="Start in view works on things set to Falls or Cloth, directly in the scene: it raises them "
+                          "so the shot camera sees them fall."))
