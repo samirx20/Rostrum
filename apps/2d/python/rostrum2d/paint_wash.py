@@ -12,7 +12,8 @@ How it is laid (all ordinary kit items, so it replays, undoes and draws on with 
   uneven, smooth way (paint running into damp paper), then blurred `edge` px (the paint mask's Feather); for the whole
   canvas, the canvas's own outline. The passes running past it never grow the drawing (paint_grow: a masked mark
   reaches no further than its mask).
-Every brush setting (brush, hardness, opacity, granulation, edge_darken, paper, wobble …) goes to each stroke as given.
+Every brush setting (brush, hardness, opacity, granulation, edge_darken, paper, wobble …) goes to each stroke as given;
+left out, the drying is a watercolour's (`WATER`: a dried edge, some granulation, pooling), each turned off by 0.
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ from rostrum_paint.ops import build, canvas_of
 from .kind import REGISTRY as R
 
 SAMPLE = 12             # px between the outline's points once it is roughened
+WATER = {"edge_darken": 0.4, "granulation": 0.3, "pooling": 0.5}   # a wash's drying, left out: a watercolour's
 
 
 def _box(points) -> tuple[float, float, float, float]:
@@ -112,6 +114,8 @@ def plan(region, w: int, h: int, values: dict) -> tuple[dict | None, list[dict]]
     v.setdefault("brush", "round")
     v.setdefault("color_jitter", 0.0)
     v.setdefault("hardness", 0.3)
+    for k, d in WATER.items():      # a wash dries like one unless told otherwise (0 turns each off)
+        v.setdefault(k, d)
     gap = size * (overlap if overlap is not None else auto_spacing(v["hardness"]))
     seed = int(v.get("seed", 7))
     edge_pts = [[min(w, max(0, x)), min(h, max(0, y))] for x, y in bled(poly, bleed, seed)] if poly else None
@@ -151,7 +155,9 @@ PARAMS = [Param.text("id", label="Id", importance="deep", help="Optional: the st
              "back and forth past every side, so nothing is left bare; an edge that is soft (edge), runs unevenly "
              "(bleed) or neither; flat (one stroke) or graded (to, bands). Makes ordinary strokes and one paint mask "
              "(<id>_edge), one undo step; drawnSoFar paints them on pass by pass. Every "
-             "brush setting applies (granulation, edge_darken, paper, wobble …); size defaults to a fifth of the region.",
+             "brush setting applies (granulation, edge_darken, pooling, bloom, paper, wobble …); left out, it dries like "
+             "watercolour (edge_darken 0.4, granulation 0.3, pooling 0.5; 0 turns one off); size defaults to a fifth "
+             "of the region.",
              target="paint", label="Wash", importance="secondary",
              params=[*REGION, *PARAMS, *(p for p in rostrum_paint.BRUSH)])
 def paint_wash(ctx, targets, args):

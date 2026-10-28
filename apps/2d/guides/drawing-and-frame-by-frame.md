@@ -127,9 +127,10 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 | `steady` | Steadiness: the line trails the pen and smooths a shaky hand (0 = raw) |
 | `size_pressure`, `opacity_pressure`, `tilt_angle`, `tilt_size` | what a pen's pressure and lean change (a stroke's points may carry tilt: `[x, y, pressure, tiltX, tiltY]`) |
 | `taper_start`, `taper_end` | the stroke starts / ends thin over this many tip sizes |
-| `wobble`, `swell`, `pool` | a hand's line from plain x, y points: the path drifts side to side (up to `wobble` × size, smoothly), the width breathes along it (thinning by up to `swell`), and ink gathers where the brush lands and lifts (`pool`, 0..2: the ends wider and denser over about half a size). Each 0 = off |
-| `edge_darken`, `granulation` | how a wash dries: a darker rim just inside its edge (about a fifth of the size wide), and pigment settled in the paper's valleys (the `paper` and `paper_scale` pick the tooth). Laid once the stroke is done, in the stroke's own `mode` |
-| `bloom` | wet paint creeping past the stroke's edge into damp paper, ragged and feathery along the paper's grain, up to about half the size out at 1.0. Laid once the stroke is done |
+| `wobble`, `swell`, `pool` | a hand's line from plain x, y points: the path drifts side to side (up to `wobble` × size, smoothly), the width breathes along it (thinning by up to `swell`), and ink gathers where the brush lands and lifts and, less, where it turns a corner (`pool`, 0..2: the ends wider and denser over about half a size). Each 0 = off |
+| `load`, `dry` | `bristle` and `flat` tips only. `load` 0..1: how full the brush is: the gaps between the hairs fill, so the line's body is solid ink and only its edges stay ragged (0 = the dry, streaky brush). `dry` 0..1: the brush runs out along the stroke, sooner on long straight runs than where it turns: the outer hairs drop out first, in clumps, so the line thins and its edges break into dry-brush streaks while the middle stays solid longest, and the paper's tooth shows. Every stroke starts full |
+| `edge_darken`, `granulation`, `pooling` | how a wash dries, in deeper colour than the stroke (in `normal` mode the colour glazed over itself, as a puddle of the same paint dries darker; in `multiply` another glaze; in `screen` / `add` more light): a dried edge (a thin hard line at the edge and a darker band about a fifth of the size wide inside it, strong in places, faint in others), pigment settled and clumped in the paper's valleys (the `paper` and `paper_scale` pick the tooth), and soft puddles of deeper colour inside the stroke from about two sizes across down to a quarter (`pooling`), so a flat wash is never one even colour. Laid once the stroke is done |
+| `bloom` | a backrun: the wet paint runs out past the stroke's edge to a wandering, cauliflower-shaped front (lobes at three sizes, soft but defined), paler inside, with pigment dried darker along parts of the front; up to about 0.6 of the size out at 1.0. Laid once the stroke is done |
 | `texture` | tip picture: `none`, `sponge`, `speckle`, `streaks`, `ragged`, `charcoal`, or a picture in the project's library; it turns with the tip |
 | `paper`, `paper_scale`, `grain` | the paper's tooth (`tooth`, `canvas`, `cold press`, `laid`, `rough`, or the project's own) and how much it breaks up the paint; it stays put on the canvas |
 | `color_jitter`, `hue_jitter`, `jitter`, `size_jitter`, `angle_jitter`, `spacing`, `even` | colour drift along the stroke, scatter, random size and turn per dab, dab spacing, softer tips closer together |
@@ -150,10 +151,13 @@ sizes and where they go are yours.
 | Graded wash (dark to light, or one colour into another) | `paint.wash` with `to` (the far colour) and `bands` (more = smoother); by hand, rows top to bottom, each a step towards the far colour, or one colour wash then a second `multiply` glaze over part of it under a feathered paint mask |
 | Wet-in-wet (colours melting into each other) | low `hardness` (0–0.2) so edges are soft; overlapping strokes of the two colours; then `smudge` on with `wet` 1 on a soft `round` tip along the join to blend (it drags paint, so work over an opaque base or a `ground`) |
 | Wet-on-dry (crisp, layered passes) | higher `hardness` (0.5+), `edge_darken` 0.3–0.7 so each pass keeps a dried rim; `mode: "multiply"` for each glaze over the last |
-| Dry brush (broken, scratchy paint) | `bristle` or `chalk` tip, `grain` 0.5–1 with a `paper`, little paint: `opacity` 0.5–0.8, fast strokes (few points); `texture` `streaks` or `ragged` for more break-up |
+| Dry brush (broken, scratchy paint) | `bristle` or `chalk` tip, `grain` 0.5–1 with a `paper`, little paint: `opacity` 0.5–0.8, fast strokes (few points); `texture` `streaks` or `ragged` for more break-up; on a `bristle` / `flat` tip, `dry` makes it run out along the stroke |
+| A watercolour wash (a film of pigment, not brush marks) | a soft `round` tip (`paint.wash` uses one), not `bristle` (its hairs leave parallel streaks: that is a dry brush), `opacity` under 1 so the paper and the layers below show through, `pooling` 0.3–0.8, `edge_darken` 0.3–0.6, a little `granulation`; a crisp, wandering edge from a paint mask (`paint.wash` `bleed` with a small `edge`) rather than a soft one, because a dried wash's edge is hard. Overlapping passes each keep their own dried edge |
+| Gouache / opaque paint | `opacity` 1 in `normal`, `pooling` low (0.1–0.3), `edge_darken` low, `hardness` 0.5+; a `flat` tip with `load` 1 for flat, matte block-in with slightly ragged edges |
 | Granulating wash (speckled pigment) | `granulation` 0.3–0.8 with `paper` and `paper_scale` choosing the speckle; reads most on flat areas |
+| Backrun / bloom (water running into a drying wash) | `bloom` 0.3–1 on the wash's stroke; it reads best on mid and light washes and on a lighter ground |
 | Glow / bloom (a lamp, a lantern) | `round`, `hardness` 0, a wide `size`, low `opacity` (0.15–0.4), `mode: "add"` or `"screen"` on its own paint layer, laid last: a small bright core stroke and a wider, fainter one round it. Several lights: vary each one's size, opacity and colour a little (`size_jitter`, `color_jitter` or your own numbers per light) and their spacing, or a row of them reads as stamped copies. A layer-level `glow` / `blur` effect does the same after the fact |
-| Inked line | see painted-backgrounds.md › Washes, glazes and an inked line (`wobble`, `swell`, `taper_*`, `pool`) |
+| Inked line | see painted-backgrounds.md › Washes, glazes and an inked line (`wobble`, `swell`, `taper_*`, `pool`, `load`, `dry`) |
 
 ### A wash to the edges: `paint.wash`
 
@@ -167,7 +171,8 @@ stroke stopped short or a ragged brush end fell inside the area. It makes ordina
 - `bleed`: the edge runs out unevenly past the region by up to this many px (paint creeping into damp paper).
 - `to` + `bands`: a graded wash from `color` (top, or left with `direction: "down"`) to `to`.
 - `overlap`: rows this many sizes apart; left out, as far apart as the `hardness` allows with no paler seams.
-- `size` defaults to a fifth of the region; every brush setting applies (`brush`, `opacity`, `granulation`, `edge_darken`, `paper`, `wobble`, `mode` …).
+- `size` defaults to a fifth of the region; every brush setting applies (`brush`, `opacity`, `granulation`, `edge_darken`, `pooling`, `bloom`, `paper`, `wobble`, `mode` …).
+- Left out, a wash dries like watercolour: `edge_darken` 0.4, `granulation` 0.3, `pooling` 0.5. Give any of them (0 turns it off) to change it.
 - The passes run past the region, but a masked stroke never grows the drawing past its mask, so a whole-canvas wash keeps the canvas size.
 - Where two washes meet edge to edge, a light seam shows (both edges are soft there): overlap them with `bleed`, or keep the seam on purpose.
 

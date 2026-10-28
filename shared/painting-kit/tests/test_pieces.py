@@ -62,3 +62,13 @@ def test_straight8_box_is_compose_straight8():
     got = native.straight8(px[10:50, 7:80], out=out[3:43, 11:84])          # boxes of bigger arrays, both sides
     assert got.tobytes() == compose.straight8(np.ascontiguousarray(px[10:50, 7:80])).tobytes()
     assert (out[:3] == 9).all() and (out[:, :11] == 9).all()                 # nothing written outside the box
+
+
+def test_a_drying_brush_in_pieces_is_the_stroke_at_once():
+    """Runs dry (`dry`) and a loaded brush (`load`) are measured from the stroke's start, so the live ink lays what the
+    finished stroke does, hairs dropping out included (and the drying brush did drop some)."""
+    s = dict(hardness=0.8, load=0.8, dry=0.7, pool=0.4)
+    whole, parts = _laid("bristle", 40, s, B.dabs, False, True), _laid("bristle", 40, s, B.dabs, True, True)
+    assert np.abs(whole - parts).max() < 1 / 255
+    full = _laid("bristle", 40, dict(s, dry=0.0), B.dabs, False, True)
+    assert (np.abs(whole - full).max(axis=2) > 0.2).sum() > 200
