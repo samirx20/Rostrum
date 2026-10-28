@@ -1,7 +1,7 @@
 """review: the film's weakest moments, ranked, as located faults with times: blank stretches, titles at the frame edge,
 faint old headings, parts not drawn in yet, held poses and held framing, subjects cut by the edge, stray specks, layers outside their screen, crowded lock-ups, beats that never
 happened, a near-empty frame mid-film, look-alike opening shots, an end picture held too long, a text partly crossed by a layer
-in front, texts on texts, a pointer on a label, a tiny end card, a device cut by the frame edge (and why: placed off the
+in front (a panel's own background too), a text cut by the edge of the screen or box that clips it, texts on texts, a pointer on a label, a tiny end card, a device cut by the frame edge (and why: placed off the
 frame, or nibbled by a camera push-in), a character hidden behind the set or standing on a bare one. Layout faults name
 the layers and a fix. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score. The export
 reply ends with the top ones (`after_export`, through session_clock), so the next fix pass has a concrete target."""
@@ -14,18 +14,18 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from . import edge_cut, look_empty, render
-from . import review_beats, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_room
+from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_room
 from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
-CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_device.facts)   # each (Sampled) -> faults: a new check registers here
+CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
-        "text_crossed": 90, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
+        "text_crossed": 90, "text_clipped": 91, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
         "device_cut": 92, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
 
@@ -96,7 +96,7 @@ def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str,
 
 def tell(rows: list[dict], limit: int) -> str:
     if not rows:
-        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed or on another text, no pointer on a label, no device cut, no tiny end card, no character hidden or on a bare set, every declared beat happens on time."
+        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed, cut by its screen's edge or on another text, no pointer on a label, no device cut, no tiny end card, no character hidden or on a bare set, every declared beat happens on time."
     shown = " ".join(f"{i}. {r['text']}." for i, r in enumerate(rows[:limit], 1))
     more = f" ({len(rows) - limit} more in data.)" if len(rows) > limit else ""
     return f"Weakest moments, most visible first: {shown}{more}"
@@ -135,8 +135,8 @@ def look_review(ctx, args):
     a stray small dot that later grows; a layer showing outside the screen it sits in; a lock-up whose parts touch; a washed-out stretch;
     a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film); opening shots that look alike (the same layers
     on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text partly crossed (10-85 %
-    of it) by a layer in front for 1 s or more (fully under a panel or sheet is hidden, a frosted scrim never counts), with where to
-    place the block instead; two showing texts on top of each other; a pointer (a layer named cursor, pointer, mouse, finger or hand)
+    of it) by a layer in front for 1 s or more (a group's own background counts; fully under a panel or sheet is hidden, a frosted scrim never counts), with where to
+    place the block instead; a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other; a pointer (a layer named cursor, pointer, mouse, finger or hand)
     covering a fifth of a label; an end card whose mark or lock-up is tiny in the frame; a device (device()) cut by the frame edge
     where it is placed, or nibbled by a camera push-in while its sides show (with the camera key, the share of the film it is
     cut and a frame.fit fix; a deep push-in filling the picture is meant and only listed in data.info, with the screen texts it

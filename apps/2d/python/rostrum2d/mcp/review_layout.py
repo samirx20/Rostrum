@@ -107,7 +107,7 @@ def overlaps(s: Sampled) -> list[dict]:
         texts = list(_texts(s, nodes, by))
         for k, n, box, front in texts:
             for o in front:
-                if not _in_front(s, o) or o["type"] == "group" or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
+                if not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
                     continue
                 share = _over(o, box)
                 if PARTIAL[0] <= share <= PARTIAL[1]:

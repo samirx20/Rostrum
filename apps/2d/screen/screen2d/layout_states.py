@@ -182,7 +182,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("f13-group-background", ["--sample"], ["selectmany dot rule", "do layer:group", "set background true",
                                                 "set bgStroke true"]),
         # F14: a hugging group's "Keep top-left fixed" row (appears only while a hug is on)
-        ("f14-hug-group", ["--sample"], ["selectmany dot rule", "do layer:group", 'set layout "row"', "set hugWidth true"]),
+        ("f14-hug-group", ["--sample"], ["selectmany dot rule", "do layer:group", 'set layout "row"', "set sizeW \"fit\""]),
         ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])

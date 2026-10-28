@@ -26,7 +26,7 @@ def _refusal(p: dict) -> str:
     k = tuple(p[f] for f in (*ASKS, "font", "size"))
     if k not in _kept:
         try:
-            textsize._engine().measure([{**{f: p[f] for f in textsize.FIELDS}, "id": "t", "body": "A"}])
+            textsize.engine().measure([{**{f: p[f] for f in textsize.FIELDS}, "id": "t", "body": "A"}])
             _kept[k] = ""
         except EngineError as e:
             text = str(e)

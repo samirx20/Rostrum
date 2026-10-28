@@ -10,7 +10,7 @@ from .review_sample import Sampled, runs
 from . import edge_cut
 
 DEEP = 0.6                # a pushed-in device filling this share of the frame or more is a meant close-up
-SLICED = (0.3, 0.97)      # a text with this share of its box inside the picture is a sliced label, named even in a deep push
+SLICED = (0.05, 0.97)     # a text with any of its box inside the picture is a sliced word, named even in a deep push
 PART = 0.5                # a part to push onto: a group in the device under the frame's centre, up to this share of it
 
 

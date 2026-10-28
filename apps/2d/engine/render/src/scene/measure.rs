@@ -15,7 +15,7 @@ type R<T> = Result<T, String>;
 const NEEDED: &[&str] = &["body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth"];
 
 /// The type fields a text may leave out, as fields.py's defaults (the font as it is, one line, no letters played).
-fn plain() -> Map<String, Value> {
+pub(super) fn plain() -> Map<String, Value> {
     let mut m = Map::new();
     for (f, v) in [
         ("ligatures", json!(true)), ("figures", json!("default")), ("smallCaps", json!(false)), ("features", json!("")),

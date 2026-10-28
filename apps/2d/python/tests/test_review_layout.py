@@ -86,3 +86,13 @@ def test_a_phone_placed_off_the_frame_or_nibbled_by_a_push_in_but_not_a_deep_pus
     assert 'frame().fit(["phone"]' in push["push_cut"]["text"] and "% of the film" in push["push_cut"]["text"]
     deep = review_device.facts(_sampled(PHONE + 'frame().fit(rect=(140, 60, 40, 22), at=0)\n'))
     assert [r["kind"] for r in deep] == ["push_in"] and deep[0]["info"]
+
+
+def test_a_word_a_deep_push_in_slices_at_the_frame_edge_is_named_not_kept_as_info():
+    from rostrum2d.mcp import review
+    src = HEAD.format(d=6) + PHONE + '        text("s", body="Summarise", size=10, x=27, y=52)\nframe().fit(rect=(140, 60, 40, 22), at=0)\n'
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    faults, _ = review.doc_faults(doc.data, doc.item("c"), None, "look_review")
+    cut = [f for f in faults if f["kind"] in ("text_edge", "small_text_edge") and "s" in (f.get("ids") or [f["id"]])]
+    assert cut and not any(f.get("info") for f in cut)

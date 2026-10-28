@@ -19,6 +19,11 @@ SPECK_GROW = 10.0     # ... and parked when it later grows to this many times th
 SPECK_S = 1.0         # ... for this long while showing
 
 
+def _screen(n: dict) -> bool:
+    """A device's screen (device(): the group "<device>_screen" inside the device's group)."""
+    return bool(n["within"]) and n["id"] == f'{n["within"][-1]}_screen'
+
+
 def _seen(n: dict, W: float, H: float) -> bool:
     x0, y0, x1, y1 = drawn_box(n)
     return n["in_time"] and n["opacity"] >= SHOWN and x1 > 0 and y1 > 0 and x0 < W and y0 < H and (x1 - x0) * (y1 - y0) > 4
@@ -71,7 +76,8 @@ def facts(comp: dict, times: list[float], step: float) -> list[dict]:
                     if g and g[1] > 0.3 and -0.1 * tall < g[0] < CROWD * tall:
                         crowd.setdefault((lower["id"], upper["id"]), []).append((t, g[0], tall))
         boxes = {n["id"]: (n, drawn_box(n)) for n in nodes}
-        holders = [(n, b) for n, b in boxes.values() if n["type"] == "group" and n["props"].get("clip") and n["in_time"]]
+        holders = [(n, b) for n, b in boxes.values() if n["type"] == "group" and n["in_time"]
+                   and (n["props"].get("clip") or _screen(n))]      # a device's screen holds its layers, clipped or not
         for n in seen:
             b = drawn_box(n)
             area = (b[2] - b[0]) * (b[3] - b[1])

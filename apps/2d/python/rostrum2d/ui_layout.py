@@ -1,13 +1,11 @@
-"""Where product-screen blocks go when the script gives no numbers (guide ui-and-product-animation, "Building blocks"
-and "Framing a device"): a device sized and placed by its share of the picture, and screen parts stacked one under
-the other in their parent, so raw coordinates are the exception.
+"""Sizes and boxes for product screens (guide ui-and-product-animation, "Framing a device"; screen parts are placed by
+the container they are made in, script_layout.py and guide lay-out-a-screen):
 
 - `device_box`: a phone's height a share of the parent's height (`fit`, default 0.82) keeping the 430:900 shape; a
   laptop or browser the same, held inside 86 % of the width; centred, or against the left / right of a title-safe
   area (`anchor`, `margin`).
-- `Flow`: per parent group, the bottom of the last block made in it. A block made with no `y` goes under it, a gap
-  apart; an explicit `y` opts out (and the next block still goes under it).
-- `box_in`: an item's box (x, y, w, h) in another group's px, through the groups between (for tap / pointer).
+- `box_in`: an item's box (x, y, w, h) in another group's px, through the groups between, where the layouts place
+  them (for tap / pointer).
 """
 from __future__ import annotations
 
@@ -41,6 +39,31 @@ def parent_size(build) -> tuple[float, float]:
     return 1920.0, 1080.0
 
 
+DARK = {"ink": "#f3f4f6", "muted": "#9ca3af", "line": "#2a303c", "paper": "#171b24", "off": "#3a4150"}
+LIGHT = {"ink": INK, "muted": MUTED, "line": LINE, "paper": PAPER, "off": "#d1d5db"}
+
+
+def ground(build) -> str:
+    """The colour behind the blocks made now: the nearest box with its own background, else a device's body (a screen
+    without a colour shows it), else the scene's background."""
+    for node in reversed(build.holders):
+        if node["type"] == "comp":
+            return node.get("background", "#000000")
+        if node.get("background"):
+            return node.get("bgColor", "#334155")
+        body = next((c for c in node.get("layers", []) if c["id"] == f'{node["id"]}_body'), None)
+        if body is not None:
+            return body.get("fill", "#0b0d12")
+    return "#000000"
+
+
+def palette(build) -> dict:
+    """The blocks' starting colours for what they sit on: dark words on a light screen, light words on a dark one."""
+    c = ground(build).lstrip("#")[:6].ljust(6, "0")
+    r, g, b = (int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return LIGHT if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 else DARK
+
+
 def device_box(kind, build, x=None, y=None, w=None, h=None, fit=None, anchor="center", margin=None):
     """(x, y, w, h) of a device centred on (x, y). Given w / h win; else the size comes from `fit`, the share of the
     parent's height it fills; then x from `anchor` inside a title-safe area `margin` px in (default 8 % of the width)."""
@@ -62,43 +85,6 @@ def device_box(kind, build, x=None, y=None, w=None, h=None, fit=None, anchor="ce
     if x is None:
         x = {"center": pw / 2, "left": m + w / 2, "right": pw - m - w / 2}[anchor]
     return float(x), float(ph / 2 if y is None else y), w, h
-
-
-class Flow:
-    """Stacks blocks in their parent: `place(h, y, gap)` gives the block's top and remembers its bottom."""
-
-    def __init__(self, build):
-        self.b = build
-        self.bottoms: dict[str, float] = {}
-        self.floors: dict[str, tuple] = {}
-
-    def parent(self) -> str:
-        return self.b.holders[-1]["id"] if self.b.holders else ""
-
-    def unit(self) -> float:
-        return parent_size(self.b)[0] / BASE_W
-
-    def place(self, h, y=None, gap=0.0, id="") -> float:
-        """The top of a block `h` tall: `y`, or under the previous block. A stacked block that would end past the
-        parent's bottom (or a tab bar's top) is refused: the screen is full."""
-        p = self.parent()
-        if y is None:
-            y = self.bottoms[p] + gap if p in self.bottoms else gap
-            floor, what = self.floors.get(p, (parent_size(self.b)[1], "the bottom of its group"))
-            if y + h > floor + 0.5:
-                raise ValueError(f"{id}: stacked under the block before it, it would end at y {y + h:.0f}, past {what} "
-                                 f"(y {floor:.0f}). Make it or the blocks above it smaller (h=, row_h=), leave a block out, "
-                                 "or give y= to place it on purpose")
-        self.bottoms[p] = float(y) + float(h)
-        return float(y)
-
-    def floor(self, top, id) -> None:
-        """A tab bar at `top`: stacked blocks must end above it (and the ones already made do)."""
-        p = self.parent()
-        if self.bottoms.get(p, 0.0) > top + 0.5:
-            raise ValueError(f"{id}: its top (y {top:.0f}) would cover the blocks stacked above it, which end at y "
-                             f"{self.bottoms[p]:.0f}. Make those smaller, or give the tab bar a y")
-        self.floors[p] = (top, f'the top of tab bar "{id}"')
 
 
 def bottom(node) -> float:
@@ -141,25 +127,30 @@ def _at(node, k, t, default) -> float:
     return float(node.get(k, default))
 
 
-def own_box(node, t=None) -> tuple[float, float, float, float]:
+def own_box(node, t=None, placed=None) -> tuple[float, float, float, float]:
     """An item's box in its parent's px (a text's from its size and length: a close guess, no engine call); with `t`,
-    where its keys have moved it by then."""
+    where its keys have moved it by then; `placed`: what a layout gives it then ({x, y[, w, h][, boxWidth]})."""
     d = F.defaults(node["type"])
     d = {**d, "scaleX": d.get("scaleX", 1), "scaleY": d.get("scaleY", 1), "scale": d.get("scale", 1)}
-    g = lambda k: _at(node, k, t, d.get(k, 0)) if k in MOVES else float(node.get(k, d.get(k, 0)))
+    placed = placed or {}
+    g = lambda k: float(placed[k]) if k in placed else (_at(node, k, t, d.get(k, 0)) if k in MOVES else float(node.get(k, d.get(k, 0))))
     if node["type"] == "text":
         w, h = len(str(node.get("body", ""))) * g("size") * 0.6, g("size") * 1.2
+        if "boxWidth" in placed:
+            w = min(w, float(placed["boxWidth"]))
     else:
         w, h = g("w"), g("h")
     sx, sy = g("scale") * g("scaleX"), g("scale") * g("scaleY")
     return g("x") - g("anchorX") * w * sx, g("y") - g("anchorY") * h * sy, w * sx, h * sy
 
 
-def to_scene(nodes, box, t=None):
-    """A box in the px of nodes[-1] (a group) up to the scene's px (with `t`: where the groups are then)."""
+def to_scene(nodes, box, t=None, placed=None):
+    """A box in the px of nodes[-1] (a group) up to the scene's px (with `t`: where the groups are then; `placed`:
+    the layouts' places then, layout.solve)."""
     x, y, w, h = box
+    placed = placed or {}
     for g in reversed(nodes[1:]):
-        gx, gy, _, _ = own_box(g, t)
+        gx, gy, _, _ = own_box(g, t, placed.get(g["id"]))
         v = lambda k: _at(g, k, t, 1)
         sx, sy = v("scale") * v("scaleX"), v("scale") * v("scaleY")
         x, y, w, h = gx + x * sx, gy + y * sy, w * sx, h * sy
@@ -169,7 +160,16 @@ def to_scene(nodes, box, t=None):
 def box_in(root, id_, holder_id, t=None) -> tuple[float, float, float, float]:
     """Item `id_`'s box in the px of group `holder_id` (or the scene); with `t`, where keys have moved them by then."""
     path = chain(root, id_)
-    sx, sy, sw, sh = to_scene(path[:-1], own_box(path[-1], t), t)
+    placed = laid_out_places(path[0], t)
+    sx, sy, sw, sh = to_scene(path[:-1], own_box(path[-1], t, placed.get(id_)), t, placed)
     hold = chain(root, holder_id)
-    ox, oy, ow, oh = to_scene(hold, (0, 0, 1, 1), t)
+    ox, oy, ow, oh = to_scene(hold, (0, 0, 1, 1), t, placed)
     return (sx - ox) / ow, (sy - oy) / oh, sw / ow, sh / oh
+
+
+def laid_out_places(comp, t=None) -> dict:
+    """{id: {x, y[, w, h][, boxWidth]}} the scene's layouts give at t (empty with no layout in it)."""
+    from . import layout
+    if not any(layout.laid_out(c) for c in comp.get("layers", ())):
+        return {}
+    return layout.solve(comp, 0.0 if t is None else float(t))
