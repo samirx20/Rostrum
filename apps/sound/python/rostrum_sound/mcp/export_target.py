@@ -22,7 +22,9 @@ def push(state, doc, item: str, options: dict) -> tuple[dict, dict | None]:
     pushed limit (None: render the song's own))."""
     song = SimpleNamespace(data=copy.deepcopy(doc.data), folder=getattr(doc, "folder", None))
     span = (options["from"], options["to"]) if "from" in options else None
-    with tempfile.TemporaryDirectory(prefix="push_", dir=state.renders(item)) as tmp:
+    home = Path(state.renders(item))
+    home.mkdir(parents=True, exist_ok=True)          # a song's first render: its renders folder is not made yet
+    with tempfile.TemporaryDirectory(prefix="push_", dir=home) as tmp:
         got = fit.reach(song, state.engine, Path(tmp), span)
     if not got.get("ops"):
         return got, None
