@@ -252,3 +252,29 @@ def test_a_part_on_the_body_rides_a_body_bone_not_the_arm_beside_it():
         clay["jointParts"] = PJ.pack_parts(parts)
         assert not names[follow.nearest_bone(clay, spot)].startswith(("arm.", "forearm.", "hand."))
         del clay["jointParts"]
+
+
+def test_small_feet_are_seen_by_asking_for_a_finer_grid():
+    """A foot a couple of cells thick is a bump to the finder, so the window and the op ask for a finer grid when the
+    clay's smallest part would be thinner than a few cells (the critic's 1280×720 five-minute character had no feet)."""
+    def feet(grid):
+        return {j["joint"] for j in PJ.find(grid)} & {"foot.L", "foot.R", "leg.L", "leg.R"}
+
+    def small_feet(cells):                                  # the pear with feet 0.03 thick (1.9 cells at 48)
+        lo, hi = np.array([-0.75, -0.2, -0.4]), np.array([0.75, 0.9, 0.4])
+        cell = (hi - lo).max() / cells
+        dims = np.ceil((hi - lo) / cell).astype(int) + 1
+        P = np.stack(np.meshgrid(*[lo[i] + np.arange(dims[i]) * cell for i in range(3)], indexing="ij"), -1)
+        d = _smin(_capsule(P, [0, 0.3, 0], [0, 0.3, 0], 0.3), _capsule(P, [0, 0.6, 0], [0, 0.6, 0], 0.2), 0.1)
+        for s in (1, -1):
+            d = _smin(d, _capsule(P, [s * 0.25, 0.55, 0], [s * 0.62, 0.55, 0], 0.055))
+            d = _smin(d, _capsule(P, [s * 0.12, 0.02, 0], [s * 0.13, -0.04, 0.06], 0.03), 0.02)
+        return {"occupancy": d < 0, "origin": (lo - cell / 2).tolist(), "cell": float(cell)}
+    clay = {"steps": [{"step": "piece", "shape": "sphere", "radius": 0.3, "mode": "add"},
+                      {"step": "piece", "shape": "capsule", "radius": 0.03, "mode": "add"}]}
+    coarse = small_feet(48)
+    assert not feet(coarse)
+    more = PJ.finer_cells(clay, coarse, 48)
+    assert 48 < more <= PJ.CAP
+    assert len(feet(small_feet(more))) == 2
+    assert PJ.finer_cells({"steps": [{"step": "piece", "shape": "sphere", "radius": 0.3, "mode": "add"}]}, coarse, 48) == 48

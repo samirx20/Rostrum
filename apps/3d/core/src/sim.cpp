@@ -47,7 +47,8 @@ constexpr double kGravity = 9.81;
 constexpr int kStepsPerSecond = 240;   // physics steps; a 24 fps frame is 10 of them
 constexpr int kMaxHullPoints = 4000;   // more points than this are thinned (the hull keeps at most 256 anyway)
 constexpr JPH::ObjectLayer kStill = 0, kMoving = 1;
-constexpr int kClothIterations = 8;    // a cloth's solver passes per physics step (each a sub-step)
+constexpr int kClothIterations = 8;
+constexpr double kBendSoftest = 6.5, kBendRange = 6;  // bend compliance 10^(softest - range × Stiffness) × weight × edge²    // a cloth's solver passes per physics step (each a sub-step)
 constexpr double kClothGap = 0.002;    // m: how far a cloth's points keep off what they touch (no flicker on a plinth)
 constexpr double kTear = 4;            // an edge stretched past this many times its length: the cloth came apart
 
@@ -162,10 +163,33 @@ JPH::RefConst<JPH::Shape> exact_mesh(const Body& b, double k) {
   return made(ms, b, "exact");
 }
 
+// A still Exact body whose surface is closed and convex (a box, a ball, a plinth) collides as a solid: Jolt's triangle mesh
+// is a thin shell to a cloth (each point takes one triangle's plane, with no inside), and a light sheet over a box that
+// stands on the ground crept off it, pulled by its points in the box-floor corner. The hull is kept only when it holds no
+// more than the surface itself (within 1%), so a chair or a bowl still collides by its triangles. Its corners stay sharp, as
+// drawn (Jolt rounds a hull inwards, and the drawn corner then poked through the cloth).
+JPH::RefConst<JPH::Shape> solid_if_convex(const Body& b, double k) {
+  double vol = 0;  // the closed surface's volume (its triangles' signed tetrahedra; an open one comes out small or off)
+  for (size_t i = 0; i + 2 < b.triangles.size(); i += 3) {
+    const JPH::Vec3 a = v3(b.triangles[i], k), c = v3(b.triangles[i + 1], k), d = v3(b.triangles[i + 2], k);
+    vol += double(a.Dot(c.Cross(d))) / 6;
+  }
+  vol = std::abs(vol);
+  if (b.points.size() < 4 || !(vol > 0)) return nullptr;
+  JPH::Array<JPH::Vec3> pts;
+  const size_t n = b.points.size(), stride = std::max<size_t>(1, n / kMaxHullPoints);
+  for (size_t i = 0; i < n; i += stride) pts.push_back(v3(b.points[i], k));
+  JPH::ConvexHullShapeSettings hs(pts, 0.0f);
+  JPH::ShapeSettings::ShapeResult r = hs.Create();
+  return r.HasError() || double(r.Get()->GetVolume()) > vol * 1.01 ? nullptr : r.Get();
+}
+
 JPH::RefConst<JPH::Shape> shape_of(const Body& b, double k) {
   if (b.shape == Body::Box) return box(b, k, b.falls);
   if (b.shape == Body::Sphere) return sphere(b, k, b.falls);
-  return b.falls ? hull(b, k) : exact_mesh(b, k);
+  if (b.falls) return hull(b, k);
+  if (JPH::RefConst<JPH::Shape> solid = solid_if_convex(b, k)) return solid;
+  return exact_mesh(b, k);
 }
 
 // The pinned side's points (sim.h Cloth::Pin): within 1% of that side of its world bounds at the start.
@@ -193,8 +217,11 @@ double dist(const V3& a, const V3& b) {
 
 // A cloth as Jolt's soft body settings in the scaled world: a point weighs a third of its triangles (weight × area), a
 // pinned point weighs nothing (Jolt holds it); edge, shear and bend constraints from the triangles, softer as Stiffness
-// goes down. Compliances are set against the cloth's own mean point weight and sub-step, so the same Stiffness folds the
-// same whatever its Weight or how fine it is: stretch at most a little (none at 1), bending from free (0) to card-like (1).
+// goes down. Compliances are set against the cloth's own mean point weight (and, for bending, its edge length), so the same
+// Stiffness folds the same whatever its Weight or how fine it is: stretch at most a little (none at 1); bending is by the
+// angle between neighbouring triangles (Jolt's dihedral constraint), from silk (0) through cotton (0.3, hangs in folds)
+// to card (1). The old distance bend at a sub-step's scale held even 0.3 nearly flat: a sheet tented out over a box
+// and, bent over its edge, sprang itself off it.
 JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
   std::vector<double> mass(c.points.size(), 0.0);
   for (const auto& t : c.triangles) {
@@ -224,10 +251,16 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     s->AddFace(JPH::SoftBodySharedSettings::Face(JPH::uint32(t[0]), JPH::uint32(t[1]), JPH::uint32(t[2])));
   const double st = std::clamp(c.stiffness, 0.0, 1.0);
   const double base = inv_sum / double(c.points.size() - held) * sub_dt * sub_dt;  // a constraint at this gives half way
-  const float stretch = float(0.02 * (1 - st) * base), bend = float(std::pow(10.0, 3.0 - 4.5 * st) * base);
+  const double w = inv_sum / double(c.points.size() - held);  // mean inverse point weight
+  double edge = 0;                                             // mean edge length
+  for (const auto& t : c.triangles)
+    for (int q = 0; q < 3; ++q) edge += dist(c.points[size_t(t[q])], c.points[size_t(t[(q + 1) % 3])]) * k;
+  edge /= double(3 * c.triangles.size());
+  const float stretch = float(0.02 * (1 - st) * base), shear = float(1e-6 * w);
+  const float bend = float(std::pow(10.0, kBendSoftest - kBendRange * st) * w * edge * edge);
   using SS = JPH::SoftBodySharedSettings;
-  const SS::VertexAttributes va(stretch, stretch, bend, held ? SS::ELRAType::EuclideanDistance : SS::ELRAType::None, 1.03f);
-  s->CreateConstraints(&va, 1, SS::EBendType::Distance);
+  const SS::VertexAttributes va(stretch, shear, bend, held ? SS::ELRAType::EuclideanDistance : SS::ELRAType::None, 1.03f);
+  s->CreateConstraints(&va, 1, SS::EBendType::Dihedral);
   s->Optimize();
   return s;
 }
@@ -353,8 +386,9 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     throw Failure(b, setup.start, "starts inside " + into, move + " or set Starts: Asleep until hit");
   }
 
-  // how far a cloth's points keep off what they touch: at least kClothGap, and a third of its typical edge, since a
-  // triangle between two points bridges a sharp corner (a plinth's edge showed through a 2 cm grid at 2 mm)
+  // how far a cloth's points keep off what they touch: at least kClothGap, and half its typical edge, since a triangle
+  // between two points bridges a sharp corner (a plinth's edge showed through a 2 cm grid at 2 mm, a box's top corner
+  // through a 2.5 cm grid at a third: the critic's "dark notch"); half an edge clears a right-angled corner
   const auto cloth_gap = [](const Cloth& cl) {
     std::vector<double> e;
     for (const auto& t : cl.triangles)
@@ -364,7 +398,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       }
     if (e.empty()) return kClothGap;
     std::nth_element(e.begin(), e.begin() + long(e.size() / 2), e.end());
-    return std::max(kClothGap, e[e.size() / 2] / 3);
+    return std::max(kClothGap, e[e.size() / 2] / 2);
   };
 
   const int frames = setup.end - setup.start + 1;

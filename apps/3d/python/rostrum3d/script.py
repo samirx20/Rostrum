@@ -112,7 +112,7 @@ class Item:
         until, then falls), simShape="box";
         cloth: clothWeight=, stiffness=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
         script. Cloth with over=<item> (made earlier, or already in the scene) also places the sheet over it: centred,
-        a little above its top, level, and a plane too small to cover it made twice its size."""
+        a little above its top, level, and a plane too small to drape it made big enough to reach the floor."""
         over = values.pop("over", None)
         self.set(simulate=kind, **values)
         if over is not None:

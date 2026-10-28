@@ -31,8 +31,8 @@ def _start(tmp_path):
     return d
 
 
-def test_the_first_picture_is_a_floor_under_a_thin_band_of_sky(tmp_path):
-    """The horizon sits in the top 15–25 % of the shot's frame, and a 30 cm figure at the middle fills about half its
+def test_the_first_picture_is_all_floor_with_no_horizon(tmp_path):
+    """The horizon is above the shot's frame (no photographed room across its top), and a 30 cm figure at the middle fills about half its
     height (the shot's 16:9 frame, the camera's sensor width and focal length)."""
     d = _start(tmp_path)
     scene = describe(d.data, "shot_1")
@@ -51,7 +51,7 @@ def test_the_first_picture_is_a_floor_under_a_thin_band_of_sky(tmp_path):
         return 0.5 - y / half / 2
 
     horizon = down_from_top([eye[0] + fwd[0] * 1e4, eye[1], eye[2] + fwd[2] * 1e4])
-    assert 0.15 <= horizon <= 0.25
+    assert horizon < -0.05
     figure = down_from_top([0, 0, 0]) - down_from_top([0, 0.3, 0])
     assert 0.4 <= figure <= 0.6
 

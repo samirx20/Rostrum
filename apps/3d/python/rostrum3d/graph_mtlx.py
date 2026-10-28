@@ -27,7 +27,7 @@ from .colors import linear
 PREVIEW = {"baseColor": ("diffuseColor", "color3"), "roughness": ("roughness", "float"),
            "metallic": ("metallic", "float"), "emissionColor": ("emissiveColor", "color3"),
            "normal": ("normal", "vector3")}
-INDEX = {("mix", "blend"): "blendIndex", ("ramp", "interpolate"): "interpolateIndex"}   # Storm's twin of a choice
+INDEX = {("mix", "blend"): "blendIndex", ("ramp", "interpolate"): "interpolateIndex", ("pattern", "shape"): "shapeIndex"}   # Storm's twin of a choice
 MAX_STOPS = 8
 
 

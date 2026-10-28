@@ -41,7 +41,7 @@ def _folder(ctx):
              "plane is made fine enough to fold) or off. Only items directly in the scene (not inside a group, copies or "
              "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Cloth with `over` "
              "(an item's id) also places the sheet over that item: centred above it, a little over its top, level, and a "
-             "plane too small to cover it made twice its size; set that item to still too. Then sim.set for Mass, "
+             "plane too small to drape it made big enough to reach the floor; set that item to still too. Then sim.set for Mass, "
              "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, pinned, friction), and sim.run "
              "to compute.",
              target=SF.TYPES, label="Simulate",

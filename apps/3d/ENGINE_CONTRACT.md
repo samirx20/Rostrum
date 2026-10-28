@@ -126,6 +126,7 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
 | `roughnessTexture` | path or `""` | raw (non-colour) |
 | `metallicTexture` | path or `""` | (v1.11) raw (non-colour); Cycles → `metallic`, Storm → `metallic` (painted metal) |
 | `transmission`, `ior` | 0..1, 1..3 | glass: `transmission 1, roughness 0, ior 1.5`; frosted: the same with `roughness` 0.1–0.4 |
+| `thinWalled` | bool | Cycles `thin_wall`: one sheet, light through without bending (a pane, a bubble). Storm: glass is drawn see-through with its reflections (opacity 1 − 0.92 × transmission, less for rough glass); a saturated `baseColor` adds a thin film of that colour (diffuse + opacity, by its saturation), so tinted glass shows its colour |
 | `coat`, `coatRoughness` | 0..1 | |
 | `coatTint`, `coatIor` | [r,g,b] linear, 1..3 | Cycles `coat_tint`, `coat_ior`; Storm: none (its clear coat is untinted, fixed IOR) |
 | `sheen`, `sheenRoughness`, `sheenTint` | 0..1, 0..1, [r,g,b] | Cycles `sheen_weight`, `sheen_roughness`, `sheen_tint`; Storm: none |
@@ -148,9 +149,10 @@ MaterialX 1.39 document (written by `python/rostrum3d/graph_mtlx.py`, named by i
 changed graph is a new path). Read with USD's MaterialX reader (usdMtlx); the document's material must use a nodegraph
 `NG_blocks` whose outputs are named after the Surface inputs they feed: `baseColor`, `roughness`, `metallic`,
 `emissionColor` (× `emissionStrength`), `normal`. Each node in `NG_blocks` is a Rostrum block (nodedef id
-`ND_rostrum_<type>…`: `noise`, `image`, `mix`, `ramp`, `curve`, `colour_adjust`, `bevel`, `occlusion`, from
+`ND_rostrum_<type>…`: `noise`, `pattern`, `image`, `mix`, `ramp`, `curve`, `colour_adjust`, `bevel`, `occlusion`, from
 `core/mtlx/rostrum_blocks.mtlx`, found through `PXR_MTLX_PLUGIN_SEARCH_PATHS`, which the runtime sets). **Cycles:**
-each block becomes its own nodes (`noise_texture` on object coordinates, `image_texture`, `mix_color`, `rgb_ramp` /
+each block becomes its own nodes (`noise_texture` on object coordinates; Pattern's checks / stripes / weave as
+`math` nodes on the UVs turned by `vector_rotate` and scaled by `vector_math`, only the picked shape; `image_texture`, `mix_color`, `rgb_ramp` /
 `float_curve` sampled at 256, `hsv` + `brightness_contrast`, `bevel`, `ambient_occlusion`) wired into the principled
 BSDF. **Storm:** `NG_blocks` referenced under `/World/Looks/<id>/Blocks` and an `ND_UsdPreviewSurface_surfaceshader`
 (`MtlxSurface`, the Preview's values and pictures as MaterialX images) on `outputs:mtlx:surface`, so Storm's MaterialX
@@ -358,16 +360,18 @@ a simulation's start poses stay the laid-out ones (with keyed copies at `start`)
 
 **Cloth (v1.25, Sam brief 26b).** A body `{"item", "kind": "cloth", "weight" (kg per m², above 0), "stiffness" (0..1),
 "pinned": "none" | "top" | "bottom" | "left" | "right" | "front" | "back", "friction"}` is a top-level `mesh` item draped as a
-Jolt soft body: one particle per point (a third of each of its triangles' weight × area), edge, shear and distance-bend
+Jolt soft body: one particle per point (a third of each of its triangles' weight × area), edge, shear and dihedral-bend
 constraints from its triangles (`CreateConstraints`), 8 solver sub-steps per physics step. Stiffness sets the constraints'
-give against the cloth's own mean point weight: stretch from a little (0) to none (1), bending from free (0, folds like
-silk) to card-like (1). `pinned`: the points within 1% of that side of its world bounds at `start` (Top = highest y, Right
+give against the cloth's own mean point weight: stretch from a little (0) to none (1), bending (× edge length²) from silk
+(0) through cotton (0.3, hangs in folds) to card (1). A still body whose Exact surface is closed and convex (its hull holds
+no more than 1% over it) collides as that hull, sharp-cornered; any other still Exact body as its triangles. `pinned`: the points within 1% of that side of its world bounds at `start` (Top = highest y, Right
 = highest x, Front = highest z) weigh nothing and stay (with long-range attachments so it hangs without stretching); a
 side the cloth is flat along (Top on a sheet lying flat) is a failure. Its mesh is refined first: one four-point face (a
-plane) becomes a 40 × 40 grid (1681 points, 3200 triangles, diagonals alternating), anything else has every triangle split
-in four until no edge is longer than 1/40 of its size (at most 20000 triangles); faces with no area and unused points are
+plane) becomes a 64 × 64 grid (4225 points, 8192 triangles, diagonals alternating), anything else has every triangle split
+in four until no edge is longer than 1/64 of its size (at most 20000 triangles); faces with no area and unused points are
 dropped; u v follow (a seam keeps one side's). It lands on still and falling bodies and the ground and pushes falling
-bodies; cloths don't collide with each other or themselves (Jolt). Its points keep 2 mm off what they touch. Failures: it
+bodies; cloths don't collide with each other or themselves (Jolt). Its points keep half its median edge (at least 2 mm)
+off what they touch. Failures: it
 **tore apart** (an edge stretched past 4 times its length), **flew apart** (a point over 200 m/s or 1 km away), **fell past
 everything**; each `{"item", "copy": -1, "frame", "fix"}`.
 

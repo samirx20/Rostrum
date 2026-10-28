@@ -49,6 +49,88 @@
     <rostrum_cycles_noise name="cn" type="multioutput"><input name="position" type="vector3" nodename="scaled"/><input name="detail" type="float" nodename="layers"/><input name="roughness" type="float" interfacename="roughness"/><input name="distortion" type="float" interfacename="distortion"/></rostrum_cycles_noise>
     <output name="colour" type="color3" nodename="cn" output="colour"/>
   </nodegraph>
+  <nodedef name="ND_rostrum_pattern_color3" node="rostrum_pattern" nodegroup="rostrum">
+    <input name="shape" type="string" value="checks" uniform="true"/>
+    <input name="shapeIndex" type="integer" value="0" uniform="true"/>
+    <input name="a" type="color3" value="1, 1, 1"/>
+    <input name="b" type="color3" value="0.051269, 0.051269, 0.051269"/>
+    <input name="repeats" type="float" value="10"/>
+    <input name="width" type="float" value="0.5"/>
+    <input name="turn" type="float" value="0"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_pattern_color3" nodedef="ND_rostrum_pattern_color3">
+    <texcoord name="uv" type="vector2"><input name="index" type="integer" value="0"/></texcoord>
+    <rotate2d name="rot" type="vector2"><input name="in" type="vector2" nodename="uv"/><input name="amount" type="float" interfacename="turn"/></rotate2d>
+    <multiply name="p" type="vector2"><input name="in1" type="vector2" nodename="rot"/><input name="in2" type="float" interfacename="repeats"/></multiply>
+    <extract name="u" type="float"><input name="in" type="vector2" nodename="p"/><input name="index" type="integer" value="0"/></extract>
+    <extract name="v" type="float"><input name="in" type="vector2" nodename="p"/><input name="index" type="integer" value="1"/></extract>
+    <floor name="fu" type="float"><input name="in" type="float" nodename="u"/></floor>
+    <multiply name="u2" type="float"><input name="in1" type="float" nodename="u"/><input name="in2" type="float" value="2"/></multiply>
+    <floor name="fu2" type="float"><input name="in" type="float" nodename="u2"/></floor>
+    <modulo name="ru2" type="float"><input name="in1" type="float" nodename="u2"/><input name="in2" type="float" value="1"/></modulo>
+    <multiply name="au" type="float"><input name="in1" type="float" nodename="ru2"/><input name="in2" type="float" value="3.14159265"/></multiply>
+    <sin name="hu" type="float"><input name="in" type="float" nodename="au"/></sin>
+    <floor name="fv" type="float"><input name="in" type="float" nodename="v"/></floor>
+    <multiply name="v2" type="float"><input name="in1" type="float" nodename="v"/><input name="in2" type="float" value="2"/></multiply>
+    <floor name="fv2" type="float"><input name="in" type="float" nodename="v2"/></floor>
+    <modulo name="rv2" type="float"><input name="in1" type="float" nodename="v2"/><input name="in2" type="float" value="1"/></modulo>
+    <multiply name="av" type="float"><input name="in1" type="float" nodename="rv2"/><input name="in2" type="float" value="3.14159265"/></multiply>
+    <sin name="hv" type="float"><input name="in" type="float" nodename="av"/></sin>
+    <add name="cs" type="float"><input name="in1" type="float" nodename="fu"/><input name="in2" type="float" nodename="fv"/></add>
+    <modulo name="checks" type="float"><input name="in1" type="float" nodename="cs"/><input name="in2" type="float" value="2"/></modulo>
+    <modulo name="ru" type="float"><input name="in1" type="float" nodename="u"/><input name="in2" type="float" value="1"/></modulo>
+    <ifgreater name="stripes" type="float"><input name="value1" type="float" interfacename="width"/><input name="value2" type="float" nodename="ru"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreater>
+    <add name="ws" type="float"><input name="in1" type="float" nodename="fu2"/><input name="in2" type="float" nodename="fv2"/></add>
+    <modulo name="over" type="float"><input name="in1" type="float" nodename="ws"/><input name="in2" type="float" value="2"/></modulo>
+    <mix name="height" type="float"><input name="fg" type="float" nodename="hv"/><input name="bg" type="float" nodename="hu"/><input name="mix" type="float" nodename="over"/></mix>
+    <switch name="which" type="float"><input name="in1" type="float" nodename="checks"/><input name="in2" type="float" nodename="stripes"/><input name="in3" type="float" nodename="over"/><input name="which" type="integer" interfacename="shapeIndex"/></switch>
+    <mix name="col" type="color3"><input name="fg" type="color3" interfacename="b"/><input name="bg" type="color3" interfacename="a"/><input name="mix" type="float" nodename="which"/></mix>
+    <multiply name="hs" type="float"><input name="in1" type="float" nodename="height"/><input name="in2" type="float" value="0.45"/></multiply>
+    <add name="wshade" type="float"><input name="in1" type="float" nodename="hs"/><input name="in2" type="float" value="0.55"/></add>
+    <switch name="shade" type="float"><input name="in1" type="float" value="1"/><input name="in2" type="float" value="1"/><input name="in3" type="float" nodename="wshade"/><input name="which" type="integer" interfacename="shapeIndex"/></switch>
+    <multiply name="out" type="color3"><input name="in1" type="color3" nodename="col"/><input name="in2" type="float" nodename="shade"/></multiply>
+    <output name="colour" type="color3" nodename="out"/>
+  </nodegraph>
+  <nodedef name="ND_rostrum_pattern_float" node="rostrum_pattern" nodegroup="rostrum">
+    <input name="shape" type="string" value="checks" uniform="true"/>
+    <input name="shapeIndex" type="integer" value="0" uniform="true"/>
+    <input name="a" type="color3" value="1, 1, 1"/>
+    <input name="b" type="color3" value="0.051269, 0.051269, 0.051269"/>
+    <input name="repeats" type="float" value="10"/>
+    <input name="width" type="float" value="0.5"/>
+    <input name="turn" type="float" value="0"/>
+    <output name="value" type="float"/>
+  </nodedef>
+  <nodegraph name="NG_rostrum_pattern_float" nodedef="ND_rostrum_pattern_float">
+    <texcoord name="uv" type="vector2"><input name="index" type="integer" value="0"/></texcoord>
+    <rotate2d name="rot" type="vector2"><input name="in" type="vector2" nodename="uv"/><input name="amount" type="float" interfacename="turn"/></rotate2d>
+    <multiply name="p" type="vector2"><input name="in1" type="vector2" nodename="rot"/><input name="in2" type="float" interfacename="repeats"/></multiply>
+    <extract name="u" type="float"><input name="in" type="vector2" nodename="p"/><input name="index" type="integer" value="0"/></extract>
+    <extract name="v" type="float"><input name="in" type="vector2" nodename="p"/><input name="index" type="integer" value="1"/></extract>
+    <floor name="fu" type="float"><input name="in" type="float" nodename="u"/></floor>
+    <multiply name="u2" type="float"><input name="in1" type="float" nodename="u"/><input name="in2" type="float" value="2"/></multiply>
+    <floor name="fu2" type="float"><input name="in" type="float" nodename="u2"/></floor>
+    <modulo name="ru2" type="float"><input name="in1" type="float" nodename="u2"/><input name="in2" type="float" value="1"/></modulo>
+    <multiply name="au" type="float"><input name="in1" type="float" nodename="ru2"/><input name="in2" type="float" value="3.14159265"/></multiply>
+    <sin name="hu" type="float"><input name="in" type="float" nodename="au"/></sin>
+    <floor name="fv" type="float"><input name="in" type="float" nodename="v"/></floor>
+    <multiply name="v2" type="float"><input name="in1" type="float" nodename="v"/><input name="in2" type="float" value="2"/></multiply>
+    <floor name="fv2" type="float"><input name="in" type="float" nodename="v2"/></floor>
+    <modulo name="rv2" type="float"><input name="in1" type="float" nodename="v2"/><input name="in2" type="float" value="1"/></modulo>
+    <multiply name="av" type="float"><input name="in1" type="float" nodename="rv2"/><input name="in2" type="float" value="3.14159265"/></multiply>
+    <sin name="hv" type="float"><input name="in" type="float" nodename="av"/></sin>
+    <add name="cs" type="float"><input name="in1" type="float" nodename="fu"/><input name="in2" type="float" nodename="fv"/></add>
+    <modulo name="checks" type="float"><input name="in1" type="float" nodename="cs"/><input name="in2" type="float" value="2"/></modulo>
+    <modulo name="ru" type="float"><input name="in1" type="float" nodename="u"/><input name="in2" type="float" value="1"/></modulo>
+    <ifgreater name="stripes" type="float"><input name="value1" type="float" interfacename="width"/><input name="value2" type="float" nodename="ru"/><input name="in1" type="float" value="1"/><input name="in2" type="float" value="0"/></ifgreater>
+    <add name="ws" type="float"><input name="in1" type="float" nodename="fu2"/><input name="in2" type="float" nodename="fv2"/></add>
+    <modulo name="over" type="float"><input name="in1" type="float" nodename="ws"/><input name="in2" type="float" value="2"/></modulo>
+    <mix name="height" type="float"><input name="fg" type="float" nodename="hv"/><input name="bg" type="float" nodename="hu"/><input name="mix" type="float" nodename="over"/></mix>
+    <switch name="which" type="float"><input name="in1" type="float" nodename="checks"/><input name="in2" type="float" nodename="stripes"/><input name="in3" type="float" nodename="over"/><input name="which" type="integer" interfacename="shapeIndex"/></switch>
+    <switch name="val" type="float"><input name="in1" type="float" nodename="checks"/><input name="in2" type="float" nodename="stripes"/><input name="in3" type="float" nodename="height"/><input name="which" type="integer" interfacename="shapeIndex"/></switch>
+    <output name="value" type="float" nodename="val"/>
+  </nodegraph>
   <nodedef name="ND_rostrum_mix_color3" node="rostrum_mix" nodegroup="rostrum">
     <input name="factor" type="float" value="0.5"/>
     <input name="a" type="color3" value="0, 0, 0"/>

@@ -35,7 +35,7 @@ Brass blocks**. It opens at full size (100 %) with Surface on the right, room on
 Roughness, Metallic, Glow colour, Normal, Style.
 
 - **Add a block:** **+ Add block**, Tab, a double-click or a right-click on empty space opens the list; type to filter
-  ("noi" finds Noise), then Enter or a click. Image, Noise, Mix, Ramp, Curve, Colour adjust, Bevel shading, Ambient
+  ("noi" finds Noise), then Enter or a click. Image, Noise, Pattern, Mix, Ramp, Curve, Colour adjust, Bevel shading, Ambient
   occlusion, and the stylized Lines, Light to colour and Halftone. From **+ Add block** or Tab the new block lands left
   of the leftmost block, level with Surface (wires run left to right); from a double-click or right-click, where you
   clicked.
@@ -47,12 +47,15 @@ Roughness, Metallic, Glow colour, Normal, Style.
 - **Move and look around:** drag a block by its title; drag empty space (or middle-drag, or Space + drag) to pan; the
   wheel zooms; F fits every block.
 - **Settings:** click a block and its settings show in the settings panel: Surface's are the material's own rows (as
-  under the item); Noise has Scale, Detail, Roughness, Distortion; Ramp its colour stops; Curve its points. A setting a
+  under the item); Noise has Scale, Detail, Roughness, Distortion; Pattern its Shape (Checks, Stripes, Weave), Colour A
+  and B, Repeats and Turn (Stripe width with Stripes); Ramp its colour stops; Curve its points. A setting a
   wire feeds says **Set by a wire**. Lines, Light to colour and Halftone carry the material's own fields of that name:
   wiring one into Surface's **Style** switches it on, taking it out switches it off.
 - Each add, wire, move or change is one undo step. **‹ Back** or **Esc** goes back to the timeline; the blocks stay.
 - A block marked **Final only** (Bevel shading, Ambient occlusion) shows in the Final look and renders, not in Quick.
 - **Noise** draws the same pattern in Quick and Final: Quick runs Final's own noise. Detail takes whole layers.
+- **Pattern** lays checks, stripes or a plain weave on the surface's unfolded square (its UVs), the same in Quick and
+  Final; on a cloth it moves with the cloth as it folds.
 - **Brightness in Quick:** a material with blocks is as bright in Quick as in Final under bulbs, spots and panels.
 
 ## For agents: the same, as operations
@@ -60,7 +63,7 @@ Roughness, Metallic, Glow colour, Normal, Style.
 - **`material.from`** `start` (one of the starting points above, e.g. `"brushed metal"`), optional `name`, `id`, any material field to override, and `to` (a list of item ids): makes one new material from the start's values and gives it to those items, as one undo step. In a script: `material("alu", start="brushed metal", baseColor="#c9ccd1")`.
 - **`material.split`** on items: each gets its own copy of the material it shares ("<item> material"); the other users keep the original. It refuses loudly when the item has no material or is already its only user.
 - **Blocks** (the Blocks view above, as operations; each one undo step, target = the material):
-  - `graph.add` `type` (`image`, `noise`, `mix`, `ramp`, `curve`, `colourAdjust`, `bevel`, `occlusion`, `lines`,
+  - `graph.add` `type` (`image`, `noise`, `pattern`, `mix`, `ramp`, `curve`, `colourAdjust`, `bevel`, `occlusion`, `lines`,
     `lightToColour`, `halftone`), optional `id` (else `noise_1`, `noise_2` …), `x`, `y` (its place in the view) and
     `values` (`{"scale": 8}`). Returns the block.
   - `graph.connect` `from: "noise_1.value"`, `to: "surface.roughness"`. Surface's inputs: `baseColor`, `roughness`,
@@ -69,7 +72,9 @@ Roughness, Metallic, Glow colour, Normal, Style.
   - `graph.set` `block`, then `values` and / or `x`, `y`. `block: "surface"` changes the material's own fields.
   - `graph.remove` `blocks: ["noise_1"]` (their wires go too) and / or `wires: ["surface.roughness"]` (the input whose wire goes).
   - What each block offers: Image (`file`, `colourData` colour / data → `colour`, `value`), Noise (`scale`, `detail`,
-    `roughness`, `distortion` → `value`, `colour`), Mix (`factor`, `a`, `b`, `blend` mix / multiply / add / screen /
+    `roughness`, `distortion` → `value`, `colour`), Pattern (`shape` checks / stripes / weave, `a`, `b` colours,
+    `repeats` across the UVs' 0..1, `width` the share of colour B in a stripe (stripes only), `turn` in degrees →
+    `colour`; `value` 0 on A and 1 on B, or for a weave each thread's height, 0 at its edges to 1 on top), Mix (`factor`, `a`, `b`, `blend` mix / multiply / add / screen /
     overlay / darken / lighten → `colour`), Ramp (`factor`, `stops` `[[0, "#000000"], [1, "#ffffff"]]` 2 to 8,
     `interpolate` linear / constant / smooth → `colour`, `value`), Curve (`value`, `points` `[[0, 0], [1, 1]]` 2 to 8 →
     `value`), Colour adjust (`colour`, `hue`, `saturation`, `brightness`, `contrast` → `colour`), Bevel shading (`radius`,
@@ -94,9 +99,16 @@ Roughness, Metallic, Glow colour, Normal, Style.
 Light passes through when **`transmission`** is 1. Then:
 - `roughness` 0 gives clear glass. **Frosted glass is the same glass with `roughness` 0.1–0.4**: there is one roughness, and on glass it blurs both the reflections and everything seen through it (Cycles bends each ray through the rough surface). There is no separate "frost" control. Low values (0.05–0.15) read as lightly etched glass where nearby things stay readable; higher values hide what is behind and leave only light and colour. Frost only shows when there is something behind the glass to blur: a shape, a light, a colour. In the fast view, rough glass is drawn milkier and less see-through instead of blurred.
 - `ior` sets how much the scene behind it bends. Thick glass with a higher `ior` distorts more.
-- `baseColor` tints the light passing through: keep it near white for clear glass; a faint tint reads much stronger in thick parts.
-- Glass needs **something to refract and reflect**: a plain black world makes glass invisible. Give it a background, a dome light with an HDR image, or strip lights whose reflections run along its edges (see lighting.md).
+- `baseColor` tints the light passing through: keep it near white for clear glass; a faint tint reads much stronger in thick parts. **Tinted glass and coloured liquids (amber, a green bottle, juice, wine) are still `transmission` 1** with the colour in `baseColor`: they stay see-through.
+- **`transmission` below 1 is not "a little less clear"**: the rest becomes an opaque painted surface mixed in. Under bright lights that painted part is what you see, and the glass or liquid reads as a flat, matte card. Keep it at 1 for anything you can see through.
+- **`thinWalled`** (Thin walled, Final only): the surface is one sheet with no inside, such as a window pane, a soap bubble, or a bottle or glass made as a single surface. Light passes through it without bending, as through a real thin wall. Leave it off for a solid or closed item (a block of glass, a solid bottle, a lens, a drop of water); there the light bends going in and coming out.
+- A **liquid in a bottle**: the bottle as a closed glass item, the liquid as a second item a little smaller inside it (a few millimetres in from the walls), with its own `ior` (water and juice 1.33, oil 1.47) and its colour in `baseColor`.
+- Glass needs **something to refract and reflect**. It has no look of its own: it shows a bent picture of what is behind it and the shapes of the lights around it. A plain black world makes glass invisible, and a dark, empty set behind a liquid makes it look dull and flat. What makes glass read:
+  - **Something behind it with a change in it:** a backdrop lit to a gradient (a big card behind the item, with a spot or panel light aimed at its upper part so it fades into darker below), a bright panel, or other items. The gradient and the edges of what is behind bend through the glass, which is what reads as glass. The camera has to see it through the glass.
+  - **Light shapes to reflect:** strip and rect lights to the sides and slightly behind make long, clean highlights down the glass's edges; a big soft panel shows as a bright window on the front. On a dark backdrop they give bright edges on black; on a bright backdrop the edges read dark. Both are techniques, not rules: pick by the shot.
+  - **Enough samples in Final:** glass and liquid seen through glass are the noisiest parts of a picture, and noise clean-up smears what it can't resolve. Check a still at the shot's quality with `look_frame` before rendering the whole shot (rendering.md, "Quality").
 - A screen under a cover glass: two items, the glass on top with `transmission` 1, the screen below with `emissionStrength` for the image.
+- In the quick view, glass is drawn see-through with its reflections, tinted glass with a thin film of its colour; it doesn't bend what is behind it. Judge glass in Final.
 
 ## Metals
 
@@ -126,6 +138,25 @@ A painted product (a car body, a coloured phone back, a lacquered toy) is two la
 - **`sheenRoughness`**: low makes a narrow, bright rim along the outline (velvet); high spreads a soft haze over the whole surface (brushed cotton, felt).
 - **`sheenTint`**: the colour of that glow. White reads as dust or fine fibres catching light; the fibre's own colour, lighter, reads as a dyed fabric.
 - Sheen shows at grazing angles, so judge it on curved shapes and at the edges, lit from the side or from behind.
+- The **Fabric** start (Material ▾) is a matte surface with a soft sheen (`roughness` 0.9, `sheen` 0.6, `sheenRoughness`
+  0.6); set the colour yourself. Sheen is a Final setting: the quick view shows the plain surface.
+
+**A woven or printed pattern** is a **Pattern** block wired into the surface (Blocks above): checks (gingham, a
+tablecloth), stripes (ticking, a deckchair), or a plain weave of two thread colours whose threads go over and under
+each other. Its `repeats` count is per the item's unfolded square, so on a 1 m cloth `repeats` 40 gives 40 checks
+across. As operations:
+
+```json
+{"op": "graph.add", "target": ["linen"], "args": {"type": "pattern", "values": {"shape": "weave", "a": "#2f4a6b", "b": "#d9cfb8", "repeats": 120}}}
+{"op": "graph.connect", "target": ["linen"], "args": {"from": "pattern_1.colour", "to": "surface.baseColor"}}
+```
+
+- A weave's `value` is each thread's height: wire it through a Curve or Ramp into `surface.roughness` to make the tops
+  of the threads catch a little more light than the gaps.
+- A very fine pattern (threads smaller than a pixel) flickers or turns to a flat colour in a moving shot: pick
+  `repeats` so one repeat covers a few pixels at the camera's distance, and let `sheen` carry the finer fibre look.
+- Mix two patterns (a Mix block, `multiply`) for plaids: stripes, and the same stripes with `turn` 90.
+- A picture works too: an Image block (or `baseColorTexture`) with a printed or scanned fabric.
 
 ## Light under the surface: skin, wax, soap, marble
 
@@ -241,7 +272,7 @@ full shadow, in between in proportion.
 
 ## What the fast view can't show
 
-Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. Light under the surface shows only as a slight tint toward the colour inside. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film or bump. Always judge those in a Cycles still.
+Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. Light under the surface shows only as a slight tint toward the colour inside. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film, bump, or glass bending what is behind it (tinted glass shows as a thin film of its colour). Always judge those in a Cycles still.
 
 ## Checking your surface
 

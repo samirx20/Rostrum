@@ -23,7 +23,8 @@ from .result import CLOTH_HEADER, cloth_file
 REACH = 0.03            # m: a cloth point this close to a body's box rests on it
 ABOVE = 0.1             # how far over the top `over` puts the sheet, as a share of the thing's height (at least MIN_ABOVE)
 MIN_ABOVE = 0.05        # m
-COVER = 2.0             # a sheet smaller than the thing's footprint × 1.25 is made this many times its footprint
+HANG = 1.0              # a sheet that would hang less than this share of the thing's height down each side is too small …
+DROP = 1.1              # … and is made to hang this share of it (it reaches the floor and gathers there)
 
 
 def frames_of(folder, item: str) -> tuple[int, int, array.array]:
@@ -103,17 +104,18 @@ def _shot(data: dict, shot_id: str) -> dict:
 
 def over(data: dict, sheet: dict, target: str) -> dict:
     """Fields that put a sheet over `target` at the first frame: centred over its box, its lowest point a little above
-    the top (ABOVE of its height, at least MIN_ABOVE), unturned; a plane smaller than 1.25 × the footprint's larger side
-    is made COVER × that side, square. ValueError when the target has no box (an import)."""
+    the top (ABOVE of its height, at least MIN_ABOVE), unturned. A plane too small to drape it (less than half the
+    thing's height hanging down each side: a lid, which reads as no drape at all) is made square, big enough to reach
+    the floor and gather there (DROP × the height down each side). ValueError when the target has no box (an import)."""
     box = _box(data, target, 0.0)
     if box is None:
         raise ValueError(f'"{target}" has no size the drape can measure (an import or an empty group)')
     (lx, ly, lz), (hx, hy, hz) = box
     out = {"x": round((lx + hx) / 2, 4), "z": round((lz + hz) / 2, 4), "rx": 0.0, "ry": 0.0, "rz": 0.0,
            "y": round(hy + max(MIN_ABOVE, ABOVE * (hy - ly)), 4)}
-    foot = max(hx - lx, hz - lz)
+    foot, tall = max(hx - lx, hz - lz), hy - ly
     if sheet.get("shape") == "plane" and min(float(sheet.get("width", 1.0)) * float(sheet.get("sx", 1.0)),
-                                             float(sheet.get("depth", 1.0)) * float(sheet.get("sz", 1.0))) < 1.25 * foot:
-        side = round(COVER * foot, 4)
+                                             float(sheet.get("depth", 1.0)) * float(sheet.get("sz", 1.0))) < foot + HANG * tall:
+        side = round(foot + 2 * DROP * tall, 4)
         out.update(width=side / float(sheet.get("sx", 1.0)), depth=side / float(sheet.get("sz", 1.0)))
     return out

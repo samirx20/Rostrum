@@ -268,6 +268,41 @@ def _classify(base, tip, root, radius0, mirrored: bool) -> str:
     return "part"
 
 
+# --- how finely to look
+SEEN = 2.2                     # a part must be this many cells thick (radius) for the finder to see it
+CAP = 72                       # the finest grid asked for (the finder takes ~0.7 s there; ~0.1 s at 48)
+
+
+def thinnest(clay: dict) -> float:
+    """The radius (metres) of the smallest part the clay was built from (an added ball, capsule or outline, by how fat
+    it is); 0 when it has none to measure. What the grid has to resolve: a part under ~2 cells thick is a few cells in
+    the grid, and the finder takes it for a bump of the surface (the 1280×720 foot)."""
+    from . import clay_shapes as G
+    out = []
+    for st in clay.get("steps") or []:
+        if st.get("step") != "piece" or st.get("hidden") or st.get("mode", "add") != "add":
+            continue
+        if st.get("shape") == "outline" and len(st.get("outline") or []) >= 3:
+            out.append(G.inner_radius(st["outline"]) * max(1.0, float(st.get("puff", 1.0))))
+        elif st.get("shape") in ("sphere", "capsule") and st.get("radius"):
+            out.append(float(st["radius"]))
+    return min((r for r in out if r > 1e-6), default=0.0)
+
+
+def finer_cells(clay: dict, grid: dict, asked: int) -> int:
+    """The grid size to ask for after the first sample (`asked` cells along the longest side): finer when the clay's
+    smallest part would be thinner than SEEN cells, else `asked`. Size-independent: the same character at any size
+    gets the same cells."""
+    r = thinnest(clay)
+    cell = float(grid.get("cell", 0.0))
+    if r <= 0 or cell <= 0:
+        return asked
+    if r / cell >= SEEN:
+        return asked
+    nx, ny, nz = (int(n) for n in grid["dims"]) if "dims" in grid else grid["occupancy"].shape
+    return int(min(CAP, max(asked, math.ceil(max(nx, ny, nz) * cell * SEEN / r))))
+
+
 # --- the finder
 def _bumps(nodes, kids, smallest) -> list[int]:
     """The kids that are real branches: a crumb a few cells big (where a band grazes a dent) is not one."""

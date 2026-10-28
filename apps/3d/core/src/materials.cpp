@@ -115,6 +115,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(c, "roughness", kFloat, roughness);  // also blurs what is seen through glass (frosted glass): one roughness
   set(c, "transmission_weight", kFloat, transmission);
   set(c, "ior", kFloat, ior);
+  set(c, "thin_wall", SdfValueTypeNames->Bool, p.flag("thinWalled"));  // one sheet: through without bending
   set(c, "coat_weight", kFloat, coat);
   set(c, "coat_roughness", kFloat, coat_roughness);
   set(c, "coat_tint", kColor, p.vec3("coatTint"));
@@ -165,17 +166,23 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   // Glass in Storm: what transmits has no diffuse colour and lets most light through (low opacity), while its
   // reflections stay whole (UsdPreviewSurface's "transparent" opacity mode keeps the specular), so a clear
   // cover reads as a clear cover with the studio reflected in it, not as a grey slab. Storm can't blur what is
-  // behind, so rough (frosted) glass is shown less see-through and milkier the rougher it is.
+  // behind, so rough (frosted) glass is shown less see-through and milkier the rougher it is. Nor can it colour what
+  // is behind: tinted glass (amber, a green bottle, juice) gets its colour back as a thin coloured film, as strong as
+  // the colour is saturated (white and grey glass: none), so it reads as tinted glass, not as clear.
   const float see_through = transmission * (1.0f - 0.6f * std::clamp(roughness, 0.0f, 1.0f));
+  const float top = std::max({base[0], base[1], base[2]});
+  const float film = top > 0.0f ? see_through * (1.0f - std::min({base[0], base[1], base[2]}) / top) : 0.0f;
+  const float opacity = std::min(1.0f, 1.0f - 0.92f * see_through + 0.35f * film);
   UsdShadeShader v = shader(stage, path, "Preview", "UsdPreviewSurface");
-  set(v, "diffuseColor", kColor, subsurface_hint(base, subsurface_colour, subsurface) * (1.0f - see_through));
+  set(v, "diffuseColor", kColor,
+      subsurface_hint(base, subsurface_colour, subsurface) * (1.0f - see_through) + base * (0.6f * film));
   set(v, "metallic", kFloat, metallic);
   set(v, "roughness", kFloat, roughness);
   set(v, "ior", kFloat, ior);
   set(v, "clearcoat", kFloat, coat);
   set(v, "clearcoatRoughness", kFloat, coat_roughness);
   set(v, "emissiveColor", kColor, emission * emission_strength);
-  set(v, "opacity", kFloat, 1.0f - 0.92f * see_through);
+  set(v, "opacity", kFloat, opacity);
   // a clay's mask shown in the viewport (clay_usd.cpp): masked clay gets less light; anything else has no such
   // primvar and gets the fallback 1 (as before). Cycles has no such link, so Final renders don't show it.
   UsdShadeShader mask_shade = shader(stage, path, "PreviewMaskShade", "UsdPrimvarReader_float");
@@ -209,7 +216,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
 
   // The Stylized look's own shader, on every material (outputs:rostrum:surface). With Light to colour on, the Cycles
   // surface is rewired once the scene's lights exist (light_to_color.h).
-  author_stylized(stage, path, look, base, preview_base, emission * emission_strength, 1.0f - 0.92f * see_through);
+  author_stylized(stage, path, look, base, preview_base, emission * emission_strength, opacity);
   // The material's blocks (a MaterialX document, material_blocks.h): wired into both surfaces above.
   if (p.has("blocks")) {
     const std::string doc = p.str("blocks");

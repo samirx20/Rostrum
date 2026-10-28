@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 3;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 4;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;
@@ -40,7 +40,7 @@ struct Body {
 struct Cloth {
   std::string item;
   double weight = 0.2;          // kg per m² (each point carries a third of its triangles' weight)
-  double stiffness = 0.3;       // 0 folds like silk .. 1 bends like thin card
+  double stiffness = 0.3;       // 0 folds like silk, 0.3 hangs in folds like cotton, 1 bends like thin card
   double friction = 0.6;
   enum Pin { None, Top, Bottom, Left, Right, Front, Back } pinned = None;  // that side of its world bounds at the start
   std::vector<V3> points;                       // world, at the start (after refine)
@@ -51,9 +51,9 @@ struct Cloth {
 };
 
 // Makes a cloth's mesh fine enough to fold, in whatever space its points are: a single four-point face (a plane) becomes a
-// 40 × 40 grid; anything else has every triangle split in four until no edge is longer than 1/40 of its size (at most
+// 64 × 64 grid; anything else has every triangle split in four until no edge is longer than 1/64 of its size (at most
 // kMaxClothTriangles). Drops faces with no area and points no face uses. Deterministic.
-constexpr int kClothGrid = 40;
+constexpr int kClothGrid = 64;
 constexpr size_t kMaxClothTriangles = 20000;
 void refine(Cloth& c, const std::vector<std::vector<int>>& faces);
 

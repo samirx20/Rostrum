@@ -27,9 +27,9 @@ def test_cloth_over_its_target_and_a_warning_when_it_slides_off(tmp_path):
     d.run_script("s.py", run_source(SCENE, "s.py"))
     sheet = next(i for i in d.data["items"] if i["id"] == "sheet")
     assert (sheet["x"], sheet["z"]) == (1.0, 0.0) and 0.5 < sheet["y"] < 0.7     # centred, a little over the top
-    assert sheet["width"] == sheet["depth"] == 0.8                               # too small: twice the footprint
+    assert sheet["width"] == sheet["depth"] == 1.5                               # too small: made to reach the floor
     n, frames = 5, 49                                         # a stored drape that ends 2 m to the side, on the floor
-    first = [(-0.4, 0, -0.4), (0.4, 0, -0.4), (0.4, 0, 0.4), (-0.4, 0, 0.4), (0, 0, 0)]
+    first = [(-0.75, 0, -0.75), (0.75, 0, -0.75), (0.75, 0, 0.75), (-0.75, 0, 0.75), (0, 0, 0)]
     last = [(x - 2, -sheet["y"], z) for x, _, z in first]
     pts = [c for f in range(frames) for p in (first if f < frames - 1 else last) for c in p]
     (tmp_path / cloth_file("sheet")).write_bytes(b"RCL1" + struct.pack("<4i", n, 2, frames, 0) + struct.pack("<6i", 0, 1, 2, 0, 2, 3)

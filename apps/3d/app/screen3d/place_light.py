@@ -96,7 +96,8 @@ class PlaceLight(QObject):
 
     def _place(self, light, r, fresh):
         hits = r["hits"]
-        if not all(h.get("hit") and h.get("item") == hits[0]["item"] for h in hits):
+        needed = hits[:1] if hits[0].get("normal") else hits           # the engine's own normal: the neighbours are not needed
+        if not all(h.get("hit") and h.get("item") == hits[0]["item"] for h in needed):
             return self.b.fail_line("Error: place highlight: click inside a surface, not on its edge.")
         world, values, _ = through.find_item(r["scene"], r["cam"]["camera"], r["frame"]) if "camera" in r["cam"] else (None, None, None)
         eye = aim.point(world, [0.0, 0.0, 0.0]) if world else r["cam"]["eye"]
