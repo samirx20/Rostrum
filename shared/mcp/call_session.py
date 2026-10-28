@@ -9,11 +9,16 @@ server records every call as `agent:<client name>`), listens on a localhost port
 
     {"token", "op": "call", "tool", "args"}  ->  {"texts": [...]}        a tool's reply (its text blocks)
     {"token", "op": "tools"}                 ->  {"tools": [{"name", "args", "first"}]}
-    {"token", "op": "stop"}                  ->  {"stopped": true}       ends the server and this process
+    {"token", "op": "stop"}                  ->  {"stopped": true, "running": n}   ends the server and this process
     anything failing                         ->  {"error": "..."}
 
 It ends itself after ROSTRUM_CALL_IDLE_S seconds (default 1800) with no request, and when the server ends; either
-way it removes its record, so the next call.py starts a fresh one and says so.
+way it removes its record, so the next call.py starts a fresh one and says so. A job the server has waiting or running
+keeps it: no idle end while one runs, and a stop with jobs running takes no more calls (its record goes at once) but
+keeps the server until they end. Ending the client would end the server and its jobs (the SDK ends the server's
+process tree), which lost a showreel export at frame 562 of 2400 (2026-10-28). Their ends stay in the job files, so
+inspect_job in the next session reads them (rostrum_core/mcp/job_files.py; the server tags its job files with
+ROSTRUM_CALL_SESSION, this session's key).
 """
 from __future__ import annotations
 
@@ -29,6 +34,20 @@ from mcp import Client, StdioServerParameters
 from mcp_types import Implementation
 
 IDLE_S = float(os.environ.get("ROSTRUM_CALL_IDLE_S", "1800"))
+DRAIN_POLL_S = 1.0
+
+
+def live_jobs(key: str) -> int:
+    """The server's jobs waiting or running now, from their files (job_files.py writes them with our key)."""
+    d = Path(os.environ.get("ROSTRUM_DATA") or Path.home() / ".rostrum") / "jobs"
+    n = 0
+    for p in d.glob("*.json") if d.is_dir() else []:
+        try:
+            state = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        n += state.get("session") == key and state.get("status") in ("queued", "running")
+    return n
 
 
 async def _answer(client: Client, req: dict) -> dict:
@@ -43,11 +62,26 @@ async def _answer(client: Client, req: dict) -> dict:
 
 
 async def serve(record: Path, name: str, server: list[str]) -> None:
-    token, busy, last = secrets.token_hex(16), anyio.Lock(), [time.monotonic()]
-    params = StdioServerParameters(command=server[0], args=server[1:], cwd=os.getcwd(), env=dict(os.environ))   # the caller's environment (the SDK passes only a few names)
+    token, busy, last, key = secrets.token_hex(16), anyio.Lock(), [time.monotonic()], record.stem
+    env = {**os.environ, "ROSTRUM_CALL_SESSION": key}   # the caller's environment (the SDK passes only a few names)
+    params = StdioServerParameters(command=server[0], args=server[1:], cwd=os.getcwd(), env=env)
     async with Client(params, client_info=Implementation(name=name, version="1")) as client, anyio.create_task_group() as tg:
         listener = await anyio.create_tcp_listener(local_host="127.0.0.1", local_port=0)
         port = listener.extra(anyio.abc.SocketAttribute.local_port)
+        listening = anyio.CancelScope()
+
+        async def end():
+            """End once the server's jobs have ended (none: at once); meanwhile no new calls."""
+            listening.cancel()
+            record.unlink(missing_ok=True)
+            while (n := live_jobs(key)):
+                print(f"call_session: ending once {n} job(s) end", file=sys.stderr, flush=True)
+                await anyio.sleep(DRAIN_POLL_S)
+            tg.cancel_scope.cancel()
+
+        async def listen():
+            with listening:
+                await listener.serve(handle)
 
         async def handle(stream):
             async with stream:
@@ -66,8 +100,8 @@ async def serve(record: Path, name: str, server: list[str]) -> None:
                         async with busy:                         # one call at a time on the one session
                             last[0] = time.monotonic()
                             if req.get("op") == "stop":
-                                await stream.send(b'{"stopped": true}\n')
-                                tg.cancel_scope.cancel()
+                                await stream.send((json.dumps({"stopped": True, "running": live_jobs(key)}) + "\n").encode())
+                                tg.start_soon(end)
                                 return
                             try:
                                 reply = await _answer(client, req)
@@ -81,11 +115,11 @@ async def serve(record: Path, name: str, server: list[str]) -> None:
         async def idle():
             while True:
                 await anyio.sleep(min(30.0, IDLE_S / 4))
-                if not busy.locked() and time.monotonic() - last[0] > IDLE_S:
+                if not busy.locked() and time.monotonic() - last[0] > IDLE_S and not live_jobs(key):
                     print(f"call_session: idle {IDLE_S:g} s, ending", file=sys.stderr, flush=True)
                     tg.cancel_scope.cancel()
 
-        tg.start_soon(listener.serve, handle)
+        tg.start_soon(listen)
         tg.start_soon(idle)
         tmp = record.with_suffix(".tmp")
         tmp.write_text(json.dumps({"pid": os.getpid(), "port": port, "token": token, "name": name, "server": server,
