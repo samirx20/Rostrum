@@ -31,12 +31,12 @@ from contextlib import contextmanager
 from rostrum_core import markers as shared
 from rostrum_core.edits import Set
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.marker_times import _key as key
+from rostrum_core.marker_times import NAME, OFFSET, _key as key
 
 # A time written on a marker: "#drop", "#drop+0.5" (seconds), "#drop-1", "#drop+2beats" (beats on the tempo map; "beat"
 # too). The shared reader (rostrum_core.marker_times, 2D) knows seconds only; Sound adds the beat unit here, in the
 # one place Sound reads it. The name's tail is lazy (`??`), so a one-letter name keeps its offset ("#b+0.5" is b).
-REF = re.compile(r"^#(\S(?:.*?\S)??)\s*(?:([+-])\s*(\d+(?:\.\d+)?)\s*(beats?)?)?$")
+REF = re.compile(rf"^{NAME}(?:{OFFSET}\s*(beats?)?)?$")
 
 from . import tempo
 
