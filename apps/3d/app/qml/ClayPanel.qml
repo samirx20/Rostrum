@@ -22,6 +22,7 @@ Item {
         anchors.fill: parent
         contentHeight: col.height + 2 * Theme.pad
         clip: true
+        WheelScroll { flick: flick }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
         Column {
             id: col
             // the kit's rows end 4 px from the panel's edge (their key gutter inside); the tiles keep 12 px, as on the left

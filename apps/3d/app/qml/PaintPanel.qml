@@ -9,9 +9,11 @@ import RostrumKit
 // Only what applies now is shown: Paints only with a layer to set it on. B or Esc leaves.
 Item {
     Flickable {
+        id: flick
         anchors.fill: parent
         contentHeight: col.height + 2 * Theme.pad
         clip: true
+        WheelScroll { flick: flick }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
         Column {
             id: col
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.pad }

@@ -13,6 +13,7 @@ ListView {
     property int labelWidth: 240
     model: backend.layers
     spacing: 2; clip: true; boundsBehavior: Flickable.StopAtBounds
+    WheelScroll { flick: list }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
 
     // the kit's hooks (LayerTimeline.qml, LayerTrack.qml): the item menu at (px, py) in the list's px, a row's middle
     // for the drag label, and the box that picks keys

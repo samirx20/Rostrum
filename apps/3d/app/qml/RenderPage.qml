@@ -47,8 +47,10 @@ Rectangle {
                  visible: page.q.tickedCount > 0; text: "Queue ticked (" + page.q.tickedCount + ")"
                  onClicked: page.q.addTicked() }
         ListView {
+            id: shotList
             anchors { left: parent.left; right: parent.right; top: shotsHead.bottom; bottom: parent.bottom; topMargin: Theme.grid }
             clip: true; boundsBehavior: Flickable.StopAtBounds
+            WheelScroll { flick: shotList }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
             model: page.q.shots
             delegate: Rectangle {
                 id: shotRow
@@ -96,6 +98,7 @@ Rectangle {
             id: queueList
             anchors { left: parent.left; right: parent.right; top: queueHead.bottom; bottom: parent.bottom; topMargin: Theme.grid }
             clip: true; boundsBehavior: Flickable.StopAtBounds; spacing: 2
+            WheelScroll { flick: queueList }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
             model: page.q.rows
             delegate: QueueRow { width: queueList.width; queue: page.q; waiting: page.waiting }
         }

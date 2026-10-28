@@ -16,6 +16,7 @@ MaterialPopup {
         implicitHeight: Math.min(col.height, list.fit - 2 * list.padding)
         contentWidth: width; contentHeight: col.height
         clip: true; boundsBehavior: Flickable.StopAtBounds
+        WheelScroll { flick: flick }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
         Column {
             id: col
             width: flick.width

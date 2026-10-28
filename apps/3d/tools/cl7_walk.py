@@ -101,6 +101,15 @@ def by_text(root, text, within=None):
     return None
 
 
+def within(item, outer):
+    """Whether `item` sits inside `outer` (None: no)."""
+    while item is not None and outer is not None:
+        if item is outer:
+            return True
+        item = item.parentItem()
+    return False
+
+
 def child_named(item, name):
     for c in all_items(item):
         if c.objectName() == name and visible(c):
@@ -166,7 +175,12 @@ class Walk:
         return item
 
     def click(self, name, why="", secs=0.6):
+        """A control clicked where a person sees it: one below the settings panel's fold is scrolled to first (at
+        1280×720 the eye's Material ▾ sits under the fold; its hidden spot is the timeline's body row, so the click
+        picked the body and the eye's black went onto it)."""
         item = self.control(name, why)
+        if item is not None and within(item, W.find(self.root, "inspectorScroll")):
+            self.into_view(item)
         return None if item is None else self.hand.click_item(item, secs)
 
     def spheres(self, before):
@@ -245,8 +259,9 @@ class Walk:
         if not below():
             return
         if scroller == "inspectorScroll":
-            self.clock.stumble(f"{item.parentItem().objectName() or 'a row'}'s colour square is below the settings panel's "
-                               "fold (cut off): scrolled to it", "the settings panel's row order (Follow opens above Material)", 1)
+            what = item.objectName() if item.objectName() and item.objectName() != "swatch" else                 f"{item.parentItem().objectName() or 'a row'}'s colour square"
+            self.clock.stumble(f"{what} is below the settings panel's fold (cut off): scrolled to it",
+                               "the settings panel's row order (Follow opens above Material)", 1)
         else:
             self.clock.cur.setdefault("scrolled", []).append(f"{item.objectName()} below {where}'s fold: the wheel")
         at = QPointF(W.centre(panel))
