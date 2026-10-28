@@ -10,7 +10,7 @@ them, so a screen is written as nested boxes with padding, gap and align instead
             ...
 
 `row`, `column`, `grid`, `stack` are `group(..., layout=…)` starting as CSS does (padding 0, gap 0, align stretch;
-top-left origin, so x / y outside a container is its top-left). Outside a container a layer with no x / y sits at its parent's centre
+given x / y they place its top-left; with none it sits centred in its parent). Outside a container a layer with no x / y sits at its parent's centre
 (`centre`). Words every layer call takes (`prepare`, called by
 Build.layer for each one): `anchor=` / `origin=` (the pivot by name, "top-left", "top", "left", "center" … "bottom-right",
 or a pair (0, 1)), `tw=` (Tailwind layout words,
@@ -128,8 +128,8 @@ def for_script(build) -> dict:
             if "tw" in values:
                 values = {**TW.read(values.pop("tw")), **values}
             values = {**START, **values, "layout": kind}
-            if not {"origin", "anchor", "anchorX", "anchorY"} & set(values):
-                values["origin"] = "top-left"
+            if not {"origin", "anchor", "anchorX", "anchorY"} & set(values):     # x / y given: its top-left, as CSS;
+                values["origin"] = "top-left" if {"x", "y"} & set(values) else "center"   # none: centred in its parent
             return build.layer("group", id, **values)
         make.__name__ = kind
         make.__doc__ = (f"A group laid out as a {kind}: padding, gap, align, justify, wrap, w / h (px, \"N%\", "

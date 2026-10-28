@@ -44,3 +44,9 @@ def test_anchor_names_and_pairs():
     with pytest.raises(Exception, match="top-left") as e:
         _layers('comp("c")\ntext("t", body="x", anchor="middle-ish")')
     assert "anchorY" not in str(e.value)
+
+
+def test_a_container_with_no_place_sits_centred():
+    _, ls = _layers('comp("c")\nwith column("free"):\n    shape("a", w=10, h=10)\nwith row("put", x=40, y=60):\n    shape("b", w=10, h=10)')
+    assert (ls["free"]["x"], ls["free"]["y"], ls["free"]["anchorX"], ls["free"]["anchorY"]) == (960, 540, 0.5, 0.5)
+    assert (ls["put"]["anchorX"], ls["put"]["anchorY"]) == (0, 0)          # x / y given: its top-left, as CSS

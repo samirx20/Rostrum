@@ -30,7 +30,7 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
   or `"right"` for another.
 - **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Give `apart=True` to place a
   layer by its own x / y (it then takes no room): a badge on a card, a pointer over a screen. A box made outside any
-  box is placed by its `x`, `y` (its top-left); with no `x`, `y` its anchor sits at the parent's centre.
+  box is placed by its `x`, `y` (its top-left); with no `x`, `y` it sits centred in its parent (the frame's middle).
 - `anchor="center"` (or `"top-left"`, `"top"`, `"left"`, `"bottom-center"` … any corner or side, or a pair `(0, 1)`;
   `origin=` is the same word) on any layer is the point its `x`, `y` place and its pivot for scale and turn:
   `anchor="bottom"` grows a bar up from its floor. A laid-out layer still sits in its
