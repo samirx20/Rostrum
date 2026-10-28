@@ -56,7 +56,7 @@ cloth (a plane is the usual one), and only one directly in the scene.
 | field | what it does |
 |---|---|
 | `clothWeight` (kg per m²) | how heavy it is: silk 0.05, cotton 0.2, denim 0.4, felt or leather 1 |
-| `stiffness` 0–1 | 0 folds like silk, 0.3 like cotton, 1 bends like thin card |
+| `stiffness` 0–1 | 0 folds like silk, 0.3 like cotton, 1 bends like thin card. Below about 0.2 it changes little: the folds are already as fine as the cloth's grid can draw (finer ones would crumple into dimples along the folds) |
 | `clothAir` 0–4 | how much the air holds it up as it falls. 1 (the default) is room air: a sheet settles over about a second instead of dropping like a stone, its edges lift and lag behind its middle, and a light one (silk, 0.05) floats down slower than a heavy one (denim, 0.4). 0: no air (it drops as fast as a falling thing); 2–4: slower and softer still, like a large light sheet or a parachute. In the window: the Simulation group's **Air** row |
 | `pinned` | `none`, or the side held in place like a curtain on its rail: `top`, `bottom`, `left`, `right`, `front`, `back` (as the scene sees it at the first frame: `top` is its highest edge, `back` the edge furthest back) |
 | `friction` 0–2 | how much it grips what it lies on |
@@ -72,7 +72,9 @@ is draped by its own faces. The sheet rests about 0.6 of a grid square (under 1 
 sharp corners don't poke through it. A cloth touches itself: where it folds over or gathers on the floor its layers stay
 about 0.9 of a grid square apart (1.4 cm on a 1.5 m sheet) instead of passing through each other, so corners fold into soft
 rolls, not crumpled spikes. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
-fails); pin its `back` instead. Start it just above what it should land on, not touching it.
+fails); pin its `back` instead. Start it just above what it should land on, not touching it. A look's floating check
+leaves a falling thing or cloth alone until the stored simulation has it settled: one waiting for its `fallStart` or
+still falling is not called floating.
 
 **Timing the drape in a long shot:** a sheet takes about 1.5–2.5 s from letting go to lying still. In a 10 s shot with
 `fallStart` 1 it is still from about 3.5 s on, and `run_simulation` says so: "Everything settles at 3.5 s … start it 5.5 s

@@ -12,6 +12,11 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               a shape whose lowest point is more than GAP_M above the ground with nothing touching it from
                               below, or more than GAP_M below the ground (the ground: the backdrop's top, else y = 0). Judged on
                               the sampled frames together: a jump or a fall is not floating, so only a gap present on every one counts.
+                              A thing the simulation moves (Falls, Cloth) is judged only where the stored result has it settled
+                              (still from that frame to the shot's end): a sheet or a ball waiting for its Falls-from frame, or still
+                              falling, has not landed yet (Drape, 3E round: "sheet floats 0.49 m above box" on a cloth's first
+                              frame). A cloth's folds, and a fall not computed yet, aren't measured here: run_simulation's reply
+                              says what each cloth ends on.
   separated:<part> / leaves_frame:<item> / no_floor:<shot>, and cut_edge:<cloth|copies> from the stored simulation: from the
                               document over the whole shot (rostrum3d/faults.py), in the same list.
 """
@@ -24,6 +29,9 @@ from rostrum_core.mcp import faults as F
 
 from rostrum3d.faults import doc_faults
 from rostrum3d.motion_track import Track
+from rostrum3d.sim.inputs import MOVING, bodies, value
+
+from . import motion_sim
 
 from .facts import measure
 from .shot import seconds
@@ -35,6 +43,8 @@ MOST = 0.5                # a cut subject has at least this share of its project
 MIN_CUT = 0.02            # ... and at least this share outside (a pixel's worth is not a cut)
 BIG_M = 8.0               # a side longer than this is a floor or a wall
 BIG_AREA = 2.0            # a projected box this many pictures large is a background
+SETTLED_M = 0.002         # a simulated thing moving less than this (m) …
+SETTLED_DEG = 0.5         # … and turning less than this from a frame to the shot's end has landed
 
 
 def when_of(info: dict, frame: int) -> str:
@@ -112,9 +122,34 @@ def _below(me: str, shapes: dict, low: float, box) -> tuple[str, float] | None:
     return best
 
 
-def _frame_faults(data: dict, info: dict, f: int, folder) -> dict:
-    """{'cut': [...], 'floating': {id: gap}, 'sinking': {id: depth}} at frame f."""
-    tr = Track(data, info, range(f, f + 1), folder)
+def _simulated(data: dict, info: dict, folder) -> tuple[dict | None, set[str]]:
+    """(motion_sim.moves for the shot, or None; the ids the simulation moves: Falls and Cloth)."""
+    moving = {b["id"] for b in bodies(data) if value(b, "simulate") in MOVING}
+    if not moving:
+        return None, moving
+    try:
+        return motion_sim.moves(data, info, folder), moving
+    except Exception:  # noqa: BLE001  no stored result readable: the moving things are just not judged
+        return None, moving
+
+
+def settled(per: dict | None, i: int) -> bool:
+    """Whether a simulated thing's stored path (`per`: {prop: [value per shot frame]}) stays put from index i to the end."""
+    if not per:
+        return False                              # not computed, or a cloth / copies: where it lands is not known here
+    for k, vals in per.items():
+        if not vals:
+            return False
+        v0 = vals[min(i, len(vals) - 1)]
+        if any(abs(v - v0) > (SETTLED_DEG if k.startswith("r") else SETTLED_M) for v in vals[min(i, len(vals) - 1):]):
+            return False
+    return True
+
+
+def _frame_faults(data: dict, info: dict, f: int, folder, sim: dict | None = None, moving: set[str] = frozenset()) -> dict:
+    """{'cut': [...], 'floating': {id: gap}, 'sinking': {id: depth}, 'judged': {ids}} at frame f; a simulated thing is
+    judged for floating / sinking only where it has settled."""
+    tr = Track(data, info, range(f, f + 1), folder, sim)
     shapes = {}
     for id_ in tr.ids():
         if tr.shown(id_, f):
@@ -122,12 +157,16 @@ def _frame_faults(data: dict, info: dict, f: int, folder) -> dict:
             if row["solid"]:
                 shapes[id_] = row["solid"]
     ground = _ground_top(tr, shapes, f)
-    out = {"cut": [], "floating": {}, "sinking": {}}
+    out = {"cut": [], "floating": {}, "sinking": {}, "judged": set()}
+    moves = (sim or {}).get("moves", {})
     for id_, s in shapes.items():
         if _is_ground(tr, id_, f):
             continue
         if c := _cut(tr, id_, s, f):
             out["cut"].append(c)
+        if id_ in moving and not settled(moves.get(id_), f - info["start"]):
+            continue                              # still waiting to fall or falling: it hasn't landed yet
+        out["judged"].add(id_)
         (x0, x1), (z0, z1), (low, _) = (_span(s[0], k) for k in (0, 2, 1))
         if low < ground - GAP_M:
             out["sinking"][id_] = ground - low
@@ -141,10 +180,11 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
     """cut_edge (any sampled frame), floating and sinking (every sampled frame) from the scene's geometry through the shot camera."""
     if not _item(data, info.get("camera")):      # no camera item to look through: the engine names that itself, nothing to judge
         return []
+    sim, moving = _simulated(data, info, folder)
     per = []
     for f in frames:
         try:
-            per.append((f, _frame_faults(data, info, f, folder)))
+            per.append((f, _frame_faults(data, info, f, folder, sim, moving)))
         except ValueError:                       # something's size isn't known here (an import): nothing judged
             continue
     out, seen = [], set()
@@ -164,14 +204,16 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
                             ("sinking", "sinks {m:.2f} m into the ground", "lift it: place_on the ground, y = {y:.3f}")):
         if not per:
             continue
-        common = set.intersection(*(set(r[kind]) for _, r in per))
+        judged = set().union(*(r["judged"] for _, r in per))
+        common = {i for i in judged if all(i in r[kind] for _, r in per if i in r["judged"] or i not in moving)}
         for id_ in sorted(common):
-            m, on = per[0][1][kind][id_] if kind == "floating" else (per[0][1][kind][id_], None)
+            f0, r0 = next((f, r) for f, r in per if id_ in r[kind])
+            m, on = r0[kind][id_] if kind == "floating" else (r0[kind][id_], None)
             sign = 1 if kind == "sinking" else -1
             y = _own_y(data, id_) + sign * m
             what, how = (word, fix) if on is None else (f"floats {{m:.2f}} m above {on} with nothing touching it",
                                                        f"{id_}.place_on({on}) (y = {{y:.3f}}); if it is meant to hover, keep it")
-            out.append(F.fault(f"{kind}:{id_}", f"{id_} " + what.format(m=m), how.format(y=y), when_of(info, per[0][0])))
+            out.append(F.fault(f"{kind}:{id_}", f"{id_} " + what.format(m=m), how.format(y=y), when_of(info, f0)))
     return out
 
 

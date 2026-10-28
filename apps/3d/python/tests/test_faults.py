@@ -52,3 +52,26 @@ def test_a_seen_sky_photo_past_the_floor_is_a_backdrop_edge_and_an_unseen_one_is
     assert "backdrop_edge:sky" not in found, found
     found, _ = _faults(seen.replace('camera("cam", z=4, y=0.8)', 'camera("cam", z=4, y=2.5, rx=-35)'))
     assert "backdrop_edge:sky" not in found, found                          # looking down: all floor
+
+
+def test_a_falling_cloth_or_ball_is_not_floating_but_a_hovering_still_thing_is():
+    """Drape (3E round): "sheet floats 0.49 m above box" on a cloth's first frame, before it fell, held a delivery."""
+    src = '''
+camera("cam", z=4, y=0.8)
+mesh("box", shape="box", width=0.4, height=0.45, depth=0.4, x=-0.6).simulate("still")
+sheet = mesh("sheet", shape="plane", width=0.8, depth=0.8, x=-0.6)
+sheet.simulate("cloth", over="box", fallStart=0.5)
+mesh("ball", shape="sphere", radius=0.1, x=0.1, y=0.8).simulate("falls")
+mesh("lamp", shape="sphere", radius=0.1, x=0.6, y=0.5)
+shot("hero", camera="cam", fps=24, start=0, end=2)
+'''
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    info = shot_info(doc.data, "hero")
+    for frames in ([0], shot_faults.sample(info)):               # the first frame alone, and the usual three
+        found = {f["id"] for f in shot_faults.check(doc.data, info, frames, {})}
+        assert "floating:lamp" in found, found                   # a still thing in the air is still called
+        assert "floating:sheet" not in found and "floating:ball" not in found, found
+    # from the stored fall: judged only once it stops moving
+    fall = {"x": [0.1] * 3, "y": [0.8, 0.4, 0.4], "z": [0.0] * 3, "rx": [0.0] * 3, "ry": [0.0] * 3, "rz": [0.0] * 3}
+    assert not shot_faults.settled(fall, 0) and shot_faults.settled(fall, 1) and not shot_faults.settled(None, 1)

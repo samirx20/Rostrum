@@ -49,8 +49,12 @@ constexpr double kGravity = 9.81;
 constexpr int kStepsPerSecond = 240;   // physics steps; a 24 fps frame is 10 of them
 constexpr int kMaxHullPoints = 4000;   // more points than this are thinned (the hull keeps at most 256 anyway)
 constexpr JPH::ObjectLayer kStill = 0, kMoving = 1;
-constexpr int kClothIterations = 8;
-constexpr double kBendSoftest = 6.5, kBendRange = 6;  // bend compliance 10^(softest - range × Stiffness) × weight × edge²    // a cloth's solver passes per physics step (each a sub-step)
+constexpr int kClothIterations = 8;   // a cloth's solver passes per physics step (each a sub-step)
+constexpr double kBendSoftest = 6.5, kBendRange = 6;  // bend compliance 10^(softest - range × Stiffness) × weight × edge² …
+// … but never softer than 10^kBendGrid (the two added as springs in a row): softer than that, a fold is tighter than the
+// grid can draw and crumples into it (3E Drape at Stiffness 0.1: a zipper of dimples along each fold, a scalloped hem on the
+// floor; the same scene at 10^4.4 folded clean). Card and cotton keep about their bend, silk folds as finely as the grid allows.
+constexpr double kBendGrid = 4.6;
 constexpr double kClothGap = 0.002;    // m: how far a cloth's points keep off what they touch (no flicker on a plinth)
 constexpr double kTear = 4;            // an edge stretched past this many times its length: the cloth came apart
 
@@ -293,10 +297,23 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     for (int q = 0; q < 3; ++q) edge += dist(c.points[size_t(t[q])], c.points[size_t(t[(q + 1) % 3])]) * k;
   edge /= double(3 * c.triangles.size());
   const float stretch = float(0.02 * (1 - st) * base), shear = float(1e-6 * w);
-  const float bend = float(std::pow(10.0, kBendSoftest - kBendRange * st) * w * edge * edge);
+  const double asked = std::pow(10.0, kBendSoftest - kBendRange * st), finest = std::pow(10.0, kBendGrid);
+  const float bend = float(asked * finest / (asked + finest) * w * edge * edge);
   using SS = JPH::SoftBodySharedSettings;
   const SS::VertexAttributes va(stretch, shear, bend, held ? SS::ELRAType::EuclideanDistance : SS::ELRAType::None, 1.03f);
   s->CreateConstraints(&va, 1, SS::EBendType::Dihedral);
+  // each fold line's share by its shape (a discrete shell's bending, stiffness ∝ edge² over the two triangles' area): Jolt
+  // gives every edge one compliance, so the grid's diagonals (√2 longer, the same area) bent twice as easily as its rows and
+  // columns, and folds ran along them in zigzags (3E Drape: dimples along the folds and a scalloped hem). A row edge of the
+  // grid keeps the compliance above.
+  for (SS::DihedralBend& b : s->mDihedralBendConstraints) {
+    const JPH::Float3 &x0 = s->mVertices[b.mVertex[0]].mPosition, &x1 = s->mVertices[b.mVertex[1]].mPosition,
+                      &x2 = s->mVertices[b.mVertex[2]].mPosition, &x3 = s->mVertices[b.mVertex[3]].mPosition;
+    const JPH::Vec3 p0(x0), p1(x1), p2(x2), p3(x3), e = p1 - p0;
+    const float areas = 0.5f * ((p2 - p0).Cross(e).Length() + (p3 - p0).Cross(e).Length());  // the two triangles
+    const float e2 = e.LengthSq();
+    if (e2 > 0 && areas > 0) b.mCompliance *= areas / e2;
+  }
   s->Optimize();
   return s;
 }
