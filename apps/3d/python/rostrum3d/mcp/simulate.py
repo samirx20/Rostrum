@@ -15,6 +15,7 @@ from rostrum3d.compile import _shot
 from rostrum3d.resolve import Frames
 from rostrum3d.sim import ops as sim_ops
 from rostrum3d.sim import cloth_check, fall_view
+from rostrum3d.sim.cut_note import cut_lines
 from rostrum3d.sim.compute import SimError, compute
 from rostrum3d.sim.inputs import KIND, bodies, value
 from rostrum3d.sim.result import read
@@ -50,8 +51,8 @@ def in_frame(data: dict, info: dict, res, folder=None) -> tuple[int, int]:
 @tools.tool("run_simulation", {"properties": {**ITEM_SHOT}})
 def run_simulation(ctx, args):
     """Simulate a shot: things set to Falls drop, bump and come to rest on things set to Stays still (and the ground, unless
-    the shot's simGround is off), over the whole shot; shapes set to Cloth drape and fold over them (Weight, Stiffness, a
-    Pinned edge held in place). Set them up first with the sim.body and sim.set operations. Computed once
+    the shot's simGround is off), over the whole shot; shapes set to Cloth drape and fold over them (Weight, Stiffness, Air: how
+    much the air slows its fall, a Pinned edge held in place). Set them up first with the sim.body and sim.set operations. Computed once
     and stored; nothing is computed again until something it depends on changes (a mass, a place, a key). Renders compute it
     first on their own when it is out of date. Always a job: returns a job id at once; inspect_job shows 'frame n of m'. When
     done: the stored result's key, frames, how many fell, came to rest and end inside the camera's picture, each cloth's point
@@ -85,7 +86,7 @@ def run_simulation(ctx, args):
         drapes, warns, facts = cloth_check.report(doc.data, info, where)
         made = {c["item"]: c for c in res.reply.get("cloth", [])}
         seen_falls = fall_view.views(doc.data, info, folder)
-        warns += [r["line"] for r in seen_falls if r["fix"]]
+        warns += [r["line"] for r in seen_falls if r["fix"]] + cut_lines(seen_falls, info["start"], info["end"], info["start"], info["fps"])
         cloth = [{**f, "triangles": made.get(f["item"], {}).get("triangles")} for f in facts]
         falls = (f'{total} falling, {rest} at rest at the end, {seen} of {total} inside the camera\'s picture at the last '
                  'frame') if total or not cloth else "nothing falls"

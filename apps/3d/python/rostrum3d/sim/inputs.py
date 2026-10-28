@@ -9,7 +9,7 @@ core, which says its own in every reply). Timing and Simplify are not in it: the
 Falls from (fallStart, seconds into the shot): a falling body held still until then goes as "wakeFrame" (frames after the
 shot's start), only when it is above 0, so every result made before it keeps its key.
 
-Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "pinned",
+Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "air" (0–4, drag: 1 room air), "pinned",
 "friction"}, and its Falls from as "wakeFrame" like a falling body's (held in its first shape until then); its compiled node and these settings are in the key like any body's.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from rostrum_core.cache import cache_key
 
 from . import fields as SF
 
-SIM_VERSION = 5                                  # the core's `sim` in its reply; bump both together
+SIM_VERSION = 6                                  # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
@@ -90,7 +90,8 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
         kind, falls = value(item, "simulate"), value(item, "simulate") == "falls"
         if kind == "cloth":
             body = {"item": item["id"], "kind": "cloth", "weight": float(value(item, "clothWeight")),
-                    "stiffness": float(value(item, "stiffness")), "pinned": value(item, "pinned"),
+                    "stiffness": float(value(item, "stiffness")), "air": float(value(item, "clothAir")),
+                    "pinned": value(item, "pinned"),
                     "friction": float(value(item, "friction"))}
             if (wake := _wake(item, info)) > 0:
                 body["wakeFrame"] = wake

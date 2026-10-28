@@ -1,6 +1,6 @@
 """The Simulation fields (brief 25, SPEC §10): an item's group "Simulation" (what a body is made of and how it starts)
 and a shot's (the ground, the stored result's key, and, brief 26a, Timing and Simplify read off the stored result).
-Brief 26b: a shape (a `mesh` item) can also be Cloth, with Weight, Stiffness and Pinned edge (for_type gives a type
+Brief 26b: a shape (a `mesh` item) can also be Cloth, with Weight, Stiffness, Air and Pinned edge (for_type gives a type
 its own fields: only a mesh offers Cloth).
 
 All of them are still (never keyed) and none is sent to the core as a prop (compile.RESOLVED): the simulation reads them
@@ -64,6 +64,9 @@ CLOTH_ITEM = [
       help="How heavy a square metre of it is: silk 0.05, cotton 0.2, denim 0.4, felt or leather 1"),
     N("stiffness", "Stiffness", "Simulation", 0, 1, 0.01, "", S, CLOTH, default=0.3,
       help="0 folds like silk, 1 bends like thin card"),
+    N("clothAir", "Air", "Simulation", 0, 4, 0.05, "", S, CLOTH, default=1.0,
+      help="How much the air holds it up as it falls: 1 room air (a light sheet floats down and its edges lift), "
+           "0 none (drops like a stone), 2–4 slower and softer still"),
     dataclasses.replace(
         CH("pinned", PINS, "Pinned edge", "Simulation", "none", S, CLOTH,
            help="The points along that side (as seen in the scene at the first frame) are held in place, like a "
@@ -75,7 +78,7 @@ NAMES = {p.name for p in ITEM} | {p.name for p in CLOTH_ITEM}
 
 
 def for_type(type_: str) -> list:
-    """The item fields a type gets: a shape (mesh) can also be Cloth, with its own three rows."""
+    """The item fields a type gets: a shape (mesh) can also be Cloth, with its own rows."""
     if type_ not in CLOTH_TYPES:
         return ITEM
     return [_simulate(KINDS), *ITEM[1:], *CLOTH_ITEM]

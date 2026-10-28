@@ -39,17 +39,26 @@ cloth (a plane is the usual one), and only one directly in the scene.
 |---|---|
 | `clothWeight` (kg per m²) | how heavy it is: silk 0.05, cotton 0.2, denim 0.4, felt or leather 1 |
 | `stiffness` 0–1 | 0 folds like silk, 0.3 like cotton, 1 bends like thin card |
+| `clothAir` 0–4 | how much the air holds it up as it falls. 1 (the default) is room air: a sheet settles over about a second instead of dropping like a stone, its edges lift and lag behind its middle, and a light one (silk, 0.05) floats down slower than a heavy one (denim, 0.4). 0: no air (it drops as fast as a falling thing); 2–4: slower and softer still, like a large light sheet or a parachute. In the window: the Simulation group's **Air** row |
 | `pinned` | `none`, or the side held in place like a curtain on its rail: `top`, `bottom`, `left`, `right`, `front`, `back` (as the scene sees it at the first frame: `top` is its highest edge, `back` the edge furthest back) |
 | `friction` 0–2 | how much it grips what it lies on |
 | `fallStart` (seconds into the shot) | Falls from, as for a falling thing: the cloth keeps its first shape where it is until then (things that fall land on it as on something still), then drops. In the window: the Simulation group's **Falls from** row |
 
-A plane is made fine enough to fold on its own (a 64 × 64 grid of points); another shape has its faces split until they are
-small enough. At the default `stiffness` 0.3 a sheet hangs in soft folds and gathers where it meets the floor; go towards 0
+A plane is made fine enough to fold on its own (a 96 × 96 grid of points, so wrinkles a couple of centimetres wide on a
+1.5 m sheet); another shape has its faces split until they are small enough. At the default `stiffness` 0.3 a sheet hangs in soft folds and gathers where it meets the floor; go towards 0
 for silk that clings to every shape, towards 0.6–1 for canvas or card that stands off in broad bends. A still thing whose
 shape is closed and has no dents (a box, a ball, a plinth) is solid to cloth; one with dents or holes (a chair, a bowl)
-is draped by its own faces. The sheet rests about half a grid square (under 1 cm on a 1 m sheet) off what it lies on, so
+is draped by its own faces. The sheet rests about 0.6 of a grid square (under 1 cm on a 1 m sheet) off what it lies on, so
 sharp corners don't poke through it. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
 fails); pin its `back` instead. Start it just above what it should land on, not touching it.
+
+**Make it read as fabric (Final):** the simulation gives the folds; the material gives the cloth. Start its material from
+**Fabric** (`material.from` with `start: "fabric"`, `to: ["sheet"]`): high roughness and `sheen` (the soft glow fibres
+catch at grazing angles; `sheenRoughness`, `sheenTint`). Set its colour; for a woven or printed cloth wire a **Pattern**
+block (checks, stripes or a weave) into its base colour, two operations: `graph.add` `{"type": "pattern", "values":
+{"shape": "checks", "a": …, "b": …, "repeats": 12}}` then `graph.connect` `pattern_1.colour` → `surface.baseColor` (guide
+`materials`, "Fabric, velvet and soft fuzz"). A light low from one side (raking) shows the folds. Sheen shows only in
+Final (Cycles): check a Cycles still.
 
 **Place it over its target:** `sim.body` with `kind: "cloth", over: "box"` (script: `sheet.simulate("cloth", over=box)`) puts
 the sheet centred above that item, a little over its top, level; a plane too small to drape it (less than half the item's
@@ -69,6 +78,13 @@ The `run_simulation` tool computes the whole shot as a job (`inspect_job` shows 
 and stores it. It reports how many fell, how many came to rest and how many end inside the camera's picture. Then
 `look_sheet` shows the motion. `sim.run` does the same as an operation (in a script's batch of operations).
 
+**What a video shows of the fall.** `render_video` (a re-export, `estimate_only` and `render_send_shot` too), `look_sheet`, `look_motion` and
+`run_simulation` judge the frames they cover, not only the whole shot, and say in plain words, with the fix: *the cut opens mid-drop* or
+*after the thing landed* (a `start` later than the fall's start: start the cut at or before it), *a thing is already moving at the first
+frame* (the shot opens mid-fall: give it a moment with `fallStart`, or start it higher), and *everything settles at 0.4 s, the last 7 s
+don't move* (shorten the cut, slow the fall, or key the camera or other things). Nothing is said when the fall is on screen and the cut
+holds it; judge a refine cut again after changing its range.
+
 Nothing is computed again on its own. Change something it depends on (move the bowl, change a mass, a key on a falling thing)
 and `inspect_simulation` says **out of date**: the viewport keeps showing the old result, and any render (`render_still`,
 `render_video`, the Render button, the queue) computes it again first. A render never uses an out-of-date result. In the
@@ -80,8 +96,8 @@ its **On screen** lines (and `run_simulation`'s warnings) say whether each fall 
 While the simulation is out of date (it measures the older result) or not computed (the things stay at their keyed
 places) its reply says so first and gives no all-clear: run the simulation, wait for it, look again.
 
-Changing only colours or materials never makes it out of date. A cloth's `clothWeight`, `stiffness`, `pinned` and `friction`
-do.
+Changing only colours or materials never makes it out of date. A cloth's `clothWeight`, `stiffness`, `clothAir`, `pinned` and
+`friction` do.
 
 ## Stage a fall people see
 
@@ -97,8 +113,9 @@ lands a couple of frames later; a sheet placed right on what it covers barely mo
 `sim.start_in_view` fails with the reason when no height can show the thing: it is beside the picture (move it sideways
 first), behind the camera, the camera looks straight down, the picture's top is below the floor there, that low it would
 start inside or under what it falls onto (a smaller `fromTop`), or its height has keys. How far it falls decides how long
-the fall takes (gravity does the rest: about 0.45 s for 1 m, 0.3 s for 0.5 m); a lighter cloth (`clothWeight`) drifts down
-slower. The check counts the **drop**: from its first move until it stops going down (its first landing); bounces,
+the fall takes (gravity does the rest: about 0.45 s for 1 m, 0.3 s for 0.5 m); a cloth is held up by the air (`clothAir`), so a
+lighter one (`clothWeight`) or more air drifts down slower: a 0.2 kg/m² sheet falls at most about 1.4 m/s flat on, a
+0.05 one about 0.7 m/s. The check counts the **drop**: from its first move until it stops going down (its first landing); bounces,
 rolls and a cloth's settling after that are "moves until frame n". A drop that is mostly above the picture, wholly
 outside it, or on screen for fewer than 4 frames is named, with the fix.
 
