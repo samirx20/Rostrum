@@ -1,7 +1,7 @@
 """Script calls that build product screens as plain, editable layers (guide ui-and-product-animation, "Building
 blocks", and lay-out-a-screen): a device (phone, laptop, browser window) whose screen is a column, and the parts a
 screen is made of (status bar, title bar, tab bar, list rows, cards, buttons, toggles, chart bars) plus a counting
-number.
+number; lower_third (ui_lower_third.py) and chart (ui_chart.py, bars with axes) come through here too.
 
     scr = device("phone", screen="#ffffff")     # fills 82 % of the picture's height, centred; its screen is a column
     with scr:
@@ -20,7 +20,7 @@ except `counter`.
 """
 from __future__ import annotations
 
-from . import ui_device, ui_layout as U
+from . import ui_chart, ui_device, ui_layout as U, ui_lower_third
 from .script_layout import in_layout
 from .ui_layout import ACCENT
 
@@ -257,4 +257,5 @@ def for_script(build) -> dict:
         return t.key("count", {at: (start, ease), at + duration: to})
 
     return {"device": ui_device.maker(build, box, words), "status_bar": status_bar, "nav_bar": nav_bar, "tab_bar": tab_bar, "list_rows": list_rows,
-            "card": card, "button": button, "toggle": toggle, "bars": bars, "counter": counter}
+            "card": card, "button": button, "toggle": toggle, "bars": bars, "counter": counter,
+            **ui_lower_third.maker(build, auto), **ui_chart.maker(build, block, auto, colours)}

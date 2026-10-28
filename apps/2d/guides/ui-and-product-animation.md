@@ -113,6 +113,8 @@ for a 390 px wide screen and scaled to the screen they are made in).
 | `button(label, h=, fill=, outline=False)` | a pill with its label centred (`<id>_bg`, `<id>_label`) |
 | `toggle(id, on=False, label=, detail=)` | a switch: `<id>_track` and `<id>_knob`; with `label` it is a settings row (words left, the switch `<id>_switch` right). Flip it by keying the knob's `x` (from `h/2` to `w - h/2`) and the track's `fill` |
 | `bars = bars(values, h=, labels=, top=)` | a bar chart standing on its floor (each bar's origin bottom-center: a key on `scaleY` from 0 grows it upward), labels under the bars inside its height. Returns the bars, left first. |
+| `chart(values, labels=, kind="bar" \| "line", title=, unit=, h=, top=, at=)` | bars or a line with a y axis to a round number, gridlines and x labels, sized from the room it is made in; `at=` grows it on (guide `lower-thirds-and-charts`) |
+| `lower_third(name, role=, accent=, at=, out=, enter="left")` | a name and role on a bar; at the top level in the lower-left title-safe area; `at=` / `out=` slide and fade it (guide `lower-thirds-and-charts`) |
 | `counter(id, start, to, at=, duration=, decimals=, prefix=, suffix=, separator=, **text fields)` | one text that counts (below) |
 | `pointer(id="cursor", kind="arrow" \| "touch")`, `tap(pointer, target, at=)` | a cursor and taps with it (below) |
 
@@ -140,11 +142,13 @@ is set apart, over the screen's layers and taking no room): an arrow drawn from 
 round see-through fingertip (`<id>_dot`). Its `x`, `y` is its **tip**, and it scales around the tip.
 
 `tap(cur, target, at=2.0)` glides the tip from where it was (over `move=0.7` s, `ease="easeInOut"`) onto the target,
-landing at `at`, then presses: the pointer and the target scale down and back (`press=0.95`, `False` for none) and a
-ring spreads under the tip (`ripple=False` for none). The tip lands **beside the target's words**, never on them: on a
-button its right part, on a card its lower right; `spot=(0.3, 0.8)` picks the spot yourself as a share of the target's
-box. The tip aims at where the target **is at `at`** (a button that slides up with a sheet is tapped where it has
-arrived; key its move before the tap). Make the pointer and the target in the same screen. Each tap moves the pointer to the top of its group, so it draws over everything. Fade it in and out yourself
+landing at `at`, then reacts (default: the pointer and the target scale down and back, `press=0.95`, and a ring spreads
+under the tip; `press=False` / `ripple=False` drop them). The tip lands on the target's **centre**; `spot=(0.3, 0.8)` picks
+a share of its box, `spot="beside"` the free spot beside its words (right part of a button, lower right of a card). The tip
+arrives where the target **is at `at`**: a target that moves while the pointer travels is chased by itself, and
+`hold=0.8` keeps following it after the landing. `then=` is one reaction or a list: `"press"`, `"ripple"`, `"highlight"`
+(the target's filled shape changes colour and stays: `("highlight", "#16a34a")`), or `lambda t: ...`, called with the
+landing time to key your own answer there (guide `tap-and-react`). Make the pointer and the target in the same screen. Each tap moves the pointer to the top of its group, so it draws over everything. Fade it in and out yourself
 (`cur.key("opacity", ...)`) inside the screen.
 
 ## Counting numbers
