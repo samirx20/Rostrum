@@ -5,7 +5,7 @@ check in the reply (loudness, the weakest asked moments with their fixes, faults
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
 touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, with a reason that quotes the measured number.
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, and only when it measures within the stated distance of passing (its words say what passes and from where it may be kept); further off, fix it, or move the moment itself in the script (`moment(name, at=...)` or `expect`) when the brief allows another time.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value

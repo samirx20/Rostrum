@@ -12,7 +12,9 @@ from . import filestamps
 from .storage import paths
 
 ITEM, EXT = "markers", ".mkr"
-REF = re.compile(r"^#(\S(?:.*?\S)?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
+NAME = r"#(\S(?:.*?\S)??)\s*"        # lazy tail: a one-letter name keeps its offset ("#b+0.5" is b, +0.5)
+OFFSET = r"([+-])\s*(\d+(?:\.\d+)?)"
+REF = re.compile(rf"^{NAME}(?:{OFFSET})?$")
 FORMS = ['"#drop"', '"#drop+0.2"', '"#hush-0.5"']
 
 

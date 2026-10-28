@@ -1,37 +1,45 @@
-"""What agents rely on: the moment the brief asked for says so and is not kept on a first render or without a measured
-number; a kick left in a drop's gap is heard on the drum tracks; ring_past_length is bounded (synthetic, no engine)."""
+"""What agents rely on: the moment the brief asked for says what passes and is not kept on a first render or far from
+passing; a kick left in a drop's gap is heard on the drum tracks; ring_past_length is bounded (synthetic, no engine)."""
 import numpy as np
 import pytest
 import soundfile as sf
 from rostrum_core import RostrumError
 
 from rostrum_sound import deliver
-from rostrum_sound.listen import drop_gap, fault_shape
+from rostrum_sound.listen import drop_gap, fault_shape, passing
 from rostrum_sound.mcp import asked_keep
 
 SR = 48000
 
 
-def shaped():
-    raw = [{"kind": "weak_hit", "at_s": 31.5, "words": "weak hit at 31.50 s: 0.8x a normal note; fix: rest the bed"},
+def shaped(x=2.3):
+    raw = [{"kind": "weak_hit", "at_s": 31.5, "measured": {"times_typical": x, "rank": 2}, "words": "weak hit at 31.50 s; fix: rest the bed"},
            {"kind": "held_tone", "at_s": 0.0, "words": "one harmony held; fix: move the bass"}]
     found = [{"id": "weak_hit@31.5", "what": "weak hit", "when": "31.50 s", "fix": "rest the bed"},
              {"id": "held_tone", "what": "held", "when": None, "fix": "move the bass"}]
-    asked_keep.mark(raw, found, [{"at": 31.5, "kind": "hit"}, {"kind": "tempo", "bpm": 70}])
-    return found
+    near = asked_keep.mark(raw, found, [{"at": 31.5, "kind": "hit"}, {"kind": "tempo", "bpm": 70}])
+    return found, near
 
 
-def test_the_briefs_own_moment_is_harder_to_keep():
-    found = shaped()
+def test_the_briefs_own_moment_is_kept_only_near_passing():
+    found, near = shaped()
     assert found[0]["asked"] and found[0]["what"].startswith("the moment the brief asked for (hit at 31.50 s)")
+    assert "passes at: attack 2.5x a normal note or more (now 2.3x; keepable from 2.2x" in found[0]["what"]
     assert not found[1].get("asked")
-    keep = {"weak_hit@31.5": "it is 10 dB over the bed", "held_tone": "the drone is the scene"}
-    first = asked_keep.screen(found, keep, seen_before=set())            # first render: no fix tried yet
+    keep = {"weak_hit@31.5": "a felt hit, close enough", "held_tone": "the drone is the scene"}
+    first = asked_keep.screen(found, keep, set(), near)                   # first render: no fix tried yet
     assert first == {"held_tone": "the drone is the scene"} and "keep refused" in found[0]["fix"]
-    found = shaped()
-    assert "weak_hit@31.5" not in asked_keep.screen(found, {"weak_hit@31.5": "loud enough on purpose"}, {"weak_hit@31.5"})
-    found = shaped()
-    assert asked_keep.screen(found, keep, {"weak_hit@31.5"}) == keep    # tried once, a measured number: kept
+    found, near = shaped()
+    assert asked_keep.screen(found, keep, {"weak_hit@31.5"}, near) == keep   # tried once, near passing: kept
+    found, near = shaped(1.5)                                             # far from passing: refused whatever the reason
+    assert "weak_hit@31.5" not in asked_keep.screen(found, {"weak_hit@31.5": "it is 10 dB over the bed"}, {"weak_hit@31.5"}, near)
+    assert "move the moment itself" in found[0]["fix"]
+    raw = [{"kind": "no_hit", "at_s": 31.5, "measured": {"onset_within_ms": 30}, "words": "no hit; fix: put notes"}]
+    found = [{"id": "marker_onset:hit", "what": "no hit", "when": "31.50 s", "fix": "put notes"}]
+    near = asked_keep.mark(raw, found, [{"at": 31.5, "kind": "hit"}])
+    assert near == {"marker_onset:hit": False} and "cannot be kept" in found[0]["what"]
+    stop = {"kind": "soft_stop", "at_s": 36.0, "measured": {"weak": True, "times_typical": 3.6, "rank": 53}}
+    assert not passing.near(stop) and "rank among the file's onsets 3 or less (now 53" in passing.words(stop)
 
 
 def test_a_kick_in_the_gap_is_heard_on_the_drum_track(tmp_path):
