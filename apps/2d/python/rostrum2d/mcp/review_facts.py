@@ -1,6 +1,7 @@
 """review's facts read from the document (cheap, nothing drawn): framing held, a pose held, a title touching the frame edge,
 an old heading still faintly showing behind a new one, a set of parts (a chart's bars) not yet showing while the rest of
-its group does, and the beats the agent declared. Each fault is {kind, start, end, text, …} with times; no taste."""
+its group does, an arm held nearly straight (review_limbs), and the beats the agent declared. Each fault is
+{kind, start, end, text, …} with times; no taste."""
 from __future__ import annotations
 
 from rostrum_core.motion.report import stem
@@ -8,7 +9,7 @@ from rostrum_core.motion.report import stem
 from rostrum2d.frame import view
 
 from .geometry import comp_size, drawn_box, flatten
-from . import edge_cut
+from . import edge_cut, review_limbs
 
 HOLD_FRAMING_S = 10.0     # the frame (camera) unchanged this long is named
 FRAMING_SAME = 0.004      # ... moves under this share of the picture (and zoom / turn this small) count as unchanged
@@ -146,7 +147,8 @@ def _overlap(a, b) -> float:
 
 
 def layer_facts(comp: dict, times: list[float], step: float) -> list[dict]:
-    """Titles touching the frame edge, faint old headings behind new ones, and sets of parts not showing in a showing group."""
+    """Titles touching the frame edge, faint old headings behind new ones, sets of parts not showing in a showing group,
+    arms held nearly straight and limbs thin next to the body (review_limbs)."""
     W, H = comp_size(comp)
     edge, ghost, hollow, shown = {}, {}, {}, {}
     for t in times:
@@ -198,7 +200,7 @@ def layer_facts(comp: dict, times: list[float], step: float) -> list[dict]:
             where = f'in group "{parent}"' if parent else "in the scene"
             out.append({"kind": "set_hidden", "start": t0, "end": t1, "id": st,
                         "text": f'{_span(t0, t1)}: none of the {st.replace("#", "*")} parts {where} shows while the rest does (bars or items not drawn in yet?)'})
-    return out
+    return out + review_limbs.straight_arms(comp, times, step) + review_limbs.thin_limbs(comp)   # limb facts
 
 
 def _spans(ts: list[float], step: float, least: float):

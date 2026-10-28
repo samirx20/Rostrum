@@ -11,7 +11,12 @@ from .model import start_bone, tip
 LIMB_KINDS = ("arm", "leg")
 PIECES = ("bend", "parts", "none")
 PLACEHOLDER = "#d9d9d9"                      # a limb's colour until the end of the script finds its body's
-RELAX = {"arm": 20.0, "leg": 6.0}            # degrees the elbow / knee is bent at rest (relax=0: straight)
+RELAX = {"arm": 35.0, "leg": 10.0}           # degrees the elbow / knee is bent at rest (relax=0: straight)
+HANDS = ("mitten", "ball")
+BODY_SHARE = {"arm": 0.26, "leg": 0.3}       # widths=None: the upper part this share of the body's width (the biggest
+                                             # shape bound to the bones above), the rest from it (widths_from)
+FOREARM, HAND, FOOT = 0.85, 1.05, 0.8        # the forearm / calf, the hand and the foot: these x the upper part
+LENGTH_SHARE = 0.4                           # ... no body shape found: the upper part this share of the upper length
 SIDES = {"right": 0.0, "down": 90.0, "left": 180.0, "up": 270.0}
 
 
@@ -69,23 +74,26 @@ def bend_way(angle: float, bend: str, where: str) -> str:
     return "clockwise" if math.cos(math.radians(angle - 90 - SIDES[bend])) > 0 else "counterclockwise"
 
 
-def make(build, rig, limbs: list, id, x=None, y=None, angle=90, lengths=(120, 110, 30), widths=(40, 30, 44), parent=None,
+def make(build, rig, limbs: list, id, x=None, y=None, angle=90, lengths=(120, 110, 30), widths=None, parent=None,
          kind="arm", ik=None, bend=None, pieces="bend", color=None, end_color=None, end_angle=None, soft=None, relax=None,
-         natural=True, taper=0.3, joint="round", joint_size=1.12, outline=True, outline_width=None) -> Limb:
+         natural=True, taper=0.2, joint="round", joint_size=1.12, outline=True, outline_width=None, hand="mitten") -> Limb:
     """script limb(): see the guide and server.py's script tool description. Appends what the end-of-script pass needs
-    (colour, outline, the natural bend) to `limbs`."""
+    (colour, outline, the natural bend, widths from the body) to `limbs`."""
     if kind not in LIMB_KINDS:
         raise ValueError(f'limb {id}: kind "{kind}" is not one of {", ".join(LIMB_KINDS)}')
     if pieces not in PIECES:
         raise ValueError(f'limb {id}: pieces "{pieces}" is not one of {", ".join(PIECES)}')
     if joint not in parts_mod.JOINTS:
         raise ValueError(f'limb {id}: joint "{joint}" is not one of {", ".join(parts_mod.JOINTS)}')
+    if hand not in HANDS:
+        raise ValueError(f'limb {id}: hand "{hand}" is not one of {", ".join(HANDS)}')
     if not 0 <= float(taper) < 1:
         raise ValueError(f"limb {id}: taper {taper} must be from 0 (even) up to below 1")
     lens = tuple(float(v) for v in lengths) + (0.0,) * (3 - len(lengths))
-    wid = tuple(float(v) for v in widths) + (widths[-1],) * (3 - len(widths))
     if lens[0] <= 0 or lens[1] <= 0:
         raise ValueError(f"limb {id}: the first two lengths (upper, lower) must be above 0, not {lengths}")
+    wid = widths_from(kind, LENGTH_SHARE * lens[0]) if widths is None else \
+        tuple(float(v) for v in widths) + (widths[-1],) * (3 - len(widths))
     pid = getattr(parent.upper if isinstance(parent, Limb) else parent, "id", parent) or ""
     start = start_bone(rig["bones"], {"parent": pid, **({"x": x} if x is not None else {}), **({"y": y} if y is not None else {})})
     if "x" not in start or "y" not in start:
@@ -113,54 +121,79 @@ def make(build, rig, limbs: list, id, x=None, y=None, angle=90, lengths=(120, 11
         upper.node["rotation"] = round(-sign * rlx / 2, 3)
     auto_color = color is None
     color = PLACEHOLDER if auto_color else color
-    parts = _parts(build, calls, id, kind, pieces, joint, joint_size, (bx, by), angle, ea, lens, wid, float(taper),
-                   (upper, lower, end), color, end_color, soft)
+    geom = dict(id=id, kind=kind, pieces=pieces, joint=joint, joint_size=joint_size, hand=hand, at=(bx, by), angle=angle,
+                ea=ea, lens=lens, taper=float(taper), wrist=tip(lower.node) if end is not None else None,
+                thumb=1 if math.sin(math.radians(ea)) * (mid - bx) >= 0 else -1)   # the thumb toward the body
+    parts, binds = _parts(build, calls, geom, wid, (upper, lower, end), color, end_color, soft)
     out = (-1 if math.sin(math.radians(angle)) >= 0 else 1) * (1 if bx >= mid else -1)   # tip moves away from mid
     made = Limb(id, kind, upper, lower, end, chain, parts, out=int(out))
     limbs.append({"limb": made, "rig": rig, "relax": rlx if not has_ik else 0.0, "sign": sign,
                   "auto_color": auto_color and end_color is None, "natural": natural and not has_ik,
-                  "outline": None if outline is True else outline,
-                  "outline_width": float(outline_width) if outline_width is not None else max(2.0, 0.1 * wid[0])})
+                  "outline": None if outline is True else outline, "outline_width": outline_width, "wid": wid,
+                  "auto_width": widths is None, "geom": geom, "binds": binds, "soft": soft})
     return made
 
 
-def _parts(build, calls, id, kind, pieces, joint, joint_size, at, angle, ea, lens, wid, taper, bones, color, end_color, soft):
-    """The limb's shapes, bottom to top: a "round" joint, the limb (one bending piece, or one per bone), a "ball"
-    joint, then the hand or foot."""
-    if pieces == "none":
-        return []
-    (bx, by), (upper, lower, end) = at, bones
-    st = parts_mod.stations(lens, wid, taper)
-    a = math.radians(angle)
-    parts = []
-    if pieces == "bend":
-        p = parts_mod.piece(build, id, bx, by, angle, st, color)
-        calls["bind"](layer=p, bone=upper, bone2=lower, soft=soft if soft is not None else max(0.6 * st[1][1], 6.0))
-        parts.append(p)
-    else:
-        for bone_, s_, at_ in ((upper, st[:2], 0.0), (lower, st[1:], lens[0])):
-            p = parts_mod.piece(build, f"{bone_.id}_part", bx, by, angle, s_, color, at=at_)
-            calls["bind"](layer=p, bone=bone_)
-            parts.append(p)
-    if joint != "none":                     # made after the limb (on top: a ball); a round one goes under it
-        jx, jy = bx + math.cos(a) * lens[0], by + math.sin(a) * lens[0]
-        cap = parts_mod.joint_shape(build, f"{id}_joint", jx, jy, joint_size * max(st[1][1], st[2][1]), color)
-        calls["bind"](layer=cap, bone=lower)
-        if joint == "round":
+def widths_from(kind: str, upper: float) -> tuple[float, float, float]:
+    """widths=None: (upper part, forearm or calf, hand or foot) from the upper part's width."""
+    return upper, FOREARM * upper, (HAND if kind == "arm" else FOOT) * upper
+
+
+def line_width(rec: dict) -> float:
+    """The outline's width: outline_width=, else a tenth of the upper part's width (at least 2 px)."""
+    return float(rec["outline_width"]) if rec["outline_width"] is not None else max(2.0, 0.1 * rec["wid"][0])
+
+
+def _parts(build, calls, g, wid, bones, color, end_color, soft):
+    """Make the shapes (limb_parts.shapes) and bind them: (parts, {part id: its bind})."""
+    by_name = dict(zip(("upper", "lower", "end"), bones))
+    parts, binds = [], {}
+    for s in parts_mod.shapes(g, wid):
+        p = build.layer(s["type"], s["id"], fill=(end_color or color) if s["bone"] == "end" else color, **s["fields"])
+        two = {"bone2": by_name[s["bone2"]], "soft": soft if soft is not None else s["soft"]} if s["bone2"] else {}
+        binds[s["id"]] = calls["bind"](layer=p, bone=by_name[s["bone"]], **two)
+        if s["under"]:                      # a round joint goes under the limb
             holder = build.holders[-1]["layers"]
-            holder.remove(cap.node)
-            holder.insert(holder.index(parts[0].node), cap.node)
-        parts.append(cap)
-    if end is not None:
-        wx, wy = tip(lower.node)
-        e = math.radians(ea)
-        col = end_color or color
-        if kind == "leg":
-            p = build.layer("shape", f"{id}_foot", shape="rect", x=wx + math.cos(e) * lens[2] / 2, y=wy + math.sin(e) * lens[2] / 2,
-                            w=lens[2] + wid[2], h=wid[2], radius=wid[2] / 2, rotation=ea, fill=col)
-        else:
-            p = build.layer("shape", f"{id}_hand", shape="ellipse", x=wx + math.cos(e) * lens[2] * 0.5,
-                            y=wy + math.sin(e) * lens[2] * 0.5, w=wid[2], h=wid[2], fill=col)
-        calls["bind"](layer=p, bone=end)
+            holder.remove(p.node)
+            holder.insert(holder.index(parts[0].node), p.node)
         parts.append(p)
-    return parts
+    return parts, binds
+
+
+def resize(rec: dict, wid) -> None:
+    """Re-shape a made limb's parts to new widths (the end-of-script pass, widths=None): same ids, binds and order."""
+    rec["wid"] = wid
+    nodes = {p.node["id"]: p.node for p in rec["limb"].parts}
+    for s in parts_mod.shapes(rec["geom"], wid):
+        if s["id"] in nodes:
+            nodes[s["id"]].update(s["fields"])
+            if s["bone2"] and rec["soft"] is None:
+                rec["binds"][s["id"]].node["soft"] = s["soft"]
+
+
+def fit_widths(limbs: list) -> None:
+    """The end-of-script pass for limbs made with widths=None: the upper part BODY_SHARE of the body's width (the biggest
+    shape bound to the bones above it); a limb with none above it (legs on a bare hip) takes its rig's arms' body."""
+    skip = {p.node["id"] for rec in limbs for p in rec["limb"].parts}
+    found = {id(rec): body_width(rec["rig"], rec["limb"].upper.node["parent"], skip) for rec in limbs}
+    for rec in limbs:
+        w = found[id(rec)] or max((found[id(r)] for r in limbs if r["rig"] is rec["rig"]), default=0.0)
+        if rec["auto_width"] and w:
+            resize(rec, widths_from(rec["limb"].kind, BODY_SHARE[rec["limb"].kind] * w))
+
+
+def body_width(rig: dict, bone_id: str, skip: set) -> float:
+    """The width of the biggest layer bound to this bone or the nearest bone above it that has one (0: none)."""
+    bones, layers, stack = {b["id"]: b for b in rig["bones"]}, {}, list(rig.get("layers", []))
+    while stack:
+        n = stack.pop()
+        layers[n.get("id")] = n
+        stack += n.get("layers", [])
+    while bone_id:
+        sizes = [(float(n.get("w", 0) or 0) * float(n.get("h", 0) or 0), float(n.get("w", 0) or 0))
+                 for b in rig.get("binds", []) if b.get("bone") == bone_id
+                 for n in [layers.get(b.get("layer"))] if n is not None and n["id"] not in skip]
+        if sizes:
+            return max(sizes)[1]
+        bone_id = bones.get(bone_id, {}).get("parent")
+    return 0.0
