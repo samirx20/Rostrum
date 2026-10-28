@@ -42,7 +42,7 @@ Every tool starts with one of five verbs. The verb tells the agent what the tool
 | `inspect_history` | Recent changes: who, what, when, and which group they belong to |
 | `inspect_operations` | The operations this app accepts, read from the one registry (name, arguments, what it does) |
 | `inspect_guide` | A how-to guide by topic. With no topic, the list of topics |
-| `inspect_tools` | This server's own tools, grouped by verb, each with a one-line purpose; `verb` shows one group, `name` one tool's full description and arguments |
+| `inspect_tools` | This server's own tools: the app's core five first, then every tool grouped by verb, each with a one-line purpose; `verb` shows one group, `name` one tool's full description and arguments |
 | `inspect_job` | A job's status and, when it is done, its result; without `job_id`, every job in the queue's order |
 | `edit_document` | Applies a list of operations, all or nothing |
 | `run_script` | Runs a Python script. The script's changes are merged in and never wipe what a person moved |
@@ -184,7 +184,7 @@ Sound has these first. The Editor uses the same tools on its mix. 2D and 3D use 
 - `inspect_operations` lists every operation from the **one registry**: the same list the GUI's inspector and command bar are built from. Nothing is listed by hand.
 - Everything listed carries an `origin` when it isn't Rostrum's own (a plugin's id); a built-in says nothing, so replies stay short. A plugin's names carry its `prefix:` (OPERATIONS.md § 11).
 - `inspect_guide` returns how-to guides: techniques and how tools work, never style rules or finished pieces to copy.
-- **Every server has `inspect_tools`**, so an agent never needs its own MCP client to list tools. It is generated from the tool registrations (the purpose is the first sentence of each tool's description), never written by hand. An unknown `verb` or `name` answers `NOT_FOUND` with the accepted list. The `start-here` guide of every app ends with a line pointing to it (added by `rostrum_core`, so an app's own text needs no copy).
+- **Every server has `inspect_tools`**, so an agent never needs its own MCP client to list tools. It is generated from the tool registrations (the purpose is the first sentence of each tool's description), never written by hand. Each app names its **core five** (`tools.core`, the tools a first piece needs): they open the `inspect_tools` listing ("Start with: …") and come first in the MCP tool list. **A tool's description is at most 150 words**: what it does and when to pick it; how-to detail lives in the guides. An unknown `verb` or `name` answers `NOT_FOUND` with the accepted list. The `start-here` guide of every app ends with a line pointing to it (added by `rostrum_core`, so an app's own text needs no copy).
 - The MCP handshake's `instructions` hold a short "start here" for the app. The guides are also published as MCP resources (`rostrum://guide/<topic>`).
 
 ## 11. What `rostrum_core` provides and what each app adds
