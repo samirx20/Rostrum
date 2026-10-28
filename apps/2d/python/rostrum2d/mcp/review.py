@@ -1,6 +1,7 @@
 """review: the film's weakest moments, ranked, as located faults with times: blank stretches, titles at the frame edge,
 faint old headings, parts not drawn in yet, held poses and held framing, subjects cut by the edge, stray specks, layers outside their screen, crowded lock-ups, beats that never
-happened. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score. The export
+happened, a near-empty frame mid-film, look-alike opening shots, an end picture held too long, a text crossed by a layer
+in front, a character hidden behind the set or standing on a bare one. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score. The export
 reply ends with the top ones (`after_export`, through session_clock), so the next fix pass has a concrete target."""
 from __future__ import annotations
 
@@ -11,15 +12,18 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from . import edge_cut, look_empty, render
-from . import review_beats, review_facts as rf, review_room
+from . import review_beats, review_cover, review_facts as rf, review_frame, review_room
+from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
+CHECKS = (review_frame.facts, review_cover.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
+        "text_crossed": 86, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
 
 
@@ -47,8 +51,16 @@ def _cut_text(c: dict) -> str:
     return f'{span}: {c["id"]} ({c["type"]}) cut at the {c["edge"]} edge, {c["cut_pct"]} % of it outside'
 
 
+def _named_blank(f: dict, blanks: list[dict]) -> bool:
+    """A near-empty stretch the pictures already name as blank (its middle inside one): named once."""
+    mid = (f["start"] + f["end"]) / 2
+    return f["kind"] == "sparse" and any(b["start"] <= mid <= b["end"] for b in blanks)
+
+
 def ranked(faults: list[dict], duration: float) -> list[dict]:
     """Most visible first: by kind (RANK), then the longer stretch; each with `rank_kind`."""
+    blanks = [f for f in faults if f["kind"] == "empty"]
+    faults = [f for f in faults if not _named_blank(f, blanks)]
     for f in faults:
         f["rank_kind"] = _kind(f, duration)
     return sorted(faults, key=lambda f: (-RANK.get(f["rank_kind"], 0), -(f["end"] - f["start"]), f["start"]))
@@ -62,6 +74,9 @@ def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str,
     faults = rf.framing(comp, times, step) + rf.poses(vectors, times, step) + rf.layer_facts(comp, times, step)
     cut = {f["id"] for f in faults if f["kind"] in ("text_edge", "small_text_edge")}
     faults += [f for f in review_room.facts(comp, times, step) if f["kind"] != "text_edge" or f["id"] not in cut]   # a cut title is named once
+    sampled = Sampled(doc_data, comp, times, step)
+    faults += [f for check in CHECKS for f in check(sampled)]
+    notes = notes + sampled.notes
     if beats:
         faults += review_beats.beats(comp, beats, times, vectors, where)
     return faults, notes
@@ -69,7 +84,7 @@ def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str,
 
 def tell(rows: list[dict], limit: int) -> str:
     if not rows:
-        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, every declared beat happens on time."
+        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed, no character hidden or on a bare set, every declared beat happens on time."
     shown = " ".join(f"{i}. {r['text']}." for i, r in enumerate(rows[:limit], 1))
     more = f" ({len(rows) - limit} more in data.)" if len(rows) > limit else ""
     return f"Weakest moments, most visible first: {shown}{more}"
@@ -105,7 +120,11 @@ def look_review(ctx, args):
     the rest of its group is; a plain card opening empty; a character's pose barely changing for 6 s or more; an arm held nearly straight for 4 s or more;
     a character's arms or legs thin next to its body; framing held
     10 s or more (no camera move or cut); a stretch where nothing moves; a subject cut by the edge; a title inside the edge's safe margin;
-    a stray small dot that later grows; a layer showing outside the screen it sits in; a lock-up whose parts touch; a washed-out stretch; and
+    a stray small dot that later grows; a layer showing outside the screen it sits in; a lock-up whose parts touch; a washed-out stretch;
+    a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film); opening shots that look alike (the same layers
+    on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text crossed by a layer drawn
+    in front of it; a character more than half hidden behind layers in front, or on a bare set (under 3 things or 15 % of the frame
+    besides it and the background); and
     each declared beat (`beats`, or the ones last given to an export) that never happens or comes at the wrong time. Samples the whole film every 0.5 s in seconds. Facts, not taste: a held
     title or a planned pause may be meant. Use it after every export: fix the top one, export, review again."""
     doc, comp = doc_and_comp(ctx, args)

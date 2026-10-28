@@ -249,12 +249,20 @@ void release_cloth(JPH::PhysicsSystem& physics, JPH::BodyID id, const std::vecto
 }
 
 JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
+  // each point carries its triangles' weight by the angle it holds in each (the angles of a triangle add up to π, so the whole
+  // weight is kept): an even third gave the grid's 8-triangle points twice the weight of its 4-triangle ones, a checkerboard
+  // that rippled the free edges into steps
   std::vector<double> mass(c.points.size(), 0.0);
   for (const auto& t : c.triangles) {
     const V3 &a = c.points[size_t(t[0])], &b = c.points[size_t(t[1])], &d = c.points[size_t(t[2])];
     const JPH::Vec3 u = v3({b[0] - a[0], b[1] - a[1], b[2] - a[2]}, 1.0), w = v3({d[0] - a[0], d[1] - a[1], d[2] - a[2]}, 1.0);
     const double area = 0.5 * double(u.Cross(w).Length());
-    for (int i : t) mass[size_t(i)] += std::max(0.0, c.weight) * area / 3;
+    for (int q = 0; q < 3; ++q) {
+      const V3 &o = c.points[size_t(t[q])], &p1 = c.points[size_t(t[(q + 1) % 3])], &p2 = c.points[size_t(t[(q + 2) % 3])];
+      const JPH::Vec3 e1 = v3({p1[0] - o[0], p1[1] - o[1], p1[2] - o[2]}, 1.0), e2 = v3({p2[0] - o[0], p2[1] - o[1], p2[2] - o[2]}, 1.0);
+      const double angle = std::atan2(double(e1.Cross(e2).Length()), double(e1.Dot(e2)));
+      mass[size_t(t[q])] += std::max(0.0, c.weight) * area * angle / 3.14159265358979323846;
+    }
   }
   const std::vector<bool> pin = pinned_points(c);
   const size_t held = size_t(std::count(pin.begin(), pin.end(), true));
@@ -289,6 +297,34 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
   s->CreateConstraints(&va, 1, SS::EBendType::Dihedral);
   s->Optimize();
   return s;
+}
+
+// Air on a cloth, once per physics step: each free point loses speed through the sheet as a flat plate does (pressure drag
+// ½ ρ Cd v² over the weight of the cloth behind it, so a light sheet floats down and a heavy one drops) and a little along it
+// (skin friction). Along the sheet's normal at that point (its triangles' areas summed), never more than the speed it has,
+// so it can only slow. Air 1: room air, about 1.4 m/s at most for cotton (0.2 kg/m²) falling flat.
+constexpr double kAirDensity = 1.2, kPlateDrag = 1.2, kSkinDrag = 0.05;  // kg/m³; flat plate Cd; along the sheet, of that
+void air_drag(JPH::PhysicsSystem& physics, JPH::BodyID id, const Cloth& c, double k, double dt) {
+  if (!(c.air > 0)) return;
+  JPH::BodyLockWrite lock(physics.GetBodyLockInterfaceNoLock(), id);
+  if (!lock.Succeeded()) return;
+  auto* mp = static_cast<JPH::SoftBodyMotionProperties*>(lock.GetBody().GetMotionProperties());
+  JPH::Array<JPH::SoftBodyVertex>& v = mp->GetVertices();
+  std::vector<JPH::Vec3> n(v.size(), JPH::Vec3::sZero());
+  for (const auto& t : c.triangles) {
+    const JPH::Vec3 a = v[size_t(t[0])].mPosition, b = v[size_t(t[1])].mPosition, d = v[size_t(t[2])].mPosition;
+    const JPH::Vec3 f = (b - a).Cross(d - a);
+    for (int i : t) n[size_t(i)] += f;
+  }
+  const double per = 0.5 * kAirDensity * kPlateDrag * c.air / std::max(1e-3, c.weight);  // 1/m: dv/dt = per × v²
+  for (size_t i = 0; i < v.size(); ++i) {
+    if (v[i].mInvMass <= 0 || n[i].LengthSq() <= 0) continue;
+    const JPH::Vec3 nn = n[i].Normalized(), vel = v[i].mVelocity / float(k);  // real m/s
+    const double vn = double(vel.Dot(nn));
+    const JPH::Vec3 vt = vel - nn * float(vn);
+    const double cut_n = std::min(1.0, per * std::abs(vn) * dt), cut_t = std::min(1.0, kSkinDrag * per * double(vt.Length()) * dt);
+    v[i].mVelocity -= (nn * float(vn * cut_n) + vt * float(cut_t)) * float(k);
+  }
 }
 
 std::string mm(double metres) { return std::to_string(std::max(1, int(std::ceil(metres * 1000)))) + " mm"; }
@@ -424,7 +460,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       }
     if (e.empty()) return kClothGap;
     std::nth_element(e.begin(), e.begin() + long(e.size() / 2), e.end());
-    return std::max(kClothGap, e[e.size() / 2] / 2);
+    return std::max(kClothGap, e[e.size() / 2] * 0.6);  // 0.6 of a grid square: half let a sharp box corner poke through the 96-grid sheet
   };
 
   const int frames = setup.end - setup.start + 1;
@@ -484,6 +520,8 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       }
     if (f > 0)
       for (int s = 0; s < steps; ++s) {
+        for (size_t c = 0; c < cloths.size(); ++c)
+          if (cloths[c].wake <= f) air_drag(physics, cloth_ids[c], cloths[c], k, double(dt));
         const JPH::EPhysicsUpdateError e = physics.Update(dt, 1, &temp, &jobs);
         if (e != JPH::EPhysicsUpdateError::None)
           throw Error("simulate: the physics ran out of room at frame " + std::to_string(setup.start + f) +

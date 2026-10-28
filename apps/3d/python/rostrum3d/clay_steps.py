@@ -3,9 +3,10 @@ ops_clay_make.py) and scripts (script.py), so a person, an agent's call and a sc
 
 - A piece: the blend at half its radius, the clay's own mirror when left out.
 - A stroke: the clay's brush settings for what was left out.
-- A drawn outline (clay_shapes.py): its plane and 2-D points, Puff 1, the blend at 0.3 × how fat it is (capped 5 cm).
+- A drawn outline (clay_shapes.py): its plane and 2-D points, Puff 1, the blend at half how fat it is × Puff (capped
+  5 cm): the same rule as a ball's half radius, so an arm's root swells into the body as one piece, no crease to open.
   A tiny one (fewer than 4 points, or thinner than 1.5 grains) is a lump at its middle, the brush's size.
-- A spun profile: its plane (v = the axis) and [distance, height] points, the blend at 0.3 × its widest.
+- A spun profile: its plane (v = the axis) and [distance, height] points, the blend at half its widest.
 - A new clay from a drawing stands where it was drawn (clay_shapes.standing) and its brush is a quarter of its size.
 """
 from __future__ import annotations
@@ -15,7 +16,7 @@ from .clay_fields import CLAY
 
 RADIUS = 0.15                  # a new clay's starting ball when nothing else is given
 TINY = 1.5                     # thinner than this many grains: a lump
-BLEND_SHARE, BLEND_CAP = 0.3, 0.05
+BLEND_SHARE, BLEND_CAP = 0.5, 0.05     # a drawn or spun piece's blend: × its half-thickness, as a ball's
 DEFAULT = {p.name: p.default for p in CLAY}
 
 
@@ -68,7 +69,7 @@ def draw_values(clay: dict, args: dict, points, grain: float) -> dict:
     if len(points) < 4 or fat < TINY * grain:
         return _lump(clay, args, points)
     return {"step": "piece", "shape": "outline", "plane": G.plane9(*fit), "outline": outline,
-            "puff": float(args.get("puff") or 1.0), **_shared(clay, args, fat)}
+            "puff": float(args.get("puff") or 1.0), **_shared(clay, args, fat * float(args.get("puff") or 1.0))}
 
 
 def spin_values(clay: dict, args: dict, points, grain: float) -> dict:

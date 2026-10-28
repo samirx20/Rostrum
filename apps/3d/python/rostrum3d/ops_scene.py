@@ -17,7 +17,8 @@ USERS = ("mesh", "combine", "import", "part", "clay")      # items that name a m
 
 
 @R.operation("material.add", "Add a material (one physically based surface: base colour, metallic, roughness, "
-             "transmission, coat …).", label="Add material", params=[ID, NAME, *F.unconditional("material")])
+             "transmission, coat, sheen for fabric and velvet …). A pattern (checks, stripes, a weave), noise or picture goes on "
+             "it as a block: graph.add then graph.connect (guide materials).", label="Add material", params=[ID, NAME, *F.unconditional("material")])
 def material_add(ctx, targets, args):
     fields = [p.name for p in F.FIELDS["material"]]
     ctx.insert("root", "materials", new_item(ctx, "material", args, {k: v for k, v in args.items() if k in fields}))

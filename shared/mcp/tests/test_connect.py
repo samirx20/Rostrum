@@ -48,9 +48,9 @@ def test_toml_keeps_comments_and_removes_a_table_we_made(fake_home):
     assert tomlkit.parse(f.read_text("utf-8"))["mcp_servers"]["rostrum-2d"]["env"]["ROSTRUM_ADDED_BY"]
     remove("codex", "2d")
     assert f.read_text("utf-8") == original
-    f2 = fake_home / ".gemini" / "settings.json"                  # a file that had no servers table at all
+    f2 = fake_home / ".gemini" / "antigravity" / "mcp_config.json"                  # a file that had no servers table at all
     _put(f2, '{"a": 1}\n')
-    add("gemini", "sound"), remove("gemini", "sound")
+    add("antigravity", "sound"), remove("antigravity", "sound")
     assert json.loads(f2.read_text("utf-8")) == {"a": 1}
 
 
@@ -71,3 +71,14 @@ def test_file_with_comments_is_refused_and_left_alone(fake_home):
     with pytest.raises(ConnectError, match="comments"):
         add("zed", "2d")
     assert f.read_text("utf-8") == original
+
+
+def test_antigravity_knows_a_hand_made_entry_and_keeps_other_servers(fake_home):
+    f = fake_home / ".gemini" / "antigravity" / "mcp_config.json"
+    mine = {"command": "py", "args": ["-m", "rostrum2d.mcp"]}
+    other = {"serverUrl": "https://x", "headers": {"Authorization": "secret"}}
+    original = _put(f, json.dumps({"mcpServers": {"rostrum-2d": mine, "other": other}}))
+    assert status("antigravity", "2d").ours and not status("antigravity", "sound").ours
+    assert remove("antigravity", "2d").ok
+    assert json.loads(f.read_text("utf-8")) == {"mcpServers": {"other": other}}
+    assert json.loads(original)["mcpServers"]["other"] == other

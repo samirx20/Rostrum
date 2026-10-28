@@ -112,12 +112,14 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   c.stiffness = r.num("stiffness");
   if (r.has("wakeFrame")) c.wake = r.count("wakeFrame", 0, 1000000);
   c.friction = r.num("friction");
+  if (r.has("air")) c.air = r.num("air");
   const std::string pin = r.one_of("pinned", {"none", "top", "bottom", "left", "right", "front", "back"});
   const char* pins[] = {"none", "top", "bottom", "left", "right", "front", "back"};
   for (int k = 0; k < 7; ++k)
     if (pin == pins[k]) c.pinned = sim::Cloth::Pin(k);
   if (!(c.weight > 0)) fail(r.at("weight"), "is not above 0", "kg per m², e.g. 0.2 (cotton)");
   if (c.stiffness < 0 || c.stiffness > 1) fail(r.at("stiffness"), "is outside 0..1", "0 (silk) .. 1 (thin card)");
+  if (!(c.air >= 0 && c.air <= 4)) fail(r.at("air"), "is outside 0..4", "0 (no air) .. 1 (room air) .. 4");
   r.finish();
   return c;
 }

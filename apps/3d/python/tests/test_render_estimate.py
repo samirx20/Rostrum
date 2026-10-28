@@ -124,3 +124,23 @@ def test_fewer_samples_never_longer_and_fits_follow_the_measurement():
     assert at("samples", fits["samples"]) <= est / 2 < at("samples", fits["samples"] + 1)   # the most samples that fit, measured
     assert at("samples", 128 // 2) > est / 2             # time grows less than in step: half the samples would not fit
     assert at("width", fits["width"]) <= est / 2
+
+
+def test_a_scene_that_changes_every_frame_costs_more_per_frame_and_a_slow_render_teaches_the_next_guess(cache):
+    """Round 3: a cloth drape was guessed at 2.2 s a frame and took 3.65 (each new frame sends the scene's new shape in)."""
+    from rostrum3d import estimate_learn
+    m = {"samples": 0, "curve": [], "fixed_ms": 500.0, "per_px_ms": 0.001, "load_ms": 0.0, "warmup_ms": 0.0}
+    s = settings({}, INFO)
+    plain = scale(m, s, 10, mp4=False)["seconds_per_frame"]
+    assert scale({**m, "change_ms": 1400.0}, s, 10, mp4=False)["seconds_per_frame"] == pytest.approx(plain + 1.4, abs=1e-3)
+    assert scale({**m, "change_ms": 1400.0}, s, 1, mp4=False)["seconds_per_frame"] == pytest.approx(plain, abs=1e-3)   # a still: no next frame
+    got = estimate_job.measure({"shot": "hero", "n": 9}, INFO, settings({}, INFO), make_engine=engine, card=FREE)
+    assert got["change_ms"] >= 0
+    k = ("proj", "item", "hero", "cycles")
+    e = scale(m, s, 10, mp4=False)
+    assert estimate_learn.apply(e, k) is e                                   # nothing learned yet
+    estimate_learn.record(k, 500.0, 800.0)                                    # took 1.6x its guess
+    up = estimate_learn.apply(e, k)
+    assert up["seconds"] == pytest.approx(e["seconds"] * 1.6, abs=0.1) and "1.6" in estimate_learn.words(up)
+    estimate_learn.record(k, 500.0, 520.0)                                    # a close one forgets it: never lowered below the measurement
+    assert estimate_learn.apply(e, k) is e

@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 5;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 6;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;
@@ -42,6 +42,7 @@ struct Cloth {
   double weight = 0.2;          // kg per m² (each point carries a third of its triangles' weight)
   double stiffness = 0.3;       // 0 folds like silk, 0.3 hangs in folds like cotton, 1 bends like thin card
   double friction = 0.6;
+  double air = 1;               // air drag: 0 none (falls like a stone), 1 room air, up to 4 (a parachute)
   enum Pin { None, Top, Bottom, Left, Right, Front, Back } pinned = None;  // that side of its world bounds at the start
   std::vector<V3> points;                       // world, at the start (after refine)
   std::vector<std::array<int, 3>> triangles;    // into points
@@ -52,10 +53,11 @@ struct Cloth {
 };
 
 // Makes a cloth's mesh fine enough to fold, in whatever space its points are: a single four-point face (a plane) becomes a
-// 64 × 64 grid; anything else has every triangle split in four until no edge is longer than 1/64 of its size (at most
-// kMaxClothTriangles). Drops faces with no area and points no face uses. Deterministic.
-constexpr int kClothGrid = 64;
-constexpr size_t kMaxClothTriangles = 20000;
+// 96 × 96 grid; anything else has every triangle split in four until no edge is longer than 1/96 of its size (at most
+// kMaxClothTriangles). Drops faces with no area and points no face uses. Deterministic. (64 folded in 2–3 cm facets:
+// broad rubbery bulges with a stepped outline; 96 gives fabric-sized wrinkles at about twice the simulation time.)
+constexpr int kClothGrid = 96;
+constexpr size_t kMaxClothTriangles = 40000;
 void refine(Cloth& c, const std::vector<std::vector<int>>& faces);
 
 struct Setup {

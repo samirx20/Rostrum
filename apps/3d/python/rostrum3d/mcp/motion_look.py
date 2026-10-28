@@ -10,6 +10,7 @@ from rostrum_core.motion.report import LIMIT, capped, examples, stem
 
 from ..motion_track import Track
 from ..sim import fall_view
+from ..sim.cut_note import cut_lines
 from . import motion_found as M, motion_sim
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
@@ -138,7 +139,7 @@ def look_motion(ctx, args):
             f'Overlap test: {OVERLAP_TEST}.')
     warn = sim["line"] if sim and sim["state"] != "stored" else None
     lines = ([sim["line"]] if sim and sim["line"] else []) + [_line(f) for f in movers]
-    lines += [f"On screen: {r['line']}" for r in falls]
+    lines += [f"On screen: {r['line']}" for r in falls] + [f"On screen: {x}" for x in cut_lines(falls, frames[0], frames[-1], info["start"], info["fps"])]
     if still:
         lines.append(f'{len(still)} not travelling: {examples(still, 10)}' + (f' ({", ".join(turn_only)} turn or change size in place)' if turn_only else "") + ".")
     if track.skipped:

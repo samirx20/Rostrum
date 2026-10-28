@@ -17,9 +17,10 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 
 ## For agents
 
-How-to pages for the tools and the document. They assume MCP tools and operations.
+How-to pages for the tools and the document. They assume MCP tools and operations. Build the film as one `run_script` program; the operations are for quick changes.
 
 - [start-here.md](start-here.md): the document, ids, keys and the first calls.
+- [the-film-as-one-script.md](the-film-as-one-script.md): **the way to build a whole film**: one script, run with `look`, edited and re-run under the same name; the small tools for quick changes.
 - [type-and-kinetic-text.md](type-and-kinetic-text.md): setting type and making it move.
 - [shape-and-path-animation.md](shape-and-path-animation.md): vector shapes, point editing, combining, drawing-on.
 - [text-on-a-path.md](text-on-a-path.md): text along a path (also a people page above).

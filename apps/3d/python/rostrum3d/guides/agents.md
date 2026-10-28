@@ -14,7 +14,7 @@ showing the photographed Studio sky, `texture="sky:studio"`), two lights aimed a
 the right, no shadows, for an edge; the sky at `exposure` −1 is the fill) and the shot `shot_1` ("Shot 1") through the camera
 `shot_1_camera`, 55 cm up and 1.6 m back looking 15° down at the middle of the ground (no horizon in the picture: the Studio sky lights the scene but a camera turned up is what shows it),
 framed for things a hand to an arm tall. So the first look is lit
-and framed before you add anything; change or delete any of them like any item (your script's own ids must differ).
+and framed before you add anything. A script keeps all of it unless it replaces it: `edit("sky", intensity=0.4)` / `edit("ground_material", baseColor=…)` change one field; a dome of your own (any id) replaces the sky; any other light of your own (any id) replaces `key_light` and `rim_light`; `remove("ground")` + `remove("ground_material")` or a mesh made again as `ground` replaces the floor (guide `script`, "Changing the new scene's own things").
 
 ## The loop
 
@@ -30,7 +30,8 @@ and framed before you add anything; change or delete any of them like any item (
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
      `final` (Cycles) tells you light, glass, shadows, reflections. `renderer: "stylized"` draws the stylized look: a
      material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
-     blocks"); it fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
+     blocks"); with no `renderer` or `quality`, a shot whose Quality is Stylized is drawn stylized (`look_sheet` and
+     `look_shots` too). It fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim"). For every text in the picture it also says which way
      it reads from this camera: left to right, mirrored (seen from behind), upside down, tilted (its angle to the horizontal)
@@ -44,7 +45,7 @@ and framed before you add anything; change or delete any of them like any item (
      "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
      `full` for the speed on every frame. A thing set to Falls is measured where the stored simulation has it; when the
      simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
-     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line per falling
+     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_sheet` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
      thing and cloth says how many frames of its drop (until it first lands) the shot camera shows, and names a fall that happens above
      or outside the picture or starts already at rest, with the fix (`sim.start_in_view` / script `.start_in_view()`, and `fallStart`, which
      holds a falling thing or a cloth in the picture until that second; [Simulate](simulate.md)).

@@ -8,13 +8,14 @@ from pathlib import Path
 CLIP = 254                       # an 8-bit channel at or above this is clipped (white, no detail left)
 
 
-def clipped_percent(png: str | Path) -> float:
-    """The share of pixels with any colour channel clipped, in percent."""
+def clipped_percent(png: str | Path, every: bool = False) -> float:
+    """The share of pixels with any colour channel clipped (`every`: all three, pure white), in percent."""
     import numpy as np
     from PIL import Image
     with Image.open(png) as im:
         px = np.asarray(im.convert("RGB"))
-    return round(100.0 * float((px >= CLIP).any(axis=2).mean()), 2)
+    hit = px >= CLIP
+    return round(100.0 * float((hit.all(axis=2) if every else hit.any(axis=2)).mean()), 2)
 
 
 def final_only(scene: dict) -> list[str]:
@@ -33,9 +34,12 @@ def final_only(scene: dict) -> list[str]:
 
 
 def line(png, scene: dict, renderer: str) -> tuple[str, dict]:
-    """(' Clipped: 3 % of pixels. Applied in Final: …', facts) for the reply."""
-    pct, final = clipped_percent(png), final_only(scene)
-    text = f" Clipped: {pct:g} % of pixels" + (" (blown out: lower Exposure)" if pct >= 2 else "") + "."
+    """(' Clipped: 3 % of pixels. Applied in Final: …', facts) for the reply. Stylized shows picked colours as they are (no film
+    curve), so a full orange is not blown out there: only pure white counts."""
+    flat = renderer == "stylized"
+    pct, final = clipped_percent(png, every=flat), final_only(scene)
+    text = (f" Pure white: {pct:g} % of pixels" + (" (lower the lights or Exposure unless it is meant)" if pct >= 2 else "")
+            if flat else f" Clipped: {pct:g} % of pixels" + (" (blown out: lower Exposure)" if pct >= 2 else "")) + "."
     if final:
         text += (" Applied in Final: " if renderer != "cycles" else " Applied here (Final only): ") + ", ".join(final) + "."
     return text, {"clippedPercent": pct, "appliedInFinal": final}

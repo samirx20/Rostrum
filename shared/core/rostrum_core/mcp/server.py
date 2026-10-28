@@ -39,6 +39,8 @@ class Runtime:
         shared_screen.register(shared)
         tools_list.register(shared)
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
+        if app.script_look:
+            shared_edit.with_look(self.tools)
         if app.script_help:
             self.tools.described("run_script", app.script_help)
         self.jobs = jobs or InProcessJobs(log=bug.log)

@@ -13,7 +13,7 @@ from rostrum3d.compile import shot_info
 
 from . import draw
 from .look import _settings
-from .shot import LOOK, renderer_of, seconds, size_of
+from .shot import LOOK, look_renderer, seconds, size_of
 
 tools = Tools()
 
@@ -61,7 +61,7 @@ def stack(rows: list[Path], dest: Path) -> tuple[int, int]:
 def look_shots(ctx, args):
     """One contact sheet for several shots, ONE ROW PER SHOT: `count` frames spread over that shot, each tile labelled with the shot's
     name, the frame and its time. Each shot is drawn through its own camera by the same render path as export (Storm for quality fast,
-    Cycles for final; renderer picks by name). Use it to compare shots side by side, check a cut's two ends or a whole sequence's
+    Cycles for final; renderer picks by name; neither, when every shot's Quality is Stylized: stylized). Use it to compare shots side by side, check a cut's two ends or a whole sequence's
     framing, before look_frame on one of them. An unknown shot fails, listing the document's shots."""
     doc = ctx.document(args.get("item"))
     ids = chosen(ctx, doc, args.get("shots"))
@@ -72,7 +72,7 @@ def look_shots(ctx, args):
             raise RostrumError(codes.NOT_FOUND, ctx.tool, f'shot "{i["id"]}"', "has no camera, so there is nothing to look through",
                                hint="Add a camera item and set it as the shot's camera.")
     count = min([args.get("count", 4)] + [len(frames_of(i, args.get("count", 4))) for i in infos])
-    renderer, tile_w, engine = renderer_of(args), args.get("tile_width", 320), draw.engine_of(ctx)
+    renderer, tile_w, engine = look_renderer(args, doc, infos), args.get("tile_width", 320), draw.engine_of(ctx)
     dest = look_path(f'{doc.item_id or "doc"}_shots_{renderer}', project=doc.folder)
 
     def job_fn(job):

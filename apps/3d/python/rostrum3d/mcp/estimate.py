@@ -12,7 +12,7 @@ import math
 
 from rostrum_core.mcp import Reply, Tools
 
-from rostrum3d import estimate_job
+from rostrum3d import estimate_job, estimate_learn
 from rostrum3d.render_fields import QUALITIES, SIZES, settings as shot_settings
 from . import draw
 from .shot import ITEM_SHOT, doc_and_shot
@@ -91,7 +91,7 @@ def scale(m: dict, s: dict, frames: int, mp4: bool) -> dict:
     px, pq = s["width"] * s["height"], math.prod(m["probe"]["size"]) if "probe" in m else 0
     line = m["fixed_ms"] + m["per_px_ms"] * px                  # between the probe's two sizes: the measured line
     floor = (m["fixed_ms"] + m["per_px_ms"] * pq) * px / pq if pq else 0.0   # under the quarter: in step with the pixels
-    per_frame = max(line, floor, 0.0) / 1000 * sample_factor(m, s.get("samples", 0))
+    per_frame = max(line, floor, 0.0) / 1000 * sample_factor(m, s.get("samples", 0)) + m.get("change_ms", 0.0) / 1000 * (frames > 1)   # + the scene moving on to each new frame
     per_frame *= 2 if "shadow" in s.get("passes", ()) else 1     # the Shadow pass draws each frame twice (core passes.h)
     start = (m["load_ms"] + m["warmup_ms"]) / 1000
     encode = ENCODE_S_PER_FRAME * frames * s["width"] * s["height"] / HD_PIXELS if mp4 else 0.0
@@ -146,6 +146,7 @@ def render_estimate(ctx, args):
     probe (the middle frame at a quarter of the pixels, and once at the real size with few samples, through the same engine
     path as the real render) and keeps it, so
     asking again, or changing only samples, size or frames, answers at once; any change to the scene measures again.
+    The per-frame time includes the scene changing from frame to frame (a cloth or fall's stored shape, animation: one extra small frame is timed at the next frame), and is raised when the last full render of the same shot in this project took 10 %+ over its estimate (the reply says "raised ×N").
     Returns seconds a frame, the total, how it was measured, its slowest part, the probe picture, and settings that fit
     `budget_min`. A probe over its 90 s budget stops and says the job is at least that slow. When another job is using the
     graphics card the reply says so (`gpu_busy`): the render is slower while it runs, and a probe taken then is not kept.
@@ -166,12 +167,13 @@ def render_estimate(ctx, args):
             job.progress(n, len(plan), f"Measuring {i['id']}…")
             m = estimate_job.measure(scene, i, s, ctx.tool, make_engine=make_engine)
             frames = s["end"] - s["start"] + 1
-            e = scale(m, s, frames, mp4=frames > 1)
-            at = seconds_at(m, s, frames, frames > 1)
+            e = estimate_learn.apply(scale(m, s, frames, mp4=frames > 1), estimate_learn.key(ctx.app.folder, doc.item_id, i["id"], s["renderer"]))
+            at = (lambda a, k: lambda c, v: a(c, v) * k)(seconds_at(m, s, frames, frames > 1), e.get("learned", 1.0))
             total += e["seconds"]
             how = ("kept from an earlier probe of this same scene" if m["cached"] else "measured now") + \
                 f': frame {m["frame"]} at {m["probe"]["size"][0]}×{m["probe"]["size"][1]} took {m["probe"]["ms"][1] / 1000:.1f} s warm' + \
                 (f', at {m["full"]["size"][0]}×{m["full"]["size"][1]} with {m["full"]["samples"]} samples {m["full"]["ms"] / 1000:.1f} s' if "full" in m else "")
+            how += f"; {estimate_learn.words(e)}" if e.get("learned") else ""
             rows.append({"shot": i["id"], **{k: s[k] for k in ("quality", "samples", "denoise", "width", "height", "start", "end")},
                          **e, "how": how, "gpu_busy": estimate_job.card_note(m), "probe_picture": m["picture"],
                          "measurement": {k: v for k, v in m.items() if k != "picture"}})

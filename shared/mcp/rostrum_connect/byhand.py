@@ -98,7 +98,8 @@ def write_guides(folder) -> list[Path]:
         p.write_text(guide_markdown(a.id), encoding="utf-8")
         written.append(p)
     index = ["# Connect Rostrum to your AI agent", "",
-             "Pick your agent. Each page shows the easy way inside Rostrum and the by-hand way.", ""]
+             "Pick your agent. Each page shows the easy way inside Rostrum and the by-hand way.",
+             "Gemini CLI is not listed: Google stopped it for personal accounts in June 2026. Use Antigravity, its replacement.", ""]
     index += [f"- [{a.name}]({a.id}.md)" for a in agents.AGENTS]
     (folder / "index.md").write_text("\n".join(index) + "\n", encoding="utf-8")
     return written + [folder / "index.md"]

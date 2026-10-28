@@ -24,8 +24,8 @@ PROFILE = dataclasses.replace(PTS("profile", "Profile", "[[x, y, z], …] half a
              "own space are fitted to a plane (`facing` is its normal, pointing at the viewer, when given; else the "
              "outline's own plane) and puffed up both ways: as thick in the middle as the outline is wide there "
              "(`puff` 1; 0.5 flatter, 2 fatter; claystep.set puff changes it later). To join, start the outline on "
-             "or touching the clay's surface, at the depth where it should sit. Blend: 0.3 × how fat it is (at most "
-             "5 cm) when left out. A tiny outline (under 4 points, or thinner than 1.5 grains) joins a lump the "
+             "or touching the clay's surface, at the depth where it should sit. Blend: half how fat it is × puff (at "
+             "most 5 cm) when left out: the root swells into the clay as one piece. A tiny outline (under 4 points, or thinner than 1.5 grains) joins a lump the "
              "brush's size instead. Mirrored by the clay's own Mirror unless `symmetry` says.", target="clay",
              label="Draw a shape", params=[OUTLINE, FACING, PUFF, MODE, BLEND, SYM, NAME])
 def clay_draw(ctx, targets, args):
@@ -37,7 +37,7 @@ def clay_draw(ctx, targets, args):
 @R.operation("clay.spin", "Join a spun shape to a clay (a vase, a bottle, a head's base): `profile` points (the clay's "
              "own space) are turned round `axis` (two points; left out: straight up, the clay's +Y, through the "
              "first profile point). Each point counts by its distance from the axis and its height along it; the "
-             "profile's ends close to the axis. Blend: 0.3 × its widest (at most 5 cm) when left out; a profile "
+             "profile's ends close to the axis. Blend: half its widest (at most 5 cm) when left out; a profile "
              "thinner than 1.5 grains joins a lump instead.", target="clay", label="Spin a shape",
              params=[PROFILE, AXIS, MODE, BLEND, SYM, NAME])
 def clay_spin(ctx, targets, args):

@@ -85,3 +85,25 @@ def test_start_in_view_puts_its_top_where_asked(doc):
     assert abs(y - 0.2 * 720) < 1.0
     with pytest.raises(Exception, match="inside or under table"):           # that low it would start inside the table
         doc.apply([{"op": "sim.start_in_view", "target": ["sweet"], "args": {"fromTop": 0.9}}], SAM)
+
+
+def test_a_cut_that_opens_mid_drop_or_after_the_landing_says_so(doc):
+    doc.apply([{"op": "sim.run", "target": ["spill"]}], SAM)
+    mid = fall_view.fall_note(doc.data, "spill", None, (8, 23))
+    assert "starts at 0.3 s" in mid and "mid-drop" in mid and "render_video `start`" in mid
+    after = fall_view.fall_note(doc.data, "spill", None, (20, 23))
+    assert "already fallen" in after
+
+
+def test_a_long_still_stretch_and_a_shot_opening_mid_fall_are_named():
+    from rostrum3d.sim.cut_note import cut_lines
+    frames = list(range(240))
+    pace = [0.05] * 10 + [0.0] * 229                 # moves at speed from the first frame, still from frame 11
+    low = [2.0 - 0.1 * min(i, 10) for i in frames]
+    f = fall_view.classify(frames, pace, ["in"] * 240, 24, low)
+    assert f["underway"]
+    row = {"item": "sheet", "kind": "cloth", **f}
+    text = " ".join(cut_lines([row], 0, 239, 0, 24))
+    assert "already moving at the first frame" in text and "the last 9.5 s of this 10.0 s cut don't move" in text
+    from_rest = fall_view.classify(frames, [0.01 * (i + 1) for i in range(10)] + [0.0] * 229, ["in"] * 240, 24, low)
+    assert not from_rest["underway"]

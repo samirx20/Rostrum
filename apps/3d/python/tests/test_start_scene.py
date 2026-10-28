@@ -69,3 +69,35 @@ def test_guide_reaches_the_engine_only_when_on(tmp_path):
     d = _start(tmp_path)
     ground = next(n for n in describe(d.data, "shot_1")["items"] if n["id"] == "ground")
     assert "guide" not in ground["props"]
+
+
+def _ids(d):
+    return {n["id"] for n in d.data["items"]}
+
+
+def _run(d, src, name="mine.py"):
+    return d.run_script(name, run_source(src, name, d))
+
+
+def test_a_script_without_lights_keeps_the_start_sky_and_lights(tmp_path):
+    d = _start(tmp_path)
+    _run(d, 'mesh("cube", shape="box", y=0.1)')
+    assert {"ground", "sky", "key_light", "rim_light", "cube"} <= _ids(d)
+
+
+def test_a_script_with_its_own_dome_replaces_the_sky_and_a_panel_replaces_the_start_panels(tmp_path):
+    d = _start(tmp_path)
+    _run(d, 'light("dusk", kind="dome", color="#334466")')
+    assert "sky" not in _ids(d) and {"dusk", "key_light", "rim_light"} <= _ids(d)       # a dome: only the sky goes
+    _run(d, 'light("dusk", kind="dome", color="#334466")\nlight("softbox", kind="rect", x=1, y=1, z=1)')
+    assert "key_light" not in _ids(d) and "rim_light" not in _ids(d) and {"dusk", "softbox"} <= _ids(d)
+    _run(d, 'light("dusk", kind="dome", color="#334466")\nlight("softbox", kind="rect", x=1, y=1, z=1)')   # a re-run changes nothing
+    assert _ids(d) >= {"dusk", "softbox", "ground"} and not {"sky", "key_light"} & _ids(d)
+
+
+def test_making_the_sky_again_or_editing_it_keeps_the_other_start_lights(tmp_path):
+    d = _start(tmp_path)
+    _run(d, 'edit("sky", intensity=0.4)')
+    assert {"sky", "key_light", "rim_light"} <= _ids(d) and d.item("sky")["intensity"] == 0.4
+    _run(d, 'light("sky", kind="dome", intensity=0.4)', "again.py")
+    assert {"sky", "key_light", "rim_light"} <= _ids(d)

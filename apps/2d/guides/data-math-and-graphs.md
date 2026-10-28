@@ -64,7 +64,8 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 ## Typeset equations (fractions, sums, roots)
 
 `math_text` typesets LaTeX-style maths into **ordinary path layers**: one path per symbol and per rule (a fraction bar and
-a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on. Write the formula as a raw string (`r"..."`) so `rac` keeps its backslash, and close every `\left` with a `ight` and every `{` with a `}`: a piece typeset on its own (to highlight one term) must be balanced by itself, so cut the formula between terms, not inside a bracket pair.
+a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on. Write the formula as a raw string (`r"..."`) so `rac` keeps its backslash, and close every `\left` with a `
+ight` and every `{` with a `}`: a piece typeset on its own (to highlight one term) must be balanced by itself, so cut the formula between terms, not inside a bracket pair.
 
 ```python
 comp("eq", width=1920, height=1080, fps=30, duration=5, background="#0c0d12")
@@ -232,7 +233,7 @@ for i, r in enumerate(rows):
 ```
 
 Then check one or two (`look_frame {comp: "card_1", time: 2.5}`) and export each: `render_export {comp: "card_0",
-format: "mp4", name: "Lisbon"}`, one call per row (each is a job; follow it with `inspect_job`). Re-running the script
+format: "mp4", name: "Lisbon"}`, one call per row (each waits for its own file in the same call, `wait_s`; past it the reply gives the job to ask `inspect_job`). Re-running the script
 with an edited table updates every card and keeps what a person moved by hand.
 
 ## Full Python: numpy, files, your own maths

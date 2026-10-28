@@ -25,6 +25,7 @@ import math
 
 from rostrum_core.keys import key_id, keys_of
 
+from .. import script_others
 from ..evaluate import value_at
 from ..ops_swap import blinks
 from ..swap import child_index
@@ -94,8 +95,9 @@ def for_script(build) -> dict:
             ids_ = sorted(build.taken)
             hint = did_you_mean(id, ids_)
             raise ValueError(f'layer("{id}"): no item with that id was made earlier in this script.'
-                             + (f" {hint}" if hint else "") + " A layer made outside this script is named by its id "
-                             'where one is asked (bind(layer="leg", …)); to key it, make it in the script.')
+                             + (f" {hint}" if hint else "") + (script_others.why_not_here(build, id) or
+                             ' A layer made outside this script is named by its id where one is asked (bind(layer="leg", …)); '
+                             "to key it, make it in the script."))
         return Item(build, node)
 
     def limb(id, **kw):
