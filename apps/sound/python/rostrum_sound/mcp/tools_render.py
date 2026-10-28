@@ -143,7 +143,8 @@ def register(tools: Tools):
         partial = bool(args.get("solo") or args.get("mute"))
         options = {k: args[k] for k in ("format", "sampleRate", "trim") if k in args}
         if schedule.get("length") is not None and not args.get("ring_past_length"):
-            options["length"] = schedule["length"]          # the length asked for is the length delivered (deliver.py)
+            with markers.project(getattr(doc, "folder", None)):     # in seconds: the song may write it in beats or bars
+                options["length"] = times.seconds(doc.data["length"], doc.data, "length")   # asked = delivered (deliver.py)
         target = _target_folder(args.get("folder"))         # a wrong folder answers now, not after the render
         with markers.project(getattr(doc, "folder", None)):          # a time may name a project marker
             for k in ("from", "to"):
