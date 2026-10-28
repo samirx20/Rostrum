@@ -4,6 +4,7 @@ named before anything else in a look / render reply.
 Three checks, each with a stable fault id so `keep: {id: why}` names it across re-runs:
   dark:<shot> / blown:<shot>  the picture (its pixels): mean brightness under DARK_MEAN of full, or CLIPPED_PCT % of the pixels
                               with a channel at white (facts.measure; the same numbers inspect_exposure gives).
+  out_of_frame:<item>         a shown shape (not ground-sized) wholly outside the picture on every sampled frame.
   cut_edge:<item>             a shown shape whose projected box (through the shot camera) crosses the picture's edge while most
                               of it (>= MOST) is inside. Ground / background-sized things (backdrop, a side over BIG_M m, a box
                               over BIG_AREA times the picture) are framing, not a subject.
@@ -71,6 +72,8 @@ def _cut(tr: Track, id_: str, solid, f: int) -> dict | None:
     if area > BIG_AREA * cam.w * cam.h or any(_span(solid[0], k)[1] - _span(solid[0], k)[0] > BIG_M for k in (0, 2)):
         return None
     inside = max(0.0, min(x1, cam.w) - max(x0, 0)) * max(0.0, min(y1, cam.h) - max(y0, 0)) / area
+    if inside <= 0:                              # wholly outside: made but never seen
+        return {"item": id_, "outside": 1.0, "edges": _edges(x0, y0, x1, y1, cam.w, cam.h)}
     if not MOST <= inside <= 1 - MIN_CUT:
         return None
     return {"item": id_, "outside": round(1 - inside, 3), "edges": _edges(x0, y0, x1, y1, cam.w, cam.h)}
@@ -96,6 +99,16 @@ def _supported(me: str, shapes: dict, low: float, box) -> bool:
     return False
 
 
+def _below(me: str, shapes: dict, low: float, box) -> tuple[str, float] | None:
+    """The highest other shape under the footprint whose top is below `low`: (id, top), else None (the ground is under it)."""
+    best = None
+    for j, s in shapes.items():
+        (a0, a1), (b0, b1), (_, top) = (_span(s[0], k) for k in (0, 2, 1))
+        if j != me and a0 < box[1] and box[0] < a1 and b0 < box[3] and box[2] < b1 and top < low and (best is None or top > best[1]):
+            best = (j, top)
+    return best
+
+
 def _frame_faults(data: dict, info: dict, f: int, folder) -> dict:
     """{'cut': [...], 'floating': {id: gap}, 'sinking': {id: depth}} at frame f."""
     tr = Track(data, info, range(f, f + 1), folder)
@@ -116,7 +129,8 @@ def _frame_faults(data: dict, info: dict, f: int, folder) -> dict:
         if low < ground - GAP_M:
             out["sinking"][id_] = ground - low
         elif low > ground + GAP_M and not _supported(id_, shapes, low, (x0, x1, z0, z1)):
-            out["floating"][id_] = low - ground
+            under = _below(id_, shapes, low, (x0, x1, z0, z1))
+            out["floating"][id_] = (low - under[1], under[0]) if under else (low - ground, None)
     return out
 
 
@@ -129,11 +143,17 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
         except ValueError:                       # something's size isn't known here (an import): nothing judged
             continue
     out, seen = [], set()
+    never = set.intersection(*({c["item"] for c in r["cut"] if c["outside"] >= 1.0} for _, r in per)) if per else set()
     for f, r in per:
         for c in r["cut"]:
-            if (id_ := f"cut_edge:{c['item']}") not in seen:
+            gone = c["outside"] >= 1.0
+            if gone and c["item"] not in never:      # outside only for a while (it moves in or out): not a fault
+                continue
+            if (id_ := f"{'out_of_frame' if gone else 'cut_edge'}:{c['item']}") not in seen:
                 seen.add(id_)
-                out.append(F.fault(id_, f"{c['item']} is cut by the {' and '.join(c['edges'])} edge of the picture ({c['outside'] * 100:.0f} % of it is outside)",
+                out.append(F.fault(id_, f"{c['item']} is wholly outside the picture (past the {' and '.join(c['edges'])} edge)",
+                                   f"move it into the shot or frame it (shot.frame on {c['item']}); if it is meant to be unseen, keep it", when_of(info, f))
+                           if gone else F.fault(id_, f"{c['item']} is cut by the {' and '.join(c['edges'])} edge of the picture ({c['outside'] * 100:.0f} % of it is outside)",
                                    f"move the camera back or frame it whole (shot.frame on {c['item']}), or move {c['item']} inside; if the cut is meant, keep it", when_of(info, f)))
     for kind, word, fix in (("floating", "floats {m:.2f} m above the ground with nothing under it", "place_on the ground: y = {y:.3f}; if it is meant to hover, keep it"),
                             ("sinking", "sinks {m:.2f} m into the ground", "lift it: place_on the ground, y = {y:.3f}")):
@@ -141,10 +161,12 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
             continue
         common = set.intersection(*(set(r[kind]) for _, r in per))
         for id_ in sorted(common):
-            m = per[0][1][kind][id_]
+            m, on = per[0][1][kind][id_] if kind == "floating" else (per[0][1][kind][id_], None)
             sign = 1 if kind == "sinking" else -1
             y = _own_y(data, id_) + sign * m
-            out.append(F.fault(f"{kind}:{id_}", f"{id_} " + word.format(m=m), fix.format(y=y), when_of(info, per[0][0])))
+            what, how = (word, fix) if on is None else (f"floats {{m:.2f}} m above {on} with nothing touching it",
+                                                       f"{id_}.place_on({on}) (y = {{y:.3f}}); if it is meant to hover, keep it")
+            out.append(F.fault(f"{kind}:{id_}", f"{id_} " + what.format(m=m), how.format(y=y), when_of(info, per[0][0])))
     return out
 
 
