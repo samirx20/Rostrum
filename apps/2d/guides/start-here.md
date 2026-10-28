@@ -46,7 +46,9 @@ document
   arguments. `edit_document` applies a list of them, all or nothing.
 - Copy a comp with everything in it with `comp.duplicate` (the copy lands right after it, named "<name> copy"), put comps in order with `comp.move` (`index` 0 = first), delete a throw-away comp with `comp.remove` (never the last one; Undo brings it back). A comp added without a name is numbered: "Scene 2", "Scene 3". Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
 - A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`, `shutter` (motion blur, degrees; 0 = off; see frame-parallax-motion-blur). A layer's `x`, `y` is where its **anchor** sits
-  in the comp, in pixels (0,0 is top-left). The anchor is `anchorX`/`anchorY`, 0 to 1 across the box, default 0.5 = centre.
+  in its parent (comp px, 0,0 top-left; or the group's box). **Leave `x`, `y` out and it sits at its parent's centre.**
+  The anchor by name: `anchor="top-left"`, `"top"`, `"left"`, `"center"` (the default), `"bottom-right"` … or a pair
+  `anchor=(0, 1)`; as numbers `anchorX`/`anchorY`, 0 to 1 across the box.
   To turn round a known spot, `item.pivot(x, y)` puts the anchor on that comp point and nothing moves (any layer; the
   way for a drawing, whose canvas grows).
   A group's children are placed inside the group's own box (its top-left is 0,0).
@@ -75,6 +77,12 @@ Cuts, entrances and beats that other apps also use (the music's drop, the 3D pro
 **shared markers** (`inspect_markers`, `edit_markers`), never copied as numbers. Give a layer or a whole group
 **Timed from marker** (`marker="reveal"`): its *Starts at*, *Ends at* and keys, and everything inside it, count
 from that marker. Move the marker in any app and the shot moves with it; Sound's music follows the same marker.
+
+In a script, `marker("reveal", 3)` makes that shared marker (re-running moves it, removing the line removes it) and
+gives `"#reveal"`, which adds like a number. A layer's `start="#reveal+0.5"` makes it Timed from marker with its other
+numbers still meaning comp seconds as written; `end="#out"` is Ends at marker. `after(item, gap=)` is when its last
+key lands, `stagger(items, every=, start=)` gives each item its start, `beats(bpm=120, start=)` a beat grid without a
+song: no hand-counted `t0 + i * 0.5` (guide `the-film-as-one-script`).
 
 ```python
 with group("reveal_shot", marker="reveal", end=4.0):     # visible from the marker for 4 s
@@ -135,11 +143,11 @@ Run it again after editing it and:
 
 ```python
 comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
-t = text("headline", body="Words", size=160, x=960, y=520)
+t = text("headline", body="Words", size=160)               # no x / y: the comp's centre
 t.key("opacity", {0.0: 0, 0.6: 1}, ease="easeOut")          # {time: value} or {time: (value, ease)}
 t.effect("shadow", dy=24, radius=60)
 t.mask("reveal", w=0).key("w", {0.0: 0, 0.8: 1400})
-with group("cluster", x=960, y=800) as cluster:               # layers made inside go into the group
+with group("cluster", y=800) as cluster:                     # x left out: the centre across               # layers made inside go into the group
     shape("dot", shape="ellipse", w=24, h=24)
 cluster.end = 4                                               # a field as an attribute is .set(end=4); t.x reads it back
 ```
@@ -186,13 +194,10 @@ Things that surprise people the first time:
   `stack` place and size what is made inside them, with `align`, `justify`, `grow=1`, sizes in px, `"50%"`, `"fill"`
   or `"fit"`, and texts that wrap where the box ends (guide `lay-out-a-screen`). Inside a box `x=` / `y=` fail unless
   `apart=True`. Keep raw `x`, `y` for motion and art: a moving shape, a painted world, a camera path.
-- **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0). Give the group `w`, `h` and place the
-  children in it (`w / 2`, `h / 2` is its middle); a group made without a size is fitted to what is inside it when the
-  `with` block ends, and its layers keep their place on screen.
-- **A group made without `w`, `h` is as big as the comp while you fill it.** Leave its `x`, `y` out and its children
-  are placed in comp px. Give it `x=300, y=300` and that comp-sized box is *centred* there (anchor 0.5), so a child at
-  (100, 100) lands far up and left, off screen. To place a group by a point, give it `w`, `h` (then `x`, `y` is its
-  centre, and its children sit in its box), or `anchorX=0, anchorY=0` as well (then `x`, `y` is its top-left).
+- **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0); a child with no `x`, `y` sits at the
+  box's centre. A group made without `w`, `h` fits around what is inside when its `with` block ends: its children's
+  `x`, `y` count from a comp-sized box, so a child left without them sits on the group's own `x`, `y`. To arrange
+  several, use a `column` / `row` / `stack` instead of sums.
 - **Stacking order:** layers are drawn in the order they are made: the first one made is at the bottom, each later one
   on top of it (inside a group the same, among its children). Make the background first; `layer.arrange` with `index`
   (0 = bottom) moves one later.
@@ -277,7 +282,7 @@ Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), nev
 - `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
   suggests notes and hits for each landing).
 - **No sound?** A render of a project with no RostrumSound item, or with `sound: false`, makes a silent mp4; it never fails for that. The Sound server is only needed to make or change the music, not to render it.
-- In a script, `beats()` gives the beats of the scene's song in seconds, to cut or key on; a song's markers work as times (`"#drop"`).
+- In a script, `beats()` gives the beats of the scene's song in seconds, to cut or key on (`beats(bpm=120)` a grid with no song); a song's markers work as times (`"#drop"`), and `marker("drop", 8)` makes a shared one.
 - Guide `timing-to-music`: hearing the song, its beats, snapping and tying layers to its markers.
 
 ## Reading errors

@@ -31,18 +31,20 @@ there and run that one).
 
 ## Timing in one place
 
-Put every moment the film hangs on at the top, as plain numbers or as marker names, and derive the rest:
+Name every moment the film hangs on at the top as a shared marker, and derive the rest from the names:
 
 ```python
-BEAT = 0.5
-SHOT = [0, 4, 9.5, 15, 21, 26]          # cut times
-T_TITLE = SHOT[4] + 2 * BEAT
+data = marker("data", 4)                 # a project marker (the same one edit_markers makes), gives "#data"
+title_in = marker("title", "#data+11")   # a marker may be placed from another
+b = beats(bpm=120, start=data)           # no song yet: a beat grid from the marker ("#data", "#data+0.5", …)
 ```
 
-Music made in RostrumSound brings its own markers (`"#drop"`) and its beats: `beats()` gives the beat times of the
-scene's song in seconds, so cuts can sit on beats (`b = beats(); SHOT = [b[0], b[8], b[16], …]`). A key or a layer's
-`start` also takes a marker directly (`start="#drop"`, `{"#drop+0.2": 1}`). Change the song, re-run, and the picture
-follows. The music itself is never made in 2D: write it with RostrumSound's own `run_script` (guide `timing-to-music`).
+A marker time adds like a number (`data + 0.5` is `"#data+0.5"`) and every time in a script takes one: a key, a layer's
+`start=` / `end=`, `tap(at=)`, `frame().cut(at=)`, `scramble(start=)`, `item.sample(start=)`. Keys and layers written
+this way move when someone drags the marker; re-running the script puts its markers back where it says, and a
+`marker()` line removed removes that marker (never a person's). `after(item, gap=0.2)` is the moment the item's last
+key lands plus the gap. Music made in RostrumSound brings its own markers (`"#drop"`) and `beats()` (no `bpm`) reads the
+song's beats in seconds. The music itself is never made in 2D: write it with RostrumSound's own `run_script` (guide `timing-to-music`).
 
 ## Scenes as functions of a start time
 
@@ -50,11 +52,12 @@ A scene that knows only its own start can move, shorten or swap places by changi
 
 ```python
 def scene_data_lines(t0):
-    for i, line in enumerate(LINES):
-        t = text(f"data{i}", body=line, font=MONO, size=28, x=180, y=300 + i * 44, start=t0, end=t0 + 5)
-        t.key("opacity", {t0 + i * 0.08: 0, t0 + i * 0.08 + 0.3: 1})
+    lines = [text(f"data{i}", body=line, font=MONO, size=28, x=180, y=300 + i * 44, start=t0, end=t0 + 5)
+             for i, line in enumerate(LINES)]
+    for t, line in stagger(lines, every=0.08, start=t0):
+        line.key("opacity", {t: 0, t + 0.3: 1})
 
-scene_data_lines(SHOT[1])
+scene_data_lines(data)
 ```
 
 Give every id a prefix from the scene (`data{i}`, `card_{i}`): ids are what match old to new on a re-run, and one id is

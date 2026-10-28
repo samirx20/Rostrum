@@ -14,6 +14,7 @@ The pointer is moved to the top of its group at each tap, so it draws over what 
 from __future__ import annotations
 
 from . import pathdata, ui_layout as U
+from .script_time import seconds
 from .script_layout import in_layout
 
 SPOTS = ((0.84, 0.6), (0.84, 0.8), (0.64, 0.84), (0.93, 0.5), (0.16, 0.84), (0.5, 1.1))
@@ -80,6 +81,7 @@ def for_script(build) -> dict:
         p = made.get(pointer.id)
         if p is None:
             raise ValueError(f"tap: {pointer.id} is not a pointer made in this script; make one with pointer()")
+        at = seconds(build, at, f"tap({pointer.id}) at")      # seconds or a marker time ("#pay+0.5"), now
         tx, ty = landing(p, target, spot, at)
         t0 = max(at - move, p["t"] + 0.05 if p["t"] is not None else 0.0)
         pointer.key("x", {t0: (p["x"], ease), at: tx}).key("y", {t0: (p["y"], ease), at: ty})
