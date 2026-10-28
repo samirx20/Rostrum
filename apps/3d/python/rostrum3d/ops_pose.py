@@ -190,8 +190,11 @@ def pose_find_joints(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, clay["id"], "has no shape yet", hint="clay.draw / clay.shape make some first.")
     try:
         every = all(st.get("symmetry", "x") == "x" for st in clay["steps"] if not st.get("hidden"))   # built mirrored
-        found, parts = PJ.find_parts(_GRID(ctx.doc, clay["id"], int(args.get("cells", 48))),
-                                     mirror=True if every else None)
+        asked = int(args.get("cells") or 48)
+        grid = _GRID(ctx.doc, clay["id"], asked)
+        if not args.get("cells") and (more := PJ.finer_cells(clay, grid, asked)) > asked:    # a thin part: look finer
+            grid = _GRID(ctx.doc, clay["id"], more)
+        found, parts = PJ.find_parts(grid, mirror=True if every else None)
     except (ValueError, KeyError) as e:
         ctx.fail(codes.BAD_ARGUMENT, clay["id"], f"no joints found: {e}")
     names = args.get("names") or clay.get("jointNames", "plain")

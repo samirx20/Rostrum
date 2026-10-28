@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from rostrum3d import aim, through
+from rostrum3d import aim, pose_joints as PJ, through
 
 from . import pose_link as L, pose_view as PV
 from .pose_drag import PoseDrag
@@ -145,12 +145,14 @@ class Pose(PoseDrag, QObject):
         if not self._finding:                           # Find again in the panel: the same state while it works
             self._finding = True
             self.changed.emit()
-        scene, cid = self.v.sent()[0], it["id"]
+        scene, cid, clay = self.v.sent()[0], it["id"], dict(it)
 
         def job(eng):
             try:
                 eng.ensure_scene(scene)
-                self.gridded.emit((cid, eng.clay_grid(cid, L.CELLS)))
+                grid = eng.clay_grid(cid, L.CELLS)
+                more = PJ.finer_cells(clay, grid, L.CELLS)       # a thin part (a small foot) needs a finer sample
+                self.gridded.emit((cid, eng.clay_grid(cid, more) if more > L.CELLS else grid))
             except Exception as e:  # noqa: BLE001  said on the status line
                 self.gridded.emit((cid, str(e)))
         self.v._r.call(job)

@@ -10,7 +10,7 @@ scene from the document each time you look. One `edit_document` call is one undo
 A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`, `backdrop=True`: a
 right-click on it in the window is a right-click on empty space), the sky `sky` (a dome light
 showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
-`shot_1_camera`, low and looking a little down at the middle of the ground (the horizon a band across the top fifth),
+`shot_1_camera`, 55 cm up and 1.6 m back looking 15° down at the middle of the ground (no horizon in the picture: the Studio sky lights the scene but a camera turned up is what shows it),
 framed for things a hand to an arm tall. So the first look is lit
 and framed before you add anything; change or delete any of them like any item (your script's own ids must differ).
 
