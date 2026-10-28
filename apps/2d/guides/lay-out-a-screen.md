@@ -54,7 +54,8 @@ with scr:
 ```
 
 The screen has no colour of its own unless you give `screen=`: left out, the device's body shows. The blocks' starting
-colours are for a light screen; pass `color=` / `fill=` for a dark one. Content taller than the screen shows past its
+colours follow what they sit on (dark words on a light screen, light words on a dark one or on the body); `color=` /
+`fill=` set your own. Content taller than the screen shows past its
 edge (so you see it and fix it); `device(..., overflow="hidden")` cuts it at the rounded edge.
 
 ## A row of cards

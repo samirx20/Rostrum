@@ -96,7 +96,7 @@ for a 390 px wide screen and scaled to the screen they are made in).
   first), leaving the other side for words.
 - Its screen is a **column** filling the screen: blocks made in it go one under the other, full width. Put the
   content between the bars in its own padded `column(padding=20, gap=14)` (guide `lay-out-a-screen`). The screen has
-  no colour unless `screen="#ffffff"`; the blocks' starting colours are for a light screen. What runs past the screen
+  no colour unless `screen="#ffffff"`; the blocks' starting colours follow the screen (light or dark). What runs past the screen
   shows, so it is seen; `overflow="hidden"` cuts it at the screen's rounded edge.
 - `tab_bar` sits at the bottom of the column: a spacer it makes before itself takes the room left.
 - Made outside any box, a block needs `x=` and `y=` (its top-left). Inside one, `x` / `y` need `apart=True`.

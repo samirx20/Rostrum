@@ -39,6 +39,31 @@ def parent_size(build) -> tuple[float, float]:
     return 1920.0, 1080.0
 
 
+DARK = {"ink": "#f3f4f6", "muted": "#9ca3af", "line": "#2a303c", "paper": "#171b24", "off": "#3a4150"}
+LIGHT = {"ink": INK, "muted": MUTED, "line": LINE, "paper": PAPER, "off": "#d1d5db"}
+
+
+def ground(build) -> str:
+    """The colour behind the blocks made now: the nearest box with its own background, else a device's body (a screen
+    without a colour shows it), else the scene's background."""
+    for node in reversed(build.holders):
+        if node["type"] == "comp":
+            return node.get("background", "#000000")
+        if node.get("background"):
+            return node.get("bgColor", "#334155")
+        body = next((c for c in node.get("layers", []) if c["id"] == f'{node["id"]}_body'), None)
+        if body is not None:
+            return body.get("fill", "#0b0d12")
+    return "#000000"
+
+
+def palette(build) -> dict:
+    """The blocks' starting colours for what they sit on: dark words on a light screen, light words on a dark one."""
+    c = ground(build).lstrip("#")[:6].ljust(6, "0")
+    r, g, b = (int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return LIGHT if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 else DARK
+
+
 def device_box(kind, build, x=None, y=None, w=None, h=None, fit=None, anchor="center", margin=None):
     """(x, y, w, h) of a device centred on (x, y). Given w / h win; else the size comes from `fit`, the share of the
     parent's height it fills; then x from `anchor` inside a title-safe area `margin` px in (default 8 % of the width)."""

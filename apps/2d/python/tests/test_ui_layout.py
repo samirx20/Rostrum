@@ -74,3 +74,10 @@ def test_a_rerun_keeps_the_same_ids():
                           "tabs", "cursor", "cursor_arrow", "cursor_ripple1") if d.item(i)}
     run(SRC, d)
     assert {i for i in before if d.item(i)} == before and len(before) == 12
+
+
+def test_blocks_take_their_colours_from_the_screen_they_sit_on():
+    src = 'comp("main", width=1920, height=1080, fps=30, duration=2)\nwith device("phone"{screen}):\n    tab_bar(["Home", "You"])\n'
+    dark, light = run(src.format(screen="")), run(src.format(screen=', screen="#ffffff"'))
+    assert dark.item("tabs")["bgColor"] == U.DARK["paper"] and dark.item("tabs_label1")["color"] == U.DARK["muted"]
+    assert light.item("tabs")["bgColor"] == U.LIGHT["paper"]

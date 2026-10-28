@@ -15,14 +15,14 @@ Each block is a container of shapes and texts with ids made from the block's id 
 it is moved, keyed, restyled or taken apart like anything else. Made in a container (a device's screen, a column, a
 row) the container places it and it fills the width (w= for its own; apart=True with x= / y= to place it yourself);
 made anywhere else it needs x= and y= (its top-left). Sizes and colours are a starting point (drawn for a 390 px wide
-screen, scaled to the parent's width, colours for a light screen); every one is a parameter. Nothing is animated
+screen, scaled to the parent's width, colours for what they sit on, light or dark: ui_layout.palette); every one is a parameter. Nothing is animated
 except `counter`.
 """
 from __future__ import annotations
 
 from . import ui_device, ui_layout as U
 from .script_layout import in_layout
-from .ui_layout import ACCENT, INK, LINE, MUTED, PAPER
+from .ui_layout import ACCENT
 
 
 def for_script(build) -> dict:
@@ -32,6 +32,10 @@ def for_script(build) -> dict:
     def auto(word):                         # block ids when none is given: list, list_2 …
         used[word] = used.get(word, 0) + 1
         return word if used[word] == 1 else f"{word}_{used[word]}"
+
+    def colours(**given):                   # the starting colours for what the block sits on, given ones kept
+        P = U.palette(build)
+        return [P[k] if v is None else v for k, v in given.items()]
 
     def unit():
         return U.parent_size(build)[0] / U.BASE_W
@@ -62,8 +66,9 @@ def for_script(build) -> dict:
         return L("group", id, **{"layout": kind, "origin": "top-left", "w": w, "h": "fit" if h is None else h,
                                  "padding": 0, "gap": 0, **place, **f})
 
-    def status_bar(id=None, w=None, y=None, x=None, time="9:41", color=INK, h=None, size=None, apart=False):
+    def status_bar(id=None, w=None, y=None, x=None, time="9:41", color=None, h=None, size=None, apart=False):
         """Time on the left, signal, Wi-Fi and battery on the right."""
+        color, = colours(ink=color)
         id = id or auto("status")
         u = unit()
         h = h or 54 * u
@@ -79,9 +84,10 @@ def for_script(build) -> dict:
                 L("shape", f"{id}_battery", w=size * 1.45, h=size * 0.62, radius=size * 0.2, fill=color)
         return g
 
-    def nav_bar(title, id=None, w=None, y=None, x=None, h=None, back=None, action=None, color=INK, muted=MUTED, size=None,
+    def nav_bar(title, id=None, w=None, y=None, x=None, h=None, back=None, action=None, color=None, muted=None, size=None,
                 apart=False):
         """A screen's title row: an optional back label left and action word right over a big title."""
+        color, muted = colours(ink=color, muted=muted)
         id = id or auto("nav")
         u = unit()
         h = h or 96 * u
@@ -97,10 +103,11 @@ def for_script(build) -> dict:
             say(f"{id}_title", title, size, color, weight=760)
         return g
 
-    def tab_bar(labels, id=None, w=None, y=None, x=None, h=None, active=0, fill=PAPER, color=MUTED, accent=ACCENT, line=LINE,
+    def tab_bar(labels, id=None, w=None, y=None, x=None, h=None, active=0, fill=None, color=None, accent=ACCENT, line=None,
                 apart=False):
         """Tabs evenly across a bar, each an icon square and a label; `active` in the accent colour. In a column it
         sits at the bottom: a spacer (`<id>_push`, grow 1) made before it takes the room left."""
+        fill, color, line = colours(paper=fill, muted=color, line=line)
         id = id or auto("tabs")
         h = h or 84 * unit()
         if in_layout(build) and not apart:
@@ -117,11 +124,12 @@ def for_script(build) -> dict:
                         say(f"{id}_label{i}", lab, h * 0.15, c, weight=600 if i == active else 500)
         return g
 
-    def list_rows(rows, id=None, x=None, y=None, w=None, row_h=None, avatar=True, color=INK, muted=MUTED, line=LINE,
+    def list_rows(rows, id=None, x=None, y=None, w=None, row_h=None, avatar=True, color=None, muted=None, line=None,
                   accent=ACCENT, size=None, pad=None, apart=False):
         """One row a container (`<id>_r0` …): an avatar with the title's first letter, the title, a detail line under
         it, a value on the right, a divider. A row is a string, (title, detail) or (title, detail, value).
         Returns the row groups, top first (stagger them in; layer.stagger orders by place); .group too."""
+        color, muted, line = colours(ink=color, muted=muted, line=line)
         id = id or auto("list")
         u = unit()
         row_h = row_h or 72 * u
@@ -149,11 +157,12 @@ def for_script(build) -> dict:
                 made.append(r)
         return made
 
-    def card(id, x=None, y=None, w=None, h=None, title=None, detail=None, value=None, fill=PAPER, color=INK, muted=MUTED,
+    def card(id, x=None, y=None, w=None, h=None, title=None, detail=None, value=None, fill=None, color=None, muted=None,
              radius=None, shadow=True, pad=None, size=None, apart=False):
         """A rounded card (`<id>_bg`, filling the card) with an optional title and detail at its top and a big value
         at its bottom (`<id>_body`, a padded column: make more of the card's layers inside `with layer("<id>_body")`);
         `shadow` adds a soft drop shadow. Left out, h fits what is inside."""
+        fill, color, muted = colours(paper=fill, ink=color, muted=muted)
         u = unit()
         pad = pad if pad is not None else 20 * u
         size = size or (min(float(h) * 0.13, 30 * u) if isinstance(h, (int, float)) else 22 * u)
@@ -187,10 +196,11 @@ def for_script(build) -> dict:
         return g
 
     def toggle(id=None, x=None, y=None, on=False, w=None, h=None, label=None, detail=None, on_color="#22c55e",
-               off_color="#d1d5db", knob="#ffffff", color=INK, muted=MUTED, apart=False):
+               off_color=None, knob="#ffffff", color=None, muted=None, apart=False):
         """A switch: the track (`<id>_track`) and the knob (`<id>_knob`). To flip it, key the knob's x (from h/2 to
         w - h/2) and the track's fill. With `label` (and `detail`) it is a settings row, full width: the words on the
         left, the switch (`<id>_switch`) on the right."""
+        off_color, color, muted = colours(off=off_color, ink=color, muted=muted)
         id = id or auto("toggle")
         u = unit()
         w, h = float(w or 52 * u), float(h or 32 * u)
@@ -210,10 +220,11 @@ def for_script(build) -> dict:
         return g
 
     def bars(values, id=None, x=None, y=None, w=None, h=None, color=ACCENT, gap=0.35, top=None, radius=None, labels=None,
-             label_color=MUTED, size=None, apart=False):
+             label_color=None, size=None, apart=False):
         """A bar chart: one bar per value, standing on the chart's floor (origin bottom-center, so a key on `scaleY`
         from 0 grows it upward), heights to `top` (default the biggest value), `gap` the share of each slot left
         empty. `labels` go under the bars. Returns the bar shapes, left first; .group too."""
+        label_color, = colours(muted=label_color)
         id = id or auto("bars")
         u = unit()
         size = size or 13 * u
