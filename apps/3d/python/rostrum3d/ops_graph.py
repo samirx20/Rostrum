@@ -44,7 +44,7 @@ def _one(ctx, targets):
     return targets[0], ctx.item(targets[0])
 
 
-@R.operation("graph.add", "Add a block to a material's Blocks view (its graph): `type` one of image, noise, mix, ramp, "
+@R.operation("graph.add", "Add a block to a material's Blocks view (its graph): `type` one of image, noise, pattern, mix, ramp, "
              "curve, colourAdjust, bevel, occlusion, lines, lightToColour, halftone; optional `id` (else <type>_<n>), "
              "`x`, `y` and `values` ({setting: value}, the type's settings: graph.describe's catalogue). A Lines, "
              "Light to colour or Halftone block's settings are the material's own fields; it switches on when wired "

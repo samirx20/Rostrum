@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <map>
+#include <variant>
 #include <vector>
 
 #include <pxr/base/gf/vec3f.h>
@@ -41,7 +42,7 @@ std::string squash(const std::string& s) {
 }
 
 // grey / brightness: the document's number <-> colour conversions; Cycles converts by itself, so they pass through.
-const char* kTypes[] = {"colouradjust", "occlusion", "bevel", "image", "noise", "mix", "ramp", "curve", "grey",
+const char* kTypes[] = {"colouradjust", "occlusion", "bevel", "image", "noise", "pattern", "mix", "ramp", "curve", "grey",
                         "brightness"};
 
 std::string block_type(const std::string& shader_id) {
@@ -134,6 +135,76 @@ float read_val(const Values& b, const std::string& n) { return b.num(n.c_str(), 
 
 constexpr int kTable = 256;  // Cycles' own ramp / curve table size
 
+// Pattern (graph_blocks.PATTERNS): the same sums as its MaterialX nodegraph (tools/make_blocks_mtlx.py), from Cycles'
+// math nodes, only for the shape picked. On the UVs turned by `turn` (MaterialX's rotate2d turns the other way round
+// from Cycles' z rotation: negated) and times `repeats`. Value: checks / stripes 0 on A, 1 on B; weave the thread's
+// height, sin(pi * fraction) across it. Colour: A..B by which, a weave's threads WEAVE_SHADE darker at their edges.
+// Its outputs, plus "_a" / "_b": the colour inputs a wire feeds.
+template <class Node>
+std::map<std::string, Socket> pattern_block(Node node, const Values& b) {
+  const SdfValueTypeName kVec = SdfValueTypeNames->Vector3f, kStr = SdfValueTypeNames->String;
+  constexpr float kPi = 3.14159265f, kShade = 0.45f;
+  int count = 0;
+  struct Out { mutable UsdShadeShader s; const char* name; };  // link() takes the shaders by reference
+  const auto math = [&](const char* op, std::vector<std::variant<Out, float>> ins) {
+    UsdShadeShader m = node(("Math" + std::to_string(count++)).c_str(), "cycles_math");
+    set(m, "math_type", kStr, std::string(op));
+    for (size_t i = 0; i < ins.size(); ++i) {
+      const std::string in = "value" + std::to_string(i + 1);
+      if (const Out* o = std::get_if<Out>(&ins[i])) link(m, in.c_str(), kFloat, o->s, o->name, kFloat);
+      else set(m, in.c_str(), kFloat, std::get<float>(ins[i]));
+    }
+    return Out{m, "value"};
+  };
+  UsdShadeShader coords = node("Coords", "cycles_texture_coordinate");
+  UsdShadeShader rot = node("Turn", "cycles_vector_rotate");
+  set(rot, "rotate_type", kStr, std::string("z_axis"));
+  set(rot, "angle", kFloat, -b.num("turn", 0) * kPi / 180.0f);
+  link(rot, "vector", kVec, coords, "uv", kVec);
+  UsdShadeShader scale = node("Repeats", "cycles_vector_math");
+  set(scale, "math_type", kStr, std::string("scale"));
+  set(scale, "scale", kFloat, b.num("repeats", 10));
+  link(scale, "vector1", kVec, rot, "vector", kVec);
+  UsdShadeShader xyz = node("UV", "cycles_separate_xyz");
+  link(xyz, "vector", kVec, scale, "vector", kVec);
+  const Out u{xyz, "x"}, v{xyz, "y"};
+  // 0 or 1 by the parity of a cell: fraction((floor x + floor y) / 2) * 2
+  const auto parity = [&](Out x, Out y) {
+    return math("multiply", {math("fraction", {math("multiply", {math("add", {math("floor", {x}), math("floor", {y})}),
+                                                                 0.5f})}), 2.0f});
+  };
+  const std::string shape = b.text("shape", "checks");
+  Out which, value;
+  if (shape == "stripes") {
+    which = value = math("less_than", {math("fraction", {u}), b.num("width", 0.5f)});
+  } else if (shape == "weave") {
+    const Out u2 = math("multiply", {u, 2.0f}), v2 = math("multiply", {v, 2.0f});
+    const Out hu = math("sine", {math("multiply", {math("fraction", {u2}), kPi})});
+    const Out hv = math("sine", {math("multiply", {math("fraction", {v2}), kPi})});
+    which = parity(u2, v2);
+    value = math("multiply_add", {which, math("subtract", {hv, hu}), hu});   // A's threads run up (hu), B's across
+  } else {
+    which = value = parity(u, v);
+  }
+  UsdShadeShader col = node("", "cycles_mix_color");
+  set(col, "blend_type", kStr, std::string("mix"));
+  set(col, "a", kColor, b.colour("a", GfVec3f(1)));
+  set(col, "b", kColor, b.colour("b", GfVec3f(0.25f)));
+  link(col, "fac", kFloat, which.s, which.name, kFloat);
+  std::map<std::string, Socket> outs{{"colour", {col, "result", kColor}}, {"value", {value.s, value.name, kFloat}},
+                                     {"_a", {col, "a", kColor}}, {"_b", {col, "b", kColor}}};
+  if (shape == "weave") {
+    UsdShadeShader shaded = node("Shade", "cycles_mix_color");
+    set(shaded, "blend_type", kStr, std::string("multiply"));
+    set(shaded, "fac", kFloat, 1.0f);
+    link(shaded, "a", kColor, col, "result", kColor);
+    const Out s = math("multiply_add", {value, kShade, 1.0f - kShade});
+    link(shaded, "b", kColor, s.s, s.name, kFloat);
+    outs["colour"] = {shaded, "result", kColor};
+  }
+  return outs;
+}
+
 Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::string& id, const std::string& type,
                    const std::string& shader_id, const Values& b, const std::string& where) {
   Block k{id, type, {}, {}};
@@ -158,6 +229,13 @@ Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     for (const char* in : {"scale", "detail", "roughness", "distortion"}) k.ins[in] = {n, in, kFloat};
     k.outs["value"] = {n, "fac", kFloat};
     k.outs["colour"] = {n, "color", kColor};
+    k.outs["out"] = colour_out ? k.outs["colour"] : k.outs["value"];
+  } else if (type == "pattern") {
+    k.outs = pattern_block(node, b);
+    k.ins["a"] = k.outs["_a"];
+    k.ins["b"] = k.outs["_b"];
+    k.outs.erase("_a");
+    k.outs.erase("_b");
     k.outs["out"] = colour_out ? k.outs["colour"] : k.outs["value"];
   } else if (type == "image") {
     const std::string file = b.text("file", "");
@@ -333,7 +411,7 @@ void author_blocks(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     const std::string name = p.GetName().GetString();
     if (type.empty())
       fail(where + "." + name, "is a \"" + sid.GetString() + "\" block, which Final can't draw",
-           "the Rostrum blocks (ND_rostrum_<type>: image, noise, mix, ramp, curve, colour adjust, bevel, occlusion)");
+           "the Rostrum blocks (ND_rostrum_<type>: image, noise, pattern, mix, ramp, curve, colour adjust, bevel, occlusion)");
     blocks[name] = cycles_block(stage, mat, name, type, sid.GetString(), Values{s}, where);
     order.emplace_back(s, name);
   }

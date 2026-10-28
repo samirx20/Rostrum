@@ -33,9 +33,14 @@ MATERIAL = [
     N("roughness", "Roughness", "Surface", 0, 1, 0.01, default=0.5, when=IS("roughnessTexture", ""),
       help="0 = mirror, 1 = chalk. On glass it also blurs what is seen through it (frosted glass)"),
     X("roughnessTexture", "Roughness image", "Surface", "", D, help="A grey image read as raw numbers"),
-    N("transmission", "Transmission", "Glass", 0, 1, 0.01, "", S, help="1 = light passes through (glass, water)"),
+    N("transmission", "Transmission", "Glass", 0, 1, 0.01, "", S,
+      help="1 = light passes through (glass, water, juice). Below 1 the rest is an opaque painted surface mixed in: "
+           "clear and tinted glass and liquids need 1 (the base colour tints what is seen through)"),
     N("ior", "Index of refraction", "Glass", 1, 3, 0.01, "", S, default=1.5,
       help="How much light bends: water 1.33, glass 1.5, sapphire 1.77, diamond 2.42"),
+    T("thinWalled", "Thin walled", "Glass", False, D, NOT("transmission", 0),
+      help="The surface is one sheet with no inside (a window pane, a bubble, a bottle made as a single surface): "
+           "light passes through it without bending. Off: a solid or a closed shell, bent going in and out (Cycles)"),
     N("coat", "Clear coat", "Coat", 0, 1, 0.01, "", S, help="A thin varnish layer over the surface"),
     N("coatRoughness", "Coat roughness", "Coat", 0, 1, 0.01, "", S, NOT("coat", 0), default=0.03),
     C("coatTint", "Coat colour", "Coat", "#ffffff", D, NOT("coat", 0),
@@ -116,7 +121,7 @@ MATERIAL = [
       help="The screen's turn: the rows of dots or the lines run at this angle"),
     C("halftoneColor", "Colour", "Halftone", "#1a1a1a", S, HALF),
 ]
-FINAL_ONLY = {"coatTint", "coatIor", "sheen", "anisotropy", "thinFilm", "subsurfaceRadius"}   # Cycles only (see each help); the panel tags their rows "Final"
+FINAL_ONLY = {"thinWalled", "coatTint", "coatIor", "sheen", "anisotropy", "thinFilm", "subsurfaceRadius"}   # Cycles only (see each help); the panel tags their rows "Final"
 QUICK_APPROX = {"subsurface", "subsurfaceColor"}   # Final shows them fully, the quick view only a tint (ENGINE_CONTRACT § 2); also tagged "Final"
 # The stylized blocks' tags go on each group's switch and its first row only (the row right under the group's heading):
 # one tag says it for the whole group, the same word on every row would only repeat it.

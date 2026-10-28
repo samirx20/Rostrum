@@ -6,7 +6,7 @@ apps/3d/core/mtlx/rostrum_blocks.mtlx: one nodedef per block output, ND_<rostrum
 the block's port: value, colour, normal), each with a nodegraph in MaterialX standard nodes so Storm's MaterialX code
 generator draws it (Final maps the nodedef to its Cycles node instead, core/src/material_blocks.cpp); plus
 rostrum_grey (a number into a colour) and rostrum_brightness (a colour into a number). Quick-view simplifications:
-Noise runs Cycles' own noise (core/mtlx/rostrum_cycles_noise.glsl), so Quick and Final draw the same pattern; its Detail
+Pattern draws on the UVs with standard nodes (Final builds the same sums from Cycles' math nodes); Noise runs Cycles' own noise (core/mtlx/rostrum_cycles_noise.glsl), so Quick and Final draw the same pattern; its Detail
 is whole layers; Bevel and Ambient occlusion show nothing (Final only); a ramp's / curve's stops come
 in as pos1..8 / col1..8 (val1..8) with count. apps/3d/stylized/mtlx/rostrum_stylized.mtlx: the rostrum_style type
 and the stylized blocks' nodedefs (no implementation: the stylized renderer reads the material's fields).
@@ -23,6 +23,7 @@ sys.path.insert(0, str(APP / "python"))
 from rostrum3d import graph_blocks as B, graph_mtlx as X  # noqa: E402
 
 LUMA = "0.2126, 0.7152, 0.0722"
+WEAVE_SHADE = 0.45     # a weave's thread is this much darker at its edges than on top (core material_blocks.cpp too)
 
 
 def i(name, t, ref):
@@ -57,6 +58,43 @@ def noise(t):        # Cycles' own noise (rostrum_cycles_noise.glsl), so Quick d
 def image(t):
     body = [n("image", "img", "color3", i("file", "filename", "@file"))]
     return body, ("#img" if t == "color3" else brightness("#img", body))
+
+
+def pattern(t):      # on the UVs: checks, stripes or a plain weave (graph_blocks.PATTERNS), picked by shapeIndex
+    f = lambda name, cat, *ins: n(cat, name, "float", *ins)  # noqa: E731
+    body = [n("texcoord", "uv", "vector2", i("index", "integer", 0)),
+            n("rotate2d", "rot", "vector2", i("in", "vector2", "#uv"), i("amount", "float", "@turn")),
+            n("multiply", "p", "vector2", i("in1", "vector2", "#rot"), i("in2", "float", "@repeats")),
+            f("u", "extract", i("in", "vector2", "#p"), i("index", "integer", 0)),
+            f("v", "extract", i("in", "vector2", "#p"), i("index", "integer", 1))]
+    for k in ("u", "v"):     # whole cells, and each axis at twice the rate for the weave's threads
+        body += [f(f"f{k}", "floor", i("in", "float", f"#{k}")),
+                 f(f"{k}2", "multiply", i("in1", "float", f"#{k}"), i("in2", "float", 2)),
+                 f(f"f{k}2", "floor", i("in", "float", f"#{k}2")),
+                 f(f"r{k}2", "modulo", i("in1", "float", f"#{k}2"), i("in2", "float", 1)),
+                 f(f"a{k}", "multiply", i("in1", "float", f"#r{k}2"), i("in2", "float", 3.14159265)),
+                 f(f"h{k}", "sin", i("in", "float", f"#a{k}"))]
+    body += [f("cs", "add", i("in1", "float", "#fu"), i("in2", "float", "#fv")),
+             f("checks", "modulo", i("in1", "float", "#cs"), i("in2", "float", 2)),
+             f("ru", "modulo", i("in1", "float", "#u"), i("in2", "float", 1)),
+             f("stripes", "ifgreater", i("value1", "float", "@width"), i("value2", "float", "#ru"),
+               i("in1", "float", 1), i("in2", "float", 0)),
+             f("ws", "add", i("in1", "float", "#fu2"), i("in2", "float", "#fv2")),
+             f("over", "modulo", i("in1", "float", "#ws"), i("in2", "float", 2)),
+             f("height", "mix", i("fg", "float", "#hv"), i("bg", "float", "#hu"), i("mix", "float", "#over")),
+             f("which", "switch", i("in1", "float", "#checks"), i("in2", "float", "#stripes"),
+               i("in3", "float", "#over"), i("which", "integer", "@shapeIndex"))]
+    if t == "float":
+        body.append(f("val", "switch", i("in1", "float", "#checks"), i("in2", "float", "#stripes"),
+                      i("in3", "float", "#height"), i("which", "integer", "@shapeIndex")))
+        return body, "#val"
+    body += [n("mix", "col", "color3", i("fg", "color3", "@b"), i("bg", "color3", "@a"), i("mix", "float", "#which")),
+             f("hs", "multiply", i("in1", "float", "#height"), i("in2", "float", WEAVE_SHADE)),
+             f("wshade", "add", i("in1", "float", "#hs"), i("in2", "float", 1 - WEAVE_SHADE)),
+             f("shade", "switch", i("in1", "float", 1), i("in2", "float", 1), i("in3", "float", "#wshade"),
+               i("which", "integer", "@shapeIndex")),
+             n("multiply", "out", "color3", i("in1", "color3", "#col"), i("in2", "float", "#shade"))]
+    return body, "#out"
 
 
 def mix(t):
@@ -129,14 +167,14 @@ def occlusion(t):    # Final only: no darkening in Quick
     return [n("dot", "col", "color3", i("in", "color3", "@colour"))], "#col"
 
 
-GRAPHS = {"noise": noise, "image": image, "mix": mix, "ramp": ramp, "curve": curve, "colourAdjust": colour_adjust,
+GRAPHS = {"noise": noise, "pattern": pattern, "image": image, "mix": mix, "ramp": ramp, "curve": curve, "colourAdjust": colour_adjust,
           "bevel": bevel, "occlusion": occlusion}
 
 
 def nodedef(name, node, ins, outs) -> list[str]:
     rows = [f'  <nodedef name="{name}" node="{node}" nodegroup="rostrum">']
     for nm, t, v in ins:
-        uni = ' uniform="true"' if t in ("string", "filename") or nm in ("count", "blendIndex", "interpolateIndex") else ""
+        uni = ' uniform="true"' if t in ("string", "filename") or nm in ("count", "blendIndex", "interpolateIndex", "shapeIndex") else ""
         rows.append(f'    <input name="{nm}" type="{t}"' + ("" if v is None else f' value="{X._fmt(t, v)}"') + f"{uni}/>")
     rows += [f'    <output name="{o}" type="{t}"/>' for o, t in outs] + ["  </nodedef>"]
     return rows

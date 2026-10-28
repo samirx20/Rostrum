@@ -114,6 +114,16 @@ def _ch(name, label, options: dict, default):
     return Input(Param.choice(name, list(options), label=label, labels=options, default=default))
 
 
+def _when(inp: Input, cond: dict) -> Input:
+    inp.param = dataclasses.replace(inp.param, valid_when=cond)
+    return inp
+
+
+# Pattern's shapes (on the UVs, `repeats` per 0..1): value is 0 on colour A and 1 on colour B; Weave is a plain weave,
+# A's threads over-under B's, each thread rounded across (value = its height, 0 at its edges to 1 on top).
+PATTERNS = {"checks": "Checks", "stripes": "Stripes", "weave": "Weave"}
+
+
 def _stylized_inputs(group: str, toggle: str) -> list[Input]:
     """A stylized block's settings: the material's own fields of that group, its switch left out (the wire is the
     switch); conditions on the switch dropped, the others kept (Softness shows with Smooth edges)."""
@@ -151,6 +161,18 @@ BLOCKS: list[Block] = [
         _n("distortion", "Distortion", 0.0, 0, 100, 0.1, help="Swirls the pattern"),
     ], [("value", "Value", "number"), ("colour", "Colour", "colour")],
         words=["pattern", "cloud", "random", "grain", "procedural"], summary="scale", mtlx="rostrum_noise"),
+    Block("pattern", "Pattern", "Patterns", [
+        _ch("shape", "Shape", PATTERNS, "checks"),
+        _c("a", "Colour A", "#ffffff", help="Checks and stripes: the first colour; weave: the threads running up the cloth"),
+        _c("b", "Colour B", "#404040", help="Checks and stripes: the second colour; weave: the threads running across"),
+        _n("repeats", "Repeats", 10, 0.01, 1000, 0.1, port=None,
+           help="How many times the pattern repeats across the surface's unfolded square (its UVs, 0 to 1)"),
+        _when(_n("width", "Stripe width", 0.5, 0, 1, 0.01, port=None, help="How much of each repeat is colour B"),
+              {"is": ["shape", "stripes"]}),
+        _n("turn", "Turn", 0, -180, 180, 1, "°", port=None, help="Turns the pattern on the surface"),
+    ], [("colour", "Colour", "colour"), ("value", "Value", "number")],
+        words=["checker", "checks", "stripes", "weave", "plaid", "fabric", "cloth", "procedural"], summary="shape",
+        mtlx="rostrum_pattern"),
     Block("mix", "Mix", "Colour", [
         _n("factor", "Factor", 0.5, 0, 1, 0.01, help="0 = A, 1 = B blended over A"),
         _c("a", "A", "#000000"),
