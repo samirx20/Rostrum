@@ -12,6 +12,8 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               a shape whose lowest point is more than GAP_M above the ground with nothing touching it from
                               below, or more than GAP_M below the ground (the ground: the backdrop's top, else y = 0). Judged on
                               the sampled frames together: a jump or a fall is not floating, so only a gap present on every one counts.
+  separated:<part> / leaves_frame:<item> / no_floor:<shot>, and cut_edge:<cloth|copies> from the stored simulation: from the
+                              document over the whole shot (rostrum3d/faults.py), in the same list.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import faults as F
 
+from rostrum3d.faults import doc_faults
 from rostrum3d.motion_track import Track
 
 from .facts import measure
@@ -198,6 +201,10 @@ def check(data: dict, info: dict, frames: list[int], pngs: dict, folder=None) ->
     unique = {}
     for x in found:
         unique.setdefault(x["id"], x)
+    for x in doc_faults(data, info, folder, at=frames[0] if len(frames) == 1 else None):
+        unique[x["id"]] = x                      # a cloth's / copies' own points beat their box (same id), the rest are new
+        if x["id"].startswith("leaves_frame:"):     # one fault per thing: leaving the picture says more than being cut on the way
+            unique.pop("cut_edge:" + x["id"].split(":", 1)[1], None)
     return list(unique.values())
 
 

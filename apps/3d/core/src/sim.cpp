@@ -2,8 +2,9 @@
 // tolerances — contact distance, sleep speeds, slop — are tuned for things that size; a 3 cm bud in metres would sink
 // and jitter), and scaled back on the way out: gravity, speeds and masses scale with it, so the motion is the same.
 // Cloth (brief 26b) is a Jolt soft body in the same world: it lands on the still bodies, the falling ones and the ground
-// (Jolt soft bodies don't collide with each other or with themselves).
+// (Jolt soft bodies don't collide with each other or with themselves: cloth_self.h keeps a cloth off itself).
 #include "sim.h"
+#include "cloth_self.h"
 #include "cloth_wind.h"
 
 #include <Jolt/Jolt.h>
@@ -477,6 +478,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   // the cloths, after the starts-inside test (a cloth may start lying on something)
   struct Edge { int a, b; double rest; };
   std::vector<JPH::BodyID> cloth_ids;
+  std::vector<ClothSelf> cloth_self;  // each cloth kept off itself
   std::vector<std::vector<Edge>> cloth_edges(cloths.size());
   std::vector<double> cloth_lowest(cloths.size());
   std::vector<std::vector<float>> cloth_held(cloths.size());  // a waiting cloth's own point weights (1 / mass), put back at its frame
@@ -492,6 +494,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     const JPH::BodyID id = bi.CreateAndAddSoftBody(sb, JPH::EActivation::Activate);
     if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
     cloth_ids.push_back(id);
+    cloth_self.emplace_back(cl, k);
     if (cl.wake > 0) cloth_held[c] = hold_cloth(physics, id);  // Falls from: every point held (as a pin) until its frame
     std::set<std::pair<int, int>> seen;
     for (const auto& t : cl.triangles)
@@ -538,6 +541,8 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         if (e != JPH::EPhysicsUpdateError::None)
           throw Error("simulate: the physics ran out of room at frame " + std::to_string(setup.start + f) +
                       " (too many things touching at once): simulate fewer bodies, or give them Shape: Box");
+        for (size_t c = 0; c < cloths.size(); ++c)
+          if (cloths[c].wake <= f) cloth_self[c].step(physics, cloth_ids[c]);
       }
     auto& row = out.frames[size_t(f)];
     row.resize(out.rows.size());

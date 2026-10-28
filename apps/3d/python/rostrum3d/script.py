@@ -43,7 +43,7 @@ from rostrum_core.keys import key_id
 from . import aim, build, clay_detail, start_lights, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from rostrum_core.tree import walk
 
-from . import script_rerun
+from . import script_figure, script_rerun
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -251,10 +251,30 @@ class Item:
         pts, node = [list(p) for p in profile], self.node
         return self._step(clay_steps.spin_values(node, _vec(values), pts, clay_detail.detail(self._b.root, node)))
 
+    def pose(self, part: str, keys, holds=None, ease: str = "smooth") -> "Item":
+        """Pose a clay figure by dragging a part: {seconds: (x, y, z)} world points the part's end goes to at each
+        time (pose.drag; "hand.R", "head", "foot.L" …); holds= joints that stay put. Its joints are found (the engine)
+        the first time it is posed, so pose after the last lump."""
+        script_figure.pose(self._b, self._clay_node("pose"), part, keys, holds, ease)
+        return self
+
+    def bend(self, joint: str, keys, ease: str = "smooth") -> "Item":
+        """Turn a clay figure's joint: {seconds: (x, y, z)} degrees about the clay's own X / Y / Z (it faces +Z) from
+        its rest, at each time ("arm.R" (0, 0, 120) raises the right arm; "head" (0, 30, 0) turns the head)."""
+        script_figure.bend(self._b, self._clay_node("bend"), joint, keys, ease)
+        return self
+
+    def _clay_node(self, what: str) -> dict:
+        if self.node["type"] != "clay":
+            raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() poses a clay")
+        return self.node
+
     def _step(self, values: dict) -> "Item":
         if self.node["type"] != "clay":
             raise ValueError(f"{self.id} is a {self.node['type']}; .lump(), .draw(), .spin() and .stroke() are for "
                              "a clay")
+        if self.node.get("bones"):
+            raise ValueError(f"{self.id}: already posed; make its whole shape (every lump, draw, stroke) before .pose / .bend")
         step_id = self._b.new_id(f"{self.id}.s{len(self.node['steps']) + 1}", loose=True)   # an operation's: .step_N
         self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}"))
         return self
@@ -290,9 +310,14 @@ def _vec(values: dict) -> dict:
 
 
 def _clay(b: "Build", id_=None, draw=None, spin=None, facing=None, axis=None, puff=None, **values) -> Item:
-    """clay(id, **fields), or clay(id, draw=[…] / spin=[…]) made from a drawing in the scene (as clay.add's)."""
+    """clay(id, **fields): a ball of `radius` (at `at`, its middle; `to` = a capsule), or empty for .lump / .draw; or
+    clay(id, draw=[…] / spin=[…]) made from a drawing in the scene (as clay.add's). Made without a height (no at, y,
+    draw or spin) it stands on the ground, its own space the scene's (script_figure.py)."""
     if draw is None and spin is None:
-        return b.item("clay", id_, **values)
+        values, first, grounded = script_figure.start(values)
+        it = b.item("clay", id_, **values)
+        b.figures[it.id] = {"ground": grounded}
+        return it._step(first) if first else it
     args = _vec({k: v for k, v in (("facing", facing), ("axis", axis), ("puff", puff)) if v is not None})
     args.update({"draw" if draw is not None else "spin": [list(p) for p in (draw if draw is not None else spin)],
                  "symmetry": values.get("symmetry") or "x"})
@@ -347,6 +372,7 @@ class Build:
         self.doc, self.name, self.owned = doc, name, {}                    # owned: id -> its list, things already in the document it takes
         self.reserved |= script_rerun.reserved(doc, name)                  # a counted id never lands on another's id
         self.handles, self.removing, self.keyed = {}, set(), set()         # edit()'s handles; remove()'s ids; (node, field) keyed this run
+        self.figures = {}                                                  # clay id -> {ground}: rests on the ground at the end (script_figure.py)
 
     def _found(self, id_: str, what: str) -> tuple[str, dict]:
         """(its list, the document's node) of a thing directly in the scene, for edit / remove."""
@@ -439,9 +465,21 @@ class Build:
         into.append(node)
         return Item(self, node)
 
+    def _attach(self, type_: str, on) -> dict:
+        """attach_to=<item>: it follows that item (follow.py), riding the posed bone nearest it on a clay,
+        so a part placed on a body never drifts off it."""
+        oid = _id_of(on)
+        if oid not in self.taken and not (self.doc is not None and any(
+                n.get("id") == oid for n in walk(self.doc.data, KIND.lists))):
+            raise ValueError(f"attach_to={oid!r}: no such item made earlier in the script or in the scene")
+        kind = self.taken.get(oid) or next(n.get("type") for n in walk(self.doc.data, KIND.lists) if n.get("id") == oid)
+        return {"follow": oid, "followPose": kind == "clay"}
+
     def item(self, type_: str, id_=None, **values) -> Item:
         into = self.holders[-1]["children"] if self.holders else self.root["items"]
         parts = values.pop("parts", []) if type_ == "import" else []
+        if (on := values.pop("attach_to", None)) is not None:      # moves (and bends) with what it is attached to
+            values.update(self._attach(type_, on))
         if type_ == "import" and values.get("file"):     # read like import.add: metres, upright, base on x y z, its meshes
             keep = values.pop("keepSize", False)
             values, found = ops_import.read_file(values, keep)
@@ -487,10 +525,10 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
-       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
+       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(part, {seconds: (x, y, z)}, holds=)", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
 def run_source(source: str, name: str, doc=None) -> dict:
@@ -513,6 +551,10 @@ def run_source(source: str, name: str, doc=None) -> dict:
         line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            API) from e
+    for clay_id in b.figures:
+        node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == clay_id), None)
+        if node is not None:
+            script_figure.settle(b, node)
     b.take_over(name)
     return b.root
 

@@ -1,0 +1,42 @@
+"""rostrum3d/faults.py: the document faults judges cap a piece for, in the shot's one fault list (mcp/shot_faults.check):
+a part of a figure coming apart, a subject leaving the picture, no floor in the picture; ids stable for `keep`."""
+from rostrum_core import Document, Who
+from rostrum_core.mcp import App, Runtime
+
+from rostrum3d import KIND, run_source
+from rostrum3d.compile import shot_info
+from rostrum3d.mcp import motion_look, shot_faults
+
+SRC = '''
+camera("cam", z=4, y=0.8)
+mesh("ground", shape="plane", width=20, depth=20)
+with group("figure", x=0.3):
+    mesh("body", shape="box", width=0.3, height=0.6, depth=0.2, y=0.3)
+    mesh("arm", shape="sphere", radius=0.07, x=0.17, y=0.45).key("x", {0: 0.17, 2: 0.5}).key("y", {0: 0.45, 2: 0.07})
+mesh("cube", shape="box", width=0.2, height=0.2, depth=0.2, x=0.9, y=0.1).key("z", {0: 0, 2: 2.5})
+shot("hero", camera="cam", fps=24, start=0, end=2)
+'''
+
+
+def _faults(src: str) -> dict:
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    info = shot_info(doc.data, "hero")
+    return {f["id"]: f for f in shot_faults.check(doc.data, info, shot_faults.sample(info), {})}, doc
+
+
+def test_a_drifting_arm_and_a_cube_leaving_are_faults_in_the_one_list_and_open_look_motion():
+    found, doc = _faults(SRC)
+    assert "separated:arm" in found and "cm gap" in found["separated:arm"]["what"], found
+    assert "leaves_frame:cube" in found and "cut_edge:cube" not in found, found     # one fault per thing
+    reply = Runtime(App("rostrum-3d", {"scene": doc}), motion_look.tools).call("look_motion", {}, Who.agent("t"))[0]
+    assert reply["summary"].startswith("NOT DONE:") and "[separated:arm]" in reply["summary"], reply["summary"][:300]
+
+
+def test_still_and_in_frame_is_done_and_a_camera_looking_up_has_no_floor():
+    still = SRC.replace('.key("x", {0: 0.17, 2: 0.5}).key("y", {0: 0.45, 2: 0.07})', "").replace('.key("z", {0: 0, 2: 2.5})', "")
+    found, _ = _faults(still)
+    assert not [i for i in found if i.split(":")[0] in ("separated", "leaves_frame", "no_floor")], found
+    sky = still.replace('camera("cam", z=4, y=0.8)', 'camera("cam", z=4, y=0.8, rx=25)')
+    found, _ = _faults(sky)
+    assert "no_floor:hero" in found, found

@@ -176,7 +176,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
 def render_still(ctx, args):
     """One final picture of a shot through the shot camera (the shot's render Quality by default: Cycles, or Stylized when the Quality is Stylized), as a project render with a manifest: png (sRGB, through
     OpenColorIO) and/or exr (scene-linear, for the Editor; its passes as named layers, listed in the manifest's `exr`). The picture is checked
-    (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground): the reply opens NOT DONE: with each
+    (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture): the reply opens NOT DONE: with each
     fault (id, when, fix) or DONE:, and the files are refused (kept as <name>.NOT-DONE.png) unless `keep: {id: why}` explains each. Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25), whose note shows how far Cycles has got and the time left measured on this frame ("drawing 40% · about 12 s left")."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
@@ -226,7 +226,7 @@ def render_video(ctx, args):
     (never a failed job), also when over the budget. With no quality, renderer or samples it never renders lower than your
     last export of this shot (a refine keeps the first video's Cycles and samples even if the shot's Quality is lower) and says so;
     asking for lower is done, and the reply says what it loses (Storm: no fabric sheen, no soft bounce light). The first, middle and last frame are
-    checked (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground): the reply opens
+    checked (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture): the reply opens
     NOT DONE: with each fault (id, when, fix) or DONE:, and the video is refused (kept as <name>.NOT-DONE.mp4) unless `keep: {id: why}` explains each."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))

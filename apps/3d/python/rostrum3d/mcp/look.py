@@ -52,7 +52,7 @@ def look_frame(ctx, args):
     onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc
     or a spacing; a quick look only (not final), drawn by the live view, so no studio light or outline. highlight = "steps:arm" or
     "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step`
-    names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground)."""
+    names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args)
@@ -113,7 +113,7 @@ def _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene):
                                            "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
 def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over the shot (or a range) in one image, each tile labelled with its frame and time. Drawn fast
-    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground)."""
+    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
     doc, info = doc_and_shot(ctx, args)
     fps, first, last = info["fps"], info["start"], info["end"]
     f0 = first + round(args.get("start", 0.0) * fps)

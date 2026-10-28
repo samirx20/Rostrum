@@ -62,7 +62,7 @@ def look_shots(ctx, args):
     """One contact sheet for several shots, ONE ROW PER SHOT: `count` frames spread over that shot, each tile labelled with the shot's
     name, the frame and its time. Each shot is drawn through its own camera by the same render path as export (Storm for quality fast,
     Cycles for final; renderer picks by name; neither, when every shot's Quality is Stylized: stylized). Use it to compare shots side by side, check a cut's two ends or a whole sequence's
-    framing, before look_frame on one of them. An unknown shot fails, listing the document's shots. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground)."""
+    framing, before look_frame on one of them. An unknown shot fails, listing the document's shots. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
     doc = ctx.document(args.get("item"))
     ids = chosen(ctx, doc, args.get("shots"))
     infos = [dict(shot_info(doc.data, i)) for i in ids]
