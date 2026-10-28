@@ -29,6 +29,7 @@ from rostrum_core.mcp.files import render_cache_folder
 from ..render_fields import QUALITIES, STYLIZED
 from ..sim.compute import ready_for_render
 from ..sim.fall_view import fall_note             # a fall the shot camera does not show
+from ..faults import shot_faults                  # parts apart, floating, cut by the frame edge
 from .. import estimate_job, estimate_learn, render_last
 from . import draw, estimate, layers, resume
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
@@ -220,7 +221,7 @@ def render_video(ctx, args):
     (up to 25 s) for the measured estimate: over the budget it is an error at once that names the settings that fit, and `estimate_only` returns the figures
     (never a failed job), also when over the budget. With no quality, renderer or samples it never renders lower than your
     last export of this shot (a refine keeps the first video's Cycles and samples even if the shot's Quality is lower) and says so;
-    asking for lower is done, and the reply says what it loses (Storm: no fabric sheen, no soft bounce light)."""
+    asking for lower is done, and the reply says what it loses (Storm: no fabric sheen, no soft bounce light). Also, only when one exists, names faults a client would see (worst first, a few at most, from the document on about ten frames, nothing extra rendered): a part that separates from the figure it was joined to, a thing that floats above what is under it while holding its height (cm), a main subject cut by the frame edge or leaving the frame (which edge, from when), as warnings."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
     if gate is None or not gate.wait(ESTIMATE_WAIT_S):
@@ -401,7 +402,8 @@ def video_job(ctx, args, gate: Gate | None = None):
                             f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.'
                             + (f" It {estimate.over_budget_text(est, budget_s, fits)}" if over else "") + "".join(f" {w}" for w in said),
                             {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est, "over_budget": over, "fits": fits},
-                            warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
+                            warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))]),
+                                     *shot_faults(doc.data, info["id"], ctx.app.folder, (f0, f1))])
                 if gate:
                     gate.decide(reply=got)
                 return got
@@ -429,7 +431,8 @@ def video_job(ctx, args, gate: Gate | None = None):
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
                       **({"copies": [str(c) for c in copies]} if copies else {})},
-                     [*paths, *copies], warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
+                     [*paths, *copies], warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))]),
+                                     *shot_faults(doc.data, info["id"], ctx.app.folder, (f0, f1))])
 
     def job_fn(job):
         try:

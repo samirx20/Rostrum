@@ -158,6 +158,8 @@ runs over. A cloth itself costs little in Cycles (an 18k-triangle drape adds abo
 same scene without it); the samples, the picture's size and the lights are what cost the time. A refine export with no `quality`,
 `renderer` or `samples` never renders lower than your last export of the shot (its reply says "Rendered as your last export …");
 asking for lower is done, and the reply names what it loses (Storm: no fabric sheen, no soft bounce light, hard shadows).
+A finished video's reply (and an `estimate_only` one) also names faults a client would see: a part separating from its figure, a thing floating above
+what is under it, a subject cut by the frame edge or leaving it, with the time and the size in cm ([Working with an AI agent](agents.md)).
 A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
 `look_motion`), and every reply ends with a time line that counts the passes the time left allows ([Working with an AI agent](agents.md), "Your time").
 
