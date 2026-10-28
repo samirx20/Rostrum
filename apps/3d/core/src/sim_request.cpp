@@ -91,6 +91,7 @@ sim::Body settings(const JsValue& v, size_t i) {
     const GfVec3f vel = r.vec3("velocity");
     b.velocity = {vel[0], vel[1], vel[2]};
   }
+  if (r.has("wakeFrame")) b.wake = r.count("wakeFrame", 0, 1000000);
   if (b.mass < 0) fail(r.at("mass"), "is below 0", "0 (from its size) or a mass in kg");
   r.finish();
   return b;

@@ -26,6 +26,7 @@ struct Body {
   double mass = 0;              // kg; 0 = from its size, as solid plastic (1100 kg/m³)
   double bounce = 0.2, friction = 0.6;
   bool asleep = false;          // Starts: Asleep until hit
+  int wake = 0;                 // Falls from: frames after the start it holds still (others land on it), then falls
   enum Shape { Exact, Box, Sphere } shape = Exact;
   std::vector<V3> points;       // its surface, in its own frame (metres, its scale already in): hull, box, sphere
   std::vector<V3> triangles;    // a still body's Exact shape: three points per triangle, same frame

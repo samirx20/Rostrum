@@ -23,6 +23,7 @@ Each one's settings (`sim.set`, or the item's own `.set`):
 | `bounce` 0–1 | 0 lands dead, 1 bounces back as high as it fell |
 | `friction` 0–2 | 0 slides like ice, 1 grips like rubber |
 | `starts` | `moving`, or `asleep`: stays put until something hits it (a stack waiting to be knocked over) |
+| `fallStart` (seconds into the shot) | holds still where it is until then (others land on it and bounce off it), then falls; 0 = from the start. Stagger drops with it: `a.simulate("falls", fallStart=1)`, `b.simulate("falls", fallStart=2.5)`. On a copies item every copy waits; in the window it is the Simulation group's **Falls from** row, shown while it falls |
 | `simShape` | `exact` (its own outline; for one that falls, with the dents filled in), `box` or `sphere` (faster, rougher) |
 
 A thing that has keys at the start keeps its speed: key it moving and it is thrown. Keys after the first frame are not used
@@ -44,6 +45,14 @@ cloth (a plane is the usual one), and only one directly in the scene.
 A plane is made fine enough to fold on its own (a 40 × 40 grid of points); another shape has its faces split until they are
 small enough. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
 fails); pin its `back` instead. Start it just above what it should land on, not touching it.
+
+**Place it over its target:** `sim.body` with `kind: "cloth", over: "box"` (script: `sheet.simulate("cloth", over=box)`) puts
+the sheet centred above that item, a little over its top, level; a plane too small to cover it is made twice its footprint.
+Set the target to `still` too. `run_simulation` then says what each cloth ends on (`cloth sheet: … ends on box`) and **warns**
+when a cloth starts over nothing it can land on, or slides off what it started over. Read the warning and look with
+`look_sheet` before rendering. Known (engine, being fixed): a cloth whose edges reach the floor while it lies on a box can be
+pushed off it; a sheet that hangs clear of the floor, or a shot with `simGround` off and a modelled floor set to `still`,
+stays on.
 
 Cloth plays back from the stored result like a falling thing (Timing and Simplify apply too), but it never becomes keys: its
 folds stay a simulation (`sim.to_keys` leaves it as it is; on a shot whose only simulated thing is cloth it fails saying

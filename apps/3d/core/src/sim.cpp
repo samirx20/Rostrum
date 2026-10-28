@@ -289,12 +289,15 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     JPH::RefConst<JPH::Shape> shape = shape_of(b, k);
     JPH::BodyCreationSettings s(shape, JPH::RVec3(b.pos[0] * k, b.pos[1] * k, b.pos[2] * k),
                                 JPH::Quat(float(b.rot[0]), float(b.rot[1]), float(b.rot[2]), float(b.rot[3])).Normalized(),
-                                b.falls ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static, b.falls ? kMoving : kStill);
+                                !b.falls ? JPH::EMotionType::Static : b.wake > 0 ? JPH::EMotionType::Kinematic
+                                                                                 : JPH::EMotionType::Dynamic,
+                                b.falls ? kMoving : kStill);
+    s.mAllowDynamicOrKinematic = b.falls && b.wake > 0;  // held still (kinematic) until its Falls from frame
     s.mRestitution = float(std::clamp(b.bounce, 0.0, 1.0));
     s.mFriction = float(std::max(0.0, b.friction));
     if (b.falls) {
       s.mMotionQuality = JPH::EMotionQuality::LinearCast;  // a small fast thing never tunnels through a thin wall
-      s.mLinearVelocity = v3(b.velocity, k);
+      s.mLinearVelocity = b.wake > 0 ? JPH::Vec3::sZero() : v3(b.velocity, k);  // a held one gets it when it falls
       if (b.mass > 0) {
         s.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         s.mMassPropertiesOverride.mMass = float(b.mass * k * k * k);
@@ -304,7 +307,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       for (const V3& p : b.points.empty() ? b.triangles : b.points)  // its lowest point (world)
         floor = std::min(floor, b.pos[1] + double((q * v3(p, 1.0)).GetY()));
     }
-    ids[i] = bi.CreateAndAddBody(s, b.falls && !b.asleep ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+    ids[i] = bi.CreateAndAddBody(s, b.falls && !b.asleep && b.wake == 0 ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
     if (ids[i].IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size()) + ")");
     which[ids[i]] = i;
     if (b.falls) out.rows.push_back(int(i));
@@ -316,7 +319,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   cs.mBackFaceMode = JPH::EBackFaceMode::CollideWithBackFaces;
   for (int r : out.rows) {
     const Body& b = bodies[size_t(r)];
-    if (b.asleep) continue;
+    if (b.asleep || b.wake > 0) continue;
     JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> hits;
     const JPH::IgnoreSingleBodyFilter self(ids[size_t(r)]);
     physics.GetNarrowPhaseQuery().CollideShape(bi.GetShape(ids[size_t(r)]), JPH::Vec3::sReplicate(1.0f),
@@ -407,6 +410,11 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   const auto t_steps = Clock::now();
   out.frames.resize(size_t(frames));
   for (int f = 0; f < frames; ++f) {
+    for (int r : out.rows)  // Falls from: held still until its frame, then it falls (with its keyed speed)
+      if (const Body& b = bodies[size_t(r)]; b.wake > 0 && b.wake == f) {
+        bi.SetMotionType(ids[size_t(r)], JPH::EMotionType::Dynamic, b.asleep ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
+        if (!b.asleep) bi.SetLinearVelocity(ids[size_t(r)], v3(b.velocity, k));
+      }
     if (f > 0)
       for (int s = 0; s < steps; ++s) {
         const JPH::EPhysicsUpdateError e = physics.Update(dt, 1, &temp, &jobs);
