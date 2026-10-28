@@ -5,7 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import QRectF
 
 COLOURS = {"overlap": "#ff2d55", "cut": "#ff9500", "outside": "#af52de", "small": "#00c7be", "stray": "#ffd60a", "grid": "#5ac8fa",
-           "zone": "#34c759"}
+           "zone": "#34c759", "cramped": "#ff6b00"}
 
 
 def mark(win, faults: list[Fault], path) -> None:
