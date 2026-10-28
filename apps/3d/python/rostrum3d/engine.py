@@ -31,6 +31,17 @@ class EngineError(RuntimeError):
     pass
 
 
+STYLIZED_VIEW = "Un-tone-mapped"     # the stylized look's colours are chosen, not measured light: shown as picked, no film curve
+
+
+def _shown(req: dict) -> dict:
+    """`req` with the stylized look's display view when it names none: the config's default (ACES 2.0) would dull and grey a
+    flat Light-to-colour palette (a cream floor drawn grey). Another config (OCIO set) keeps its own default."""
+    if req.get("renderer") != "stylized" or req.get("view") or os.environ.get("OCIO"):
+        return req
+    return {**req, "view": STYLIZED_VIEW}
+
+
 _MINE: "weakref.WeakSet[Engine]" = weakref.WeakSet()    # every engine this program made
 
 
@@ -159,6 +170,7 @@ class Engine:
         `progress(i, of, line)` after each frame; `step(line)` while Cycles draws one ({"frame", "fraction", "ms"})."""
         if req.get("renderer") == "stylized":
             need_stylized("render")
+        req = _shown(req)
         out = self._request({"render": {**req, "progress": progress is not None or step is not None}},
                             timeout_s or float(req.get("timeoutS", 600)) + 60, progress, step)
         missing = [f[k] for f in out.get("frames", []) for k in ("exr", "png") if f.get(k) and not Path(f[k]).is_file()]
@@ -232,7 +244,7 @@ class Engine:
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""
         if req.get("renderer") == "stylized":
             need_stylized("view")
-        out = self._request({"view": req})
+        out = self._request({"view": _shown(req)})
         return (*self._pixels(out["shm"]), out)
 
     def sculpt_view(self, view: dict, **req) -> tuple[dict, tuple | None]:

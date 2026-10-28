@@ -43,7 +43,7 @@ def _folder(ctx):
              "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Cloth with `over` "
              "(an item's id) also places the sheet over that item: centred above it, a little over its top, level, and a "
              "plane too small to drape it made big enough to reach the floor; set that item to still too. Then sim.set for Mass, "
-             "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, pinned, friction), sim.start_in_view to start it inside the shot camera's picture, and sim.run "
+             "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, clothAir, pinned, friction), sim.start_in_view to start it inside the shot camera's picture, and sim.run "
              "to compute.",
              target=SF.TYPES, label="Simulate",
              params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True, labels=SF.WORDS),
@@ -83,7 +83,7 @@ _SHOT = [p for p in F.unconditional("shot") if p.name in SF.SHOT_NAMES and p.nam
 @R.operation("sim.set", "Change Simulation settings. On an item: massFromSize, mass (kg), bounce (0–1), friction (0–2), "
              "starts (moving | asleep: until something hits it), fallStart (seconds into the shot it holds still until, "
              "then falls; others land on it meanwhile; on a copies item every copy waits; a cloth keeps its first shape until then), simShape (exact | box | sphere); on cloth: clothWeight "
-             "(kg per m²: silk 0.05, cotton 0.2, denim 0.4), stiffness (0 silk … 1 thin card), pinned (none | top | bottom | "
+             "(kg per m²: silk 0.05, cotton 0.2, denim 0.4), stiffness (0 silk … 1 thin card), clothAir (0–4 air drag: 1 room air, a light sheet floats down over about a second with its edges lifting; 0 drops like a stone), pinned (none | top | bottom | "
              "left | right | front | back: that side, as seen in the scene at the first frame, held in place), friction. "
              "On a shot: simGround (a "
              "floor at height 0), simTiming (every | 2s | 3s: steps like hand animation), simSimplify (keep every nth "

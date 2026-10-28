@@ -9,7 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from ..ops_import import EXTENSIONS, unit_name
 from . import draw, picture_facts
-from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, renderer_of, seconds, size_of
+from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, look_renderer, seconds, size_of
 
 tools = Tools()
 tools.renamed("inspect_usd_file", "inspect_model_file")      # it reads every format an import reads now (brief 29)
@@ -134,7 +134,7 @@ def inspect_exposure(ctx, args):
     1st and 99th percentile brightness, and which part of a 3×3 grid is brightest and darkest, with the item at the brightest spot. Draws a small
     picture through the shot camera and looks at it; use it before a final render to catch a blown-out or too-dark shot. Nothing is changed."""
     doc, info = doc_and_shot(ctx, args)
-    frame, renderer = frame_of(ctx, info, args), renderer_of(args)
+    frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args, 320)
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
 

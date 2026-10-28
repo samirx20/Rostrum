@@ -62,8 +62,9 @@ def doc(tmp_path, monkeypatch):
 def test_a_cloths_request_and_its_settings_key_the_result(doc):
     req, k = sim_inputs(doc.data, "drape")
     sheet = next(b for b in req["bodies"] if b["item"] == "sheet")
-    assert sheet == {"item": "sheet", "kind": "cloth", "weight": 0.2, "stiffness": 0.2, "pinned": "back", "friction": 0.6}
-    for args in ({"stiffness": 0.8}, {"pinned": "left"}, {"clothWeight": 0.5}):
+    assert sheet == {"item": "sheet", "kind": "cloth", "weight": 0.2, "stiffness": 0.2, "air": 1.0, "pinned": "back",
+                     "friction": 0.6}
+    for args in ({"stiffness": 0.8}, {"pinned": "left"}, {"clothWeight": 0.5}, {"clothAir": 2.0}):
         doc.apply([{"op": "sim.set", "target": ["sheet"], "args": args}], SAM)
         assert sim_inputs(doc.data, "drape")[1] != k, args
         k = sim_inputs(doc.data, "drape")[1]

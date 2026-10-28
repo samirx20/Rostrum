@@ -97,7 +97,6 @@ def _ref(problems, item, field, value, ids, what):
         problems.append(f'{item["id"]}.{field}: no {what} "{value}" (there are: {", ".join(sorted(ids)) or "none"})')
 
 
-_MESH_DEFAULTS = F.defaults("mesh")
 _KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
           for t, ps in F.FIELDS.items()}
 _KNOWN["material"].add(graph.FIELD)                  # its blocks graph (graph.py): data the graph.* ops write, never a row
@@ -154,7 +153,7 @@ def check(data: dict) -> list[str]:
                 mirror.targets({i["id"]: i for i in everything}, item["id"])
             except ValueError as e:
                 problems.append(f"{e} (mesh.mirror makes a copy; delete it to unlink)")
-            if stray := mirror.stray(item, _MESH_DEFAULTS):          # only the original holds these (mirror.py)
+            if stray := mirror.stray(item, F.defaults("mesh", item)):   # only the original holds these (mirror.py)
                 problems.append(f'{item["id"]} is the mirrored copy of {item["mirror"]}: change {item["mirror"]} instead '
                                 f'(its copy follows); {", ".join(stray)} belong to the original, not the copy')
         if t == "material":

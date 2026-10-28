@@ -168,8 +168,9 @@ How the points work:
   Mirror's X = 0 runs down its middle. The new clay stands at the drawing's middle, at its lowest point.
 - **Puff.** 1 is round (as thick in the middle as the outline is wide there); 0.1–3; `claystep.set puff` changes it.
 - **Joining.** A drawn, spun or lumped shape joins the clay when it overlaps or touches its surface: put the
-  outline's points at the depth of the surface where it should join. `blend` is how softly it joins (left out: 0.3 ×
-  how fat the shape is, at most 5 cm); `mode="carve"` cuts the shape out instead.
+  outline's points at the depth of the surface where it should join. `blend` is how softly it joins (left out: half
+  how fat the shape is × Puff, at most 5 cm, as a ball's half radius: an arm's root swells into the body as one piece;
+  0 = a hard crease, which a bent limb opens into a seam); `mode="carve"` cuts the shape out instead.
 - **Tiny.** An outline under 4 points, or thinner than 1.5 of the clay's grains, makes a lump the brush's size.
 - **A stroke's path.** `clay.stroke` `path` points are in the clay's own space; each dab lands where a ray from the
   point along `dir` meets the clay, so the points can float in front of it (e.g. z 0.3 with `dir` [0, 0, -1] in front of

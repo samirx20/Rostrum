@@ -35,7 +35,7 @@ def _fields(values: dict) -> dict:
 
 
 @R.operation("material.from", "Make a new material from a starting point (a substance's physical settings: clay, skin, wax / soap, "
-             "stone, matte or glossy plastic, rubber, polished or brushed metal, glass, frosted glass, ceramic, fabric, wood, car paint, "
+             "stone, matte or glossy plastic, rubber, polished or brushed metal, glass, frosted glass, ceramic, fabric (matte with sheen), wood, car paint, "
              "screen); any material field given here wins over the start's value. `to`: items that get it, in the "
              "same step (one undo takes both back). Its name is \"<item> material\" for one item, else the start's "
              "name. The result is an ordinary material: change its fields with material.set.",
