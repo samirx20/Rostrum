@@ -36,7 +36,7 @@ drone meant as a drone may stay, but say why in your report.
 
 | Fault | Measured | Usual fixes |
 |---|---|---|
-| weak hit / stop at 31.50 s | the hit's onset against the piece's typical onset ("1.6x a normal note", rank among all onsets); under 2.5x or not in the top 3 | a breath of silence just before, more instruments or a brighter attack on the hit, a lower build into it |
+| weak hit / stop / entry at 31.50 s | the hit's attack in the finished, limited file (the rise over ~21 ms, every frequency counted alike, as the ear hears a strike) against the piece's typical onset ("1.0x a normal note", rank among all onsets); under 2.5x or not in the top 3 (drums coming back: under 2x). Beside it: its **bright attack** (2 kHz up), its strength against the notes of the 2 s before, and its loudness jump over the 1.5 s before | the fix follows the short number: bright attack low → a short loud part with a fast bright attack on it (crash, snare, a high piano or brass stab; a low boom alone reads as a normal note); jump small → silence or duck the bed 0.3–0.5 s before; the notes before strike as hard → shorter bed notes into it, nothing on the beat before; and more instruments on it, less limiter squash |
 | no hit at … | nothing starts within 80 ms | put the notes on the time; `by_stem` names the nearest part |
 | blurred stop | an onset in the second before at 70 % of the stop's strength or more, or the level falling under 8 dB in the second after | rest the band on the beat before; end held notes, ride and pedal at the stop; short notes on the hit |
 | drums drop early | the last beat before a `drop` more than 1.5 beat-gaps (and 0.35 s) before it | a last hit or fill ending on the time |
@@ -48,6 +48,11 @@ drone meant as a drone may stay, but say why in your report.
 | hit squashed by the limiter (render only) | the master's limiter held a moment down 3 dB or more; how far the 10 s before sat under it | raise the build (`edit_loudness` `lift_quiet`, or the quiet parts' volumes) or lower the hit's parts |
 
 "No faults found" means none of these, not that the music is good.
+
+`render_mix` runs the same check on every finished mix: its reply lists the three weakest moments against the asked
+ones (`expect`, or the song's markers named hit, stop, drums out, drums back, climax or lift), one line each with the
+time, the measured numbers and the first fix (`data.weakest`). Name the moments as markers once and every render is
+checked. A line that says "comes across" is a margin, not a fault.
 
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a
 recording sounds like the object on screen. Say so in your report; a person decides those by listening.

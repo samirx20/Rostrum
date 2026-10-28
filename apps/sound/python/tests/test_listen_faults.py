@@ -4,6 +4,7 @@ import numpy as np
 import soundfile as sf
 
 from rostrum_sound.listen.faults import check
+from rostrum_sound.listen.weakest import from_markers, lines
 
 SR = 48000
 NOTES = [261.6, 329.6, 392.0, 440.0, 293.7, 349.2, 493.9, 523.3]
@@ -39,7 +40,7 @@ def kinds(r):
 def test_weak_hit_named_with_time_and_fix(tmp_path):
     r = check(_piece(tmp_path / "weak.wav", hit_amp=0.26), [{"at": 10.0, "kind": "hit"}], whole=False)
     assert "weak_hit" in kinds(r)
-    assert "10.0" in r["words"] and "a normal note" in r["words"] and "silence just before" in r["words"]
+    assert "10.0" in r["words"] and "a normal note" in r["words"] and "bright attack" in r["words"]
 
 
 def test_clear_hit_passes(tmp_path):
@@ -60,3 +61,23 @@ def test_flat_held_tone(tmp_path):
     r = check(str(tmp_path / "flat.wav"))
     assert "held_tone" in kinds(r) and "one flat tone" in r["words"]
     assert "near_mono" in kinds(r)
+
+
+def test_low_boom_hit_is_weak_and_the_render_lines_say_why(tmp_path):
+    """Sound-gaps brief 2: a loud low hit with no bright attack, after a breath of silence, passed the old mel check
+    (2.9x) while listeners and the benchmark heard a normal note. The attack check names it and points at the crack."""
+    y = np.zeros(20 * SR)
+    for k, t0 in enumerate(np.arange(0, 20, 0.5)):          # a bed of bright, clicky notes
+        if 9.0 <= t0 < 10.0:
+            continue
+        n = _note(NOTES[k % len(NOTES)] * 2, 0.2)
+        y[int(t0 * SR):int(t0 * SR) + n.size] += n[:y.size - int(t0 * SR)]
+    t = np.arange(int(1.5 * SR)) / SR                        # the hit: 55 Hz, 25 ms swell, no click
+    boom = 3.0 * np.sin(2 * np.pi * 55 * t) * np.minimum(1, t / 0.025) * np.exp(-t * 2)
+    y[10 * SR:10 * SR + boom.size] += boom
+    y = 0.8 * y / np.abs(y).max()
+    sf.write(tmp_path / "boom.wav", np.stack([y, np.roll(y, 240)], axis=1), SR, subtype="PCM_24")
+    moments = from_markers([("Big hit", 10.0), ("verse", 2.0)])
+    assert moments == [{"at": 10.0, "kind": "hit"}]
+    out = lines(str(tmp_path / "boom.wav"), moments)
+    assert out[0].startswith("10.0") and "weak hit" in out[0] and "bright attack" in out[0] and "fast bright attack" in out[0], out

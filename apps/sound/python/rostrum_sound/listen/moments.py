@@ -3,18 +3,23 @@
 A sync check that only asks "is there an onset within 40 ms" passes a hit that is barely there (sound-fair brief 2:
 1.6x a normal note, rank 4) and a stop the band's own beat blurs (brief 3). This reads how a listener would: the hit
 against the piece's typical onset, the beat just before a stop, where the drums really fall away before a drop, and
-where the loudest moment lands against a climax. Each fault comes back as {kind, at_s, measured, fix} (faults.py words it)."""
+where the loudest moment lands against a climax. Hits, stops and entries are read by attack.py (the finished file's
+short attack, as a listener hears it, against the piece's typical onset and the bed before it). Each fault comes back
+as {kind, at_s, measured} (faults.py words it, with the fix)."""
 from __future__ import annotations
 
 import numpy as np
 
+from . import attack
 from .core import load, mono, num
 from .dsp_events import find_peaks, onset_strength
 from .speech_room import TARGET_DB, room
 
 HOP = 256
-NEAR_S = 0.08              # the hit's own onset: the strongest flux within this of the asked time
+NEAR_S = attack.NEAR_S     # the hit's own onset: the strongest attack within this of the asked time
 WEAK_X, WEAK_RANK = 2.5, 3 # a hit under 2.5x a normal onset, or not among the file's 3 strongest, does not stand out
+WEAK_ENTRY_X = 2.0         # drums coming back are heard when their first hit is at least 2x a normal onset
+STEP_LU, STEP_X = 10.0, 1.5  # ...or a step 10 LU over the bed with an attack 1.5x a normal one (a loud entry from quiet is heard)
 BLUR_BEFORE_S = 1.0        # a stop is blurred when an onset this close before it is nearly as strong (≥ 70 %)
 BLUR_SHARE = 0.7
 STOP_DROP_DB = 8.0         # after a stop the level should fall at least this far within 0.3–1.0 s
@@ -25,7 +30,7 @@ KINDS = ("hit", "stop", "drop", "climax", "lift", "entry", "voice")
 
 
 def envelope(m, sr):
-    """(onset-strength curve, frame times, onset frames, the typical onset's strength): spectral flux on a mel
+    """For the drum-drop check: (onset-strength curve, frame times, onset frames, the typical onset's strength): spectral flux on a mel
     spectrogram, its peaks over a 1 s running median + half its spread, and their median = "a normal note"."""
     env = onset_strength(m, sr, HOP)
     t = np.arange(len(env)) * HOP / sr
@@ -38,38 +43,40 @@ def envelope(m, sr):
     return env, t, pk, max(typical, 1e-9)
 
 
-def _hit_at(env, t, pk, at):
-    """(frame, strength) of the strongest onset within NEAR_S of `at`, else None."""
-    near = [p for p in pk if abs(t[p] - at) <= NEAR_S]
-    return max(((p, float(env[p])) for p in near), key=lambda q: q[1]) if near else None
-
-
 def _db(seg):
     return 10 * np.log10(float(np.mean(seg.astype(np.float64) ** 2)) + 1e-12)
 
 
-def _hit(m, sr, ev, at, kind):
-    env, t, pk, typ = ev
-    h = _hit_at(env, t, pk, at)
-    if h is None:
+def _hit(wav, m, sr, at, kind):
+    """A hit, stop or entry read by attack.strike (the finished file's ~21 ms attack against the piece's typical
+    onset and the bed before it): missing, weak (WEAK_X / WEAK_RANK; an entry only WEAK_ENTRY_X; a big loudness step
+    with a fair attack is heard: STEP_LU / STEP_X), a stop blurred."""
+    s = attack.strike(wav, at)
+    if s is None:
         return [{"kind": f"no_{kind}", "at_s": at, "measured": {"onset_within_ms": NEAR_S * 1000}}]
-    if kind == "entry":                 # a part coming back (drums back in): it only has to start on time
-        return []
-    x = h[1] / typ
-    rank = int((env[pk] > h[1]).sum()) + 1
-    out = []
-    if x < WEAK_X or rank > WEAK_RANK:
-        out.append({"kind": f"weak_{kind}", "at_s": num(t[h[0]], 2), "measured": {"times_typical": num(x, 1), "rank": rank, "onsets": len(pk)}})
+    weak = s["times_typical"] < WEAK_ENTRY_X if kind == "entry" else s["times_typical"] < WEAK_X or s["rank"] > WEAK_RANK
+    weak = weak and not ((s["jump_lu"] or 0) >= STEP_LU and s["times_typical"] >= STEP_X)
+    out = [{"kind": f"weak_{kind}", "at_s": at, "measured": {"onset_s": s["at_s"], **{k: v for k, v in s.items() if k != "at_s"}}}] if weak else []
     if kind == "stop":
+        c = attack.curves(wav)
+        env, t, pk = c["env"], c["t"], c["pk"]
+        h = s["times_typical"] * c["typ"]
         before = [p for p in pk if at - BLUR_BEFORE_S <= t[p] < at - NEAR_S]
         rival = max(before, key=lambda p: env[p]) if before else None
         a = lambda s0, s1: m[max(0, int((at + s0) * sr)):int((at + s1) * sr)]
         fall = _db(a(0.0, 0.25)) - _db(a(0.3, 1.0))
-        if (rival is not None and env[rival] >= BLUR_SHARE * h[1]) or fall < STOP_DROP_DB:
+        if (rival is not None and env[rival] >= BLUR_SHARE * h) or fall < STOP_DROP_DB:
             out.append({"kind": "blurred_stop", "at_s": at, "measured": {
                 "beat_before_s": num(t[rival], 2) if rival is not None else None,
-                "beat_before_share": num(env[rival] / h[1], 2) if rival is not None else None, "fall_after_db": num(fall, 1)}})
+                "beat_before_share": num(env[rival] / h, 2) if rival is not None else None, "fall_after_db": num(fall, 1)}})
     return out
+
+
+def strengths(wav, moments) -> list[dict]:
+    """Every timed asked moment (hit, stop, entry) with how it strikes (attack.strike; None: nothing starts there), so a
+    reply can show the weakest even when none is a fault."""
+    return [{"at": float(mo["at"]), "kind": mo.get("kind", "hit"), "strike": attack.strike(wav, float(mo["at"]))}
+            for mo in moments if mo.get("kind", "hit") in ("hit", "stop", "entry")]
 
 
 def _drop(m, sr, ev, at):
@@ -118,12 +125,12 @@ def check(wav, moments) -> list[dict]:
     """moments: [{"at": s, "kind": one of KINDS, "end": s (voice only)}] -> the faults found, in time order."""
     y, sr = load(wav)
     m = mono(y)
-    ev = envelope(m, sr)
+    ev = envelope(m, sr) if any(mo.get("kind") == "drop" for mo in moments) else None
     out = []
     for mo in moments:
         at, kind = float(mo["at"]), mo.get("kind", "hit")
         if kind in ("hit", "stop", "entry"):
-            out += _hit(m, sr, ev, at, kind)
+            out += _hit(wav, m, sr, at, kind)
         elif kind == "lift":
             out += _lift(y, sr, at)
         elif kind == "drop":

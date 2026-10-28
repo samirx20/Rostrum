@@ -83,12 +83,40 @@ def _squashed(y, sr, limiter) -> list[dict]:
              "build_under_lu": num(at - before, 1) if before > -70 else None, "drivers": drv}}]
 
 
+BRIGHT_X = 2.5        # a hit's 2 kHz-up attack under this many times a normal note's: no crack, it reads as a thud
+JUMP_LU = 6.0         # the hit's 0.4 s under this much louder than the 1.5 s before: the bed hides it
+BED_X = 2.0           # the hit under this many times the onsets of the 2 s before: the notes into it strike as hard
+
+
+def heard(d) -> str:
+    """The measured numbers of a weak moment (attack.strike), in words."""
+    bits = [f"{d['times_typical']:.1f}x a normal note (rank {d['rank']} of {d['onsets']} onsets)", f"bright attack {d['bright_x']:.1f}x"]
+    if d.get("times_bed") is not None:
+        bits.append(f"{d['times_bed']:.1f}x the notes of the 2 s before")
+    bits.append(f"{d['jump_lu']:+.1f} LU over the 1.5 s before" if d.get("jump_lu") is not None else "silence before it")
+    return ", ".join(bits)
+
+
+def weak_fixes(t, d) -> list[str]:
+    """The changes that answer what measured short, the biggest shortfall first (at most three)."""
+    out = []
+    if d["bright_x"] < BRIGHT_X:
+        out.append("add a short loud part with a fast bright attack on it (crash, snare, a high piano or brass stab)")
+    if d.get("jump_lu") is not None and d["jump_lu"] < JUMP_LU:
+        out.append(f"silence or duck the bed for 0.3–0.5 s before it (end its notes by {max(0.0, t - 0.4):.2f} s)")
+    if d.get("times_bed") is not None and d["times_bed"] < BED_X:
+        out.append("shorten the bed's notes into it and strike nothing on the beat before")
+    if len(out) < 3:
+        out.append("put more instruments on it and lower the limiter's squash (edit_loudness lift_quiet raises the build; "
+                   "if look_sound names it squashed, turn its parts down)")
+    return out[:3]
+
+
 def _words(f) -> str:
     k, t, d = f["kind"], f["at_s"], f["measured"]
     what = k.split("_", 1)[-1]
     if k.startswith("weak_"):
-        return (f"weak {what} at {t:.2f} s: {d['times_typical']:g}x a normal note (rank {d['rank']} of {d['onsets']} onsets); make it "
-                "stand out: a breath of silence just before it, more instruments or a brighter attack on it, a lower build into it")
+        return f"weak {what} at {t:.2f} s: {heard(d)}; fix: {'; '.join(weak_fixes(t, d))}"
     if k.startswith("no_"):
         return (f"no {what} at {t:.2f} s: nothing starts within {d['onset_within_ms']:g} ms; put the notes on that time "
                 "(look_music events with by_stem names the nearest part)")

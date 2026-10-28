@@ -11,7 +11,7 @@ order to use them in when checking a whole mix; the table of every tool and what
 ## A pass from the outside in
 
 1. **Overall:** `look_sound` (`what: "loudness"`) with the brief's moments as `expect` (`[{"at": 31.5, "kind": "hit"}, {"at": 38, "kind": "climax"}]`). Its summary starts with the
-   **faults** a listener would hear, each with its time, the number and what to change (a weak hit "1.6x a normal note", a blurred
+   **faults** a listener would hear, each with its time, the number and what to change (a weak hit "1.0x a normal note, bright attack 1.0x" with the fix that number points to, a blurred
    stop, drums dropping early, the loudest moment 1.5 s after the climax, one harmony held for 19 s, a near-mono mix, a hit the
    limiter squashed 4.7 dB): fix those first (the table is in inspect_guide `listening`, *Faults*). Integrated loudness and true peak against the delivery target; the short-term curve
    shows whether the loud and quiet parts are where the piece needs them, and the summary names the loudest moment and
