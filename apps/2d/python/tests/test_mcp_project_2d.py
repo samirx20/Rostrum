@@ -61,3 +61,18 @@ def test_with_no_recent_project_nothing_is_open_and_nothing_is_created(tmp_path,
     reply, _ = rt.call("inspect_project", {}, AGENT)
     assert reply["ok"] and reply["summary"].startswith("No project is open. Open one in Rostrum2D, or call run_open_project")
     assert not any(tmp_path.glob("*/docs"))
+
+
+def test_a_resumed_session_gets_its_project_back(tmp_path, monkeypatch):
+    # The fair benchmark's refine turns all began with "no document is open": the resumed session's new server had forgotten
+    # the project the agent opened with run_open_project (it never enters the person's Open recent list).
+    person = project(tmp_path / "person")
+    app, rt = start(tmp_path, monkeypatch, [{"folder": person, "item": "main"}])
+    assert app.folder == person
+    reply, _ = rt.call("run_open_project", {"folder": str(tmp_path / "agent" / "piece")}, AGENT)
+    assert reply["ok"], reply
+    folder, items = start_choice(None, None)                                 # the next server, same working folder
+    assert folder == str((tmp_path / "agent" / "piece").resolve()) and items == ["main"]
+    empty = make_runtime(make_app(None, []))
+    reply, _ = empty.call("look_frame", {}, AGENT)
+    assert not reply["ok"] and "run_open_project" in reply["summary"]      # with nothing open, the reply says how to fix it

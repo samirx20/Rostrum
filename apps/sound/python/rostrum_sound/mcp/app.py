@@ -28,7 +28,7 @@ INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document 
                 "Python script API in inspect_guide 'script'), check what you wrote with look_arrangement (a picture, and "
                 "which tracks start on each marker), adjust with edit_document, render with render_mix, then listen "
                 "with look_sound (loudness, levels, spectrum, stereo, low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
-                "with render_voice, then render. The server opens the person's last song; run_open_project lists the recent ones "
+                "with render_voice, then render. The server opens the song you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last song; run_open_project lists the recent ones "
                 "(what \"recent\") and switches.")
 
 

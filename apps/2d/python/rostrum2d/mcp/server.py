@@ -35,7 +35,7 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "loop, loopTimes and loopStepX / loopStepY (inspect_guide 'drawing-and-frame-by-frame'); to paint strokes on over time (write on), key drawnSoFar 0 → 1 on the drawing layer or painted element (strokes in painting order, each along its path); a filled polygon (a ridge, a silhouette) is fill.add or ink.fill in a script. A painting (painting.add) is a canvas many shapes and paths can use as one shared fill (layer.fill type \"painted\"): paint.stroke on it (its own px, or `through` a layer using it, in that layer's px; on a seamless painting a stroke over an edge comes back on the opposite side), look_painting (repeats: 1 shows it 3 × 3), look_painting what \"facts\" (with a seam check), look_at (where a point lands in it); to make it boil, frame.add on the painting (eachFrame turns on; every use boils from its own start, always looping, `phase` in layer.fill starts a use on another drawing). "
                 "Every reply ends with a clock line (time since your first call; the minutes left when you have a budget): the time is "
                 "for making, looking and refining in passes, and inspect_project what \"session\" lists what is still unchecked. "
-                "The server opens the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
+                "The server opens the project you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
 
 
 SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
