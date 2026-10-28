@@ -26,6 +26,8 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
 - Words a layer takes inside a box: `grow=1` (takes the room left along the line), `shrink=0` (never squeezed),
   `align_self=`, `margin=`, `span=2` (grid columns), `shift_x=` / `shift_y=` (moved off its place without pushing the
   others; key `shiftX` / `shiftY` for a slide-in).
+- A text in a box reads from its slot's left edge (`align="left"`) and wraps at the slot's width; give `align="center"`
+  or `"right"` for another.
 - **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Give `apart=True` to place a
   layer by its own x / y (it then takes no room): a badge on a card, a pointer over a screen. A box made outside any
   box is placed by its `x`, `y` (its top-left).
