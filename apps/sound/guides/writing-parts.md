@@ -34,7 +34,7 @@ synthesized choir (no free recorded choir exists); and every older synthesized v
 (`classic.feltPiano`, `classic.grandPiano`, `classic.warmPad`, `classic.analogStrings`, `classic.spiccatoStrings`,
 `classic.choirPad`, `classic.cinematicBrass`, `classic.subBass`, `classic.glassMarimba`) for when you want that sound on
 purpose. A name whose sample pack is not installed fails loudly and says how to install it (below). Each name has one part
-it is made for and its level is matched on the first part listed. `inspect_engine` lists the same table (`roles`),
+it is made for and its level is matched on the first part listed. `inspect_engine` with `detail: "full"` lists the same table (`roles`; `name: "<instrument>"` gives one line),
 `inspect_engine (what "instrument") builtIn=… / model=… / synth=…` gives one sound's line and the range it was recorded
 over: a note outside a recorded range thins out or is refused, so write inside it. Synthesized sounds play any key.
 In the Editor the rows a track's recorded sound can't play are tinted red, with a red line at the edge of its range (the
@@ -45,7 +45,7 @@ shade nothing.
 
 | Part | Plain names (`builtIn`) | Recorded range |
 |---|---|---|
-| comp (chords that keep time) | piano (grandPiano, acousticPiano, feltPiano), electricPiano (wurlitzer), guitar (nylonGuitar), acousticGuitar (steelGuitar), electricGuitar (cleanGuitar), harp, spiccatoStrings, organ | piano A0-C8, electric piano A1-C7, nylon guitar F1-B5, steel guitar A1-G6, electric guitar B1-D6, harp E1-F7, strings C1-D6 |
+| comp (chords that keep time) | piano (grandPiano, acousticPiano, feltPiano), electricPiano (wurlitzer), rhodes, guitar (nylonGuitar), acousticGuitar (steelGuitar), electricGuitar (cleanGuitar), harp, spiccatoStrings, organ | piano A0-C8, electric piano A1-C7, rhodes E1-E7, nylon guitar F1-B5, steel guitar A1-G6, electric guitar B1-D6, harp E1-F7, strings C1-D6 |
 | bass (the low line) | bass (electricBass, bassGuitar), uprightBass (doubleBass), subBass (analog), basses, tuba, timpani | bass A0-G4, upright C1-C4, basses C1-C4, tuba F1-D4, timpani C2-C4, subBass E1-G3 |
 | lead (a tune on top) | violin, cello, flute, piccolo, oboe, clarinet, saxophone (tenorSax), harmonica (chromatic, plain breath), trumpet, mutedTrumpet (straight mute), marimba, vibraphone, xylophone, glockenspiel (keep it quiet), tubularBells (single strikes); `model` guitar / violin and `synth` triangle, sine | violin G3-C7, flute C4-C7, piccolo G4-G6, oboe A#3-F6, clarinet D3-F#6, sax G#2-F6, harmonica B2-D7, trumpet E3-C6, marimba F2-C#7, vibraphone F3-F6, xylophone G3-C#7, glockenspiel G4-C#7, bells C4-G5 |
 | pad (held chords under everything) | strings (analogStrings: one section split by pitch into basses, cellos, violas, violins), violins, violas, cellos, brass (cinematicBrass), horn, trombone, pipeOrgan, organ, warmPad (pad), choirPad; `synth` saw, square | strings C1-D6, brass F1-C6, horn A1-F5, trombone A#1-F4, pipe organ C2-C#7, organ A1-D7, warmPad C2-C6, choirPad C3-C6 |
@@ -54,7 +54,7 @@ shade nothing.
 Pianos, guitars, marimba, vibraphone and brass also play leads (`inspect_engine` lists every part each suits). Sampled (SFZ)
 instruments you point at carry their own range (`inspect_engine (what "instrument") sfz=<path>`) and are not level-matched.
 
-**Recorded or synthesized: which is which.** `inspect_engine` marks every instrument "recorded" or "synthesized" (read from the
+**Recorded or synthesized: which is which.** `inspect_engine` (compact: "(synth)" after a synthesized name; `detail: "full"` for `made`) marks every instrument "recorded" or "synthesized" (read from the
 engine's own instrument data). Recorded: every plain name except these. Synthesized: `warmPad` (alias `pad`), `subBass`, `pluck`,
 `choirPad`, every `classic.<name>`, every `model=` instrument, every `synth=` wave and the `classic` kit. A name two forms share is two
 different sounds: `builtIn="marimba"` (also `vibraphone`, `glockenspiel`) is the **recording**; `model="marimba"` is the **modelled** wooden
@@ -70,7 +70,7 @@ by its fingerprint before it is kept. `inspect_library (kind: packs)` lists ever
 licence and credit. A render, playback or audition that plays a name whose pack is missing stops and names the pack:
 install it with `run_model_install` (`model: "salamander-piano"`, or `all-instruments`), or in a terminal
 `python -m rostrum_sound.packs install salamander-piano` (`list` and `verify <pack>` are there too). Packs with a CC-BY
-licence (the Salamander piano, the Wurlitzer, the rock kit) must be credited: a render that used them returns the credit
+licence (the Salamander piano, the Wurlitzer, the Rhodes, the rock kit) must be credited: a render that used them returns the credit
 lines and writes them into the export's manifest.
 
 ### Feel: swing and played like a person (`perform`)

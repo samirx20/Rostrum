@@ -205,6 +205,10 @@ impl Sample {
 
 pub fn read_wav(path: &Path) -> Result<Sample, String> {
     if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("flac")) { return flac::read_flac(path); }
+    if path.extension().is_some_and(|e| ["ogg", "mp3"].iter().any(|x| e.eq_ignore_ascii_case(x))) {
+        let (d, rate) = crate::contract::media::decode_native(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        return Ok(Sample::new(d.chunks_exact(2).map(|f| [f[0], f[1]]).collect(), rate, None));
+    }
     let b = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     if b.len() < 12 || &b[0..4] != b"RIFF" || &b[8..12] != b"WAVE" { return Err(format!("{}: not a WAV file", path.display())); }
     let (mut fmt, mut data, mut looped, mut p) = (None, None, None, 12);

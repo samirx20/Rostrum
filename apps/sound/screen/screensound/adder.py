@@ -126,7 +126,7 @@ FAMILY_OF = {f"builtIn:{k}": fam + ("" if k in ("saxophone", "harmonica", "class
 FAMILY_OF["builtIn:classic.cinematicBrass"] = "brass cinematic film"
 # Other words people search a sound by (found, never shown).
 ALSO = {"builtIn:vibraphone": "vibes", "model:vibraphone": "vibes", "builtIn:saxophone": "tenor sax", "builtIn:harmonica": "mouth organ blues harp folk country",
-        "builtIn:electricPiano": "wurlitzer", "builtIn:piano": "grand", "builtIn:uprightBass": "double jazz",
+        "builtIn:electricPiano": "wurlitzer", "builtIn:rhodes": "electric piano fender epiano lofi", "builtIn:piano": "grand", "builtIn:uprightBass": "double jazz",
         "kit:jazz": "brush swing"}
 
 

@@ -23,8 +23,83 @@
 - **A new part, written in a script: the script helpers** (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
 - **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.pedal` (the sustain pedal lifted on each chord change, down again `catch` beats later), `note.ramp_velocity` (a crescendo or fade: `start` on the first note, `end` on the last, by time), `note.transpose`, `note.fit_key`, `note.duplicate`, `note.humanize`, `hit.humanize`, `hit.fill`, and `track.feel` (swing and looseness, one track's playing, notes untouched), through `edit_document`. They change the notes in place; a script would rewrite them. `note.humanize` / `hit.humanize` add on top of whatever looseness the notes already have (a script's own `humanize` included), and a second run with the same seed adds the same amount again: to redo it, undo first or use another seed.
 - **Finding and checking notes:** `inspect_notes {track, from?, to?}` lists a track's notes (ids, time, pitch, length, vel; read a note's time from the list, never from its id); `inspect_note_changes {since}` shows what an edit really changed; `edit_history_go {to}` goes back to an earlier step (your own steps only); `edit_undo` takes back the last one. Arguments: `inspect_tools`; the craft: `inspect_guide 'writing-parts'`.
-- **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `name` gives the file another name, like the Export sheet's name box; `<item>` is the song's id, `song` in a new project), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths: copy from there. A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`. **`render_video` (2D) does not use this file:** it renders the song's current document again (the same sound, cached when the song is unchanged); so a `render_mix` is for you to check and deliver, and `run_set_main_mix` only says which song goes under the picture.
+- **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `name` gives the file another name, like the Export sheet's name box; `<item>` is the song's id, `song` in a new project), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths; `folder` (an absolute path, made when missing) also copies the mix there under `name` (stems beside it in "<name> stems"), so there is never a shell copy to refuse; `copied` in the reply lists the new files. **A song with a `length` renders exactly that long:** trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply's warnings say by how much; `ring_past_length: true` lets the file run on until the ring has died away). A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`. **`render_video` (2D) does not use this file:** it renders the song's current document again (the same sound, cached when the song is unchanged); so a `render_mix` is for you to check and deliver, and `run_set_main_mix` only says which song goes under the picture.
 - The arpeggio steps, orders and octaves are one rule in both. The script's `voice` goes further (drop 2, spread, voice leading); `note.chord` stacks plain tones. Pick by what you start from.
+
+## Instrument and kit names
+
+`builtIn="…"` takes exactly these names (the second column lists other names for the same sound; a track's id, like `horns`,
+is not an instrument name: write `builtIn="horn"`). `kit="…"` takes the bare kit name (`kit="classic"`; `kit:classic`, as
+`inspect_engine` writes it, is accepted too). A wrong name is refused with the close ones: `contrabass` points to `basses`,
+`uprightBass`, `doubleBass`. Played instruments (`model=`) and synth waves (`synth=`) are other forms: `inspect_engine`. A
+test keeps this list equal to the engine's table (`tests/test_sound_names.py`). Ranges and what suits which part: `inspect_engine`
+with `name` (one instrument), `inspect_engine` what `instrument` (its recorded range). Recorded instruments are samples; synth ones play any key.
+
+| Name | Also accepted as | What it is |
+|---|---|---|
+| `piano` | `grandPiano`, `acousticPiano`, `feltPiano` | concert grand (Salamander, Yamaha C5), A0–C8 |
+| `electricPiano` | `wurlitzer` | Wurlitzer EP200 electric piano |
+| `rhodes` | | Fender Rhodes Mark II electric piano, E1–E7 (F4–C#6 stretched from E4 and D6, so a melody there sounds thinner) |
+| `organ` | `drawbarOrgan` | drawbar organ |
+| `pipeOrgan` | | pipe organ, loud registration |
+| `guitar` | `nylonGuitar` | classical nylon-string guitar |
+| `acousticGuitar` | `steelGuitar`, `archtopGuitar` | steel-string archtop guitar |
+| `electricGuitar` | `cleanGuitar` | clean electric guitar |
+| `bass` | `electricBass`, `bassGuitar` | fingered electric bass |
+| `uprightBass` | `doubleBass` | plucked double bass (pizzicato) |
+| `strings` | `analogStrings` | string section, basses to violins by pitch, sustained |
+| `spiccatoStrings` | | the same section, short and bouncy |
+| `violins` | | violin section |
+| `violas` | | viola section |
+| `cellos` | | cello section |
+| `basses` | | contrabass: bowed, the orchestral bass (`uprightBass` is the plucked jazz one) |
+| `violin` | | solo violin |
+| `cello` | | solo cello |
+| `harp` | | concert harp |
+| `brass` | `cinematicBrass` | brass section: tuba, trombone, horn, trumpet by pitch |
+| `horn` | | French horn (the name is singular) |
+| `trumpet` | | trumpet |
+| `mutedTrumpet` | | trumpet with a straight mute: soft, nasal |
+| `trombone` | | tenor trombone |
+| `tuba` | | tuba |
+| `flute` | | flute |
+| `piccolo` | | piccolo |
+| `oboe` | | oboe |
+| `clarinet` | | clarinet |
+| `bassoon` | | bassoon |
+| `saxophone` | `tenorSax` | tenor saxophone |
+| `harmonica` | | chromatic harmonica (Hohner Super 64) |
+| `marimba` | `glassMarimba` | marimba |
+| `vibraphone` | | vibraphone, hard mallets |
+| `xylophone` | | xylophone |
+| `glockenspiel` | | glockenspiel: bright, keep it quiet |
+| `tubularBells` | | tubular bells, single strikes |
+| `timpani` | | timpani |
+| `warmPad` | `pad` | analog synth pad with a slow start (synth) |
+| `subBass` | | round analog synth bass (synth) |
+| `pluck` | | short analog synth pluck (synth) |
+| `choirPad` | | held "aah" voices (synth) |
+| `classic.feltPiano` | | the older synthesized felt piano |
+| `classic.grandPiano` | | the older synthesized grand piano |
+| `classic.warmPad` | | the older synthesized pad |
+| `classic.analogStrings` | | the older synthesized string ensemble |
+| `classic.spiccatoStrings` | | the older synthesized short strings |
+| `classic.choirPad` | | the older synthesized "aah" voices |
+| `classic.cinematicBrass` | | the older synthesized brass swells |
+| `classic.subBass` | | the older synthesized bass |
+| `classic.glassMarimba` | | the older synthesized glassy struck bar |
+
+| Kit (`kit=`) | What it is |
+|---|---|
+| `drums` | recorded rock kit (MuldjordKit) |
+| `studio` | recorded studio kit |
+| `jazz` | recorded jazz kit played with brushes: brush snare, stir (`stir`), ride, hats |
+| `classic` | the synthesized kit (kick, snare, clap, hat, openHat, cymbal, tom, rim) |
+
+Levels: every plain name starts level-matched for the part it suits (`inspect_engine` with `name` gives its starting level in dB;
+`look_sound` levels gives each track's `volume_db` against it). Matching is by loudness of a typical phrase, so a quiet, sparse part
+(a vibraphone line at low velocities, a brush pattern) still sits under a dense one: check `look_sound` levels and raise the track.
+How the starting levels were measured: `apps/sound/python/devtools/level_match.py` (instruments), `kit_levels.py` and `level_files.py` (kits).
 
 ## `edit_document`: whole calls that work
 
@@ -60,9 +135,10 @@ The range is read as the song was before the call. Operations' own arguments: `i
 
 1. **Read** `inspect_guide` with `topic: "writing-music"` (the craft), then `topic: "script"` (the names a script knows). Scoring to a picture:
    `scoring-to-picture`.
-2. **Pick the sounds.** `inspect_engine` (`what: "names"`, the default; there is no `instruments`) lists every instrument marked *recorded* or *synthesized*, the part each suits and
-   where it sounds best, plus every effect's settings with units. `inspect_engine` with `what: "instrument"` and ONE of
-   `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` (for example `builtIn: "marimba"`) gives one instrument's range.
+2. **Pick the sounds.** The names are in this guide's "Instrument and kit names" (what each is, which are synth). `inspect_engine` (`what: "names"`,
+   the default; there is no `instruments`) answers the same names compactly; `inspect_engine` with `name` (an effect, `master`, an instrument, a kit) gives that
+   one thing's settings with units or its role and starting level; `detail: "full"` is the whole 50 KB table (rarely needed).
+   `inspect_engine` with `what: "instrument"` and ONE of `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` (for example `builtIn: "marimba"`) gives one instrument's range.
 3. **Write the song** with `run_script`. The argument is `source` (the Python text); `name` is optional (see below):
 
    ```json
@@ -134,7 +210,7 @@ arguments (a wrong one is refused with the list that works).
 
 | Call | Arguments that work |
 |---|---|
-| `look_sound` `loudness` | `item`, `wav` only (no `start`, `end` or `track`: it reads the whole file; the short-term curve and `loudest` give times) |
+| `look_sound` `loudness` | `item`, `wav`, and `start` with `end` together (both or neither: only that stretch is measured, its times in the file's own time; the limiter curve and sections are of the whole file, so they are left out). No `track`. |
 | `look_sound` `levels`, `low_end` | `item` only (they read every stem of the last render) |
 | `look_sound` `clash` | `tracks` (up to 12), `within_db`, `floor_db`, `min_over_db`, `min_length`, `detail` |
 | `look_sound` `spectrum` | `track`, `marks`, and `start` with `end` together (both or neither) |

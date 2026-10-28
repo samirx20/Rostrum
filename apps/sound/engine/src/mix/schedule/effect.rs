@@ -11,6 +11,12 @@ pub enum Param {
     Envelope(Vec<[f64; 2]>),
 }
 
+impl Param {
+    pub fn zero() -> Param {
+        Param::Value(0.0)
+    }
+}
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct EqBand {
     pub shape: String,
@@ -29,8 +35,8 @@ pub enum Effect {
     /// `space` "freeverb.<space>": the Freeverb form, which `decay` (s, RT60), `damping` (0 … 1) and `size` (0 … 1) tune.
     Reverb { space: String, mix: Param, #[serde(default)] decay: Option<f64>, #[serde(default)] damping: Option<f64>, #[serde(default)] size: Option<f64> },
     Saturate { drive: Param, mix: Param },
-    /// Tape: wow, flutter, age (0 … 1 each).
-    Tape { wow: Param, flutter: Param, age: Param },
+    /// Tape: wow, flutter, age, and a record's surface: hiss and crackle (0 … 1 each; the surface 0 when absent).
+    Tape { wow: Param, flutter: Param, age: Param, #[serde(default = "Param::zero")] hiss: Param, #[serde(default = "Param::zero")] crackle: Param },
     Limiter { ceiling: f64, release: f64 },
     /// Stereo width: 0 mono, 1 as it is, 2 wider; the side under `mono_below` Hz kept as it is (stereo.rs).
     #[serde(rename_all = "camelCase")]

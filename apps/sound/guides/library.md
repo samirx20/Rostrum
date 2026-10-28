@@ -15,7 +15,7 @@ Which names play these recordings and which are synthesized (`warmPad`, `subBass
 `inspect_engine` marks each "recorded" or "synthesized". No pack holds a pad: there is no recorded pad today. The harmonica (`harmonica`: a recorded chromatic Hohner Super 64, B2-D7, the plain breath; the pack also holds an accented and a vibrato breath, reachable today only through your own SFZ; the breath-out sound plays when a key lifts) is in the pack `vcsl-harmonica` (29 MB, CC0).
 
 A name whose pack is missing fails loudly and names the pack to install; it never falls back to another sound. Packs
-licensed CC-BY (Salamander piano, Wurlitzer, the rock kit) need a credit: a render or export that used them returns the
+licensed CC-BY (Salamander piano, Wurlitzer, Rhodes, the rock kit) need a credit: a render or export that used them returns the
 credit lines and writes them into the export's manifest. Everything else is CC0 or MIT: no credit needed.
 
 # Your own sound library

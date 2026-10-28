@@ -68,6 +68,13 @@ fn write_bytes(path: &Path, bytes: &[u8]) -> Result<(), Error> {
 
 /// The whole file as interleaved stereo f32 at `rate`.
 fn decode(path: &Path, rate: u32) -> Result<Vec<f32>, String> {
+    let (stereo, from) = decode_native(path)?;
+    let frames = crate::live::frames::Frames { channels: 2, mask: 0x3, data: stereo };
+    Ok(crate::live::frames::resample(&frames, from, rate as f64).data)
+}
+
+/// The whole file as interleaved stereo f32 at its own sample rate (an SFZ sample in OGG / MP3 plays from this).
+pub(crate) fn decode_native(path: &Path) -> Result<(Vec<f32>, f64), String> {
     use symphonia::core::audio::SampleBuffer;
     use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
     use symphonia::core::errors::Error as E;
@@ -117,6 +124,5 @@ fn decode(path: &Path, rate: u32) -> Result<Vec<f32>, String> {
     if stereo.is_empty() {
         return Err("has no audio".into());
     }
-    let frames = crate::live::frames::Frames { channels: 2, mask: 0x3, data: stereo };
-    Ok(crate::live::frames::resample(&frames, from as f64, rate as f64).data)
+    Ok((stereo, from as f64))
 }

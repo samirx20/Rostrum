@@ -5,6 +5,9 @@ added to the engine is added here (and only here). Effect fields and their defau
 """
 from __future__ import annotations
 
+import difflib
+import re
+
 CONTRACT = "rostrum-sound-schedule/1"
 
 TONES = ["neutral", "muffled", "warm", "sub-boost", "bright", "voice-clarity", "radio"]
@@ -17,7 +20,7 @@ EQ_SHAPES = ["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"]
 # recorded instrument, an analog synth preset or, only as `classic.<name>`, the older synthesized voice. A document keeps
 # the name as written; the engine resolves it when it plays. In picker order: the recorded ones first, grouped by what they are.
 BUILT_IN_GROUPS = {
-    "Piano and keys": ["piano", "electricPiano", "organ", "pipeOrgan"],
+    "Piano and keys": ["piano", "electricPiano", "rhodes", "organ", "pipeOrgan"],
     "Guitar and bass": ["guitar", "acousticGuitar", "electricGuitar", "bass", "uprightBass"],
     "Strings": ["strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp"],
     "Brass and winds": ["brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba", "flute", "piccolo", "oboe", "clarinet",
@@ -105,3 +108,49 @@ LANE_WORDS = {"volume": "Volume", "pan": "Pan", "dynamics": "Expression", "vibra
               "bend": "Pitch bend", "level": "Level"}     # what a lane is called on screen (agents' errors say these too)
 # A track's or bus's `output` when it feeds the master bus (the default); otherwise a bus id.
 MASTER_OUT = "master"
+
+
+# Words agents reach for that the engine has no instrument of: the refusal names what to use instead (lower case, no spaces).
+BUILT_IN_NEAR = {"contrabass": ["basses", "uprightBass", "doubleBass"], "doublebasses": ["basses", "uprightBass"], "bassguitar": ["bass"],
+                 "epiano": ["rhodes", "electricPiano"], "fenderrhodes": ["rhodes"], "keys": ["piano", "rhodes", "electricPiano", "organ"], "grandpiano": ["piano"],
+                 "sax": ["saxophone"], "altosax": ["saxophone"], "frenchhorn": ["horn"], "horns": ["horn", "brass"], "trumpets": ["trumpet", "brass"],
+                 "hammond": ["organ"], "churchorgan": ["pipeOrgan"], "vibes": ["vibraphone"], "bell": ["tubularBells", "glockenspiel"],
+                 "bells": ["tubularBells", "glockenspiel"], "synth": ["warmPad", "pluck", "subBass"], "lead": ["pluck", "trumpet", "flute"],
+                 "choir": ["choirPad"], "orchestra": ["strings", "brass"], "drums": ["(a kit, not a builtIn: kit='drums')"],
+                 "kit": ["(a kit, not a builtIn: kit='drums')"]}
+SOUND_GUIDE = "inspect_guide 'start-here', section \"Instrument and kit names\" (every name, what it is)"
+
+
+def _loose(word) -> str:
+    return re.sub(r"[\s_\-]+", "", str(word)).lower()
+
+
+def near_names(field: str, value, options: list[str]) -> list[str]:
+    """Up to four names close to a wrong `value`: written another way (case, spaces), a word an agent reaches for, or spelled nearly."""
+    key = _loose(value)
+    found = [o for o in options if _loose(o) == key]
+    found += [n for n in (BUILT_IN_NEAR.get(key, []) if field == "builtIn" else []) if n not in found]
+    found += [o for o in options if o not in found and len(key) >= 3 and (key in _loose(o) or _loose(o) in key)]
+    found += [o for o in difflib.get_close_matches(str(value), options, n=3, cutoff=0.5) if o not in found]
+    return found[:4]
+
+
+def read_sound(fields: dict) -> dict:
+    """A script's `builtIn=` / `kit=` as the document keeps it: the form's own prefix is dropped (`kit="kit:classic"` is how the
+    engine's listing writes it), an old kit name is renamed, and a wrong name is refused with the close ones and the guide's list."""
+    from rostrum_core import RostrumError, codes
+    out = dict(fields)
+    for field, options in (("builtIn", BUILT_INS), ("kit", KITS)):
+        v = out.get(field)
+        if not isinstance(v, str):
+            continue
+        if v.startswith(f"{field}:"):
+            v = v.split(":", 1)[1]
+        if field == "kit":
+            v = OLD_KITS.get(v, v)
+        if _loose(v) not in {_loose(o) for o in options}:
+            close = near_names(field, v, options)
+            raise RostrumError(codes.BAD_ARGUMENT, "script", f"{field}={v!r}", "is not one of the choices",
+                               hint=(f"Close: {', '.join(close)}. " if close else "") + f"Every {'instrument' if field == 'builtIn' else 'kit'} name with what it is: {SOUND_GUIDE}.")
+        out[field] = v
+    return out

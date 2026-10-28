@@ -13,7 +13,7 @@ mod expression;
 mod hit;
 mod instrument;
 mod measure;
-mod media;
+pub(crate) mod media;
 pub mod names;
 mod names_instruments;
 mod perform;

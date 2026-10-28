@@ -24,12 +24,18 @@ def _instrument(args) -> dict:
 
 
 def register(tools: Tools):
-    @tools.tool("inspect_engine", {"properties": {}})
+    @tools.tool("inspect_engine", {"properties": {
+        "name": {"type": "string", "description": "One thing's details: an effect type (compressor), a reverb space, `master`, an instrument (marimba, model:marimba, classic.warmPad) or a kit (jazz). Gives its settings with units and ranges, or what it is, which part it suits and its starting level."},
+        "detail": {"enum": ["short", "full"], "default": "short", "description": "short (default): the names only, about 3 KB. full: every effect's settings, the master's, every instrument's role and level (about 50 KB: ask for one thing with `name` instead)."}}})
     def inspect_engine(ctx, args):
-        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized. Each instrument's starting level (start_level_db: how loud it is at track volume 1; a track's volume_db in look_sound levels is against it). data.render_bands_hz names the five bands of the render reply (sub 20–60, bass 60–250, lowMid 250–1000, mid 1000–4000, high 4000–16000 Hz)."""
+        """By default a compact answer (about 3 KB): every instrument, kit, effect, master-setting, reverb-space, tone and EQ-shape name, nothing more; `name` gives one thing's details and `detail: "full"` the whole table described next. The full table: every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized. Each instrument's starting level (start_level_db: how loud it is at track volume 1; a track's volume_db in look_sound levels is against it). data.render_bands_hz names the five bands of the render reply (sub 20–60, bass 60–250, lowMid 250–1000, mid 1000–4000, high 4000–16000 Hz)."""
         d = ctx.app.state.engine.request("describe")
         made = L.made_by(d)
         effects, master = L.effect_rows(), L.master_rows()
+        if args.get("name"):
+            return _one(args["name"], d, made, effects, master)
+        if args.get("detail", "short") != "full":
+            return _short(d, made, effects, master)
         said = "; ".join(roles.line(k, made[k], short=True) for k in roles.ROLES)
         rows = roles.rows(made)
         for row in rows:                      # the starting level (mcp/start_level.py)
@@ -149,3 +155,45 @@ def _user_sounds(kind, words, args, added):
     return Reply(f"{head}{r['total']} {asked} found" + (f" for \"{words}\"" if words else "") + f" in your sound folders{more}.",
                  {"sounds": sounds, "total": r["total"], "more": r["more"], "folders": userlib.list_folders(),
                   **({"indexed": added} if added else {})})
+
+
+def _short(d: dict, made: dict, effects: dict, master: list) -> Reply:
+    """The compact answer: every name the engine accepts, marked synthesized where it is, and where the details are."""
+    groups = {g: ", ".join(n + (" (synth)" if n in names.SYNTHESIZED else "") for n in ns) for g, ns in names.BUILT_IN_GROUPS.items()}
+    other = ", ".join(f"{a} (= {n})" for a, n in names.BUILT_IN_ALIASES.items())
+    kits = {"drums": "rock kit", "studio": "studio kit", "jazz": "jazz kit (brushes, ride)", "classic": "synthesized"}
+    return Reply(f"Engine {d['engine']}, contract {d['contract']}: {len(d['builtIns'])} instrument names (builtIn=), {len(names.KITS)} kits (kit=), "
+                 f"{len(effects)} effect types, {len(d['spaces'])} reverb spaces. "
+                 + " ".join(f"{g}: {t}." for g, t in groups.items()) + f" Other names for the same sounds: {other}. "
+                 f"Kits: {', '.join(f'{k} ({w})' for k, w in kits.items())}; the kit= value is the bare name (kit:classic is accepted too). "
+                 f"Drum names: {', '.join(g['name'] for g in d['gmDrums'])} (recorded kits); the classic kit has {', '.join(names.SYNTH_DRUMS)}. "
+                 f"Effects: {', '.join(effects)}. Master settings: {', '.join(r['name'] for r in master)}. Reverb spaces: {', '.join(d['spaces'])}. "
+                 f"Tones: {', '.join(d['tones'])}. EQ shapes: {', '.join(d['eqShapes'])}. "
+                 f"Details of one thing: inspect_engine with name (an effect, `master`, an instrument or a kit); one instrument's range: what \"instrument\"; "
+                 f"every name with what it is: inspect_guide 'start-here' › Instrument and kit names; everything at once: detail \"full\".",
+                 {"instruments": names.BUILT_INS, "instrument_groups": names.BUILT_IN_GROUPS, "aliases": names.BUILT_IN_ALIASES, "kits": names.KITS,
+                  "effects": list(effects), "master": [r["name"] for r in master], "spaces": d["spaces"], "tones": d["tones"],
+                  "eqShapes": d["eqShapes"], "drums": [g["name"] for g in d["gmDrums"]], "synthDrums": names.SYNTH_DRUMS,
+                  "render_bands_hz": RENDER_BANDS_HZ})
+
+
+def _one(name: str, d: dict, made: dict, effects: dict, master: list) -> Reply:
+    """One thing: an effect's settings, the master's, a reverb space, an instrument's role and level, a kit."""
+    if name in effects:
+        return Reply(L.effect_line(name, effects[name]) + ".", {"effect": name, "settings": effects[name]})
+    if name == "master":
+        return Reply(L.master_line(master) + ".", {"master": master})
+    if name in d["spaces"]:
+        return Reply(f"Reverb space {name}: {names.SPACE_WORDS.get(name, 'a ready-made room')}. Set on a track's or the master's reverb effect (space).", {"space": name})
+    bare = name.split(":", 1)[-1] if name.split(":", 1)[0] in ("builtIn", "kit") else name
+    bare = names.BUILT_IN_ALIASES.get(bare, bare)          # another name for the same sound is that sound
+    key = next((k for k in (f"builtIn:{bare}", f"kit:{bare}", name) if k in roles.ROLES), None)
+    if key:
+        row = next((r for r in roles.rows(made) if r["sound"] == key), {})
+        lv = start_level.table(d).get(key)
+        return Reply(f"{roles.line(key, made[key])}" + (f" Starting level {lv:+.1f} dB." if lv is not None else "")
+                     + f" Its range: inspect_engine what \"instrument\" with {'kit' if key.startswith('kit:') else 'builtIn'}=\"{bare}\".",
+                     {**row, **({"start_level_db": round(lv, 1)} if lv is not None else {})})
+    pool = [*effects, "master", *d["spaces"], *names.BUILT_INS, *names.KITS]
+    raise RostrumError(codes.NOT_FOUND, "inspect_engine", f'name "{name}"', "is not an effect, the master, a reverb space, an instrument or a kit",
+                       hint=f"Close: {', '.join(names.near_names('builtIn', name, pool)) or 'none'}. Every name: inspect_engine without name.")

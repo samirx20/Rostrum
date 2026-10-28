@@ -2,7 +2,7 @@
 //! Each effect runs the way it means on several channels:
 //! - linked (one gain for every channel, so the image does not shift): compressor, limiter, gate,
 //!   de-esser, leveller (its loudness BS.1770-weighted);
-//! - per channel: EQ, saturation, tape, declip, declick;
+//! - per channel: EQ, saturation, tape (its record surface drawn apart on each channel), declip, declick;
 //! - per left/right pair, a centre channel alone: delay (ping-pong bounces inside a pair), convolution
 //!   (the IR's left side on the left speaker), dehum, dereverb; time-based effects leave the LFE dry;
 //! - the reverb insert: one reverb over the mains (dsp.rs);
@@ -54,7 +54,7 @@ impl Chain {
                 }
                 Effect::Reverb { space, mix, decay, damping, size } => Box::new(ReverbInsert::new(space, mix, crate::fx::reverb::Shape { decay: *decay, damping: *damping, size: *size }, n, layout, sr)),
                 Effect::Saturate { drive, mix } => Box::new(Saturate { drive: drive.clone(), mix: mix.clone(), sr }),
-                Effect::Tape { wow, flutter, age } => Box::new(TapeFx::new(wow, flutter, age, n, sr)),
+                Effect::Tape { wow, flutter, age, hiss, crackle } => Box::new(TapeFx::new([wow, flutter, age, hiss, crackle], n, sr)),
                 Effect::Limiter { ceiling, release } => Box::new(Limiter::new(*ceiling, *release, sr)),
                 Effect::Width { width, mono_below } => {
                     let mut p = Pairwise::new(layout, n, false, || Width::new(width, *mono_below, sr));

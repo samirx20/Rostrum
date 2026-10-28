@@ -228,6 +228,16 @@
    "files": true
   },
   {
+   "id": "rhodes",
+   "title": "Fender Rhodes Mark II 73 stage piano (single notes, Freesound pack 3957)",
+   "author": "Tim Kahn (freesound.org/people/tim.kahn)",
+   "group": "instruments",
+   "license": "CC-BY 4.0: free for any use, commercial included; credit \"Rhodes Mark II samples by Tim Kahn (freesound.org, CC-BY 4.0)\"",
+   "page": "https://freesound.org/people/tim.kahn/packs/3957/",
+   "credit": "Rhodes Mark II samples by Tim Kahn (freesound.org, CC-BY 4.0)",
+   "files": true
+  },
+  {
    "id": "vcsl-mallets",
    "title": "VCSL mallets: marimba, vibraphone, xylophone, glockenspiel, tubular bells",
    "author": "Versilian Studios (VCSL)",

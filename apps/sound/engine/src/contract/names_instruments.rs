@@ -31,6 +31,7 @@ const VW: &str = "vsco2-woodwinds";
 const VM: &str = "vcsl-mallets";
 const SALAMANDER: &str = "Salamander Grand Piano by Alexander Holm (CC-BY 3.0)";
 const WURLITZER: &str = "Wurlitzer EP200 samples by Greg Sullivan (CC-BY 3.0)";
+const RHODES: &str = "Rhodes Mark II samples by Tim Kahn (freesound.org, CC-BY 4.0)";
 pub const MULDJORD: &str = "Drum samples provided by DrumGizmo.org (MuldjordKit by Lars Muldjord, CC-BY 4.0)";
 
 pub const RECORDED: &[Recorded] = &[
@@ -53,6 +54,7 @@ pub const RECORDED: &[Recorded] = &[
     rec("bassoon", VW, "bassoon (VSCO 2)", (34, 75), &[("sustain", "BassoonSus.sfz"), ("vibrato", "BassoonVib.sfz"), ("staccato", "BassoonStac.sfz")]),
     rec("timpani", "vsco2-percussion", "timpani (VSCO 2)", (36, 60), &[("hit", "Timpani.sfz"), ("roll", "TimpaniRolls.sfz")]),
     Recorded { credit: Some(SALAMANDER), ..rec("concertGrand", "salamander-piano", "concert grand piano (Salamander Grand Piano V3, a Yamaha C5)", (21, 108), &[("keys", "SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz")]) },
+    Recorded { credit: Some(RHODES), ..rec("rhodes", "rhodes", "Fender Rhodes Mark II 73 electric piano, one velocity layer (Tim Kahn); F4 to C#6 are stretched from E4 and D6", (28, 100), &[("keys", "rhodes.sfz")]) },
     Recorded { credit: Some(WURLITZER), ..rec("wurlitzer", "wurlitzer", "Wurlitzer EP200 electric piano", (33, 96), &[("keys", "Wurlitzer EP200/Wurlitzer EP200.sfz")]) },
     rec("drawbarOrgan", "drawbar-organ", "tonewheel drawbar organ (FreePats)", (33, 98), &[("keys", "DrawbarOrganEmulation-SFZ-20190712/DrawbarOrganEmulation-20190712.sfz")]),
     rec("pipeOrgan", "vcsl-organ", "pipe organ, loud registration (VCSL)", (36, 97), &[("keys", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz"), ("pedal", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud Pedal.sfz")]),
@@ -82,7 +84,7 @@ use Plays::{Classic, Rec, Synth};
 
 pub const PLAIN: &[(&str, Plays)] = &[
     ("piano", Rec("concertGrand", None)), ("grandPiano", Rec("concertGrand", None)), ("acousticPiano", Rec("concertGrand", None)), ("feltPiano", Rec("concertGrand", None)),
-    ("electricPiano", Rec("wurlitzer", None)), ("wurlitzer", Rec("wurlitzer", None)),
+    ("electricPiano", Rec("wurlitzer", None)), ("wurlitzer", Rec("wurlitzer", None)), ("rhodes", Rec("rhodes", None)),
     ("organ", Rec("drawbarOrgan", None)), ("drawbarOrgan", Rec("drawbarOrgan", None)), ("pipeOrgan", Rec("pipeOrgan", None)),
     ("guitar", Rec("nylonGuitar", None)), ("nylonGuitar", Rec("nylonGuitar", None)),
     ("acousticGuitar", Rec("archtopGuitar", None)), ("steelGuitar", Rec("archtopGuitar", None)), ("archtopGuitar", Rec("archtopGuitar", None)),

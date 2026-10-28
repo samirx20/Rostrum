@@ -30,6 +30,7 @@ ROLES: dict[str, Role] = {
     # Recorded instruments (ranges: where the recording is: the pack's own range; a note outside it is stretched and thins).
     "builtIn:piano": Role(("comp", "lead"), "A0", "C8", "a recorded concert grand (Salamander, Yamaha C5)"),
     "builtIn:electricPiano": Role(("comp", "lead"), "A1", "C7", "a recorded Wurlitzer electric piano"),
+    "builtIn:rhodes": Role(("comp", "lead"), "E1", "E7", "a recorded Rhodes electric piano (F4 to C#6 stretched from neighbouring notes)"),
     "builtIn:organ": Role(("pad", "comp"), "A1", "D7", "a recorded drawbar organ"),
     "builtIn:pipeOrgan": Role(("pad",), "C2", "C#7", "a recorded pipe organ, loud registration"),
     "builtIn:guitar": Role(("comp", "lead"), "F1", "B5", "a recorded classical (nylon) guitar"),

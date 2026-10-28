@@ -12,8 +12,10 @@ from .. import listen, roles
 from ..doc.markers import seconds_of
 from ..doc.times import seconds
 from ..ears.written import instrument_spec
+from ..listen.faults import check as fault_check
 from ..listen.loudness import loudest_line
 from . import start_level
+from .moments_arg import EXPECT, parse as parse_expect
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 WINDOW = {"start": {"type": ["number", "string", "object"], "description": "Read only from here (seconds, {\"beat\": n} or \"#marker\"); needs end."},
@@ -82,16 +84,20 @@ def _resolve(doc, t, where):
 
 
 def register(tools: Tools):
-    @tools.tool("look_loudness", {"properties": {**ITEM, **WAV, **WINDOW}})
+    @tools.tool("look_loudness", {"properties": {**ITEM, **WAV, **WINDOW, **EXPECT}})
     def look_loudness(ctx, args):
-        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished), whether the file is cut off (the last 50 ms fall faster than the fade before them) and the audible end (data.ending.audible_end_s: where the sound falls under -60 dBFS for good, so "it rings out by 52 s" can be checked). For the whole song with sections, the loudness of each section (data.sections: name, from_s, to_s, integrated_lufs, true_peak_dbtp; in the summary), so "the build is louder than the verse" is a number. Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz."""
+        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished), whether the file is cut off (the last 50 ms fall faster than the fade before them) and the audible end (data.ending.audible_end_s: where the sound falls under -60 dBFS for good, so "it rings out by 52 s" can be checked). For the whole song with sections, the loudness of each section (data.sections: name, from_s, to_s, integrated_lufs, true_peak_dbtp; in the summary), so "the build is louder than the verse" is a number. Room for speech (data.speech_room, in the summary): how many dB a voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a standard speech spectrum, ANSI S3.5, against the mix band by band, weighted by each band's importance to speech; per band in data.speech_room.bands). Under a voice-over aim for +6 dB or more: carve the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz), not its overall level. Band edges: data.band_edges_hz. Faults (data.faults, each {kind, at_s, measured, words}; first in the summary): what a listener would complain about, with the time, the number and what to change: one harmony held 12 s or more with little level movement (heard as one flat tone), a near-mono mix (left/right correlation over 0.9), a hit the master's limiter squashed 3 dB or more (on a render), and with `expect` moments ({"at": 31.5, "kind": "hit"}) whether each comes across: a weak hit (under 2.5x a normal note or not among the 3 strongest), a blurred stop, drums dropping early, the loudest moment off the climax, a lift under +2 LU, a busy speech band in a voice span. "No faults found" means none of these, not that the music is good."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
         win = _window(doc, args, "look_sound (what: loudness)")
         r = listen.loudness(wav, out_png=str(png), limiter=lim, range=win)
+        _, _, moments = parse_expect(doc, args.get("expect"), "look_sound (what: loudness)")
+        f = fault_check(wav, moments, r.get("limiter"), whole=win is None)
+        r["faults"] = f["faults"]
         clips = r.get("clip_moments", [])
-        said = f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments. "
+        said = f["words"] + " "
+        said += f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments. "
         said += loudest_line(r["loudest"])
         if r.get("ending"):
             said += " " + r["ending"]["words"]
@@ -140,12 +146,12 @@ def register(tools: Tools):
 
     @tools.tool("look_events", {"properties": {**ITEM, **WAV,
         "track": {"type": "string", "description": "Read one track's stem instead of the mix."},
-        "expect": {"type": "array", "description": "Times the sounds should start at: seconds, {\"beat\": n} or \"#marker\"."},
+        **EXPECT,
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds a sound may be off (one frame at 25 fps = 0.04)."},
         "by_stem": {"type": "boolean", "default": False, "description": "With expect: for each time, which track's stem starts nearest it (and the next two), how far off, and the mix's nearest onset: one call for every marker."},
         "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
-        """Where sounds start (onsets). With expect, each expected time's nearest onset (within 250 ms: a sound starting farther off is not quoted as that time's), how early or late, pass or fail; a soft or masked start (a swell, an entry over a held chord) is found as the level rising 6 dB over its quietest just before. With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset); a stem with no start within 250 ms of a time is not listed for it."""
+        """Where sounds start (onsets). With expect, each expected time's nearest onset (within 250 ms: a sound starting farther off is not quoted as that time's), how early or late, pass or fail; a soft or masked start (a swell, an entry over a held chord) is found as the level rising 6 dB over its quietest just before. Passing the time is not enough: give a moment's kind ({"at": 31.5, "kind": "hit"}, also stop, drop, climax, lift, entry, voice) and the faults (data.faults, in the summary) say whether it comes across, with the time, the measured number and what to change (a weak hit: "1.6x a normal note"; a blurred stop; drums dropping 0.7 s early; the loudest moment 1.5 s after the climax). With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset); a stem with no start within 250 ms of a time is not listed for it."""
         doc, wav, stems = _source(ctx, args, "look_music (what: events)")
         if args.get("by_stem"):
             if not args.get("expect"):
@@ -153,9 +159,9 @@ def register(tools: Tools):
             if not stems:
                 raise RostrumError(codes.NOT_FOUND, "look_music (what: events)", "stems", "were not rendered", hint="render_mix with stems: true.")
             tol = args.get("tolerance", 0.04)
-            expect = [_resolve(doc, t, f"look_music (what: events) › expect[{i}]") for i, t in enumerate(args["expect"])]
+            expect, labels, _ = parse_expect(doc, args["expect"], "look_music (what: events)")
             r = listen.which_stem(wav, stems, expect, tol)
-            for row, name in zip(r["expected"], args["expect"]):
+            for row, name in zip(r["expected"], labels):
                 row["at"] = name
             ok = sum(row["pass"] for row in r["expected"])
             return Reply(f"{ok} of {len(expect)} expected times have a stem starting within {tol * 1000:.0f} ms: "
@@ -164,8 +170,8 @@ def register(tools: Tools):
             if args["track"] not in stems:
                 raise RostrumError.not_found("look_events", "stem", args["track"], stems, "the last render's stems")
             wav = stems[args["track"]]
-        expect = [_resolve(doc, t, f"look_music (what: events) › expect[{i}]") for i, t in enumerate(args.get("expect") or [])] or None
-        r = listen.onsets(wav, expect=expect, tolerance=args.get("tolerance", 0.04))
+        expect, _, moments = parse_expect(doc, args.get("expect"), "look_music (what: events)")
+        r = listen.onsets(wav, expect=expect or None, tolerance=args.get("tolerance", 0.04))
         if args.get("detail", "short") == "short" and len(r["onsets_s"]) > 40:
             r = {**r, "onsets_s": r["onsets_s"][:40], "onsets_total": len(r["onsets_s"])}
         if expect:
@@ -173,6 +179,10 @@ def register(tools: Tools):
             line = f"{len(expect) - len(bad)} of {len(expect)} expected sounds within {args.get('tolerance', 0.04) * 1000:.0f} ms."
         else:
             line = f"{len(r['onsets_s'])} onsets."
+        if moments:
+            f = fault_check(wav, moments, whole=False)
+            r["faults"] = f["faults"]
+            line += " " + f["words"]
         return Reply(line, r)
 
     @tools.tool("look_spectrum", {"properties": {**ITEM, **WAV,

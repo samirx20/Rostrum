@@ -366,446 +366,446 @@
 <region> sample=swirly/Samples/snare_stir/stir_dl1_rr4.wav lovel=1 hivel=127 seq_length=4 seq_position=4 volume=10
 <region> sample=swirly/Samples/snare_stir/stir_dl1_skin_rr4.wav lovel=1 hivel=127 seq_length=4 seq_position=4 volume=8
 <group> lokey=42 hikey=42 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=1
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_closed/hh_closed_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <group> lokey=44 hikey=44 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=1
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr1.wav lovel=1 hivel=14 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr2.wav lovel=1 hivel=14 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr3.wav lovel=1 hivel=14 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr4.wav lovel=1 hivel=14 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr1.wav lovel=15 hivel=28 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr2.wav lovel=15 hivel=28 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr3.wav lovel=15 hivel=28 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr4.wav lovel=15 hivel=28 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr1.wav lovel=29 hivel=42 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr2.wav lovel=29 hivel=42 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr3.wav lovel=29 hivel=42 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr4.wav lovel=29 hivel=42 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr1.wav lovel=43 hivel=56 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr2.wav lovel=43 hivel=56 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr3.wav lovel=43 hivel=56 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr4.wav lovel=43 hivel=56 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr1.wav lovel=57 hivel=71 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr2.wav lovel=57 hivel=71 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr3.wav lovel=57 hivel=71 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr4.wav lovel=57 hivel=71 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr1.wav lovel=72 hivel=85 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr2.wav lovel=72 hivel=85 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr3.wav lovel=72 hivel=85 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr4.wav lovel=72 hivel=85 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr1.wav lovel=86 hivel=99 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr2.wav lovel=86 hivel=99 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr3.wav lovel=86 hivel=99 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr4.wav lovel=86 hivel=99 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr1.wav lovel=100 hivel=113 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr2.wav lovel=100 hivel=113 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr3.wav lovel=100 hivel=113 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr4.wav lovel=100 hivel=113 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr1.wav lovel=114 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr2.wav lovel=114 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr3.wav lovel=114 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr4.wav lovel=114 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr1.wav lovel=1 hivel=14 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr2.wav lovel=1 hivel=14 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr3.wav lovel=1 hivel=14 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl1_rr4.wav lovel=1 hivel=14 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr1.wav lovel=15 hivel=28 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr2.wav lovel=15 hivel=28 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr3.wav lovel=15 hivel=28 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl2_rr4.wav lovel=15 hivel=28 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr1.wav lovel=29 hivel=42 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr2.wav lovel=29 hivel=42 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr3.wav lovel=29 hivel=42 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl3_rr4.wav lovel=29 hivel=42 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr1.wav lovel=43 hivel=56 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr2.wav lovel=43 hivel=56 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr3.wav lovel=43 hivel=56 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl4_rr4.wav lovel=43 hivel=56 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr1.wav lovel=57 hivel=71 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr2.wav lovel=57 hivel=71 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr3.wav lovel=57 hivel=71 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl5_rr4.wav lovel=57 hivel=71 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr1.wav lovel=72 hivel=85 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr2.wav lovel=72 hivel=85 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr3.wav lovel=72 hivel=85 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl6_rr4.wav lovel=72 hivel=85 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr1.wav lovel=86 hivel=99 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr2.wav lovel=86 hivel=99 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr3.wav lovel=86 hivel=99 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl7_rr4.wav lovel=86 hivel=99 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr1.wav lovel=100 hivel=113 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr2.wav lovel=100 hivel=113 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr3.wav lovel=100 hivel=113 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl8_rr4.wav lovel=100 hivel=113 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr1.wav lovel=114 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr2.wav lovel=114 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr3.wav lovel=114 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_foot/hh_foot_vl9_rr4.wav lovel=114 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <group> lokey=46 hikey=46 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45 group=2 off_by=1
-<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr1.wav lovel=1 hivel=9 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr2.wav lovel=1 hivel=9 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr3.wav lovel=1 hivel=9 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr4.wav lovel=1 hivel=9 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr1.wav lovel=10 hivel=18 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr2.wav lovel=10 hivel=18 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr3.wav lovel=10 hivel=18 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr4.wav lovel=10 hivel=18 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr1.wav lovel=19 hivel=27 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr2.wav lovel=19 hivel=27 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr3.wav lovel=19 hivel=27 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr4.wav lovel=19 hivel=27 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr1.wav lovel=28 hivel=36 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr2.wav lovel=28 hivel=36 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr3.wav lovel=28 hivel=36 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr4.wav lovel=28 hivel=36 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr1.wav lovel=37 hivel=45 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr2.wav lovel=37 hivel=45 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr3.wav lovel=37 hivel=45 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr4.wav lovel=37 hivel=45 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr1.wav lovel=46 hivel=54 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr2.wav lovel=46 hivel=54 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr3.wav lovel=46 hivel=54 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr4.wav lovel=46 hivel=54 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr1.wav lovel=55 hivel=64 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr2.wav lovel=55 hivel=64 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr3.wav lovel=55 hivel=64 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr4.wav lovel=55 hivel=64 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr1.wav lovel=65 hivel=73 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr2.wav lovel=65 hivel=73 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr3.wav lovel=65 hivel=73 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr4.wav lovel=65 hivel=73 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr1.wav lovel=74 hivel=82 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr2.wav lovel=74 hivel=82 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr3.wav lovel=74 hivel=82 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr4.wav lovel=74 hivel=82 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr1.wav lovel=83 hivel=91 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr2.wav lovel=83 hivel=91 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr3.wav lovel=83 hivel=91 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr4.wav lovel=83 hivel=91 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr1.wav lovel=92 hivel=100 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr2.wav lovel=92 hivel=100 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr3.wav lovel=92 hivel=100 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr4.wav lovel=92 hivel=100 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr1.wav lovel=101 hivel=109 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr2.wav lovel=101 hivel=109 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr3.wav lovel=101 hivel=109 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr4.wav lovel=101 hivel=109 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr1.wav lovel=110 hivel=118 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr2.wav lovel=110 hivel=118 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr3.wav lovel=110 hivel=118 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr4.wav lovel=110 hivel=118 seq_length=4 seq_position=4 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr1.wav lovel=119 hivel=127 seq_length=4 seq_position=1 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr2.wav lovel=119 hivel=127 seq_length=4 seq_position=2 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr3.wav lovel=119 hivel=127 seq_length=4 seq_position=3 volume=0
-<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr4.wav lovel=119 hivel=127 seq_length=4 seq_position=4 volume=0
+<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr1.wav lovel=1 hivel=9 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr2.wav lovel=1 hivel=9 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr3.wav lovel=1 hivel=9 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl1_rr4.wav lovel=1 hivel=9 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr1.wav lovel=10 hivel=18 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr2.wav lovel=10 hivel=18 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr3.wav lovel=10 hivel=18 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl2_rr4.wav lovel=10 hivel=18 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr1.wav lovel=19 hivel=27 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr2.wav lovel=19 hivel=27 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr3.wav lovel=19 hivel=27 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl3_rr4.wav lovel=19 hivel=27 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr1.wav lovel=28 hivel=36 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr2.wav lovel=28 hivel=36 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr3.wav lovel=28 hivel=36 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl4_rr4.wav lovel=28 hivel=36 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr1.wav lovel=37 hivel=45 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr2.wav lovel=37 hivel=45 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr3.wav lovel=37 hivel=45 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl5_rr4.wav lovel=37 hivel=45 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr1.wav lovel=46 hivel=54 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr2.wav lovel=46 hivel=54 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr3.wav lovel=46 hivel=54 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl6_rr4.wav lovel=46 hivel=54 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr1.wav lovel=55 hivel=64 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr2.wav lovel=55 hivel=64 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr3.wav lovel=55 hivel=64 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl7_rr4.wav lovel=55 hivel=64 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr1.wav lovel=65 hivel=73 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr2.wav lovel=65 hivel=73 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr3.wav lovel=65 hivel=73 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl8_rr4.wav lovel=65 hivel=73 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr1.wav lovel=74 hivel=82 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr2.wav lovel=74 hivel=82 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr3.wav lovel=74 hivel=82 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl9_rr4.wav lovel=74 hivel=82 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr1.wav lovel=83 hivel=91 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr2.wav lovel=83 hivel=91 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr3.wav lovel=83 hivel=91 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl10_rr4.wav lovel=83 hivel=91 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr1.wav lovel=92 hivel=100 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr2.wav lovel=92 hivel=100 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr3.wav lovel=92 hivel=100 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl11_rr4.wav lovel=92 hivel=100 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr1.wav lovel=101 hivel=109 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr2.wav lovel=101 hivel=109 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr3.wav lovel=101 hivel=109 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl12_rr4.wav lovel=101 hivel=109 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr1.wav lovel=110 hivel=118 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr2.wav lovel=110 hivel=118 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr3.wav lovel=110 hivel=118 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl13_rr4.wav lovel=110 hivel=118 seq_length=4 seq_position=4 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr1.wav lovel=119 hivel=127 seq_length=4 seq_position=1 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr2.wav lovel=119 hivel=127 seq_length=4 seq_position=2 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr3.wav lovel=119 hivel=127 seq_length=4 seq_position=3 volume=0 pan=-35
+<region> sample=swirly/Samples/hat_open/hh_open_vl14_rr4.wav lovel=119 hivel=127 seq_length=4 seq_position=4 volume=0 pan=-35
 <group> lokey=49 hikey=49 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/crash/crash_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/crash/crash_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/crash/crash_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/crash/crash_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/crash/crash_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=3
+<region> sample=swirly/Samples/crash/crash_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=3 pan=-45
+<region> sample=swirly/Samples/crash/crash_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=3 pan=-45
 <group> lokey=51 hikey=51 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/ride/ride_vl1_rr1.wav lovel=1 hivel=8 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl1_rr2.wav lovel=1 hivel=8 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl1_rr3.wav lovel=1 hivel=8 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl1_rr4.wav lovel=1 hivel=8 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl2_rr1.wav lovel=9 hivel=17 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl2_rr2.wav lovel=9 hivel=17 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl2_rr3.wav lovel=9 hivel=17 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl2_rr4.wav lovel=9 hivel=17 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl3_rr1.wav lovel=18 hivel=25 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl3_rr2.wav lovel=18 hivel=25 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl3_rr3.wav lovel=18 hivel=25 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl3_rr4.wav lovel=18 hivel=25 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl4_rr1.wav lovel=26 hivel=34 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl4_rr2.wav lovel=26 hivel=34 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl4_rr3.wav lovel=26 hivel=34 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl4_rr4.wav lovel=26 hivel=34 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl5_rr1.wav lovel=35 hivel=42 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl5_rr2.wav lovel=35 hivel=42 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl5_rr3.wav lovel=35 hivel=42 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl5_rr4.wav lovel=35 hivel=42 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl6_rr1.wav lovel=43 hivel=51 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl6_rr2.wav lovel=43 hivel=51 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl6_rr3.wav lovel=43 hivel=51 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl6_rr4.wav lovel=43 hivel=51 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl7_rr1.wav lovel=52 hivel=59 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl7_rr2.wav lovel=52 hivel=59 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl7_rr3.wav lovel=52 hivel=59 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl7_rr4.wav lovel=52 hivel=59 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl8_rr1.wav lovel=60 hivel=68 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl8_rr2.wav lovel=60 hivel=68 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl8_rr3.wav lovel=60 hivel=68 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl8_rr4.wav lovel=60 hivel=68 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl9_rr1.wav lovel=69 hivel=76 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl9_rr2.wav lovel=69 hivel=76 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl9_rr3.wav lovel=69 hivel=76 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl9_rr4.wav lovel=69 hivel=76 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl10_rr1.wav lovel=77 hivel=85 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl10_rr2.wav lovel=77 hivel=85 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl10_rr3.wav lovel=77 hivel=85 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl10_rr4.wav lovel=77 hivel=85 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl11_rr1.wav lovel=86 hivel=93 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl11_rr2.wav lovel=86 hivel=93 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl11_rr3.wav lovel=86 hivel=93 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl11_rr4.wav lovel=86 hivel=93 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl12_rr1.wav lovel=94 hivel=102 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl12_rr2.wav lovel=94 hivel=102 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl12_rr3.wav lovel=94 hivel=102 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl12_rr4.wav lovel=94 hivel=102 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl13_rr1.wav lovel=103 hivel=110 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl13_rr2.wav lovel=103 hivel=110 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl13_rr3.wav lovel=103 hivel=110 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl13_rr4.wav lovel=103 hivel=110 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl14_rr1.wav lovel=111 hivel=119 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl14_rr2.wav lovel=111 hivel=119 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl14_rr3.wav lovel=111 hivel=119 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl14_rr4.wav lovel=111 hivel=119 seq_length=4 seq_position=4 volume=5
-<region> sample=swirly/Samples/ride/ride_vl15_rr1.wav lovel=120 hivel=127 seq_length=4 seq_position=1 volume=5
-<region> sample=swirly/Samples/ride/ride_vl15_rr2.wav lovel=120 hivel=127 seq_length=4 seq_position=2 volume=5
-<region> sample=swirly/Samples/ride/ride_vl15_rr3.wav lovel=120 hivel=127 seq_length=4 seq_position=3 volume=5
-<region> sample=swirly/Samples/ride/ride_vl15_rr4.wav lovel=120 hivel=127 seq_length=4 seq_position=4 volume=5
+<region> sample=swirly/Samples/ride/ride_vl1_rr1.wav lovel=1 hivel=8 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl1_rr2.wav lovel=1 hivel=8 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl1_rr3.wav lovel=1 hivel=8 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl1_rr4.wav lovel=1 hivel=8 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl2_rr1.wav lovel=9 hivel=17 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl2_rr2.wav lovel=9 hivel=17 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl2_rr3.wav lovel=9 hivel=17 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl2_rr4.wav lovel=9 hivel=17 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl3_rr1.wav lovel=18 hivel=25 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl3_rr2.wav lovel=18 hivel=25 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl3_rr3.wav lovel=18 hivel=25 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl3_rr4.wav lovel=18 hivel=25 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl4_rr1.wav lovel=26 hivel=34 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl4_rr2.wav lovel=26 hivel=34 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl4_rr3.wav lovel=26 hivel=34 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl4_rr4.wav lovel=26 hivel=34 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl5_rr1.wav lovel=35 hivel=42 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl5_rr2.wav lovel=35 hivel=42 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl5_rr3.wav lovel=35 hivel=42 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl5_rr4.wav lovel=35 hivel=42 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl6_rr1.wav lovel=43 hivel=51 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl6_rr2.wav lovel=43 hivel=51 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl6_rr3.wav lovel=43 hivel=51 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl6_rr4.wav lovel=43 hivel=51 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl7_rr1.wav lovel=52 hivel=59 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl7_rr2.wav lovel=52 hivel=59 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl7_rr3.wav lovel=52 hivel=59 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl7_rr4.wav lovel=52 hivel=59 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl8_rr1.wav lovel=60 hivel=68 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl8_rr2.wav lovel=60 hivel=68 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl8_rr3.wav lovel=60 hivel=68 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl8_rr4.wav lovel=60 hivel=68 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl9_rr1.wav lovel=69 hivel=76 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl9_rr2.wav lovel=69 hivel=76 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl9_rr3.wav lovel=69 hivel=76 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl9_rr4.wav lovel=69 hivel=76 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl10_rr1.wav lovel=77 hivel=85 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl10_rr2.wav lovel=77 hivel=85 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl10_rr3.wav lovel=77 hivel=85 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl10_rr4.wav lovel=77 hivel=85 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl11_rr1.wav lovel=86 hivel=93 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl11_rr2.wav lovel=86 hivel=93 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl11_rr3.wav lovel=86 hivel=93 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl11_rr4.wav lovel=86 hivel=93 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl12_rr1.wav lovel=94 hivel=102 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl12_rr2.wav lovel=94 hivel=102 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl12_rr3.wav lovel=94 hivel=102 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl12_rr4.wav lovel=94 hivel=102 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl13_rr1.wav lovel=103 hivel=110 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl13_rr2.wav lovel=103 hivel=110 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl13_rr3.wav lovel=103 hivel=110 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl13_rr4.wav lovel=103 hivel=110 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl14_rr1.wav lovel=111 hivel=119 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl14_rr2.wav lovel=111 hivel=119 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl14_rr3.wav lovel=111 hivel=119 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl14_rr4.wav lovel=111 hivel=119 seq_length=4 seq_position=4 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl15_rr1.wav lovel=120 hivel=127 seq_length=4 seq_position=1 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl15_rr2.wav lovel=120 hivel=127 seq_length=4 seq_position=2 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl15_rr3.wav lovel=120 hivel=127 seq_length=4 seq_position=3 volume=5 pan=35
+<region> sample=swirly/Samples/ride/ride_vl15_rr4.wav lovel=120 hivel=127 seq_length=4 seq_position=4 volume=5 pan=35
 <group> lokey=55 hikey=55 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/splash/splash_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=3
-<region> sample=swirly/Samples/splash/splash_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=3
-<region> sample=swirly/Samples/splash/splash_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=3
-<region> sample=swirly/Samples/splash/splash_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=3
-<region> sample=swirly/Samples/splash/splash_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=3
+<region> sample=swirly/Samples/splash/splash_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=3 pan=-50
+<region> sample=swirly/Samples/splash/splash_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=3 pan=-50
 <group> lokey=41 hikey=41 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=4
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=4 pan=40
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=4 pan=40
 <group> lokey=43 hikey=43 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=4
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr1.wav lovel=1 hivel=11 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr2.wav lovel=1 hivel=11 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr3.wav lovel=1 hivel=11 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl1_rr4.wav lovel=1 hivel=11 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr1.wav lovel=12 hivel=21 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr2.wav lovel=12 hivel=21 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr3.wav lovel=12 hivel=21 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl2_rr4.wav lovel=12 hivel=21 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr1.wav lovel=22 hivel=32 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr2.wav lovel=22 hivel=32 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr3.wav lovel=22 hivel=32 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl3_rr4.wav lovel=22 hivel=32 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr1.wav lovel=33 hivel=42 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr2.wav lovel=33 hivel=42 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr3.wav lovel=33 hivel=42 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl4_rr4.wav lovel=33 hivel=42 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr1.wav lovel=43 hivel=53 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr2.wav lovel=43 hivel=53 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr3.wav lovel=43 hivel=53 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl5_rr4.wav lovel=43 hivel=53 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr1.wav lovel=54 hivel=64 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr2.wav lovel=54 hivel=64 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr3.wav lovel=54 hivel=64 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl6_rr4.wav lovel=54 hivel=64 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr1.wav lovel=65 hivel=74 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr2.wav lovel=65 hivel=74 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr3.wav lovel=65 hivel=74 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl7_rr4.wav lovel=65 hivel=74 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr1.wav lovel=75 hivel=85 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr2.wav lovel=75 hivel=85 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr3.wav lovel=75 hivel=85 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl8_rr4.wav lovel=75 hivel=85 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr1.wav lovel=86 hivel=95 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr2.wav lovel=86 hivel=95 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr3.wav lovel=86 hivel=95 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl9_rr4.wav lovel=86 hivel=95 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr1.wav lovel=96 hivel=106 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr2.wav lovel=96 hivel=106 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr3.wav lovel=96 hivel=106 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl10_rr4.wav lovel=96 hivel=106 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr1.wav lovel=107 hivel=116 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr2.wav lovel=107 hivel=116 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr3.wav lovel=107 hivel=116 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl11_rr4.wav lovel=107 hivel=116 seq_length=4 seq_position=4 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr1.wav lovel=117 hivel=127 seq_length=4 seq_position=1 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr2.wav lovel=117 hivel=127 seq_length=4 seq_position=2 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr3.wav lovel=117 hivel=127 seq_length=4 seq_position=3 volume=4 pan=35
+<region> sample=swirly/Samples/tom_floor/tom_floor_vl12_rr4.wav lovel=117 hivel=127 seq_length=4 seq_position=4 volume=4 pan=35
 <group> lokey=45 hikey=45 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr1.wav lovel=1 hivel=13 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr2.wav lovel=1 hivel=13 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr3.wav lovel=1 hivel=13 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr4.wav lovel=1 hivel=13 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr1.wav lovel=14 hivel=25 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr2.wav lovel=14 hivel=25 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr3.wav lovel=14 hivel=25 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr4.wav lovel=14 hivel=25 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr1.wav lovel=26 hivel=38 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr2.wav lovel=26 hivel=38 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr3.wav lovel=26 hivel=38 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr4.wav lovel=26 hivel=38 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr1.wav lovel=39 hivel=51 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr2.wav lovel=39 hivel=51 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr3.wav lovel=39 hivel=51 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr4.wav lovel=39 hivel=51 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr1.wav lovel=52 hivel=64 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr2.wav lovel=52 hivel=64 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr3.wav lovel=52 hivel=64 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr4.wav lovel=52 hivel=64 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr1.wav lovel=65 hivel=76 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr2.wav lovel=65 hivel=76 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr3.wav lovel=65 hivel=76 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr4.wav lovel=65 hivel=76 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr1.wav lovel=77 hivel=89 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr2.wav lovel=77 hivel=89 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr3.wav lovel=77 hivel=89 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr4.wav lovel=77 hivel=89 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr1.wav lovel=90 hivel=102 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr2.wav lovel=90 hivel=102 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr3.wav lovel=90 hivel=102 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr4.wav lovel=90 hivel=102 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr1.wav lovel=103 hivel=114 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr2.wav lovel=103 hivel=114 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr3.wav lovel=103 hivel=114 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr4.wav lovel=103 hivel=114 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr1.wav lovel=115 hivel=127 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr2.wav lovel=115 hivel=127 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr3.wav lovel=115 hivel=127 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr4.wav lovel=115 hivel=127 seq_length=4 seq_position=4 volume=4
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr1.wav lovel=1 hivel=13 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr2.wav lovel=1 hivel=13 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr3.wav lovel=1 hivel=13 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl1_rr4.wav lovel=1 hivel=13 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr1.wav lovel=14 hivel=25 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr2.wav lovel=14 hivel=25 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr3.wav lovel=14 hivel=25 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl2_rr4.wav lovel=14 hivel=25 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr1.wav lovel=26 hivel=38 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr2.wav lovel=26 hivel=38 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr3.wav lovel=26 hivel=38 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl3_rr4.wav lovel=26 hivel=38 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr1.wav lovel=39 hivel=51 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr2.wav lovel=39 hivel=51 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr3.wav lovel=39 hivel=51 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl4_rr4.wav lovel=39 hivel=51 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr1.wav lovel=52 hivel=64 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr2.wav lovel=52 hivel=64 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr3.wav lovel=52 hivel=64 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl5_rr4.wav lovel=52 hivel=64 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr1.wav lovel=65 hivel=76 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr2.wav lovel=65 hivel=76 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr3.wav lovel=65 hivel=76 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl6_rr4.wav lovel=65 hivel=76 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr1.wav lovel=77 hivel=89 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr2.wav lovel=77 hivel=89 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr3.wav lovel=77 hivel=89 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl7_rr4.wav lovel=77 hivel=89 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr1.wav lovel=90 hivel=102 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr2.wav lovel=90 hivel=102 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr3.wav lovel=90 hivel=102 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl8_rr4.wav lovel=90 hivel=102 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr1.wav lovel=103 hivel=114 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr2.wav lovel=103 hivel=114 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr3.wav lovel=103 hivel=114 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl9_rr4.wav lovel=103 hivel=114 seq_length=4 seq_position=4 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr1.wav lovel=115 hivel=127 seq_length=4 seq_position=1 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr2.wav lovel=115 hivel=127 seq_length=4 seq_position=2 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr3.wav lovel=115 hivel=127 seq_length=4 seq_position=3 volume=4 pan=15
+<region> sample=swirly/Samples/tom_xmed/tom_xmed_vl10_rr4.wav lovel=115 hivel=127 seq_length=4 seq_position=4 volume=4 pan=15
 <group> lokey=47 hikey=47 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
 <region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr1.wav lovel=1 hivel=13 seq_length=4 seq_position=1 volume=4
 <region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr2.wav lovel=1 hivel=13 seq_length=4 seq_position=2 volume=4
@@ -848,80 +848,80 @@
 <region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr3.wav lovel=115 hivel=127 seq_length=4 seq_position=3 volume=4
 <region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr4.wav lovel=115 hivel=127 seq_length=4 seq_position=4 volume=4
 <group> lokey=48 hikey=48 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr1.wav lovel=1 hivel=13 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr2.wav lovel=1 hivel=13 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr3.wav lovel=1 hivel=13 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr4.wav lovel=1 hivel=13 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr1.wav lovel=14 hivel=25 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr2.wav lovel=14 hivel=25 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr3.wav lovel=14 hivel=25 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr4.wav lovel=14 hivel=25 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr1.wav lovel=26 hivel=38 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr2.wav lovel=26 hivel=38 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr3.wav lovel=26 hivel=38 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr4.wav lovel=26 hivel=38 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr1.wav lovel=39 hivel=51 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr2.wav lovel=39 hivel=51 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr3.wav lovel=39 hivel=51 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr4.wav lovel=39 hivel=51 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr1.wav lovel=52 hivel=64 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr2.wav lovel=52 hivel=64 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr3.wav lovel=52 hivel=64 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr4.wav lovel=52 hivel=64 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr1.wav lovel=65 hivel=76 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr2.wav lovel=65 hivel=76 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr3.wav lovel=65 hivel=76 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr4.wav lovel=65 hivel=76 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr1.wav lovel=77 hivel=89 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr2.wav lovel=77 hivel=89 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr3.wav lovel=77 hivel=89 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr4.wav lovel=77 hivel=89 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr1.wav lovel=90 hivel=102 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr2.wav lovel=90 hivel=102 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr3.wav lovel=90 hivel=102 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr4.wav lovel=90 hivel=102 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr1.wav lovel=103 hivel=114 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr2.wav lovel=103 hivel=114 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr3.wav lovel=103 hivel=114 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr4.wav lovel=103 hivel=114 seq_length=4 seq_position=4 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr1.wav lovel=115 hivel=127 seq_length=4 seq_position=1 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr2.wav lovel=115 hivel=127 seq_length=4 seq_position=2 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr3.wav lovel=115 hivel=127 seq_length=4 seq_position=3 volume=4
-<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr4.wav lovel=115 hivel=127 seq_length=4 seq_position=4 volume=4
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr1.wav lovel=1 hivel=13 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr2.wav lovel=1 hivel=13 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr3.wav lovel=1 hivel=13 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl1_rr4.wav lovel=1 hivel=13 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr1.wav lovel=14 hivel=25 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr2.wav lovel=14 hivel=25 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr3.wav lovel=14 hivel=25 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl2_rr4.wav lovel=14 hivel=25 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr1.wav lovel=26 hivel=38 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr2.wav lovel=26 hivel=38 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr3.wav lovel=26 hivel=38 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl3_rr4.wav lovel=26 hivel=38 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr1.wav lovel=39 hivel=51 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr2.wav lovel=39 hivel=51 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr3.wav lovel=39 hivel=51 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl4_rr4.wav lovel=39 hivel=51 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr1.wav lovel=52 hivel=64 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr2.wav lovel=52 hivel=64 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr3.wav lovel=52 hivel=64 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl5_rr4.wav lovel=52 hivel=64 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr1.wav lovel=65 hivel=76 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr2.wav lovel=65 hivel=76 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr3.wav lovel=65 hivel=76 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl6_rr4.wav lovel=65 hivel=76 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr1.wav lovel=77 hivel=89 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr2.wav lovel=77 hivel=89 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr3.wav lovel=77 hivel=89 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl7_rr4.wav lovel=77 hivel=89 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr1.wav lovel=90 hivel=102 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr2.wav lovel=90 hivel=102 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr3.wav lovel=90 hivel=102 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl8_rr4.wav lovel=90 hivel=102 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr1.wav lovel=103 hivel=114 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr2.wav lovel=103 hivel=114 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr3.wav lovel=103 hivel=114 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl9_rr4.wav lovel=103 hivel=114 seq_length=4 seq_position=4 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr1.wav lovel=115 hivel=127 seq_length=4 seq_position=1 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr2.wav lovel=115 hivel=127 seq_length=4 seq_position=2 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr3.wav lovel=115 hivel=127 seq_length=4 seq_position=3 volume=4 pan=-15
+<region> sample=swirly/Samples/tom_mhi/tom_mhi_vl10_rr4.wav lovel=115 hivel=127 seq_length=4 seq_position=4 volume=4 pan=-15
 <group> lokey=50 hikey=50 pitch_keytrack=0 loop_mode=one_shot amp_veltrack=45
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr1.wav lovel=1 hivel=14 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr2.wav lovel=1 hivel=14 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr3.wav lovel=1 hivel=14 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr4.wav lovel=1 hivel=14 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr1.wav lovel=15 hivel=28 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr2.wav lovel=15 hivel=28 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr3.wav lovel=15 hivel=28 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr4.wav lovel=15 hivel=28 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr1.wav lovel=29 hivel=42 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr2.wav lovel=29 hivel=42 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr3.wav lovel=29 hivel=42 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr4.wav lovel=29 hivel=42 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr1.wav lovel=43 hivel=56 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr2.wav lovel=43 hivel=56 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr3.wav lovel=43 hivel=56 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr4.wav lovel=43 hivel=56 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr1.wav lovel=57 hivel=71 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr2.wav lovel=57 hivel=71 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr3.wav lovel=57 hivel=71 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr4.wav lovel=57 hivel=71 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr1.wav lovel=72 hivel=85 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr2.wav lovel=72 hivel=85 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr3.wav lovel=72 hivel=85 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr4.wav lovel=72 hivel=85 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr1.wav lovel=86 hivel=99 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr2.wav lovel=86 hivel=99 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr3.wav lovel=86 hivel=99 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr4.wav lovel=86 hivel=99 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr1.wav lovel=100 hivel=113 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr2.wav lovel=100 hivel=113 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr3.wav lovel=100 hivel=113 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr4.wav lovel=100 hivel=113 seq_length=4 seq_position=4 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr1.wav lovel=114 hivel=127 seq_length=4 seq_position=1 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr2.wav lovel=114 hivel=127 seq_length=4 seq_position=2 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr3.wav lovel=114 hivel=127 seq_length=4 seq_position=3 volume=6
-<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr4.wav lovel=114 hivel=127 seq_length=4 seq_position=4 volume=6
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr1.wav lovel=1 hivel=14 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr2.wav lovel=1 hivel=14 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr3.wav lovel=1 hivel=14 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl1_rr4.wav lovel=1 hivel=14 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr1.wav lovel=15 hivel=28 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr2.wav lovel=15 hivel=28 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr3.wav lovel=15 hivel=28 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl2_rr4.wav lovel=15 hivel=28 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr1.wav lovel=29 hivel=42 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr2.wav lovel=29 hivel=42 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr3.wav lovel=29 hivel=42 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl3_rr4.wav lovel=29 hivel=42 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr1.wav lovel=43 hivel=56 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr2.wav lovel=43 hivel=56 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr3.wav lovel=43 hivel=56 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl4_rr4.wav lovel=43 hivel=56 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr1.wav lovel=57 hivel=71 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr2.wav lovel=57 hivel=71 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr3.wav lovel=57 hivel=71 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl5_rr4.wav lovel=57 hivel=71 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr1.wav lovel=72 hivel=85 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr2.wav lovel=72 hivel=85 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr3.wav lovel=72 hivel=85 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl6_rr4.wav lovel=72 hivel=85 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr1.wav lovel=86 hivel=99 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr2.wav lovel=86 hivel=99 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr3.wav lovel=86 hivel=99 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl7_rr4.wav lovel=86 hivel=99 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr1.wav lovel=100 hivel=113 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr2.wav lovel=100 hivel=113 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr3.wav lovel=100 hivel=113 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl8_rr4.wav lovel=100 hivel=113 seq_length=4 seq_position=4 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr1.wav lovel=114 hivel=127 seq_length=4 seq_position=1 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr2.wav lovel=114 hivel=127 seq_length=4 seq_position=2 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr3.wav lovel=114 hivel=127 seq_length=4 seq_position=3 volume=6 pan=-25
+<region> sample=swirly/Samples/tom_vhi/tom_vhi_vl9_rr4.wav lovel=114 hivel=127 seq_length=4 seq_position=4 volume=6 pan=-25

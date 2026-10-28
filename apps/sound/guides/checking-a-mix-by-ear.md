@@ -10,7 +10,10 @@ order to use them in when checking a whole mix; the table of every tool and what
 
 ## A pass from the outside in
 
-1. **Overall:** `look_sound` (`what: "loudness"`). Integrated loudness and true peak against the delivery target; the short-term curve
+1. **Overall:** `look_sound` (`what: "loudness"`) with the brief's moments as `expect` (`[{"at": 31.5, "kind": "hit"}, {"at": 38, "kind": "climax"}]`). Its summary starts with the
+   **faults** a listener would hear, each with its time, the number and what to change (a weak hit "1.6x a normal note", a blurred
+   stop, drums dropping early, the loudest moment 1.5 s after the climax, one harmony held for 19 s, a near-mono mix, a hit the
+   limiter squashed 4.7 dB): fix those first (the table is in inspect_guide `listening`, *Faults*). Integrated loudness and true peak against the delivery target; the short-term curve
    shows whether the loud and quiet parts are where the piece needs them, and the summary names the loudest moment and
    its time (the loudest 3 s and 0.4 s, and the highest sample): check that the climax is where you meant; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
    (the engine's own gain curve, the worst moments with the dB reduced) and, with stems, names the tracks that drove each
@@ -33,7 +36,8 @@ order to use them in when checking a whole mix; the table of every tool and what
    Compare the mix's numbers before and after a change.
 5. **Width:** `look_sound` (`what: "stereo"`). Balance per section and mono warnings (parts that cancel when summed to mono).
 6. **Timing:** `look_music` (`what: "beats"`) (whether the audio's beats fit the document's tempo, steadiness, onsets against the grid) and `look_music` (`what: "events"`) with `expect` for hits that must land
-   on markers. Add `by_stem: true` to learn which track hits each marker, in one call.
+   on markers. Add `by_stem: true` to learn which track hits each marker, in one call. A time that passes can still be
+   barely there: give it a kind (`{"at": 36, "kind": "stop"}`) and read the faults.
 7. **Notes:** `look_music` (`what: "harmony"`) for key, chords and written-note facts (it reads the notes: run it before rendering too); `look_music` (`what: "pitch"`) with `track` for whether every written note is there and in its octave (judged on each note's attack, so ringing parts read right; the first line says the track's register), and on a one-voice part, late, out-of-tune or wrong notes.
 8. **Problems in a recording:** `look_sound` (`what: "spectrum"`) (hum lines, steady tones with note names, marks at times),
    `look_sound` (`what: "cleanup"`) for before / after of a cleaned clip.

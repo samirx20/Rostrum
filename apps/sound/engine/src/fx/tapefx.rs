@@ -1,17 +1,22 @@
 //! Tape (the lo-fi sound): wow (a slow pitch drift, up to about ±15 cents) and flutter (a fast waver) from a
 //! modulated delay, then saturation and a darker, thinner tone as `age` rises. Between blocks it keeps the last
 //! block's input, which the delay reads back into (a delay of up to a block: wow far past any musical setting).
+//! `hiss` and `crackle` add a record's surface (vinyl.rs) before the saturation and tone, so `age` wears it too.
 
 use std::f64::consts::PI;
 
 use super::frames;
 use super::state::Insert;
+use super::vinyl::Surface;
 use crate::mix::schedule::Param;
 
 pub(crate) struct TapeFx {
     wow: Param,
     flutter: Param,
     age: Param,
+    hiss: Param,
+    crackle: Param,
+    surface: Surface,
     sr: f64,
     lp: Vec<f64>,
     hp_in: Vec<f64>,
@@ -21,9 +26,11 @@ pub(crate) struct TapeFx {
 }
 
 impl TapeFx {
-    pub fn new(wow: &Param, flutter: &Param, age: &Param, channels: usize, sr: f64) -> Self {
+    /// `p`: wow, flutter, age, hiss, crackle.
+    pub fn new(p: [&Param; 5], channels: usize, sr: f64) -> Self {
         let z = vec![0.0f64; channels];
-        TapeFx { wow: wow.clone(), flutter: flutter.clone(), age: age.clone(), sr, lp: z.clone(), hp_in: z.clone(), hp_out: z, hist: vec![vec![]; channels] }
+        let [wow, flutter, age, hiss, crackle] = p.map(Param::clone);
+        TapeFx { wow, flutter, age, hiss, crackle, surface: Surface::new(channels, sr), sr, lp: z.clone(), hp_in: z.clone(), hp_out: z, hist: vec![vec![]; channels] }
     }
 }
 
@@ -36,6 +43,7 @@ impl Insert for TapeFx {
             let g = t0 + i;
             let t = g as f64 / sr;
             let (w, f, a) = (self.wow.at(t), self.flutter.at(t), self.age.at(t));
+            let (hiss, crackle) = (self.hiss.at(t), self.crackle.at(t));
             let d = base + sr * (w * 0.0025 * (2.0 * PI * 0.55 * t).sin() + w * 0.0012 * (2.0 * PI * 0.23 * t + 1.3).sin() + f * 0.00022 * (2.0 * PI * 6.3 * t).sin());
             let pos = g as f64 - d;
             let hist = &self.hist;
@@ -62,7 +70,7 @@ impl Insert for TapeFx {
             let hp_a = (-2.0 * PI * (25.0 + 70.0 * a) / sr).exp();
             for (ch, out) in chs.iter_mut().enumerate() {
                 // Unity gain for quiet signals; loud ones round off.
-                let x = (drive * read(ch)).tanh() / drive;
+                let x = (drive * (read(ch) + self.surface.at(g, ch, hiss, crackle))).tanh() / drive;
                 self.lp[ch] += alpha * (x - self.lp[ch]);
                 // A one-pole high-pass: tape loses the deepest lows.
                 self.hp_out[ch] = hp_a * (self.hp_out[ch] + self.lp[ch] - self.hp_in[ch]);

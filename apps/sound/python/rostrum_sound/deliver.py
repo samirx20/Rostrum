@@ -37,6 +37,8 @@ DEFAULT_FORMAT = "wav24"
 
 AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb tail in a quiet room
 TAIL = 0.25             # seconds kept after the last audible sound
+FOLD_S = 1.0            # a ring-out that runs past an exact length is faded to nothing over the last second of it
+RING_WARNINGS = ("The song's length is", "The last sounds still ring")    # the engine's words for a file that ends after the length
 MIN_SECONDS = 0.5       # never a shorter file than this
 BLOCK = 1 << 18         # frames read and written at a time (2 MB of stereo float)
 WRITERS = 4             # files converted at once (reading, converting and writing a file leave Python's lock free)
@@ -59,6 +61,7 @@ class Options:
     trim: bool = True
     start: float | None = None       # a range of the song (seconds): `from` / `to` in a request; both or neither
     end: float | None = None
+    length: float | None = None      # exact: the song's Length (seconds) the file must be, a ring-out folded into it (see `deliver`)
 
     @classmethod
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
@@ -77,7 +80,8 @@ class Options:
                                                               and 0 <= a < b):
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {a} to {b}", "is not a stretch of the song",
                                hint='Give both `from` and `to` in seconds, with 0 ≤ from < to (or neither for the whole song).')
-        return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b))
+        return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b),
+                   None if args.get("length") is None else float(args["length"]))
 
     @property
     def spec(self) -> dict:
@@ -150,10 +154,11 @@ def _convert(block, spec, rng):
     return block, over
 
 
-def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: int = 0) -> int:
+def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: int = 0, fade: int = 0) -> int:
     """Write `keep` frames of the engine's float file `src` (from frame `offset`) as `spec`, a block at a time (a stem is never
     held whole; one is much bigger than a block). A file shorter than `keep` is padded with silence so every file is
-    the same length. Returns how many samples went past full scale."""
+    the same length. `fade`: the last frames of the kept part are faded out (a cosine ramp). Returns how many samples went past
+    full scale."""
     import numpy as np
     rng = np.random.default_rng(16)
     kw = {"compression_level": 0.0, "bitrate_mode": "CONSTANT"} if spec["format"] == "MP3" else {}     # 0.0 = best quality (320 kbps)
@@ -162,6 +167,9 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: i
                                                    format=spec["format"], subtype=spec["subtype"], **kw) as f:
         r.seek(offset)
         for block in r.blocks(blocksize=BLOCK, dtype="float32", always_2d=True, frames=keep):
+            if fade and done + len(block) > keep - fade:       # the end of the kept part: a cosine fade to nothing
+                x = np.clip((np.arange(done, done + len(block)) - (keep - fade)) / fade, 0.0, 1.0)
+                block = block * (0.5 + 0.5 * np.cos(np.pi * x))[:, None].astype("float32")
             data, n = _convert(block, spec, rng)
             f.write(data); over += n; done += len(block)
         while done < keep:
@@ -188,7 +196,10 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     that part itself, mastered and measured on its own; an older render of the whole song is cut here), `seconds` (the
     delivered length), `songSeconds` (the song's own), `files` (what
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`, and `clippedFiles`: {file
-    name: samples cut flat} for each fixed-point file that went past full scale)."""
+    name: samples cut flat} for each fixed-point file that went past full scale).
+    `opts.length` (render_mix, whenever the song has a Length): the file is exactly that long. Trim never cuts below it, and a
+    ring-out the engine let run past it is faded out over the last second inside it (the engine's own ring-out warnings are
+    replaced by one saying so)."""
     sf = _soundfile()
     spec = opts.spec
     mix = mix_stem(item, name, [Path(p).stem for p in (*(r.get("stems") or {}).values(), *(r.get("busStems") or {}).values())])
@@ -212,7 +223,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
-    keep, first = frames, 0
+    keep, first, fold = frames, 0, 0
     ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
     if ranged:
         first = 0
@@ -225,13 +236,16 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {opts.start:g} s",
                                f"starts after the song ends ({frames / rate:.1f} s)")
         keep = min(frames, int(opts.end * rate)) - first
+    elif opts.length is not None:      # the song's Length is the file's length: not shorter (trim), not longer (a ring-out)
+        keep = round(opts.length * rate)
+        fold = min(int(FOLD_S * rate), keep) if frames > keep else 0       # the engine rang on past the Length: fade it inside it
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     def one(job):
         kind, key, src, stem = job
         dest = folder / f"{stem}.{spec['ext']}"
         part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
-        n = write(part, src, keep, rate, spec, sf, first)
+        n = write(part, src, keep, rate, spec, sf, first, fold)
         if dest != src:
             src.unlink()
         part.replace(dest)
@@ -244,9 +258,14 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     mix = files[("mix", None)]
     start = r["range"][0] if ranged else first / rate
     song = (r.get("seconds") or frames / rate) if ranged else frames / rate
-    return {**{k: v for k, v in r.items() if k != "range"}, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
+    warnings = [w for w in r.get("warnings") or [] if not (fold and w.startswith(RING_WARNINGS))]
+    if fold:
+        warnings.append(f"The song's length is {keep / rate:.2f} s and so is the file: what still rang past it ({(frames - keep) / rate:.1f} s) is faded "
+                        f"out over the last {fold / rate:.1f} s. End the last notes earlier, or set a longer length, so the ring has room "
+                        f"inside it; `ring_past_length: true` lets the file run on until the ring has died away.")
+    return {**{k: v for k, v in r.items() if k not in ("range", "warnings")}, "warnings": warnings, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
-            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None)),
+            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None) and opts.length is None),
             **({"range": [start, start + keep / rate]} if opts.start is not None else {}),
             "clippedSamples": over, "clippedFiles": clipped}
