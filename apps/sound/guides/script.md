@@ -54,7 +54,7 @@ and markers, and says which tracks start on each marker.
 
 `s.effect(type, **settings)` adds an effect to a track (`inspect_operations` `effect.add` / `effect.set` take the same
 names). Every number is a plain number in the unit below, never `{"db": ...}` and never milliseconds. The full list, with
-defaults and ranges, is what `inspect_engine` returns (`data.effects`, `data.master`): it is read from the same table the
+defaults and ranges, is what `inspect_engine` returns with `detail: "full"` (`data.effects`, `data.master`); `inspect_engine` with `name: "compressor"` (or `"master"`) gives one effect's settings alone: it is read from the same table the
 checks use, so it cannot disagree with them. A setting marked "curve" also takes a list of `[time, value]` points.
 
 | Effect | Settings (unit) |
@@ -64,9 +64,9 @@ checks use, so it cannot disagree with them. A setting marked "curve" also takes
 | `reverb` | `space` (below), `mix` 0 to 1, and with a `freeverb.*` space `decay` seconds, `damping`, `size` |
 | `delay` | `time` seconds, `feedback` 0 to 0.98, `mix`, `pingPong` true/false, `damp` |
 | `saturate` | `drive` 0 to 1, `mix` |
-| `tape` | `wow`, `flutter`, `age`, each 0 to 1 (`wow` a slow pitch drift of up to about 15 cents, `flutter` a fast waver, `age` adds saturation and a darker, thinner tone) |
+| `tape` | `wow`, `flutter`, `age`, each 0 to 1 (`wow` a slow pitch drift of up to about 15 cents, `flutter` a fast waver, `age` adds saturation and a darker, thinner tone); `hiss`, `crackle`, each 0 to 1, default 0 (a record's surface: a soft noise bed and the ticks and pops of a played record) |
 | `limiter` | `ceiling` dB, `release` seconds |
-| `width` | `width` 0 to 2 (1 = unchanged), `monoBelow` Hz |
+| `width` | `width` 0 to 2 (1 = unchanged), `monoBelow` Hz. Widens only what is already stereo: on a mono recording (Wurlitzer, Rhodes low notes, the basses, the kits' close mics) it does nothing; pan that track, or send it to a stereo reverb or delay |
 | `gate` | `threshold` dB, `ratio`, `range` dB, `attack` / `hold` / `release` seconds |
 | `deess`, `dehum` | see `inspect_engine` |
 
@@ -75,7 +75,7 @@ Reverb spaces: `dry`, `room`, `hall`, `cathedral`, `shimmer`, and the adjustable
 
 ```python
 s.effect("compressor", threshold=-24, ratio=4, attack=0.01, release=0.2)   # dB, :1, seconds
-s.effect("tape", wow=0.3, flutter=0.2, age=0.5)
+s.effect("tape", wow=0.3, flutter=0.2, age=0.5, hiss=0.3, crackle=0.4)
 master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
 ```
 
@@ -85,14 +85,22 @@ limiter never pulls the loudest moment down by more than this; a mix that would 
 so it lands under its loudness target and `render_mix` says by how much; `edit_loudness` is the one call that fixes it), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
 `safetyClip`.
 
-There is no vinyl-crackle or bit-crush effect, and no noise-bed sound. For a worn, lo-fi sound the tools that exist are
-`tape` (wow, flutter, age), `saturate` (drive), an `eq` low-pass (`lowpass`) and high-pass, a `reverb`, a `delay`, and the
-performance layer's swing and lean (below).
+There is no bit-crush effect. For a worn, lo-fi sound the tools are `tape` (wow, flutter, age, and a record's surface:
+hiss and crackle), `saturate` (drive), an `eq` low-pass (`lowpass`) and high-pass, a `reverb`, a `delay`, the `rhodes`
+electric piano, and the performance layer's swing and lean (below).
 
 **Tape settings.** All three run 0 to 1 and default 0.2. `wow` is a slow pitch drift (up to about 15 cents at 1; the
 "seasick" one), `flutter` a fast waver, `age` adds saturation and a darker, thinner tone. For a gentle worn sound stay
 under about 0.4 on `wow` and `flutter`; the number a look tool reports (`look_music pitch`: drift and vibrato per note)
 shows what it did, whether it is pleasant is for a person to hear.
+
+**Record surface.** `hiss` and `crackle` (0 to 1, default 0) add a record's surface before the tape's saturation and
+tone, so `age` darkens it too. They are fixed levels, not following the music: `hiss` 1 is a noise bed near -34 dBFS,
+`crackle` 1 about 34 ticks a second on each side and a pop about once a second (the loudest near -12 dBFS). Ticks land
+on each side apart, so the surface also widens a narrow mix. It sounds for as long as the track does, quiet parts
+included, and the same in every render. One bed for the whole song: a `tape` with only `hiss` / `crackle` on one track
+that runs the full length (or on a bus every track feeds), with `wow`, `flutter` and `age` at 0 there if the tape
+colour is already on the keys.
 
 **Lo-fi, as techniques** (settings to start from, not a finished piece; move each to taste and check with the look tools):
 
@@ -104,8 +112,9 @@ shows what it did, whether it is pleasant is for a person to hear.
   on the drums holds the hits together.
 - *Laid back:* `perform={"swing": 0.3 to 0.6, "lean": 5 to 15}` on the drums and keys (see "Swing" below); keep the notes on the grid.
 - *Space:* a small `room` reverb with a low `mix` and a dark `delay` (`damp` 0.5 or more) on the lead, not on the bass.
-- *What is missing:* crackle, hiss and bit-crush do not exist; a recorded sound you add as a clip (`inspect_library`) is the
-  only way to get a noise bed, and the sound must be one you may use.
+- *Surface:* `tape` `hiss` 0.2 to 0.4 and `crackle` 0.2 to 0.5 on one full-length track or bus (see "Record surface"),
+  so the bed runs under the whole piece; with a voice over it, keep `crackle` lower during the voice (a curve).
+- *Keys:* `rhodes` is a recorded Rhodes; `electricPiano` is a Wurlitzer (brighter, more bark).
 
 ## Ending a song
 
@@ -113,10 +122,13 @@ A song stops at its `length`. What a clean end needs, with what exists today:
 
 - **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
   **Ring out** (the song field `ringOut`, on in every new song) a sound still ringing at `length` plays on until it dies away
-  (under -60 dBFS, at most 6 s more) and the file ends there; a note held past `length` is let go at it, and a note that starts
-  at or after `length` is not heard (both are warned, in `run_script` and `render_mix`). `length` is where the music stops,
-  not where the file stops: `length(bar(21))` after a chord let go at bar 21 rings it out. Songs saved before 2026-10-25 open
-  with Ring out off (they sound as they did): there the file stops at `length`, so leave the tail room yourself.
+  (under -60 dBFS, at most 6 s more) and the engine's file ends there; a note held past `length` is let go at it, and a note that
+  starts at or after `length` is not heard (both are warned, in `run_script` and `render_mix`). `length(bar(21))` after a chord let
+  go at bar 21 rings it out. **The file `render_mix` delivers is exactly `length` long** (a 40 s song is a 40.00 s file): the ring
+  that would run past it is faded out over the last second inside it, and the reply's warnings say how much was cut off; to have
+  the tail, end the music earlier or set a longer `length`. `render_mix` with `ring_past_length: true` (and the Export sheet) lets the
+  file run on until the ring has died away. Songs saved before 2026-10-25 open with Ring out off (they sound as they did): there the
+  file stops at `length`, so leave the tail room yourself.
 - **Check the end.** `look_sound` (`what: "loudness"`) answers an `ending` line from the render: the level of the last 0.5 s,
   whether that is still above -50 dBFS, and whether the last 50 ms drop faster than the fade before it. Still above -50 dBFS
   with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is `ringOut` on, a later
@@ -127,9 +139,30 @@ A song stops at its `length`. What a clean end needs, with what exists today:
   if it is off and sound still plays.
 - **Fade out.** `master(fadeOut=1.8)` fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
   where you want silence). On a held chord at the very end a 1.5 s fade measured: the last half second at -56 dB instead of -21 dB.
-- **`trim`.** `render_mix` trims the end only where the sound is below -80 dBFS; the reply says `trimmed: false` when sound above
-  that runs to the end (a long ring, a reverb tail). Trim removes silence; it does not fade anything. Pass `trim: false` to keep the
-  full `length`.
+- **`trim`.** With a `length` set, `render_mix` never cuts below it (trim has nothing to take off: the file is the length you asked
+  for). Without a `length` (or with `ring_past_length`), it trims the end only where the sound is below -80 dBFS; the reply says
+  `trimmed: false` when sound above that runs to the end. Trim removes silence; it does not fade anything. Pass `trim: false` to keep
+  the engine's full file.
+
+## Landing on a time: through the tempo, or in seconds
+
+A sync time (a lift at 20.0 s, a hit at 31.5 s) is a beat when the tempo says so. Beat `n` (from 0) of a song at `bpm` is at
+`60 * n / bpm` seconds, so the tempo that puts beat `n` on `T` seconds is `bpm = 60 * n / T`: 42 beats at 38.0 s needs 66.3158 bpm
+(write the tempo as a number with decimals: `tempo(66.3158)`). Check it with `look_music` (`what: "events"`, `expect: [38.0]`, a tolerance
+of 0.05 s): the reply says how far off each onset is. Or leave the tempo and write the moment in seconds: `at=38.0` is a time
+in seconds, `at=beat(36.83)` is a beat, so a hit or a chord can sit off the grid while the rest stays on it. A marker does both:
+`marker("hit", at=31.5)` then `at="#hit"` for every part that must land on it (`"#hit-0.2"` is a little before it).
+`beat()` takes fractions of a beat (`beat(36.83)`); `bar(n)` is where bar `n` starts.
+
+## A loop that leads back into its start
+
+A loop whose end meets its start must end on something that wants to go to the start's chord, and its length should be a whole
+number of bars. Pick the length first: `bars = seconds * bpm / (60 * beats_per_bar)`; if that is not a whole number, change
+the tempo so it is (`bpm = 60 * beats_per_bar * bars / seconds`, e.g. 30 s in 4/4 as 12 bars is 96 bpm), then `length(bar(bars + 1))`.
+The last bar leads in by a chord that resolves to the first (a V chord, E7 to Am9, or a fill that stops where the first beat
+starts), played by an instrument, and the last note ends before `length` (end it a beat early, or leave the ring-out room
+inside `length`: the file is exactly that long). Check the join by rendering and reading `look_sound` (`what: "loudness"`,
+`ending`): the last 0.5 s should be quiet enough, not cut.
 
 ## Playing: instruments, articulations, expression
 
@@ -288,7 +321,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
   after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
-- Names (tones, reverb spaces, EQ shapes, the plain instrument names, drum kits and drums, effect types and fields): `inspect_engine`.
+- Names (tones, reverb spaces, EQ shapes, effect types and fields, drum names): `inspect_engine` (compact; `name` for one thing). The plain instrument names and the kits, each with what it is: `inspect_guide 'start-here'`, "Instrument and kit names".
 - Instruments installed on this machine: `inspect_library` (`find: "cello"`); the sample packs behind the plain names, installed or missing: `inspect_library (kind: packs)`, installed with `run_model_install`. What one can play: `inspect_engine` (`what: "instrument"`)
   (a note outside a sampled instrument's range fails the render and names the range).
 - Ids: tracks are named by you; notes get ids from their track and start time (`strings.n1500`), so editing one note

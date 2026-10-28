@@ -16,7 +16,7 @@ from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import Runtime, Tools, build_server
 
 from rostrum_sound.modules import TOOLS
-from . import tool_groups, tools_project
+from . import session_clock, tool_groups, tools_project
 from .marker_lead import with_marker_lead, with_song_markers
 from .song_line import with_song_line
 from .track_line import with_track_feel
@@ -35,10 +35,12 @@ def make_runtime(app) -> Runtime:
     tools_project.with_short_operations(runtime)
     tools_project.with_sound_edit_help(runtime)
     tools_project.with_script_print(runtime)
+    tools_project.with_job_word(runtime)
     with_song_line(runtime)
     with_track_feel(runtime)
     with_marker_lead(runtime)
     with_song_markers(runtime)
+    session_clock.with_clock(runtime)                # last: every reply ends with the session's clock line
     return runtime
 
 

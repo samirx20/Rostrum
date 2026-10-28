@@ -51,6 +51,33 @@
    "tom": -0.72,
    "tomHigh": -1.41,
    "tomLow": -0.72
+  },
+  "jazz": {
+   "clap": 0.98,
+   "crash": 5.58,
+   "crash2": 3.2,
+   "cymbal": 5.58,
+   "floorTom": 4.42,
+   "hat": -0.22,
+   "highTom": 7.48,
+   "kick": 1.95,
+   "kick2": -5.48,
+   "lowTom": 4.42,
+   "midTom": 6.47,
+   "openHat": -2.48,
+   "pedalHat": 3.39,
+   "ride": 7.09,
+   "ride2": 6.67,
+   "rideBell": 6.08,
+   "rim": 8.68,
+   "shaker": 13.26,
+   "snare": 1.26,
+   "snare2": 0.85,
+   "splash": 5.74,
+   "stir": 2.56,
+   "tom": 6.47,
+   "tomHigh": 7.48,
+   "tomLow": 6.57
   }
  }
 }

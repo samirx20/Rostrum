@@ -13,7 +13,7 @@ import copy
 import dataclasses
 from pathlib import Path
 
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, open_folder
 
 from .. import KIND
@@ -74,6 +74,25 @@ def with_short_operations(runtime) -> None:
     runtime.tools._tools["inspect_operations"] = dataclasses.replace(
         old, fn=inspect_operations, schema=schema,
         description=old.description + " A short list by default (one line each); `name` / `names` give the full arguments of one or several operations; detail \"full\" gives everything.")
+
+
+def with_job_word(runtime) -> None:
+    """inspect_job and run_stop also take `job` (a render's reply calls the id "job": agents passed it back as written and were
+    refused); `job_id` stays the argument."""
+    for name in ("inspect_job", "run_stop"):
+        old = runtime.tools.get(name)
+
+        def fn(ctx, args, old=old, name=name):
+            args = dict(args)
+            if "job" in args:
+                args.setdefault("job_id", args.pop("job"))
+            if name == "run_stop" and "job_id" not in args:
+                raise RostrumError(codes.BAD_ARGUMENT, "run_stop", "job_id", "is needed", ["job_id"], "The id a render's reply names (job_id, or job).")
+            return old.fn(ctx, args)
+        schema = copy.deepcopy(old.schema)
+        schema["properties"]["job"] = {"type": "string", "description": "The same as job_id."}
+        schema["required"] = [r for r in schema.get("required", []) if r != "job_id"]
+        runtime.tools._tools[name] = dataclasses.replace(old, fn=fn, schema=schema)
 
 
 EDIT_DOCUMENT = (
