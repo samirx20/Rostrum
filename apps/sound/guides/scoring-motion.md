@@ -19,6 +19,7 @@ Write them with `inspect_guide 'writing-parts'`.
 Sync with **named markers** ("logo lands", "drop"), never copied times. Put a note's start on the marker
 (`at="#logo lands"`), and a rise's end on it (`dur={"to": "#logo lands"}`), so the sound stays on its moment when 2D
 re-times. Check the timing with `look_music` (`what: "events"`) and listen with the picture (`look_video`).
+The other way round works too: Rostrum2D's film script cuts and keys on this song's markers by name and on its beats (`beats()` in the 2D script; its guide `the-film-as-one-script`).
 
 ```python
 bell = track("bell", model="tubularBell")

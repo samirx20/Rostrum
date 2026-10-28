@@ -141,6 +141,22 @@ n.key("count", {0.5: (0, "easeOut"), 2.0: (450, "hold"), 2.4: 900})     # severa
 - Per-letter animation (`letterDelay`) splits the shown number, so each digit can move on its own.
 - With motion blur on (the scene's `shutter`), the number stays sharp: each frame shows its own one number, as in After Effects. Only the text's movement (place, turn, size, fade) blurs.
 
+## Characters that scramble into words
+
+`scramble(id, body, start=, end=, rate=15, chars=None, order="forward", seed=1, **text fields)` in a script: the line's
+characters cycle and lock, one by one, into `body` between `start` and `end`. It makes plain layers: a swap set (a group
+showing one child at a time) of texts `<id>_0` … `<id>_<n>`, one per step, the last the final words, and keys the
+group's `show`. Each character cycles through its own kind (capitals, small letters, digits; spaces and marks stay)
+unless `chars` gives the set. `order`: `forward`, `backward`, `center` or `random` (which locks first). Every text
+field goes to each step, so they share a place; a mono font keeps the width still. Before `start` the first jumble
+shows: `.set(start=…)` on the group hides it until then.
+
+```python
+s = scramble("freq", "1420.405 MHZ", start=3, end=4.2, font="JetBrains Mono", size=48, x=960, y=700, align="center")
+```
+
+A number that counts (not cycles) is a counter (above).
+
 ## Fonts
 
 Two kinds of font can be named:
@@ -168,10 +184,10 @@ over both.
 
 ## Check loop (every pass)
 
-1. `run_script` (same `name`, explicit ids).
+1. `run_script` (same `name`, explicit ids) with `look: true` (or the landing times): a contact sheet and the weakest moments come back in the reply.
 2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
-3. `look_frame` (`what: "sheet"`) over the whole thing; `look_frame` at the landing times and at a hold (`width=1920` for type edges).
+3. `look_frame` at the landing times and at a hold (`width=1920` for type edges).
 4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).
-5. Then `render_video`.
+5. Then `render_video` (it waits for its file in the same call, `wait_s`).
 
 If a person moved something, a re-run reports it as held back. Leave it unless they asked you to put it back.

@@ -71,7 +71,10 @@ class Clock:
             self.exported = True
             self.export_s = payload.get("seconds") if isinstance(payload.get("seconds"), (int, float)) else self.export_s
             self.export_looked = self.export_looked and tool not in EXPORTS          # a new render: not looked at yet
-        if who == "look_frame" and "video" in payload:
+        if who == "run_script" and isinstance(payload.get("look"), dict) and payload["look"].get("times"):   # run_script's look: a sheet
+            self.looked, self.edits_since_look = True, 0
+            self.covered += [(t - MOMENT, t + MOMENT) for t in payload["look"]["times"]]
+        elif who == "look_frame" and "video" in payload:
             self.export_looked = True
         elif who == "look_frame" and ("time" in payload or "times" in payload):
             self.looked, self.edits_since_look = True, 0

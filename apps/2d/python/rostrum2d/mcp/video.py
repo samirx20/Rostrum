@@ -63,7 +63,8 @@ def _edge_cuts(data: dict, comp: dict, start: float, end: float) -> tuple[str, l
                                             "overwrite": {"type": "boolean", "description": "Accepted so a call with it works; has no effect. A project render always goes to a new version folder, and a `path` copy always replaces the file already there."},
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."}}})
 def render_video(ctx, args):
-    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
+    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It waits for its job in this call (wait_s,
+    default 120 s) and answers with the finished file; past that it answers with the job id:
     ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
