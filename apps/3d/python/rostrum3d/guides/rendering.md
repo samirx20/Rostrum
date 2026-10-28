@@ -34,7 +34,7 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
 | **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
 | **The time** | How long it will take, measured on this computer (below) |
-| **Render this frame / Render 120 frames / Render 120 frames as MP4** | Starts it. It runs in the background on its own engine; the line under the bar says **Frame 12 of 120**, the top bar's job chip shows how far it is, with Cancel |
+| **Render this frame / Render 120 frames / Render 120 frames as MP4** | Starts it. It runs in the background on its own engine; the line under the bar says **Frame 12 of 120 · about 4 min left** (the time left is worked out from the frames this render has drawn, so it appears once the first frame is done), the top bar's job chip shows how far it is, with Cancel |
 
 Quality, Size, Save as and Passes are **the shot's own settings**. Changing them in the sheet changes the shot (one step in the history;
 ↶ undoes it) and they are saved with it. Agents read and set the same settings, so a render an agent starts looks the

@@ -10,7 +10,7 @@ EXR, the Passes row (its layers: Light, Shadow, Reflections, Masks per item, Dep
 folder, files, numbering and manifest for a sequence): a project render version `renders/<item>/vNNN/`, in the
 background on its own engine process, so the picture exported is the one the Render button and render_still make.
 Browse: the files are also copied into that folder (a sequence into a new folder there). A failure is words and the
-bridge's red error, never a quiet "done". While the shot renders the note says "Frame 12 of 120". A stopped or failed shot
+bridge's red error, never a quiet "done". While the shot renders the note says "Frame 12 of 120 · about 4 min left". A stopped or failed shot
 render keeps the frames it finished: the sheet then says "Continues from 130 finished frames" (`resumeLine`) and Render
 draws only the missing ones (rostrum3d.mcp.resume), as long as nothing rendered has changed.
 """
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import shutil
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -35,6 +36,7 @@ from rostrum3d.material_fields import any_stylized
 from rostrum3d.render_fields import FORMATS, PASS_HELP, PASSES, QUALITIES, SIZES, engine_fields, settings
 
 from .estimate_sheet import Estimate
+from .render_guess import words_left
 
 FRAME, SHOT, VIDEO = "frame", "shot", "video"
 FORMAT_ROWS = [{"value": "png", "label": "PNG picture"}, {"value": "exr", "label": "EXR (for the Editor)"},
@@ -308,16 +310,22 @@ class Export3D(ExportSheet):
         return done, files
 
     def _counting(self, plan, progress):
-        """The worker's progress for a shot: the bar, and "Frame 12 of 120", the frame being drawn (with "continues from 130
-        finished frames" when it does)."""
-        total, kept = plan["info"]["end"] - plan["info"]["start"] + 1, [0]
+        """The worker's progress for a shot: the bar, and "Frame 12 of 120 · about 4 min left", the frame being drawn (with
+        "continues from 130 finished frames" when it does). The time left is this render's own rate, from the first frame it
+        drew here on: no number until one frame is done (render_guess: never a confident wrong number)."""
+        total, kept, since = plan["info"]["end"] - plan["info"]["start"] + 1, [0], []
 
         def frames(i, n=total):
             self._done_frames = i
             progress(i / max(n, 1))
+            now = time.perf_counter()
+            if not since or i < since[0][0]:
+                since[:] = [(i, now)]
             cont = resume.continues_text(kept[0])
             if i < n:
-                self.phase(f"Frame {i + 1} of {n}" + (f" · {cont[0].lower()}{cont[1:]}" if cont else ""))
+                i0, t0 = since[0]
+                left = f" · {words_left((now - t0) / (i - i0) * (n - i))}" if i > i0 else ""
+                self.phase(f"Frame {i + 1} of {n}{left}" + (f" · {cont[0].lower()}{cont[1:]}" if cont else ""))
             elif plan["shot"] and not plan["video"]:
                 self.phase("")
 
