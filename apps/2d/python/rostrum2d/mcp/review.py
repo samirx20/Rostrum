@@ -26,7 +26,7 @@ OPENING = 1.0             # a blank under this long at the very start or end is 
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
         "text_crossed": 90, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
-        "device_cut": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
+        "device_cut": 92, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
 
 
@@ -69,7 +69,7 @@ def ranked(faults: list[dict], duration: float) -> list[dict]:
     """Most visible first: by kind (RANK), then the longer stretch; each with `rank_kind`. Info rows are left out, and a
     device's plain edge cut when the device check named it (with why)."""
     blanks = [f for f in faults if f["kind"] == "empty"]
-    devices = {f["id"] for f in faults if f["kind"] in ("device_cut", "push_cut", "push_in")}
+    devices = {f["id"] for f in faults if f["kind"] in ("device_cut", "push_cut", "push_bars", "push_in")}
     faults = [f for f in faults if not _named_blank(f, blanks) and not f.get("info")
               and not (f["kind"] == "edge_cut" and f["id"] in devices)]
     for f in faults:

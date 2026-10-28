@@ -200,7 +200,9 @@ device alone, then a wider shot with its headline) is calm; key them with `ease=
 ### A push-in past the edge on purpose
 
 To show one part close, push **deep**, so the part fills the picture and the device's edges are clearly far outside
-it: `f.fit(["hero"], at=3, pad=0.04, ease="easeInOut")` frames the card; `f.fit(["hero_value"], at=3.6, pad=0.2)`
+it, left and right as well as top and bottom (a push that shows the device's body at the sides of the frame reads as
+dark bars, a broken frame; one that slices a label at the edge reads as a mistake: frame the label whole or leave it
+out): `f.fit(["hero"], at=3, pad=0.04, ease="easeInOut")` frames the card; `f.fit(["hero_value"], at=3.6, pad=0.2)`
 goes onto its number as it counts; `f.fit(["phone"], at=5, pad=0.06, ease="easeInOut")` pulls back out whole.
 `keep=["pay"]` keeps a second part in the frame with the first (a card and the button that changes it). `f.cut(at=7,
 to="items", items=["rows"])` jumps to a new framing on a beat. Push in on the thing that changes (a count, a toggle,

@@ -10,6 +10,7 @@ from .review_sample import Sampled, runs
 from . import edge_cut
 
 DEEP = 0.6                # a pushed-in device filling this share of the frame or more is a meant close-up
+SLICED = (0.3, 0.97)      # a text with this share of its box inside the picture is a sliced label, named even in a deep push
 PART = 0.5                # a part to push onto: a group in the device under the frame's centre, up to this share of it
 
 
@@ -65,9 +66,10 @@ def stretches(s: Sampled) -> list[dict]:
             placed = raw is not None and edge_cut.cut_edges(drawn_box(raw), s.W, s.H, True)
             box = drawn_box(body)
             inside = s.share(box) * s.W * s.H / max((box[2] - box[0]) * (box[3] - box[1]), 1.0)
-            how = "placed" if placed else "deep" if s.share(box) >= DEEP else "push"
+            sides = box[0] > 0 or box[2] < s.W        # its body still shows at the left or right of the picture
+            how = "placed" if placed else "push" if s.share(box) < DEEP else "bars" if sides else "deep"
             rows.append((how, edges, round(100 * (1 - inside)), _part(s, nodes, did, box)))
-        for how in ("placed", "push", "deep"):
+        for how in ("placed", "push", "bars", "deep"):
             for t0, t1, a, b in runs([r is not None and r[0] == how for r in rows], s.times, s.step, s.step):
                 got = rows[a:b + 1]
                 edges = sorted({e for r in got for e in r[1]})
@@ -100,24 +102,41 @@ def facts(s: Sampled) -> list[dict]:
                     f'still show, {share}): even when the push is meant, a device sliced at the top or bottom with its sides in view '
                     f'reads to a client as a framing mistake; a meant close-up fills the frame with one part. Longest at {c["start"]:g} s'
                     f'{f" (frame key at {key:g} s)" if key is not None else ""}: show it whole with frame().fit(["{did}"], {at}pad=0.06){onto}')
+        elif how == "bars":
+            key = _camera_key(s.comp, c["start"])
+            at = f'at={key if key is not None else c["start"]:g}, '
+            onto = f'frame().fit(["{c["part"]}"], {at}pad=0.04)' if c["part"] else f'a tighter frame().fit onto one part ({at[:-2]})'
+            text = (f'{spans}: push-ins fill the picture with device "{did}" but its body still shows at the side of the frame '
+                    f'(dark bars beside the screen, {pct} % of it outside, {share}): reads as a broken frame. Push in until the '
+                    f'screen fills the width, {onto}, or pull back to show it whole: frame().fit(["{did}"], {at}pad=0.06)')
         else:
             text = (f'{spans}: deep push-ins into device "{did}" (up to {pct} % of it outside, it fills most of the picture): '
                     f'a meant close-up past its edge, not a fault')
-        out.append({"kind": {"placed": "device_cut", "push": "push_cut", "deep": "push_in"}[how], "start": c["start"],
+        out.append({"kind": {"placed": "device_cut", "push": "push_cut", "bars": "push_bars", "deep": "push_in"}[how], "start": c["start"],
                     "end": c["end"], "id": did, "ids": [did] + ([c["part"]] if c["part"] else []), "out_pct": pct,
                     "spans": [(x["start"], x["end"]) for x in cs], "film_pct": c["film_pct"], "info": how == "deep", "text": text})
     return out
 
 
 def quiet_texts(faults: list[dict], s: Sampled) -> list[dict]:
-    """Texts cut by the frame edge only while a camera push-in cuts the device they sit on: named by the device line, kept as info."""
+    """Texts cut by the frame edge only while a camera push-in cuts the device they sit on: named by the device line, kept as
+    info; except a label sliced by the edge (SLICED of it in the picture), which a client reads as a fault in any push."""
     pushed = [c for c in stretches(s) if c["how"] != "placed"]
     if not pushed:
         return faults
     inside = {n["id"]: set(n["within"]) for _, nodes in s.frames[:1] for n in nodes}
 
     def covered(i: str, t: float) -> bool:
-        return any(c["id"] in inside.get(i, ()) and c["start"] <= t < c["end"] for c in pushed)
+        return any(c["id"] in inside.get(i, ()) and c["start"] <= t < c["end"] for c in pushed) and not sliced(i, t)
+
+    def sliced(i: str, t: float) -> bool:
+        k = min(range(len(s.times)), key=lambda j: abs(s.times[j] - t))
+        n = next((n for n in s.frames[k][1] if n["id"] == i), None)
+        if n is None:
+            return False
+        x0, y0, x1, y1 = drawn_box(n)
+        part = s.share((x0, y0, x1, y1)) * s.W * s.H / max((x1 - x0) * (y1 - y0), 1.0)
+        return SLICED[0] <= part <= SLICED[1]
 
     for f in faults:
         ts = [t for t in s.times if f["start"] - 1e-9 <= t < max(f["end"], f["start"] + s.step) - 1e-9]
