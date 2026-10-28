@@ -229,7 +229,11 @@ class Walk:
         if sw is None:
             self.clock.cur.setdefault("onScreen", named(self.root))
             return False
-        self.into_view(sw)
+        panel = W.find(self.root, "inspectorScroll")       # no scrolling to it: a person at 1646x900 sees the square at once
+        if panel is not None:
+            bottom = panel.mapToScene(QPointF(0, panel.height())).y()
+            self.clock.check(sw.mapToScene(QPointF(0, sw.height())).y() <= bottom - 4,
+                             f"{row}'s colour square is in the settings panel without scrolling")
         t = self.hand.click_item(sw)
         self.clock.feedback("the colour picker opens", t, lambda: W.find(self.root, "colourSquare") is not None)
         return W.find(self.root, "colourSquare") is not None
