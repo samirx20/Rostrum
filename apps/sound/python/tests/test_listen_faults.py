@@ -121,3 +121,16 @@ def test_a_stronger_attack_just_before_a_climax_takes_the_moment(tmp_path):
 def test_dull_top_gives_the_shelf_that_clears_it():
     from rostrum_sound.listen.faults import shelf_fix
     assert '"gain": 4,' in shelf_fix(-21.8) and '"gain": 8,' in shelf_fix(-40.0) and "the most" in shelf_fix(-40.0)
+
+
+def test_dead_air_at_the_end_is_named():
+    """3E bench, Vault r2: the drone stopped at 44.0 s in a 45 s file; a judge heard the piece stop early."""
+    from rostrum_sound.listen.ending import dead_air
+    t = np.arange(10 * SR) / SR
+    y = 0.2 * np.sin(2 * np.pi * 110 * t)
+    y[int(8.8 * SR):] = 0.0
+    f = dead_air(np.stack([y, y], axis=1), SR)
+    assert f and f[0]["kind"] == "dead_air_end" and abs(f[0]["measured"]["silent_s"] - 1.2) < 0.06
+    y2 = 0.2 * np.sin(2 * np.pi * 110 * t)
+    y2[int(9.5 * SR):] = 0.0
+    assert dead_air(np.stack([y2, y2], axis=1), SR) == []

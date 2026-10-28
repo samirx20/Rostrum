@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 
 NEAR_S = 0.1           # a fault this close to an asked moment's time is on it
-WHOLE = ("held_tone", "near_mono", "dull_top", "leading_silence", "off_tempo")
+WHOLE = ("held_tone", "near_mono", "dull_top", "leading_silence", "off_tempo", "dead_air_end")
 
 
 def mark(raw: list[dict], shaped: list[dict], moments) -> None:

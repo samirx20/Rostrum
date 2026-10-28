@@ -17,10 +17,11 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
-from . import drop_gap, lead_in, rival, stop_fall, stop_soft, tempo_fit
+from . import drop_gap, ending, lead_in, rival, stop_fall, stop_soft, tempo_fit
 
 NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words,
-             "drums_in_gap": drop_gap.words, "early_rival": rival.words}
+             "drums_in_gap": drop_gap.words, "early_rival": rival.words,
+             "dead_air_end": ending.dead_air_words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -214,7 +215,7 @@ def _words(f) -> str:
 @remembered
 def _whole(wav) -> list[dict]:
     y, sr = load(wav)
-    out = lead_in.faults(y, sr) + [{"kind": "held_tone", "at_s": s["from_s"], "measured": {k: v for k, v in s.items() if k != "from_s"}}
+    out = lead_in.faults(y, sr) + ending.dead_air(y, sr) + [{"kind": "held_tone", "at_s": s["from_s"], "measured": {k: v for k, v in s.items() if k != "from_s"}}
            for s in held_spans(y, sr)]
     corr = _correlation(y)
     if corr is not None and corr > MONO_CORR:
