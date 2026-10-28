@@ -176,6 +176,11 @@
    "lufs": -21.76,
    "gain": 1.2725
   },
+  "builtIn:rhodes": {
+   "role": "comp",
+   "lufs": -5.85,
+   "gain": 0.2037
+  },
   "builtIn:saxophone": {
    "role": "lead",
    "lufs": -11.3,

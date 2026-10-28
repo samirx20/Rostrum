@@ -1,5 +1,5 @@
 //! Effects: the insert chain over any bed (chain.rs) and its inserts — EQ (eq.rs), compressor, delay,
-//! reverb, saturation, tape and limiter (inserts.rs), stereo width (stereo.rs), convolution (convolve.rs),
+//! reverb, saturation, tape (tapefx.rs, with a record's surface: vinyl.rs) and limiter (inserts.rs), stereo width (stereo.rs), convolution (convolve.rs),
 //! the dialogue repairs (dialogue/) and plugins — the track and clip processing ported from the TS
 //! mixdown (dsp.rs: tone, fades, the reverb), the mastering stage (master.rs), the tone match
 //! (matcheq.rs) and a live layer's inserts (livefx.rs). Parameters may be envelopes over time;
@@ -17,6 +17,7 @@ pub mod reverb;
 pub mod state;
 pub mod stereo;
 pub mod tapefx;
+pub mod vinyl;
 #[cfg(test)]
 mod tests;
 
