@@ -1,15 +1,12 @@
 """What the agent reads in the tool list: one short sentence per tool (part) and short argument words (CONVENTIONS § 2: a
 tool's description at most 150 words). Each part's own docstring and argument texts stay the full account: they make the
-guide page `tools-in-detail` (every part, every argument), so moving the words here loses nothing. The same shape as
-2D's tool_text.py.
+guide page `tools-in-detail` (every part, every argument), so moving the words here loses nothing. The helpers are
+rostrum_core.mcp.short_text (shared with 2D and 3D).
 
 `shorten(tools)` runs on the parts before tool_groups joins them, so a joined tool pastes these short sentences."""
 from __future__ import annotations
 
-import dataclasses
-import re
-
-from rostrum_core.mcp.tools import _schema_of
+from rostrum_core.mcp import short_text
 
 # One sentence per part: what it is for, when to pick it. A part not listed keeps its own text.
 SAY = {
@@ -176,29 +173,16 @@ ARG_OF = {
 }
 
 MOST = 12        # argument words kept from a part's own text when neither table names it
-
-
-def _short(text: str) -> str:
-    """A part's own argument words cut to their first sentence (at most MOST words)."""
-    first = re.split(r"(?<=\.)\s+(?=[A-Z(`\"])", " ".join(text.split()), maxsplit=1)[0]
-    words = first.split()
-    return first if len(words) <= MOST else " ".join(words[:MOST]).rstrip(",;:") + " …"
-
-
-def _args(tool) -> dict:
-    props = {}
-    for k, v in tool.schema.get("properties", {}).items():
-        said = ARG_OF.get((tool.name, k)) or ARG.get(k) or (_short(v["description"]) if v.get("description") else None)
-        props[k] = {**v, **({"description": said} if said else {})}
-    return {**tool.schema, "properties": props}
+PLAIN = {"item", "wait", "wav", "start", "end", "track", "detail"}   # said without the choices that take them (a wrong one is refused by name)
 
 
 def shorten(tools):
     """Every part's short sentence and short argument words, in place; returns `tools`."""
-    for name, tool in list(tools._tools.items()):
-        spec, _ = _schema_of(_args(tool))
-        tools._tools[name] = dataclasses.replace(tool, description=SAY.get(name, tool.description), schema=spec)
-    return tools
+    return short_text.shorten(tools, SAY, ARG, ARG_OF, MOST)
+
+
+def tidy(tools, names):
+    return short_text.tidy(tools, names, PLAIN)
 
 
 def part_tools():
@@ -211,41 +195,8 @@ def part_tools():
 
 
 def detail_page(tools) -> str:
-    """The guide page `tools-in-detail`: every part's full description and argument texts, by the name to call it."""
     from . import tool_groups
-    where = {part: f'{joined} what "{w}"' for joined, _, parts, _ in tool_groups.GROUPS for w, part in parts.items()}
-    out = ["# Every tool in detail", "",
-           "The full account of each Sound tool and each of its arguments: the exact numbers, defaults and edge cases. The "
-           "tool list keeps one short sentence each; a joined tool (look_sound, look_music, render_mix, ...) is listed here "
-           "per `what` choice. Start at inspect_guide 'start-here'.", ""]
-    for name, tool in tools._tools.items():
-        out += [f"## {where.get(name, name)}", "", " ".join(tool.description.split()), ""]
-        for k, v in tool.schema.get("properties", {}).items():
-            kinds = v.get("type") or "/".join(s.get("type", "") for s in v.get("anyOf", []))
-            pick = f' One of: {", ".join(map(str, v["enum"]))}.' if v.get("enum") and len(v["enum"]) <= 12 else ""
-            out.append(f'- `{k}` ({kinds}): {" ".join(v.get("description", "").split())}{pick}')
-        out.append("")
-    return "\n".join(out)
-
-
-PLAIN = {"item", "wait", "wav", "start", "end", "track", "detail"}   # said without the choices that take them (a wrong one is refused by name)
-_FOR = re.compile(r'\(for what ((?:"\w+"(?:, )?)+)\)')
-_WITH = re.compile(r'With what "(\w+)": ')
-_CHOICE = re.compile(r'^- what "(\w+)": ', re.M)
-
-
-def tidy(tools, names):
-    """The joined tools `names` in fewer characters: `what`'s own words short, and the choice names unquoted
-    ('(for what "a", "b")' -> '(what a, b)'; quotes cost twice in the JSON a client reads)."""
-    for name in names:
-        tool = tools._tools[name]
-        props = {}
-        for k, v in tool.schema["properties"].items():
-            said = v.get("description", "")
-            if k == "what":
-                said = "Which one (listed above)" + (f'; default {v["default"]}' if "default" in v else "") + "."
-            said = _WITH.sub(lambda m: f"what {m[1]}: ", _FOR.sub(lambda m: "" if k in PLAIN else "(what " + m[1].replace('"', "") + ")", said)).strip()
-            props[k] = {**v, **({"description": said} if said else {})}
-        spec, _ = _schema_of({**tool.schema, "properties": props})
-        tools._tools[name] = dataclasses.replace(tool, description=_CHOICE.sub(lambda m: f"- {m[1]}: ", tool.description), schema=spec)
-    return tools
+    return short_text.detail_page(tools, tool_groups.GROUPS,
+        "The full account of each Sound tool and each of its arguments: the exact numbers, defaults and edge cases. The "
+        "tool list keeps one short sentence each; a joined tool (look_sound, look_music, render_mix, ...) is listed here "
+        "per `what` choice. Start at inspect_guide 'start-here'.")
