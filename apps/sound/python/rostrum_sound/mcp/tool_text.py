@@ -41,7 +41,7 @@ SAY = {
     "run_open_project": "Open a project folder (made when new).",
     "inspect_recent_projects": "The person's recent songs.",
     # tools on their own
-    "edit_loudness": "After a render under the loudness target: measured ways to reach it, each with ready ops; `apply` makes one. Returns a job. Example: {\"apply\": \"best\"}.",
+    "edit_loudness": "When reaching the loudness target took heavy limiting: measured ways to need less, each with ready ops; `apply` makes one (a job): {\"apply\": \"best\"}.",
     "render_audition": "Hear an instrument, kit, file or a track's notes as a short WAV; the song is unchanged.",
     "look_arrangement": "The written song as a picture (tracks, bars, sections, markers) and who starts on each marker; no render.",
     "inspect_diagnose": "Everything broken in a song (missing files, past the end, out of range …), each with its fix.",
@@ -50,7 +50,7 @@ SAY = {
     "edit_import_midi": "Import a MIDI file as tracks, lanes, markers and (song_map) the tempo map.",
     "render_cleanup": "Make the missing cleaned takes of the clips; then look_sound what cleanup.",
     "run_model_install": "Download a model or sample pack a tool needs (checked by its fingerprint).",
-    "run_set_main_mix": "Make a song the project's main mix (the one 2D plays with the picture); it never renders.",
+    "run_set_main_mix": "Make a song the project's main mix (the one 2D plays with the picture).",
     "inspect_notes": "A track's notes and hits in a stretch, with their ids.",
     "inspect_note_changes": "What happened to the notes between two states of the song.",
     "edit_history_go": "Stand at the song right after history step `to` (your own steps only).",
@@ -59,7 +59,7 @@ SAY = {
 # Argument words, by name, for every part that has the argument (the same words let tool_groups show them once).
 ARG = {
     "item": "Song id (optional with one open).",
-    "wait": "Wait for the job: true (50 s) or seconds.",
+    "wait": "Wait: true (50 s) or seconds.",
     "wav": "A WAV instead of the last render.",
     "track": "One track's stem instead of the mix.",
     "start": "From here (a time); needs end.",
