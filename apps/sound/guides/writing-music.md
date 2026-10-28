@@ -8,6 +8,8 @@ from its own brief.
 
 ## Plan first
 
+The plan becomes the first lines of the script, and the whole piece one script under one name (`inspect_guide 'start-here'`, "The loop").
+
 1. **Form first.** Write the sections with `section(name, at, end)` and give each one a job: set up, state the idea,
    build, peak, release. Decide where the high point is (usually around two thirds of the way in) and what makes it
    the high point: register, density, harmony, or a new instrument coming in.

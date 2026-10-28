@@ -1,5 +1,33 @@
 # Start here: RostrumSound for agents
 
+## The loop: the whole piece is one script
+
+1. **Write the whole piece as one Python script** (tempo map, sections, markers for the sync points, every track's notes,
+   dynamics and effects, the mix, the master target) and run it with `run_script`, **one `name` for the song**, with
+   `render: true`.
+2. **Read the reply.** It carries the render's listening check: loudness, the weakest asked moments with a fix for each,
+   and faults such as "leading silence", "tempo far from the brief's" (give the brief's with `expect`:
+   `{"kind": "tempo", "bpm": 96}`) and "stop lands soft".
+3. **Edit the script and run it again under the same name.** A removed track, note, effect or marker disappears, a new
+   tempo moves everything written in beats, nothing is copied. A **new name** that makes the same tracks is refused, naming the script to run under.
+4. Repeat until the check is clean and the minutes are used. `edit_document` is for one-off touch-ups: one value, or a note a
+   person asked you to leave alone. A value you set there is held against the script's (the reply says so); keep each setting in one place.
+
+The shape of a script is a technique, not a template (`inspect_guide 'script'` has every name):
+
+```python
+tempo(96); key("F major"); length(bar(17)); marker("lift", at=bar(9))     # the song's map first
+CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}                              # chord changes as data you can edit
+def section_a(first, last): ...                                            # a section is a function: call it where it plays
+for b in range(first, last): ...                                           # loops over bars write the repeating parts
+for t in (keys, pad): t.humanize(seed=2)                                   # then one pass for how it is played
+master(loudness=-16, truePeak=-1)                                          # the mix and master last
+```
+
+Landing a sound on a time without bending the tempo: `downbeat(bar(n), at=T)` puts bar n at T seconds (music before bar 1
+is a pickup), `land(bar(n), at=T, ramp_from=bar(m))` glides the tempo so bar n lands at T; or write the moment as a marker
+(`marker("hit", at=31.5)`, `at="#hit"`). Details: `inspect_guide 'script'`, "Landing on a time".
+
 ## How every reply reads
 
 - Every reply has `ok`, `summary` (read it first), `data`, `files` (absolute paths) and `warnings`. A failure has `ok: false`
@@ -18,10 +46,10 @@
   the tempo and running again keeps every note (and a person's edits to them): nothing is removed and re-made.
 - Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 
-## Writing parts from scratch, or changing what is there
+## Writing parts, or changing what is there
 
-- **A new part, written in a script: the script helpers** (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
-- **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.pedal` (the sustain pedal lifted on each chord change, down again `catch` beats later), `note.ramp_velocity` (a crescendo or fade: `start` on the first note, `end` on the last, by time), `note.transpose`, `note.fit_key`, `note.duplicate`, `note.humanize`, `hit.humanize`, `hit.fill`, and `track.feel` (swing and looseness, one track's playing, notes untouched), through `edit_document`. They change the notes in place; a script would rewrite them. `note.humanize` / `hit.humanize` add on top of whatever looseness the notes already have (a script's own `humanize` included), and a second run with the same seed adds the same amount again: to redo it, undo first or use another seed.
+- **Write parts in the script:** the script helpers (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
+- **Touch-ups on notes that already exist (a person's, or one note of the script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.pedal` (the sustain pedal lifted on each chord change, down again `catch` beats later), `note.ramp_velocity` (a crescendo or fade: `start` on the first note, `end` on the last, by time), `note.transpose`, `note.fit_key`, `note.duplicate`, `note.humanize`, `hit.humanize`, `hit.fill`, and `track.feel` (swing and looseness, one track's playing, notes untouched), through `edit_document`. They change the notes in place; the next run of the script keeps them and lists them as held back. `note.humanize` / `hit.humanize` add on top of whatever looseness the notes already have (a script's own `humanize` included), and a second run with the same seed adds the same amount again: to redo it, undo first or use another seed.
 - **Finding and checking notes:** `inspect_notes {track, from?, to?}` lists a track's notes (ids, time, pitch, length, vel; read a note's time from the list, never from its id); `inspect_note_changes {since}` shows what an edit really changed; `edit_history_go {to}` goes back to an earlier step (your own steps only); `edit_undo` takes back the last one. Arguments: `inspect_tools`; the craft: `inspect_guide 'writing-parts'`.
 - **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `name` gives the file another name, like the Export sheet's name box; `<item>` is the song's id, `song` in a new project), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths; `folder` (an absolute path, made when missing) also copies the mix there under `name` (stems beside it in "<name> stems"), so there is never a shell copy to refuse; `copied` in the reply lists the new files. **A song with a `length` renders exactly that long:** trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply's warnings say by how much; `ring_past_length: true` lets the file run on until the ring has died away). A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`. **`render_video` (2D) does not use this file:** it renders the song's current document again (the same sound, cached when the song is unchanged); so a `render_mix` is for you to check and deliver, and `run_set_main_mix` only says which song goes under the picture.
 - The arpeggio steps, orders and octaves are one rule in both. The script's `voice` goes further (drop 2, spread, voice leading); `note.chord` stacks plain tones. Pick by what you start from.
@@ -101,7 +129,7 @@ Levels: every plain name starts level-matched for the part it suits (`inspect_en
 (a vibraphone line at low velocities, a brush pattern) still sits under a dense one: check `look_sound` levels and raise the track.
 How the starting levels were measured: `apps/sound/python/devtools/level_match.py` (instruments), `kit_levels.py` and `level_files.py` (kits).
 
-## `edit_document`: whole calls that work
+## `edit_document`: whole calls for one-off touch-ups
 
 The argument is `ops` (not `operations`): a list of `{op, target, args}`. A track's target is its id (`"drums"`, not `"track.drums"`).
 A note or hit operation takes note / hit ids, or a **range target** that names them without ids:
@@ -133,37 +161,35 @@ The range is read as the song was before the call. Operations' own arguments: `i
 
 ## The order of work
 
-1. **Read** `inspect_guide` with `topic: "writing-music"` (the craft), then `topic: "script"` (the names a script knows). Scoring to a picture:
-   `scoring-to-picture`.
-2. **Pick the sounds.** The names are in this guide's "Instrument and kit names" (what each is, which are synth). `inspect_engine` (`what: "names"`,
-   the default; there is no `instruments`) answers the same names compactly; `inspect_engine` with `name` (an effect, `master`, an instrument, a kit) gives that
-   one thing's settings with units or its role and starting level; `detail: "full"` is the whole 50 KB table (rarely needed).
-   `inspect_engine` with `what: "instrument"` and ONE of `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` (for example `builtIn: "marimba"`) gives one instrument's range.
-3. **Write the song** with `run_script`. The argument is `source` (the Python text); `name` is optional (see below):
+1. **Read** `inspect_guide` `writing-music` (the craft), then `script` (the names a script knows). Scoring to a picture: `scoring-to-picture`.
+2. **Pick the sounds.** The names are in this guide's "Instrument and kit names". `inspect_engine` (`what: "names"`, the default)
+   answers the same names compactly; with `name` (an effect, `master`, an instrument, a kit) one thing's settings with units or its
+   role and starting level; `what: "instrument"` with ONE of `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` gives its range.
+3. **Write the whole piece as one script and run it with `render: true`** (the loop above). The argument is `source`;
+   `name` is the song's one script name:
 
    ```json
-   {"tool": "run_script", "arguments": {"name": "song", "source": "tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))"}}
+   {"tool": "run_script", "arguments": {"name": "song", "render": true, "source": "tempo(96); length(bar(9))
+t = track('keys', builtIn='piano')
+t.note('D4', at=bar(1), dur=beats(4))"}}
    ```
 
-4. **Look before you render.** `look_arrangement` (a picture of every part against the bars and markers),
-   `look_music` with `what: "harmony"` (chords and range checks on the written notes), `inspect_diagnose` (what is wrong
-   with the song).
-5. **Render.** `render_mix` with `stems: true`, then `inspect_job` until it is done.
-6. **Look at the result.** `look_sound` (`what`: `loudness` by default, `levels`, `low_end`, `clash`, `spectrum`, `stereo`) and
-   `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` (with `track`) checks a chord part note by note; the loudness summary names the loudest moment and its time, the loudness of each section (`data.sections`), and has an `ending` line (see 8); `start` / `end` (seconds, `{"beat": n}` or `"#marker"`) measure one stretch only. Which tool answers which question: `listening`. Whether it is musical is
-   for a person to hear; say so in your report. **Listen** with the look tools before you call it done: `inspect_guide 'listening'` (which tool answers which question) and `'checking-a-mix-by-ear'`.
-7. **Fix, render again.** Change one thing at a time. To change a value a script made, edit the script and run it again under
-   the same `name`; to change one value, use `edit_document`.
-8. **End it cleanly** (`topic: "script"`, section "Ending a song") and render the last version. Check the end with
-   `look_sound` (`what: "loudness"`): its `ending` line gives the level of the last 0.5 s, whether the file still sounds above
-   -50 dBFS at its end, whether the last 50 ms drop faster than the fade, and the **audible end** (`audible_end_s`: where the sound falls under
-   -60 dBFS for good, so "it rings out by 52 s" can be checked). Still above -50 dBFS with a fast last-50-ms drop is a cut: lengthen
-   the song or add `master(fadeOut=...)`. Below -50 dBFS (or no fast drop) is a clean end.
+4. **Look before you listen, when the check names something.** `look_arrangement` (every part against the bars and markers),
+   `look_music` `harmony` (chords and range checks), `inspect_diagnose` (what is wrong with the song).
+5. **Look at the result.** `look_sound` (`what`: `loudness` by default, `levels`, `low_end`, `clash`, `spectrum`, `stereo`) and
+   `look_music` (`what`: `events`, `beats`, `pitch`). The loudness summary names the loudest moment and its time, the loudness
+   of each section (`data.sections`) and an `ending` line (see 7); `start` / `end` (seconds, `{"beat": n}` or `"#marker"`) measure
+   one stretch only. Which tool answers which question: `listening`, `checking-a-mix-by-ear`. Whether it is musical is for a person to hear; say so in your report.
+6. **Fix in the script, run again under the same name.** Change one thing at a time; use `edit_document` only for a single value.
+7. **End it cleanly** (`script`, "Ending a song") and render the last version. `look_sound` (`what: "loudness"`): the `ending` line gives
+   the level of the last 0.5 s, whether the file still sounds above -50 dBFS at its end, whether the last 50 ms drop faster than the
+   fade, and the **audible end** (`audible_end_s`: where the sound falls under -60 dBFS for good). Still above -50 dBFS with a fast
+   last-50-ms drop is a cut: lengthen the song or add `master(fadeOut=...)`. Below -50 dBFS is a clean end.
 
 ## Rules that save a render
 
-- **`run_script` `name`.** The same name replaces and merges what that script made before; a new name adds a second copy.
-  Keep one name per song.
+- **`run_script` `name`.** The same name replaces and merges what that script made before; a new name that
+  makes the same tracks is refused (it would double every note) and names the script to run under. One name per song, for every run.
 - **A call list stops at the first failed step.** Run through `devtools/mcp_session.py` (or `shared/mcp/call.py`), a list of
   calls stops at the first reply with `ok: false`: the later steps are not run, the output says which step failed and which
   were not run, and the exit code is 1. So a render never runs on a song the failed script did not change. If you call

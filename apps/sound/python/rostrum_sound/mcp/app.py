@@ -24,12 +24,15 @@ from ..script import run_source
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"         # apps/sound/guides
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document holds tracks (an instrument, notes, "
-                "drum hits, recorded clips), effects, automation, markers and the master. Before composing, read inspect_guide 'writing-music'. Write with run_script (the "
-                "Python script API in inspect_guide 'script'), check what you wrote with look_arrangement (a picture, and "
-                "which tracks start on each marker), adjust with edit_document, render with render_mix, then listen "
-                "with look_sound (loudness, levels, spectrum, stereo, low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
+                "drum hits, recorded clips), effects, automation, markers and the master. Before composing, read inspect_guide 'writing-music' "
+                "and 'start-here'. THE LOOP: write the whole piece as ONE Python script (tempo map, sections, markers for the sync points, every "
+                "track's notes, dynamics, effects, the mix and the master target; names in inspect_guide 'script'), run it with run_script under "
+                "one name with render: true, read the listening check in the reply, edit the script and run it again under the same name "
+                "(a removed track, note or marker disappears; a new name that re-makes the same tracks is refused). Use edit_document only for one-off touch-ups. "
+                "Check with look_arrangement (a picture, and which tracks start on each marker), look_sound (loudness, levels, spectrum, stereo, "
+                "low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
                 "with render_voice, then render. The server opens the song you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last song; run_open_project lists the recent ones "
-                "(what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render_mix asks for a fix pass: listen, name the three weakest moments, fix, render again.")
+                "(what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render asks for a fix pass: listen, name the three weakest moments, change the script, run it again.")
 
 
 NO_PROJECT = "No project is open. Open one in RostrumSound, or call run_open_project with a folder."
