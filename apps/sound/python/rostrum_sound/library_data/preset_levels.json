@@ -179,7 +179,8 @@
   "builtIn:rhodes": {
    "role": "comp",
    "lufs": -5.85,
-   "gain": 0.2037
+   "gain": 0.2782,
+   "note": "measured -5.85 LUFS over the three phrases (its stretched middle notes run hot); +2.7 dB so its chords sit level with electricPiano on the same voicing (sound-gaps 2026-10-28)"
   },
   "builtIn:saxophone": {
    "role": "lead",
