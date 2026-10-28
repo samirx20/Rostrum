@@ -130,3 +130,49 @@ def test_on_2s_holds_and_turn_into_keys_keeps_a_nudge(doc):
     doc.apply([{"op": "key.set", "target": [nudged["id"]], "args": {"v": 0.123}}], SAM)          # a person's nudge
     doc.apply([{"op": "sim.to_keys", "target": ["drop"]}, {"op": "sim.run", "target": ["drop"]}], SAM)   # a re-run
     assert doc.item(nudged["id"])["v"] == pytest.approx(0.123)
+
+
+def test_a_result_a_render_computed_is_adopted_as_the_shots_stored_one(doc):
+    from rostrum3d.sim.state import adoptable
+    doc.apply([{"op": "sim.run", "target": ["drop"]}], SAM)
+    assert not adoptable(state(doc.data, "drop"))                          # up to date and recorded: nothing to do
+    doc.apply([{"op": "mesh.set", "target": ["bowl"], "args": {"y": -0.5}}], SAM)
+    assert not adoptable(state(doc.data, "drop"))                          # out of date: nothing to adopt yet
+    ready(doc.data, "drop", engine_factory=FakeEngine)                     # the render computes it
+    st = state(doc.data, "drop")
+    assert st["state"] == "stored" and adoptable(st)
+    doc.apply([{"op": "sim.run", "target": ["drop"]}], SAM)                # what the window does then (SimJob.adopt)
+    assert FakeEngine.calls == 2 and not adoptable(state(doc.data, "drop"))
+    assert bud(describe(doc.data, "drop"))["anim"]["y"][1] == pytest.approx(0.9)
+
+
+def test_the_view_shows_the_fall_the_render_computed_for_falling_copies(tmp_path, monkeypatch):
+    """The render path's key and result are the ones state() and the viewport's overlay read (a falling copies item,
+    a still ground moved after an earlier result: the 3D sweep's 'render vs view' case)."""
+    from rostrum3d.sim.compute import compute
+    monkeypatch.setattr(CACHE, "root", tmp_path / "cache")
+    sim_ops.use_engine_factory(FakeEngine)
+    FakeEngine.calls = 0
+    try:
+        d = Document.new(KIND)
+        d.run_script("s.py", run_source('''
+cam = camera("cam", z=4, y=0.5)
+shot("drop", camera=cam, fps=10, start=0, end=3)
+mesh("ground", simulate="still", shape="plane", width=6, depth=6)
+bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.6)
+copies("buds", source=bud, layout="line", count=12, spacingX=0.09, simulate="falls")
+''', "s.py"))
+        older = compute(d.data, "drop", engine_factory=FakeEngine)           # a result in the store the shot never recorded
+        d.apply([{"op": "mesh.set", "target": ["ground"], "args": {"y": 0.1}}], SAM)
+        assert state(d.data, "drop")["state"] == "not computed"
+        rendered = ready(d.data, "drop", engine_factory=FakeEngine)           # what render.still draws
+        st = state(d.data, "drop")
+        assert st["state"] == "stored" and st["key"] != older and st["key"] == sim_inputs(d.data, "drop")[1]
+        buds = lambda scene: next(n for n in scene["items"] if n["id"] == "buds")["sim"]   # noqa: E731
+        assert buds(describe(d.data, "drop")) == buds(rendered)            # before the window adopts it
+        d.apply([{"op": "sim.run", "target": ["drop"]}], SAM)                 # SimJob.adopt
+        assert FakeEngine.calls == 2 and buds(describe(d.data, "drop")) == buds(rendered)
+        assert st["key"] in buds(rendered)["file"]
+    finally:
+        CACHE.settle()
+        sim_ops.use_engine_factory(None)

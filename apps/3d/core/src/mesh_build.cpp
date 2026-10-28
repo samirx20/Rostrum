@@ -71,7 +71,8 @@ MeshData shape(Reader& p, FaceGroups& groups) {
 
 void mesh_known(Reader& p) {
   p.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "points", "faceCounts",
-           "faceIndices", "creases", "faceMaterials", "subdivide", "uvs", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
+           "faceIndices", "creases", "faceMaterials", "subdivide", "uvs", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial",
+           "guide"});  // guide: only read where a mesh is drawn (stage_items build_mesh)
 }
 
 void own_uvs(Reader& p, MeshData& d) {

@@ -49,6 +49,12 @@ MESH = [
     T("skinned", "Bend with bones", "Bones", True, S, {"fact": "boned"},
       help="The mesh bends with its bone chain (each point follows the bones nearest it). Off: the bones stay but "
            "the mesh keeps its shape"),
+    T("guide", "Only in the view", "Display", False, S,
+      help="A handle to move, not part of the picture: drawn in the view (Quick and Final) but never in a render, "
+           "the shot's pictures or look_frame. Change near's ball starts this way"),
+    T("backdrop", "Backdrop", "Mesh data", False, D,
+      help="The floor a scene stands on (a new scene's Ground): a right-click on it is a right-click on empty space, "
+           "and Turn into clay and Make copies are not offered for it. A click or the scene list still selects it"),
     *PAINT_MESH,                    # a mesh is a paint canvas (paint_fields.py)
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     # A mirrored copy (mirror.py): made by mesh.mirror, everything it shows is its original's, through the clay's mirror;

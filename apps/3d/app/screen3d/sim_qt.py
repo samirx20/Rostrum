@@ -219,8 +219,9 @@ class SimJob(QObject):
 
     @Property(bool, notify=changed)
     def canKeys(self):
-        """Turn into keys is offered: the stored result is up to date (brief 26a)."""
-        return self.state == "stored"
+        """Turn into keys is offered: the stored result is up to date (brief 26a) and something in it falls (cloth never
+        becomes keys, so a cloth-only shot has no button)."""
+        return self.state == "stored" and self._st.get("falling", 0) > 0
 
     @Slot()
     def turnIntoKeys(self):
@@ -228,9 +229,30 @@ class SimJob(QObject):
         b = self._b
         if not self.canKeys:
             return
+        n, cloth = self._st.get("falling", 0), self._st.get("cloth", 0)
         if b._guard(lambda: b._done(b.doc.apply([{"op": "sim.to_keys", "target": [b.shot_id], "args": {}}], b.who,
                                                 label="Turn into keys"), "")):
-            b.say(f"{self._shot_label()}'s simulation turned into keys")
+            b.say(f"Turned {n} falling thing{'' if n == 1 else 's'} into keys"
+                  + (f"; the cloth{'' if cloth == 1 else 's'} stay{'s' if cloth == 1 else ''} simulated" if cloth else ""))
+
+    def adopt(self):
+        """After a render computed the shot's simulation (it was out of date or not computed): record that result as the
+        shot's stored result (sim.run: it is in the cache already, nothing is computed; one undo step), so the row says
+        Stored and the viewport shows the fall the render used. Nothing when it is up to date, or edits since the render
+        made it out of date again."""
+        sim, b = _sim(), self._b
+        if sim is None or self._demo or self.running():
+            return
+        from rostrum3d.sim.state import adoptable
+        try:
+            st = sim.state(b.doc.data, b.shot_id, b.doc.folder)
+        except Exception:  # noqa: BLE001  refresh says why
+            return self.refresh()
+        if adoptable(st):
+            self._failure = ""
+            b._guard(lambda: b._done(b.doc.apply([{"op": "sim.run", "target": [b.shot_id], "args": {}}], b.who,
+                                                 label=f"Simulate {self._shot_label()} (for the render)"), ""))
+        self.refresh()
 
     def commands(self) -> list[dict]:
         """Ctrl K: Simulate the shot while the row offers it, Turn into keys while the result is stored."""

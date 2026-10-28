@@ -9,11 +9,11 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core.motion.report import LIMIT, capped, examples, stem
 
 from ..motion_track import Track
-from . import motion_found as M
+from . import motion_found as M, motion_sim
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
 tools = Tools()
-OVERLAP_TEST = ("oriented boxes: each shape's own box turned and scaled with it (a clay: the box its pieces reach), so a hollow "
+OVERLAP_TEST = ("oriented boxes: each shape's own box turned and scaled with it (a ball: an upright box round it, however it rolls; a clay: the box its pieces reach), so a hollow "
                 "shape such as an open case counts as full")
 _ORDER = {"passes_through": 0, "jumps": 1, "leaves_frame": 2}
 _ASK = "ask with `all: true`, a bigger `limit`, or `items` for the ones you are tuning."
@@ -87,13 +87,18 @@ def look_motion(ctx, args):
     at least 0.25 s). Findings, facts only, no scores: two shapes passing through each other (both named, the frame span
     and how deep), sudden jumps (a step at least 1 cm and 4× bigger than the frames either side: a teleport or a snap),
     and an item partly or wholly outside the picture (frame spans; only when that changes: it leaves or comes in). Overlap test: each shape's own box turned and scaled
-    with it (oriented boxes; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
+    with it (oriented boxes; a ball: an upright box round it; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
     is not overlap. Hidden items are left out. Short by default: a line a moving item, identical findings one line,
-    passing through first; `items` for just those, `full` for the speed per frame, `frames` for part of the shot. Fails
-    with the reason on an unknown item, fewer than two frames, or nothing moving."""
+    passing through first; `items` for just those, `full` for the speed per frame, `frames` for part of the shot.
+    Simulated things: one set to Falls is measured where the shot's stored simulation has it (as the viewport shows it),
+    and checked for passing through like any shape; when the simulation is out of date (the older result is measured)
+    or not computed (they are where their keys put them) the reply says so first and gives no all-clear: run_simulation,
+    wait with inspect_job, then look again. A cloth's folds and each copy of a falling copies item are not measured here
+    (named under not measured). Fails with the reason on an unknown item, fewer than two frames, or nothing moving."""
     doc, info = doc_and_shot(ctx, args)
     frames = _range(ctx, info, args)
-    track = Track(doc.data, info, frames, ctx.app.folder)
+    sim = motion_sim.moves(doc.data, info, ctx.app.folder)
+    track = Track(doc.data, info, frames, ctx.app.folder, sim)
     ids = _pick(ctx, track, args.get("items"))
     every = track.ids()
     rows = {i: track.rows(i) for i in every}
@@ -102,8 +107,10 @@ def look_motion(ctx, args):
     turning = {i for i in every if any(x["solid"] != rows[i][0]["solid"] for x in rows[i])}
     moving = {i for i in every if known[i]["moves"]} | turning
     if not moving & set(ids):
-        raise RostrumError(codes.NOT_FOUND, ctx.tool, f"frames {frames[0]}–{frames[-1]}", "nothing moves in them" +
-                           (f' among {", ".join(ids)}' if args.get("items") else ""), hint="Check the keys with inspect_animations, or measure other frames.")
+        unseen = f' ({"; ".join(sim["skip"].values())})' if sim and sim["skip"] else ""
+        raise RostrumError(codes.NOT_FOUND, ctx.tool, f"frames {frames[0]}–{frames[-1]}", ("nothing measured moves in them" if sim else "nothing moves in them") +
+                           (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else ""),
+                           hint="Check the keys with inspect_animations, or measure other frames.")
     found = [*M.passing_through(rows, moving, info), *M.jump_findings(facts, info),
              *[x for i in ids for x in M.leaving(i, rows[i], info)]]
     if args.get("items"):
@@ -118,19 +125,22 @@ def look_motion(ctx, args):
     if cap is not None:
         groups, rest = capped(groups, cap, _ASK)
         notes += [rest] if rest else []
-    still = [f["id"] for f in facts if not f["moves"]]
+    still = [f["id"] for f in facts if not f["moves"] and not (sim and f["id"] in sim["skip"])]
     turn_only = sorted(set(still) & turning)
     head = (f'Measured frames {frames[0]}–{frames[-1]} of shot "{info["id"]}" ({len(frames)} frames at {info["fps"]:g} fps), '
             f'{len(ids)} items, {len(moving & set(ids))} moving; renderer: none (read from the document). '
             f'Overlap test: {OVERLAP_TEST}.')
-    lines = [_line(f) for f in movers]
+    warn = sim["line"] if sim and sim["state"] != "stored" else None
+    lines = ([sim["line"]] if sim and sim["line"] else []) + [_line(f) for f in movers]
     if still:
         lines.append(f'{len(still)} not travelling: {examples(still, 10)}' + (f' ({", ".join(turn_only)} turn or change size in place)' if turn_only else "") + ".")
     if track.skipped:
         lines.append("Not measured for overlap or the picture (no shape known here): " + "; ".join(track.skipped.values()) + ".")
-    lines += [g["text"] for g in groups] or ["No findings: nothing passes through anything, jumps, or leaves the picture."]
+    lines += [g["text"] for g in groups] or [
+        "No findings in what was measured, but the simulation is not up to date (see above): this is not an all-clear."
+        if warn else "No findings: nothing passes through anything, jumps, or leaves the picture."]
     keep = ("id", "moves", "frames", "path", "moving", "peak", "stops") + (("jumps", "speed_m_s", "screen_speed_px_s") if args.get("full") else ())
     data = {"shot": info["id"], "frames": [frames[0], frames[-1]], "fps": info["fps"], "renderer": None, "overlap_test": "oriented boxes",
             "items": [{k: f[k] for k in keep if k in f} for f in facts if f["moves"] or args.get("full")], "findings": groups,
-            "not_measured": track.skipped}
+            "not_measured": track.skipped, "simulation": sim["state"] if sim else None}
     return Reply("\n".join([head, *lines, *notes]), data)

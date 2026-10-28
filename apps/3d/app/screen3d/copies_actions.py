@@ -42,8 +42,9 @@ def _in_copies(f) -> bool:
 
 
 def _make_valid(f) -> bool:
-    # a copies item holds sources and effectors only: not another copies item; while painting the menu is Paint's
-    return not _in_copies(f) and not f.screen.get("paint")
+    # a copies item holds sources and effectors only: not another copies item; while painting the menu is Paint's;
+    # never copies of the floor the scene stands on (a backdrop: start_scene.py)
+    return not _in_copies(f) and not f.screen.get("paint") and not any(it.get("backdrop") for it in f.items)
 
 
 def _scatter_sources(f) -> list[str]:
@@ -114,7 +115,8 @@ def near_calls(f, kind: str) -> list[dict]:
     if other is None:                                  # a new small sphere to move: the change follows it
         ball = counted(f.doc, "mesh")
         x, y, z = beside(copies)
-        args = {"id": ball, "shape": "sphere", "name": "Near", "radius": BALL, "x": x, "y": y, "z": z}
+        args = {"id": ball, "shape": "sphere", "name": "Near", "radius": BALL, "x": x, "y": y, "z": z,
+                "guide": True}                         # a handle in the view, never in the shot or a render
         parent = f.doc.parent_of(copies["id"])[0]
         if parent and f.doc.has(parent) and f.doc.item(parent)["type"] in F.HOLDERS:
             args["into"] = parent

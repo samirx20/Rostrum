@@ -12,10 +12,11 @@ Final look and the engine-only requests go to the engine program as before.
 """
 from __future__ import annotations
 
+import json
 import sys
 import threading
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
 
 ViewProvider = ImageProvider
@@ -27,6 +28,24 @@ def open_engine():
     return Engine()
 
 
+def clay_key(scene: dict) -> str:
+    """The scene's clays as one text ("" with none): a change in it means the view builds a clay again."""
+    out = []
+
+    def walk(v):
+        if isinstance(v, dict):
+            if v.get("type") == "clay":
+                out.append(v)
+                return
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    walk(scene)
+    return json.dumps(out, sort_keys=True, default=str) if out else ""
+
+
 class ViewRenderer(PictureWorker):
     ready = Signal(int, float, bool, bool, object)  # serial of the newest picture, its time in ms, whether the scene's
     #   dome lit it, whether the camera looked through has depth of field, and the Final look's progress and the card's
@@ -35,6 +54,8 @@ class ViewRenderer(PictureWorker):
     #   normal: where the surface was hit and which way it faces)
     notice = Signal(str)         # the engine was started again (never silent)
     copiesInfo = Signal(object)  # the scene reply's copies info ({copies id: {count, seen, camera}}), when a scene was loaded
+    rebuilding = Signal(bool)    # an undo / redo's scene whose clay changed is being loaded (up to ~1.5 s in which
+    #   the window's view can't draw): the viewport shows "Updating the clay…" from the frame before until it lands
 
     def __init__(self, parent=None, link=None):
         super().__init__("view3d", parent)
@@ -42,6 +63,8 @@ class ViewRenderer(PictureWorker):
         self.link = link                             # the window's own view (view_item.ViewLink), or None: pictures
         self._want, self._loading = None, False      # its newest (scene, view) waiting for the scene in flight
         self._later = None                           # (scene, view) whose painted clays wait for their surface
+        self._clays, self._rebuild = None, False     # the clays of the scene last loaded (clay_key); a load showing so
+        self.stepping = False                        # the next scene comes from an undo / redo (Bridge3D sets it)
         if link is not None:
             link.drawn.connect(self._drawn)
         self.start()
@@ -63,11 +86,22 @@ class ViewRenderer(PictureWorker):
         if line is not None:
             self._loading = True
             self._later = (scene, req) if scene.get("paintLater") else None
+            clays, before, stepping = clay_key(scene), self._clays, self.stepping
+            self._clays, self.stepping = clays, False
+            if stepping and before is not None and clays and clays != before:
+                # the clay is built again in the view's own drawing step, which holds the whole window's picture: say
+                # so first, one frame ahead, so the sign is what shows while it builds (never a silent freeze)
+                self._rebuild = True
+                self.rebuilding.emit(True)
+                return QTimer.singleShot(40, lambda: (self.link._post_line(line, self._loaded), self.link.show(req)))
             self.link._post_line(line, self._loaded)
         self.link.show(req)
 
     def _loaded(self, out):
         self._loading = False
+        if self._rebuild:
+            self._rebuild = False
+            self.rebuilding.emit(False)
         later, self._later = self._later, None
         if isinstance(out, str):
             self.link._forget_scene()

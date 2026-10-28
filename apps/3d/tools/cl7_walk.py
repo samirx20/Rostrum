@@ -493,8 +493,9 @@ class Walk:
         eyes1 = {e: self.world_of(e) for e in self.eyes}
         shift = {e: round(math.dist(eyes0[e], eyes1[e]) * 1000, 1) for e in self.eyes}
         self.clock.cur["eyeShiftMm"] = shift
-        if {"chest", "body"} & set(moved):              # the head moved: the eyes must have gone with it
-            self.clock.check(all(v > 2 for v in shift.values()),
+        if {"chest", "body"} & set(moved):              # the head moved: the eyes must have gone with it (the lean is
+            # at most 8° now, pose_ik.TRUNK_MAX: the eye nearest the turn's axis moves ~1 mm, the other ~9 mm)
+            self.clock.check(max(shift.values()) > 2,
                              f"the upper body bent and the eyes went with it, still on the head (moved mm: {shift})")
 
     def s9_light(self):

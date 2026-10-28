@@ -230,4 +230,6 @@ class RenderJob(QObject):
             if self._s:
                 render_guess.learn(self._s, secs)
             self._bridge.say(f"Rendered frame {self._at} in {secs:.1f} s")
+        if (sim := getattr(self._bridge, "_sim", None)) is not None:
+            sim.adopt()                             # a simulation the render computed becomes the shot's stored one
         self.changed.emit()

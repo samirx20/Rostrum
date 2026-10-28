@@ -16,6 +16,10 @@ ORDER = (
      lambda b, v: v is not None and v.clay_tool._phase in ("wait", "sculpt"), lambda b, v: v.clay_tool.cancel()),
     ("draw", "a clay outline being drawn (Draw, Spin): drop it (nothing changes, no history step)",
      lambda b, v: v is not None and v.clay_tool.drawer.drawing, lambda b, v: v.clay_tool.drawer.cancel()),
+    ("paint_stroke", "a paint stroke in progress: drop it (nothing painted, no history step; Paint stays on)",
+     lambda b, v: v is not None and v.paint.stroking, lambda b, v: v.paint.cancel()),
+    ("scrub", "a number being dragged (a field's label, Count, Width): put it back (no history step; the rest of the "
+     "drag changes nothing)", lambda b, v: b.scrubbing, lambda b, v: b.cancel_drag()),
     ("render", "a render running: cancel it",
      lambda b, v: b.render.state == "running", lambda b, v: b.render.cancel()),
     ("result", "a render shown over the viewport: put it away",
