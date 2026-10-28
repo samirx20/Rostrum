@@ -15,7 +15,7 @@ from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
 from ..listen import weakest
-from . import session_clock, stop_limiter, tools_fit
+from . import deliver_hold, session_clock, stop_limiter, tools_fit
 from .moments_arg import EXPECT, parse as parse_expect
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -104,6 +104,14 @@ def _copy_to(folder: Path, r: dict, files: list[str]) -> list[str]:
     return [str(Path(p)) for p in out]
 
 
+def _loud_fix(loud: dict | None) -> str:
+    """The change that lands a render on its loudness target, in the words a script and a call use."""
+    if loud and loud.get("push_max_limit"):
+        m = loud["push_max_limit"]
+        return f"raise the master's maxLimit to {m:g} (a script: master(maxLimit={m:g}); or edit_loudness {{\"apply\": \"best\"}})"
+    return "edit_loudness {\"apply\": \"best\"} lands it in one measured call"
+
+
 def asked_moments(doc, expect) -> list[dict]:
     """The moments a finished render is checked against: `expect` when given, else the song's markers named for one
     ("hit", "drums back", "climax", listen/weakest.py)."""
@@ -144,7 +152,9 @@ def register(tools: Tools):
         "folder": {"type": "string", "description": "An absolute folder path (made when it is not there): the finished mix, under `name`, is also copied there (and the stems, in a folder beside it called \"<name> stems\"), so the file lands where you want it with no shell copy. The render stays in the project's renders/ as its next version; the reply's `copied` lists the new files."},
         **{"expect": {**EXPECT["expect"], "description": EXPECT["expect"]["description"] + " The finished reply lists the three weakest of them "
                       "(time, what is weak, the measured number, the first fix). Default: the song's markers named hit, stop, drums out, drums back, climax or lift."}},
-        "ring_past_length": {"type": "boolean", "default": False, "description": "False (default): when the song has a length the file is exactly that long: trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply says by how much). True: the file runs on past the length until the ring-out has died away (up to 6 s), as the Export sheet does."}}})
+        "ring_past_length": {"anyOf": [{"type": "boolean"}, {"type": "number", "minimum": 0, "maximum": deliver.MOST_RING_S}], "default": False,
+                             "description": f"False (default): when the song has a length the file is exactly that long: trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply says by how much). True: the file may run on up to {deliver.RING_S:g} s past the length (the usual delivery allowance) while the ring-out dies away, faded inside that; a number: up to that many seconds (at most {deliver.MOST_RING_S:g})."},
+        **deliver_hold.KEEP}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, Rhodes, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them.
@@ -163,9 +173,14 @@ def register(tools: Tools):
         who = f"{ctx.who.kind}:{ctx.who.name}"
         partial = bool(args.get("solo") or args.get("mute"))
         options = {k: args[k] for k in ("format", "sampleRate", "trim") if k in args}
-        if schedule.get("length") is not None and not args.get("ring_past_length"):
+        ring = deliver.ring_allowed(args.get("ring_past_length"))     # a wrong one answers now
+        length_s = None
+        if schedule.get("length") is not None:
             with markers.project(getattr(doc, "folder", None)):     # in seconds: the song may write it in beats or bars
-                options["length"] = times.seconds(doc.data["length"], doc.data, "length")   # asked = delivered (deliver.py)
+                length_s = options["length"] = times.seconds(doc.data["length"], doc.data, "length")   # asked = delivered (deliver.py)
+            if ring:
+                options["ring"] = ring
+        keep = deliver_hold.read_keep(args.get("keep"))            # a wrong keep answers now
         target = _target_folder(args.get("folder"))         # a wrong folder answers now, not after the render
         with markers.project(getattr(doc, "folder", None)):          # a time may name a project marker
             moments = [] if partial else asked_moments(doc, args.get("expect"))   # a wrong expect answers now
@@ -192,16 +207,29 @@ def register(tools: Tools):
                                    markers_file=bool(args.get("markers")), name=args.get("name") or "")
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
-            copied = _copy_to(target, r, files) if target and not partial else []
             loud = loudness(r, master_now, before) if master and not partial else None
-            said = summary(r, goal, loud) + (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "") + "." if copied else "")
-            weak = []
+            weak, copied, hold = [], [], {}
+            said = summary(r, goal, loud)
             if not partial:
                 job.progress(note="listening")
-                heard, weak = weakest_words(r["file"], moments, *stop_limiter.read(ctx, doc, r, moments))
+                lim = stop_limiter.read(ctx, doc, r, moments)
+                heard, weak = weakest_words(r["file"], moments, *lim)
+                found = deliver_hold.open_faults(r, master_now, length_s, ring, _loud_fix(loud), *lim) if master else []
+                still, kept = deliver_hold.decide(found, keep)
+                hold = {"open_faults": [{k: f[k] for k in ("kind", "at_s", "words")} for f in still], **({"kept": kept} if kept else {})}
+                if target and still:       # the delivery waits for a clean check (deliver_hold.py); the render stands
+                    said = deliver_hold.held_words(still, str(target)) + "\n" + said
+                    hold["delivered"] = False
+                elif target:
+                    copied = _copy_to(target, r, files)
+                    said += (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "")
+                             + ". " + deliver_hold.clean_words(found, kept))
+                    hold["delivered"] = True
+                else:
+                    said += " " + deliver_hold.pending_words(still)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
-            return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+            return Reply(said, {**hold, **({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
 
-        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments)))}")
+        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments, str(target), keep)))}")

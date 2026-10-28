@@ -3,7 +3,9 @@
 **The whole piece is one script, under one name.** Write it, run it with `run_script` and `look: true` (it renders and listens), read the listening
 check in the reply (loudness, the weakest asked moments with their fixes, faults such as "leading silence", "tempo far from
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
-touch-ups.
+touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
+
+**Delivery waits for a clean check.** A render with `folder` (the delivery) copies the mix there only when the listening check has no open fault, or when the same call keeps each open one on purpose: `"keep": [{"fault": "held_tone", "at": 0, "why": "the drone is the scene's held breath"}]`. Otherwise the reply starts with NOT DELIVERED, lists each open fault with what to change, and the render stays in `renders/` as its version. Besides the moments and the whole piece, the file's own faults count: past the song's length by more than the ring allowed (`runs_long`), loudness more than 1 LU off the master's target (`off_loudness`, with the `maxLimit` that reaches it), a true peak over the ceiling, clipped samples. A render without `folder` is a check: its reply says which faults a delivery would wait for.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
@@ -157,8 +159,8 @@ A song stops at its `length`. What a clean end needs, with what exists today:
   starts at or after `length` is not heard (both are warned, in `run_script` and `render_mix`). `length(bar(21))` after a chord let
   go at bar 21 rings it out. **The file `render_mix` delivers is exactly `length` long** (a 40 s song is a 40.00 s file): the ring
   that would run past it is faded out over the last second inside it, and the reply's warnings say how much was cut off; to have
-  the tail, end the music earlier or set a longer `length`. `render_mix` with `ring_past_length: true` (and the Export sheet) lets the
-  file run on until the ring has died away. Songs saved before 2026-10-25 open with Ring out off (they sound as they did): there the
+  the tail, end the music earlier or set a longer `length`. `render_mix` with `ring_past_length: true` lets the
+  file run on up to 2 s past it (a number: up to that many seconds); the Export sheet lets it run until the ring has died away. Songs saved before 2026-10-25 open with Ring out off (they sound as they did): there the
   file stops at `length`, so leave the tail room yourself.
 - **Check the end.** `look_sound` (`what: "loudness"`) answers an `ending` line from the render: the level of the last 0.5 s,
   whether that is still above -50 dBFS, and whether the last 50 ms drop faster than the fade before it. Still above -50 dBFS
@@ -216,6 +218,47 @@ pno = track("keys", builtIn="piano")
 pno.note("D4", at=seconds_of(bar(1) - beats(1)), dur=beats(1))   # the pickup into bar 1
 pno.chord(["D3", "A3", "F4"], at=bar(21), dur=beats(4))          # on 37.0 s
 ```
+
+## Moments that read
+
+A hit, a stop or a drop lands on time and still goes unheard when the music around it keeps going: a hit over a full bed
+is only a little louder than the notes before it (and the limiter takes the rest), a band "stop" where the drums keep
+playing is not a stop, drums 6 dB down are not "out". What makes a moment read is **contrast in time**: a little silence
+before it, the other parts really stopping, a real gap. `moment(name, at)` writes that contrast onto the notes you have
+already written, so the parts can be written straight through and the moment cut into them.
+
+`m = moment("hit", at=31.5)` makes the marker `hit` (`at` is any time: seconds, `bar(17)`, `"#cue"`; leave `at` out to use
+a marker already there) and returns the moment. Name it for what it is: markers named hit, stop, drums out, drums back,
+climax or lift are read as asked moments by `render_mix`'s check, which then says whether it stands out. Then, on tracks:
+
+| Action | What it does to the notes and hits written | Reads as |
+|---|---|---|
+| `m.rest(strings, basses, before=0.4)` | nothing starts in the 0.4 s before the moment; what is still sounding ends there | a breath, so the hit comes out of silence |
+| `m.stop(band, until=37.5, short=0.2, release=0.05)` | what starts on the moment (within 30 ms) plays, cut to `short` s if given; what rings across it ends at the moment (+ `release`); nothing starts again before `until` (default: the song's end) | a band stop, a drop that is a gap, an ending |
+| `m.choke(cymbals, after=0.25)` | what is sounding at the moment ends 0.25 s after it | a choked crash, the pedal lifted |
+| `m.strike(brass, ["C2", "G2", "C3"], vel=1.0, ring=4.0)` | a note or chord on the moment, held `ring` s; on a kit `m.strike(drums, "crash")` (or a list of drums) adds hits | the layers of the hit itself |
+| `m.swell(strings, over=4.0, low=0.5)` | what starts in the 4 s before the moment plays from 0.5x its velocity up to full | a run-up the hit lands on |
+
+The actions run when the script ends, in the order written, on every note the script wrote (written before or after the
+`moment` line). A cut keeps the note's own form: a length in beats stays in beats, seconds stay seconds, a tie ends at the
+cut. `run_script`'s reply says what each did ("moment hit at 31.50 s: rest 0.40 s on strings, basses (3 notes dropped, 2
+shortened); strike on brass (3 notes added)"): "nothing there to change" means the track had no notes near the moment.
+
+A drum drop from 24.0 to 26.0 s is a stop with an `until`, then the drums come back on their own:
+
+```python
+out = moment("drums out", at=24.0)
+out.stop(drums, until=26.0)              # a real gap, not quieter
+back = moment("drums back", at=26.0)
+back.strike(drums, "crash", vel=1.0)    # on top of the part's own kick at 26.0
+hit = moment("hit", at=31.5)
+hit.rest(pad, bass, before=0.5)          # the bed breathes out
+hit.strike(low_brass, ["D1", "D2"], vel=1.0, ring=3.0)
+hit.stop(pad, until=33.0)                # and stays out while the hit rings
+```
+
+The hit still has to be loud enough on its own: check it with `render_mix` (the check names a moment that does not stand out
+and the track to tame).
 
 ## A loop that leads back into its start
 

@@ -28,7 +28,7 @@ SCHEMA = {"anyOf": [{"type": "boolean"}, {"type": "object"}],
                          "[{\"at\": 31.5, \"kind\": \"stop\"}, {\"kind\": \"tempo\", \"bpm\": 132}]}). The call waits for the "
                          "render (up to 150 s; longer: the reply names the job for inspect_job). A failing script renders nothing."}
 LEAD = ("The loop: write the whole piece as one script with `look` (true, or render_mix's arguments with `expect`), read "
-        "the reply's weakest moments, edit the script and run it again under the same name with `look`, until the list is clean. ")
+        "the reply's weakest moments, edit the script and run it again under the same name with `look`, until the list is clean. A `look` with `folder` is the delivery: it copies the mix there only when the check is clean or `keep` explains each open fault (render_mix › keep). ")
 
 
 def _allowed(ctx) -> set:
