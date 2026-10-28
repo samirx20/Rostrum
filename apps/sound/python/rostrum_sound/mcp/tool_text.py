@@ -35,7 +35,7 @@ SAY = {
     "render_voice_words": "Each spoken word's start and end.",
     "render_voice_estimate": "How long lines will take, before making them.",
     # render_mix's parts
-    "render_mix": "The mix and stems as the next version, with the listening check; open faults need `keep`.",
+    "render_mix": "The next mix and stems, listened to; open faults need `keep`.",
     "render_midi": "The notes as a MIDI file.",
     # run_open_project's parts
     "run_open_project": "Open a project folder (made when new).",

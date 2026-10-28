@@ -6,7 +6,7 @@ from __future__ import annotations
 from rostrum_core.mcp.combine import combine
 
 GROUPS = [
-    ("look_sound", "Hear the mix as numbers and pictures; replies open NOT DONE: (each fault with its time and fix) or DONE:.",
+    ("look_sound", "Hear the mix as numbers and pictures; opens NOT DONE: (faults: time, fix) or DONE:.",
      {"loudness": "look_loudness", "levels": "look_levels", "spectrum": "look_spectrum", "stereo": "look_stereo",
       "low_end": "look_low_end", "clash": "look_clash", "cleanup": "look_cleanup"}, "loudness"),
     ("look_music", "Hear the music as facts.",
