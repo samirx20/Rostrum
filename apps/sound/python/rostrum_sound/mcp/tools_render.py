@@ -214,7 +214,7 @@ def register(tools: Tools):
                 job.progress(note="listening")
                 lim = stop_limiter.read(ctx, doc, r, moments)
                 heard, weak = weakest_words(r["file"], moments, *lim)
-                found = deliver_hold.open_faults(r, master_now, length_s, ring, _loud_fix(loud), *lim) if master else []
+                found = deliver_hold.open_faults(r, moments, master_now, length_s, ring, _loud_fix(loud), *lim) if master else []
                 still, kept = deliver_hold.decide(found, keep)
                 hold = {"open_faults": [{k: f[k] for k in ("kind", "at_s", "words")} for f in still], **({"kept": kept} if kept else {})}
                 if target and still:       # the delivery waits for a clean check (deliver_hold.py); the render stands

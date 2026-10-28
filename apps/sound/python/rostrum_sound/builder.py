@@ -185,6 +185,15 @@ class Song(MusicMap):
         return self.buses[-1]
 
     def marker(self, name, at, id=None):
+        """A marker; the same name again at the same time is the same marker (marker("hit") then moment("hit") at
+        it), at another time a loud error naming both."""
+        same = next((m for m in self.markers if m["id"] == (id or ids.marker(name))), None)
+        if same is not None:
+            if same["at"] == at:
+                return
+            raise RostrumError(codes.BAD_ARGUMENT, f"marker {name}", f"at={at!r}",
+                               f"is a second time for the marker \"{name}\", already at {same['at']!r}",
+                               hint=f'One time per name: moment("{name}") without at uses the marker already there.')
         self.markers.append({"id": id or ids.marker(name), "type": "marker",
                              **checked("marker", {"name": name, "at": at}, f"marker {name}")})
 
