@@ -166,7 +166,7 @@ def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None, ring_s
     end read after the ring a render allowed: ring_past_length; `faded`: the delivery's fade of a ring past the length,
     a fault when the song asks for a clean ending, clean_end.py)."""
     out = (shape(found, doc) + loudness_fault(measured_lufs, target, push) + peak_faults(peak, clipped)
-           + duck_faults(doc.data, ducks, stems) + clean_end.fault(doc, faded))
+           + duck_faults(doc.data, ducks, stems) + clean_end.fault(doc, faded, wav))
     try:
         end = end_second(doc)
         out += rings_past_end(wav, end + ring_s if end else end)

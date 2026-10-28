@@ -60,9 +60,22 @@ FADED = {"faded_s": 1.0, "rang_s": 2.4, "from_s": 19.0}
 
 def test_a_faded_end_is_a_fault_only_when_a_clean_ending_is_asked():
     got = clean_end.fault(_doc("A cue that ends cleanly on a marker, a real ending, not a soft fade-out"), FADED)
-    assert got and got[0]["id"] == "faded_end" and "ring_out(False)" in got[0]["fix"]
+    assert got and got[0]["id"] == "faded_end" and "ON the marker" in got[0]["fix"]
     assert not clean_end.fault(_doc("A 4-bar piano chord progression at 90 bpm"), FADED)
-    assert not clean_end.fault(_doc("ends cleanly"), None)          # nothing was faded
+    assert not clean_end.fault(_doc("ends cleanly"), None)          # nothing was faded, no file to read
+
+
+def test_a_clean_ending_cut_while_still_playing_is_chopped(tmp_path):
+    """Canary re-run: held notes cut at the length with Ring out off (still -7 dBFS) shipped as a 'clean ending'."""
+    t = np.arange(int(4.0 * SR)) / SR
+    for name, chopped in (("held", True), ("stab", False)):          # held to the end / dying away from 2 s
+        env = np.ones_like(t) if chopped else np.where(t < 2.0, 1.0, np.exp(-(t - 2.0) * 6))
+        y = 0.3 * np.sin(2 * np.pi * 220 * t) * env
+        path = tmp_path / f"{name}.wav"
+        sf.write(path, np.stack([y, y], axis=1), SR)
+        got = clean_end.fault(_doc("ends cleanly on a marker"), None, str(path))
+        assert bool(got and got[0]["id"] == "chopped_end") == chopped
+        assert not clean_end.fault(_doc("A piano progression"), None, str(path))
 
 
 def test_a_fault_that_comes_back_says_what_the_change_did():

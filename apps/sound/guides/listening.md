@@ -59,7 +59,7 @@ drone meant as a drone may stay, but say why in your report.
 | top end did not grow (`climax`, `lift`) | the same ratio over the first 5 s that play against the 5 s from the moment; grew under +6 dB (builds that open up: +11 to +15) | add parts in register order (high ones last), raise recorded instruments' velocity through the build, a cymbal swell or a high octave into the moment |
 | hit squashed by the limiter (render only) | the master's limiter held a moment down 3 dB or more; how far the 10 s before sat under it | a short loud moment cannot carry the loudness target, so the build does: let the hit ring or hold 3–6 s (a held chord, ringing low notes, a cymbal) and keep the build's peaks 4–6 dB under the ceiling. `edit_loudness` `lift_quiet` narrows the range: not the fix here |
 
-The render adds: an ending faded by the delivery (`faded_end`, when the brief asks for a clean ending or a marker named end / ending marks it): end the last notes on the marker and `ring_out(False)` after `length` (script.md › Ending a song). A fault the previous render also named says what your change did to it: was, now, what passes, and "not enough" or "no change".
+The render adds, when the brief asks for a clean ending or a marker named end / ending marks it: an ending faded by the delivery (`faded_end`) or a file that stops while still playing, within 12 dB of its loudest (`chopped_end`): a short last chord or hit on the marker, the length 1–2 s after it (script.md › Ending a song). A fault the previous render also named says what your change did to it: was, now, what passes, and "not enough" or "no change".
 
 "No faults found" means none of these, not that the music is good.
 

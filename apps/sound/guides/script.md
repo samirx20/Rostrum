@@ -182,11 +182,13 @@ colour is already on the keys.
 
 A song stops at its `length`. What a clean end needs, with what exists today:
 
-- **Stop on a marker (a clean, real ending).** End the last notes on the marker (`end="#end"`), set `length` there and,
-  after it, `ring_out(False)`: the song stops at its length with its last 0.1 s smoothed so it does not click
-  (`ring_out(False, soft_end=False)`: a dead stop). A short, dry last hit (a staccato chord, a kick with a choked
-  cymbal) stops cleanest. With Ring out on, the ring past the length is faded in the delivered file: when the brief
-  asks for a clean ending, or a marker named end / ending marks it, that fade is the fault `faded_end`.
+- **End on a marker (a clean, real ending).** The music stops itself on the marker: a short last chord or hit ON it
+  (a staccato chord, a kick with a choked cymbal, notes no longer than a beat), held notes ending on it
+  (`end="#end"`), and the song's `length` 1–2 s after it so the tail dies away in the room, Ring out on. When the brief
+  asks for a clean ending, or a marker named end / ending marks it, two endings are faults: the delivery's fade of a
+  ring past the length (`faded_end`), and a file that stops while still playing, within 12 dB of its loudest
+  (`chopped_end`: held notes cut at the length). `ring_out(False)` (after `length`) stops the song at its length, its last
+  0.1 s smoothed (`ring_out(False, soft_end=False)`: a dead stop): for a sound that has already died away there.
 - **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
   **Ring out** (the song field `ringOut`, on in every new song) a sound still ringing at `length` plays on until it dies away
   (under -60 dBFS, at most 6 s more) and the engine's file ends there; a note held past `length` is let go at it, and a note that
