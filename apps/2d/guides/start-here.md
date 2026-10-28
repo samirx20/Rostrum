@@ -157,7 +157,7 @@ Effects: `item.effect(type, id=None, **fields)`: the **type comes first**, the i
 like a layer's), and it **returns the effect**, which keys like a layer: `t.effect("blur", radius=30).key("radius",
 {0.0: 30, 0.8: 0})` is a blur-in. Fields: `"blur"` (`radius`, px), `"shadow"` (`dx`, `dy`, `radius`, `color`, `strength`), `"glow"`, `"gradient"` (`color1`,
 `color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom; it arrives as the layer's **gradient fill**,
-so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
+so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"rough"` (edges wobble as if drawn by hand: `amount` px, `size` px of a bump, `detail`, `boil` frames), `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
 
 The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
 `width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,

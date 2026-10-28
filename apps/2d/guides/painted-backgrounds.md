@@ -158,9 +158,23 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   hand would not.
 - **Paper over the whole picture.** A paper texture can sit over everything in the frame, so the washes, the line and
   the shapes and type all sit in the same paper: a full-frame shape layer on top in a pale paper colour, blend
-  `multiply` (it darkens only by the paper's own tone), with a `grain` effect (`still` on, `size` 1–1.5 (its grain is square cells, which show at 2 and up), `amount`
+  `multiply` (it darkens only by the paper's own tone), with a `grain` effect (`still` on, `smooth` on (the default:
+  soft round specks at any size; off gives square cells, which show at `size` 2 and up), `size` 1.5–4, `amount`
   0.2–0.4) for the tooth, at a low opacity. A paint layer's `ground` with `granulation` / `grain` on its washes gives
   tooth inside the drawing only.
+- **Rough edges.** Paint has soft, uneven edges, but a shape, a text, a path or a straight wash box drawn by the engine
+  is ruler-straight. The `rough` effect moves a layer's pixels by smooth noise, so every edge in it wobbles as if
+  drawn or cut by hand: `item.effect("rough", amount=6, size=40)`. `amount` is how far an edge moves at most (px),
+  `size` how wide one bump is (px), `detail` (1–8) adds finer wobble on top (1 = smooth bumps, 4 and up = a torn,
+  ragged edge), `seed` picks another wobble. Scale it to the mark: a few px on an inked line keeps it a line, 6–10 on
+  a big flat shape reads as hand-cut paper. Each layer takes its own (put the line on one drawing layer and the colour
+  on another to warp them differently), and on a group every layer in it warps together, so a line and its fill stay
+  together. `boil` 2–4 picks a new wobble every
+  that many frames: the hand-drawn "boil" of a line redrawn each frame; 0 holds still. The layer's box grows by
+  `amount` so nothing is cut; it moves with the layer and works under motion blur. A layer that is cut by the frame's
+  edge (a ground painted to the bottom of the picture) has nothing past that edge to pull in, so rough there shows
+  the background in notches: paint it past the edge by more than `amount`, or leave rough off it. Look at the edges
+  at 100 % (`look_frame` with an `area` and a `width` as large as the area) to judge it.
 
 ## Ways of working (techniques, not rules)
 

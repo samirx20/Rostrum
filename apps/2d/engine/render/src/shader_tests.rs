@@ -42,3 +42,8 @@ fn a_shader_that_does_not_compile_fails_the_frame_naming_the_effect_and_skia_s_m
 fn the_grain_effect_s_shader_links() {
     paint_with("grain", crate::scene::grain::PROGRAM).unwrap();
 }
+
+#[test]
+fn the_rough_effect_s_shader_links() {
+    paint_with("rough", crate::scene::rough::PROGRAM).unwrap();
+}

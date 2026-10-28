@@ -216,6 +216,8 @@ Effects are a layer's look, in order (`effect.add`, or `item.effect(type, id, ..
 | `shadow` | `dx`, `dy`, `radius` (softness), `color`, `strength`. |
 | `glow` | `radius`, `strength`, `ownColor` or `color`. |
 | `gradient` | Fills the layer instead of its colour: `style` linear / radial / conic, `angle`, `cx`, `cy`, `color1`, `color2`, optional middle colour. |
+| `grain` | Film grain on the layer's own look: `amount`, `size` (px), `colour`, `still` (a fixed texture), `smooth` (on: soft round specks; off: square cells). |
+| `rough` | Moves the layer's pixels by smooth noise, so every edge wobbles as if drawn or cut by hand: `amount` (px an edge moves at most), `size` (px, how wide one bump is), `detail` (1–8: finer wobble on top), `boil` (a new wobble every that many frames; 0 = still), `seed`. Works on any layer, a group (all its layers warp together), text and pictures. |
 
 ```python
 card = shape("glass", shape="rect", w=520, h=320, radius=32, x=960, y=540, fill="#ffffff")

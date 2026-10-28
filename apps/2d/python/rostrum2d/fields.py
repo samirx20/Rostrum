@@ -424,6 +424,22 @@ FIELDS: dict[str, list[Param]] = {
         T("still", "Same each frame", "Grain", False, D, help="Off: the grain moves like film. On: a fixed texture"),
         N("seed", "Seed", "Grain", 0, 100000, 1, "", D, integer=True, default=1,
           help="A different seed is a different, equally random grain"),
+        T("smooth", "Smooth", "Grain", True, D,
+          help="On: soft round specks at any size (paper, a dusty print). Off: square cells, which show at size 2 and up"),
+    ],
+    # Rough edges (engine: scene/rough.rs): moves the layer's pixels by smooth noise, so its edges wobble as if drawn
+    # by hand; the layer's bounds grow by the amount.
+    "rough": [
+        N("amount", "Amount", "Rough", 0, 200, 0.5, "px", default=6.0,
+          help="How far an edge moves at most: 2-3 px = an inked line's wobble, 6-10 = a hand-cut paper shape, 20+ = melting"),
+        N("size", "Size", "Rough", 1, 2000, 1, "px", default=40.0,
+          help="How wide one bump of the wobble is: small = a jittery edge, large = a slow lean"),
+        N("detail", "Detail", "Rough", 1, 8, 1, "", S, integer=True, default=3.0,
+          help="Layers of finer wobble on top of the bumps: 1 = smooth bumps only, 4+ = a ragged, torn edge"),
+        N("boil", "Boil", "Rough", 0, 120, 1, "frames", S, integer=True,
+          help="0 = the wobble holds still. 2-4 = a new wobble every that many frames: a hand-drawn line's boil"),
+        N("seed", "Seed", "Rough", 0, 100000, 1, "", D, integer=True, default=1,
+          help="A different seed is a different, equally random wobble"),
     ],
     "shadow": [
         N("dx", "Offset X", "Shadow", -2000, 2000, 1, "px"),
@@ -478,7 +494,7 @@ for _t in _fill.OWNERS:                    # the fill as a paint (fill_fields.py
 FIELDS["stop"] = _fill.STOP
 FIELDS["painting"] = _painting.FIELDS         # a painting of the scene (paintings.py)
 FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project colour (ops_fill_paint.py)
-EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
+EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", "rough", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
 FIXED = {**_frame.FIXED}     # fields no <type>.set takes: the document writes them itself (the frame's home)
 STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", "workStart", "workEnd", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h", "loopTimes", "loopStepX", "loopStepY"}, "path": {"w", "h"},
@@ -488,7 +504,7 @@ STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "
          "text": {"letterDelay", "letterSeed", "countDecimals", "countDigits"},
          **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH", "fillPhase", "fillDriftX", "fillDriftY"}}
 LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame", "painting": "Painting",
-          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",
+          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "rough": "Rough edges", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",
           **_rig.LABELS, **_frame.LABELS, **_motion.LABELS}
 
 # Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
