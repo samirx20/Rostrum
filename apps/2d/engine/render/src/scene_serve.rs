@@ -30,6 +30,9 @@
 //! - `{"measure": {"items": [{"id", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", …}]}}`
 //!   → `{"ok": true, "sizes": {id: [w, h]}}`: each text's laid-out box in its own px, by the path that draws it (scene/measure.rs);
 //!   with the loaded scene's fonts, else the app's. Needs no scene and no open page.
+//! - `{"layout": {"trees": [{"id", "kind": "box" | "text" | "leaf", "style": {…}, "children" | "text" | "w", "h"}, …]}}`
+//!   → `{"ok": true, "boxes": [{id: [x, y, w, h]}, …]}`: each tree laid out as CSS flex / grid with its texts wrapped by
+//!   the code that draws them, one pass for all; each node's border box in its parent's (scene/layout_cmd.rs). Needs no scene.
 //! - `{"shapes": {"items": [{"id", "shape", "w", "h", …}]}}` → `{"ok": true, "paths": {id: {"d", …path look}}}`: each
 //!   parametric shape as the path it is drawn as (scene/shape_cmd.rs; Convert to path's source). Needs no scene.
 
@@ -171,6 +174,10 @@ pub fn edit(held: &mut Held, session: &mut Option<Session>, edits: &Value) -> Re
 
 pub fn measure(held: &Held, req: &Value) -> Result<Value, String> {
     crate::scene::measure::measure(req, held.scene.as_ref().map(|s| s.fonts.as_slice()))
+}
+
+pub fn layout(held: &Held, req: &Value) -> Result<Value, String> {
+    crate::scene::layout_cmd::layout(req, held.scene.as_ref().map(|s| s.fonts.as_slice()))
 }
 
 pub fn shapes(req: &Value) -> Result<Value, String> {

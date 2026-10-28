@@ -42,7 +42,7 @@
 //! - `{"finish": {}}` — closes the encoder's input and waits for it: `{"ok": true, "code": 0}`, or an error
 //!   with what it said.
 //!
-//! - `{"scene"}`, `{"change"}`, `{"frame": {"t"}}`, `{"export"}`, `{"edit"}`, `{"bones"}`, `{"outline"}`, `{"measure"}` — the engine holds the scene description and evaluates every
+//! - `{"scene"}`, `{"change"}`, `{"frame": {"t"}}`, `{"export"}`, `{"edit"}`, `{"bones"}`, `{"outline"}`, `{"measure"}`, `{"layout"}` — the engine holds the scene description and evaluates every
 //!   frame itself (ENGINE_CONTRACT.md; scene_serve.rs).
 //!
 //! Errors reply `{"error": "…"}` (an asset that failed to load names its URL); the process keeps serving.
@@ -877,6 +877,11 @@ pub fn run() {
             }
         } else if let Some(m) = req.get("measure") {
             match crate::scene_serve::measure(&held, m) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if let Some(l) = req.get("layout") {
+            match crate::scene_serve::layout(&held, l) {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
