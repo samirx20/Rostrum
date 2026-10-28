@@ -386,7 +386,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
   after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
-- Names (tones, reverb spaces, EQ shapes, effect types and fields, drum names): `inspect_engine` (compact; `name` for one thing). The plain instrument names and the kits, each with what it is: `inspect_guide 'start-here'`, "Instrument and kit names".
+- Names (tones, reverb spaces, EQ shapes, effect types and fields, drum names): `inspect_engine` (compact; `name` for one thing). The plain instrument names and the kits, each with what it is: `inspect_guide 'agent-reference'`, "Instrument and kit names".
 - Instruments installed on this machine: `inspect_library` (`find: "cello"`); the sample packs behind the plain names, installed or missing: `inspect_library (kind: packs)`, installed with `run_model_install`. What one can play: `inspect_engine` (`what: "instrument"`)
   (a note outside a sampled instrument's range fails the render and names the range).
 - Ids: tracks are named by you; notes get ids from their track and start time (`strings.n1500`), so editing one note

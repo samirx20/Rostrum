@@ -1,7 +1,7 @@
 """Whole `edit_document` calls, one per kind of operation agents use: the arguments exactly as the tool takes them.
 
 Each line is the complete JSON `arguments` of one edit_document call; they are what edit_document's description shows and
-what guides/start-here.md prints (run against a real song when written; keep the two in step). `ops` is the list key, a
+what guides/agent-reference.md prints (run against a real song when written; keep the two in step). `ops` is the list key, a
 track is a target by its id ("drums", not "track.drums"), a note or hit operation takes ids or a range target
 (range_target.py), a time is {"beat": n} and a length is {"beats": n}.
 """

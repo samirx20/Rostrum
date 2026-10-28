@@ -95,27 +95,13 @@ def with_job_word(runtime) -> None:
 
 
 EDIT_DOCUMENT = (
-    "Apply a list of operations, all or nothing, as one change in the history. Read inspect_guide 'start-here' and "
-    "'writing-parts' first; the argument is `ops` (not operations), a list of {op, target?, args?}; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
-    "(a track is its id, \"drums\"; the song itself is \"root\"). A note or drum-hit operation takes note / hit ids, or a RANGE "
-    "target that names them: {\"track\": \"guitar\", \"from\": {\"bar\": 1}, \"to\": {\"bar\": 9}} is every note of that track "
-    "starting from bar 1 up to (not including) bar 9 (`from` / `to` left out = the start / the end; a time is also seconds, {\"beat\": 8} or \"#drop\"; "
-    "an empty range fails and says where the track's notes are; the range reads the song as it was before this call). "
-    "A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
-    "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\", \"by\"). A volume is gain 0 … 4 as a bare number, or in dB as "
-    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), and start within about 3 LU of each other (kits, bass and brass up to 2.5 dB under), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
-    "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
-    "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter. "
-    "Complete calls (the whole arguments), each tried on a real song:\n" + edit_examples.as_text())
-RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name that makes the same tracks is refused (it would double every note), a new name with new track ids adds parts beside them. "
-              "Example: {\"name\": \"cue\", \"source\": \"tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))\"}. "
-              "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces. Effect settings are plain numbers "
-              "(compressor threshold in dB, attack and release in seconds); every effect's and the master's settings: inspect_engine. "
-              "To end cleanly: a later length(), master(fadeOut=seconds) (inspect_guide 'script', Ending a song). "
-              "Before composing, read inspect_guide 'writing-music'. Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
-              "bar(n) is where bar n starts, so length(bar(9)) is an 8-bar song: for N bars write length(bar(N+1)). The "
-              "reply ends with the song's length in bars and seconds.")
-ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'start-here' for how replies work."
+    "Apply operations as one change, all or nothing: one-off touch-ups (parts belong in run_script). `ops`: a list of "
+    "{op, target?, args?} (inspect_operations). A target is an id (\"drums\"; the song \"root\") or notes "
+    "{\"track\": \"keys\", \"from\": {\"bar\": 1}, \"to\": {\"bar\": 9}}. A bare number is SECONDS: beats are {\"beat\": 8}, "
+    "a length {\"beats\": 2}. Example: " + edit_examples.LINES[-1][1] + " Calls: guide 'agent-reference'.")
+RUN_SCRIPT = ("Time in bars: bar(n) is where bar n starts; length(bar(9)) is 8 bars. Example source: \"tempo(96); length(bar(9))\\n"
+              "t = track('keys', builtIn='piano')\\nt.note('D4', at=bar(1), dur=beats(4))\". Names: inspect_guide 'script'.")
+ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'agent-reference' for how replies work."
 
 
 def with_sound_edit_help(runtime) -> None:

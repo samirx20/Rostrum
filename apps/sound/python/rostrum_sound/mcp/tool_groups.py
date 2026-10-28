@@ -6,32 +6,29 @@ from __future__ import annotations
 from rostrum_core.mcp.combine import combine
 
 GROUPS = [
-    ("look_sound", "Hear the mix as numbers and pictures: loudness, clipping, how the file ends and the faults a listener would hear, each with its time and what to change (default; `start` / `end` read a stretch, as for the spectrogram; `expect` moments like {\"at\": 31.5, \"kind\": \"hit\"} are checked too), each track's level, a "
-     "spectrogram, stereo balance, the low end, where one stem buries another, or what a clip's clean-up did. Use "
-     "\"loudness\" before delivering, \"levels\" / \"low_end\" / \"clash\" to balance a mix (they read the last render's stems).",
+    ("look_sound", "Hear the mix as numbers and pictures; replies open NOT DONE: (each fault with its time and fix) or DONE:.",
      {"loudness": "look_loudness", "levels": "look_levels", "spectrum": "look_spectrum", "stereo": "look_stereo",
       "low_end": "look_low_end", "clash": "look_clash", "cleanup": "look_cleanup"}, "loudness"),
-    ("look_music", "Hear the music as facts: where sounds start and whether they hit their times (default; give a time a kind, {\"at\": 31.5, \"kind\": \"hit\"}, and the faults say whether it stands out: a weak hit, a blurred stop, drums dropping early, a late climax), the tempo "
-     "and beat grid, the pitch of a melodic line against the written notes, or the key and chords.",
+    ("look_music", "Hear the music as facts.",
      {"events": "look_events", "beats": "look_beats", "pitch": "look_pitch", "harmony": "inspect_harmony"}, "events"),
-    ("inspect_engine", "What the sound engine can play. `what` is \"names\" (default: every name it accepts, compact; `name` gives one thing's details; the list of instruments is `names`, not `instruments`), \"instrument\" (one instrument's range and drum names) or "
-     "\"plugins\" (the installed CLAP / VST3 plug-ins).",
+    ("inspect_engine", "What the sound engine can play.",
      {"names": "inspect_engine", "instrument": "inspect_instrument", "plugins": "inspect_plugins"}, "names"),
-    ("inspect_library", "Sound files to use: installed packs and the person's own sound folders, searched by words, kind "
-     "and shape (default), or recordings cut into single sounds (the cut pool).",
+    ("inspect_library", "Sound files to use (inspect_guide 'library').",
      {"sounds": "inspect_library", "cuts": "inspect_cuts"}, "sounds"),
-    ("render_voice", "Voice lines: make the missing takes (default), find each spoken word's start and end, or estimate how long lines will take before they are made.",
+    ("render_voice", "Voice lines.",
      {"takes": "render_voice", "words": "render_voice_words", "estimate": "render_voice_estimate"}, "takes"),
-    ("render_mix", "Render the song: the mix and its stems as the next version (default), or the notes as a MIDI file.",
+    ("render_mix", "Render the song (a job). Under the loudness target: edit_loudness {\"apply\": \"best\"}.",
      {"mix": "render_mix", "midi": "render_midi"}, "mix"),
-    ("run_open_project", "The person's songs: open one (default; every change is already saved, so nothing is lost), "
-     "or list the recent ones to pick from.",
+    ("run_open_project", "The person's songs.",
      {"open": "run_open_project", "recent": "inspect_recent_projects"}, "open"),
 ]
+
+CORE = ["run_script", "look_sound", "look_music", "inspect_guide", "render_mix"]
 
 
 def group(tools):
     """Join the parts in place; returns `tools`."""
     for name, lead, parts, default in GROUPS:
         combine(tools, name, lead, parts, default=default)
+    tools.core = list(CORE)
     return tools
