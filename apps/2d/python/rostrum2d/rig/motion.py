@@ -7,14 +7,17 @@
         legL = limb("legL", parent=hip, x=580, y=560, lengths=(150, 140, 50), widths=(46, 40, 30), kind="leg")
         armL = limb("armL", parent=chest, x=560, y=380, lengths=(110, 100, 26), widths=(34, 30, 44))
         walk(legs=[legL, legR], arms=[armL, armR], body=hip, start=0.5, end=4.5, step=0.5, stride=110)
-        idle(chest, head=neck, arms=[armL, armR], start=4.5)
+        idle(chest, head=neck, arms=[armL, armR], legs=[legL, legR], start=4.5)
+        pose({armL: armL.out * 100, neck: 6}, at=6.0)   # a key pose: anticipation, overshoot, settle
         blink(eyes, open="eyes_open", closed="eyes_shut")
         shirt = layer("shirt")                    # an item made earlier in this script, by its id
 
 Everything they make is plain: bones, an IK chain, shapes and binds a person edits as usual, and keys (sampled each
 frame, then thinned to the few that draw the same curve within a fraction of a px or degree). Motion is written
 inside `start`..`end` and blends in and out of what the bones already do there, so a re-run, a hand key before or
-after, and a gesture on top all stay. Nothing here chooses a look: sizes, colours and timing are the caller's.
+after, and a gesture on top all stay. At the end of the script a limb with no colour takes its body's, and an arm
+without IK gets its elbow's natural bend from its upper bone's swing (`natural`), added to keys on its lower bone.
+Sizes, colours and timing stay the caller's.
 """
 from __future__ import annotations
 
@@ -30,15 +33,23 @@ from .model import start_bone, tip
 
 LIMB_KINDS = ("arm", "leg")
 PIECES = ("bend", "parts", "none")
+PLACEHOLDER = "#d9d9d9"                      # a limb's colour until the end of the script finds its body's
+RELAX = {"arm": 20.0, "leg": 6.0}            # degrees the elbow / knee is bent at rest (relax=0: straight)
+SWING_BEND, SWING_FROM, SWING_TO = 1.5, 50.0, 100.0   # swung past SWING_FROM degrees the bend turns, by SWING_TO it
+                                                      # is SWING_BEND x relax the way it swings (a raised arm's forearm up)
+NATURAL_LAG, NATURAL_OVER, NATURAL_DRAG = 0.1, 0.3, 0.6
 TOL_PX, TOL_DEG, TOL_SCALE = 0.25, 0.15, 0.0005
 
 
 class Limb:
     """What limb() made: `upper`, `lower`, `end` (bones; `end` is None with no third length), `ik` (the chain on the
-    lower bone, or None), `parts` (the shapes). `reach({t: (x, y)})` keys the IK target in rig px."""
+    lower bone, or None), `parts` (the shapes), `out` (+1 or -1: the sign of `rotation` that swings it away from the
+    body). `reach({t: (x, y)})` keys the IK target in rig px; `pose({t: angle})` keys the upper bone's turn;
+    `set(fill=…)` sets fields on every part."""
 
-    def __init__(self, id_, kind, upper, lower, end, ik, parts):
+    def __init__(self, id_, kind, upper, lower, end, ik, parts, out=1):
         self.id, self.kind, self.upper, self.lower, self.end, self.ik, self.parts = id_, kind, upper, lower, end, ik, parts
+        self.out = out
 
     def reach(self, keys: dict, ease: str = "smooth") -> "Limb":
         if self.ik is None:
@@ -48,6 +59,26 @@ class Limb:
             (x, y), e = (v[0], v[1] if len(v) > 1 else ease) if isinstance(v[0], (tuple, list)) else (v, ease)
             xs[t], ys[t] = (x, e), (y, e)
         self.ik.key("targetX", xs).key("targetY", ys)
+        return self
+
+    def pose(self, keys: dict, ease: str = "smooth") -> "Limb":
+        """{t: upper turn} or {t: {"upper": a, "lower": b, "end": c}}: rotation keys on those bones. With natural=True
+        (the default) the elbow / knee bend that follows the swing is added at the end of the script, so the upper
+        turn alone gives a living arm; a "lower" value adds to that bend."""
+        per = {}
+        for t, v in keys.items():
+            v, e = (v[0], v[1]) if isinstance(v, tuple) else (v, ease)
+            for part, a in (v.items() if isinstance(v, dict) else (("upper", v),)):
+                if part not in ("upper", "lower", "end") or (part == "end" and self.end is None):
+                    raise ValueError(f'{self.id}.pose: "{part}" is not one of upper, lower{", end" if self.end else ""}')
+                per.setdefault(part, {})[t] = (a, e)
+        for part, k in per.items():
+            getattr(self, part).key("rotation", k)
+        return self
+
+    def set(self, **fields) -> "Limb":
+        for p in self.parts:
+            p.set(**fields)
         return self
 
     def __repr__(self):
@@ -98,6 +129,8 @@ def for_script(build) -> dict:
             stack += [c for v in n.values() if isinstance(v, list) for c in v if isinstance(c, dict)]
         return None
 
+    limbs, followed = [], {}            # what the end-of-script pass needs: limbs made, follow ranges run per bone
+
     def layer(id):
         """An item this script made earlier (layer, group, rig, bone, ik), found by its id."""
         node = made(id)
@@ -111,9 +144,11 @@ def for_script(build) -> dict:
         return Item(build, node)
 
     def limb(id, x=None, y=None, angle=90, lengths=(120, 110, 30), widths=(40, 34, 44), parent=None, kind="arm",
-             ik=None, bend="right", pieces="bend", color="#d9d9d9", end_color=None, end_angle=None, soft=None):
+             ik=None, bend=None, pieces="bend", color=None, end_color=None, end_angle=None, soft=None, relax=None,
+             natural=True):
         """Upper + lower (+ end: hand / foot) bones from (x, y) along `angle`, an IK chain on the lower bone, and
-        plain shapes bound to them. Legs get IK by default, arms don't (key their turns, or pass ik=True)."""
+        plain shapes bound to them. Legs get IK by default, arms don't (key their turns, or pass ik=True). The joint
+        rests bent by `relax` degrees toward `bend` (arms: out, away from the body); `color` None takes the body's."""
         rig = _rig_of(build)
         if kind not in LIMB_KINDS:
             raise ValueError(f'limb {id}: kind "{kind}" is not one of {", ".join(LIMB_KINDS)}')
@@ -128,6 +163,13 @@ def for_script(build) -> dict:
         if "x" not in start or "y" not in start:
             raise ValueError(f"limb {id}: give x, y (the shoulder or hip joint, rig px), or a parent to start at its tip")
         bx, by = float(start["x"]), float(start["y"])
+        par = next((b for b in rig["bones"] if b["id"] == pid), None)
+        side = bend if bend is not None else "out" if kind == "arm" else "right"
+        if side in ("out", "in"):           # away from / toward the body: the parent bone's pivot, else the rig's middle
+            mid = float(par["x"]) if par is not None and abs(float(par["x"]) - bx) > 1e-6 else float(rig.get("w", 0)) / 2
+            side = ("right" if bx >= mid else "left") if side == "out" else ("left" if bx >= mid else "right")
+        way = bend_way(angle, side, id)
+        sign = 1.0 if way == "clockwise" else -1.0     # + rotation on the lower bone folds the joint toward `side`
         # the bone calls, as a script writes them (script.for_script: bone / ik / bind)
         from .script import for_script as rig_calls
         calls = rig_calls(build)
@@ -135,7 +177,15 @@ def for_script(build) -> dict:
         lower = calls["bone"](f"{id}_lower", parent=upper, length=lens[1])
         ea = end_angle if end_angle is not None else (0.0 if kind == "leg" else angle)
         end = calls["bone"](f"{id}_end", parent=lower, angle=ea, length=lens[2]) if lens[2] > 0 else None
-        chain = calls["ik"](f"{id}_ik", bone=lower, bend=bend_way(angle, bend, id)) if (ik if ik is not None else kind == "leg") else None
+        has_ik = ik if ik is not None else kind == "leg"
+        chain = calls["ik"](f"{id}_ik", bone=lower, bend=way) if has_ik else None
+        rlx = float(relax if relax is not None else RELAX[kind])
+        if rlx and not has_ik:              # the rest pose: joint bent (natural: put by the end-of-script pass, so keys on
+            if not natural:                 # the lower bone stay turns from the relaxed bend), the upper bone turned
+                lower.node["rotation"] = round(sign * rlx, 3)      # back half so the hand or foot stays under the joint
+            upper.node["rotation"] = round(-sign * rlx / 2, 3)
+        auto_color = color is None
+        color = PLACEHOLDER if auto_color else color
         parts = []
         a = math.radians(angle)
         ux, uy = math.cos(a), math.sin(a)
@@ -166,7 +216,12 @@ def for_script(build) -> dict:
                                 y=wy + math.sin(e) * lens[2] * 0.5, w=wid[2], h=wid[2], fill=col)
             calls["bind"](layer=p, bone=end)
             parts.append(p)
-        return Limb(id, kind, upper, lower, end, chain, parts)
+        mid = float(par["x"]) if par is not None and abs(float(par["x"]) - bx) > 1e-6 else float(rig.get("w", 0)) / 2
+        out = (-1 if math.sin(math.radians(angle)) >= 0 else 1) * (1 if bx >= mid else -1)   # tip moves away from mid
+        made_limb = Limb(id, kind, upper, lower, end, chain, parts, out=int(out))
+        limbs.append({"limb": made_limb, "rig": rig, "relax": rlx if not has_ik else 0.0, "sign": sign,
+                      "auto_color": auto_color and end_color is None, "natural": natural and not has_ik})
+        return made_limb
 
     def follow(bone, start=0.0, end=None, lag=0.12, overshoot=0.4, amount=1.0):
         """rig.follow in a script: the bones below `bone` trail its turn (rotation keys, start .. end + the settle)."""
@@ -178,6 +233,7 @@ def for_script(build) -> dict:
         if not follow_mod.descendants(rig["bones"], node["id"]):
             raise ValueError(f"follow({node['id']}): it has no bones below it to trail; pick the bone the motion starts at")
         span, baked = follow_mod.bake(rig["bones"], node["id"], fps, dur, float(start), end, lag, overshoot, amount)
+        followed.setdefault(node["id"], []).append(span)
         bones = {b["id"]: b for b in rig["bones"]}
         for b, keys in baked.items():
             _write(bones[b], "rotation", span, keys)
@@ -313,9 +369,11 @@ def for_script(build) -> dict:
                 follow(arm.upper, start, end, lag=0.08, overshoot=0.35, amount=0.8)
         return {"steps": int((end - start) / step), "stride": round(S, 1), "travel": round(travel_at(end), 1)}
 
-    def idle(body, head=None, arms=(), start=0.0, end=None, breath=3.5, amount=1.0, seed=0, follow_through=True):
+    def idle(body, head=None, arms=(), legs=(), start=0.0, end=None, breath=3.5, amount=1.0, seed=0, follow_through=True,
+             weight=True, shift=None):
         """Breathing and weight shift on top of what the bones do: the chest bone's scale and sway, a slow head drift,
-        shoulders rising with each breath; every breath a little different (seeded)."""
+        shoulders rising with each breath; every breath a little different (seeded). With legs (two leg limbs) the hip
+        sways from foot to foot by `shift` px and sinks, so the knees bend in turn while the feet stay planted."""
         rig, bn = _bone(build, body)
         fps, dur = _comp(build)
         start, end = float(start), dur if end is None else min(float(end), dur)
@@ -344,8 +402,26 @@ def for_script(build) -> dict:
         if head is not None:            # drifts on its own, and keeps the eyes level against the body's sway
             tracks.append((_bone(build, head)[1], "rotation",
                            lambda t: 1.5 * amount * math.sin(2 * math.pi * (t - start) / (breath * 1.7) + ph_head) - sway(t)))
-        for i, arm in enumerate(list(arms)[:2]):        # shoulders rise with the breath, each arm outward
-            tracks.append((arm.upper.node, "rotation", (lambda s: lambda t: s * 1.2 * amount * breath_at(t))(1 if i == 0 else -1)))
+        for arm in list(arms)[:2]:                      # shoulders rise with the breath, each arm outward
+            out = arm.out if isinstance(arm, Limb) else 1
+            tracks.append((_bone(build, arm)[1], "rotation", (lambda s: lambda t: s * 1.2 * amount * breath_at(t))(out)))
+        legs = [l for l in legs if isinstance(l, Limb)]
+        if weight and len(legs) == 2:                   # weight from foot to foot: the hip slides over one, sinks a little
+            hip = _bone(build, legs[0].upper.node["parent"])[1]
+            leg_len = legs[0].upper.node["length"] + legs[0].lower.node["length"]
+            px = float(shift) if shift is not None else 0.035 * leg_len
+            per = breath * 2.3 * 1.9
+            ph_w = rnd() * 6.28
+            side = lambda t: math.sin(2 * math.pi * (t - start) / per + ph_w)
+            tracks += [(hip, "moveX", lambda t: amount * px * side(t)),
+                       (hip, "moveY", lambda t: amount * (0.012 * leg_len + 0.01 * leg_len * abs(side(t)))),
+                       (hip, "rotation", lambda t: -amount * 1.2 * side(t))]
+            for leg in legs:                            # an FK leg bends its knee when the weight leaves it
+                if leg.ik is None:
+                    away = (lambda s: lambda t: max(0.0, s * side(t)))(1 if leg.upper.node["x"] < hip["x"] else -1)
+                    k = next(r["sign"] for r in limbs if r["limb"] is leg)
+                    tracks += [(leg.lower.node, "rotation", (lambda a, k: lambda t: k * 8 * amount * a(t))(away, k)),
+                               (leg.upper.node, "rotation", (lambda a, k: lambda t: -k * 4 * amount * a(t))(away, k))]
         span = (times[0], times[-1])
         for n, f, fn in tracks:
             own = [float(value_at(n, f, t)) for t in times]
@@ -355,7 +431,99 @@ def for_script(build) -> dict:
                 follow(arm.upper, start, end, lag=0.15, overshoot=0.3, amount=1.0)
         return {"breaths": len(beats) - 1}
 
-    return {"layer": layer, "limb": limb, "follow": follow, "blink": blink, "walk": walk, "idle": idle}
+    def pose(targets, at, take=0.5, anticipate=0.12, overshoot=0.1, settle=0.35, stagger=0.04, ease="smooth"):
+        """Several bones to a key pose at `at` together: each eases from where it is `take` s before, pulls back by
+        `anticipate` of the move first, swings past by `overshoot` and settles `settle` s later; each next entry
+        lands `stagger` s later (overlap). targets: {limb or bone: turn} or {bone: {field: value}} or
+        {limb: {"upper": a, "lower": b, "end": c}}."""
+        at, take = float(at), float(take)
+        if take <= 0:
+            raise ValueError(f"pose: take {take} s must be above 0")
+        if not isinstance(targets, dict) or not targets:
+            raise ValueError('pose({armR: -100, neck: {"rotation": 8}}, at=4): a dict of limb or bone -> value')
+        for i, (who, v) in enumerate(targets.items()):
+            if isinstance(who, Limb):
+                parts = v.items() if isinstance(v, dict) else (("upper", v),)
+                bad = [k for k, _ in parts if k not in ("upper", "lower", "end") or getattr(who, k) is None]
+                fields = [(getattr(who, k).node, "rotation", a) for k, a in parts if k not in bad]
+            else:
+                node = _bone(build, who)[1]
+                fields = [(node, f, a) for f, a in (v.items() if isinstance(v, dict) else (("rotation", v),))]
+                bad = [f for _, f, _ in fields if f not in ("rotation", "moveX", "moveY", "scale")]
+            if bad:
+                raise ValueError(f"pose: {getattr(who, 'id', who)} has no {', '.join(bad)} to pose "
+                                 "(a limb: upper, lower, end; a bone: rotation, moveX, moveY, scale)")
+            land = at + i * stagger
+            for node, f, v1 in fields:
+                t0, v1 = land - take, float(v1)
+                v0 = float(value_at(node, f, t0))
+                d = v1 - v0
+                keys = [(t0, v0)]
+                if anticipate and abs(d) > 1e-6:
+                    keys.append((t0 + 0.45 * take, v0 - anticipate * d))
+                keys.append((land, v1 + overshoot * d))
+                if overshoot and settle > 0:
+                    keys.append((land + settle, v1))
+                node["keys"] = [k for k in node.get("keys", []) if not (k.get("prop") == f and isinstance(k["t"], (int, float))
+                                                                        and t0 + 1e-9 < k["t"] <= keys[-1][0] + 1e-9)]
+                Item(build, node).key(f, {round(t, 4): round(v, 3) for t, v in keys}, ease=ease)
+        return at + (len(targets) - 1) * stagger + settle
+
+    def natural():
+        """The end of the script: limbs left in the placeholder colour take their body's; each arm without IK gets
+        its elbow bend following the upper bone's swing (a lagging spring), and drag where follow() did not run."""
+        if not build.holders or not limbs:
+            return
+        fps, dur = _comp(build)
+        times = [i / fps for i in range(int(round(dur * fps)) + 1)]
+        turns = {}                                      # a bone's turn per frame, sampled once (shared parents)
+
+        def turn(node):
+            if node["id"] not in turns:
+                turns[node["id"]] = [float(value_at(node, "rotation", t)) for t in times]
+            return turns[node["id"]]
+        for rec in limbs:
+            lm, rig = rec["limb"], rec["rig"]
+            if rec["auto_color"] and all(p.node.get("fill") == PLACEHOLDER for p in lm.parts):
+                col = _body_color(rig, lm.upper.node["parent"], {p.node["id"] for p in lm.parts})
+                for p in lm.parts:
+                    p.node["fill"] = col
+            if not rec["natural"]:
+                continue
+            up, lo, en = lm.upper.node, lm.lower.node, lm.end.node if lm.end else None
+            bones = {b["id"]: b for b in rig["bones"]}
+            rest_u = float(up.get("rotation", 0.0))
+            rlx, sgn = rec["relax"], rec["sign"]
+            delta = [v - rest_u for v in turn(up)]
+
+            def auto(dl):                               # the rest bend (forearm hanging) turns into a bend the way it swings
+                k = _smooth((abs(dl) - SWING_FROM) / (SWING_TO - SWING_FROM))
+                return sgn * rlx * (1 - k) + math.copysign(SWING_BEND * rlx, dl) * k
+            bend = follow_mod.spring([auto(dl) for dl in delta], 1 / fps, NATURAL_LAG, NATURAL_OVER)
+            own_lo = [float(value_at(lo, "rotation", t)) if keys_of(lo, "rotation") else 0.0 for t in times]
+            mask = _outside(times, followed.get(up["id"], []), 0.25)
+            drive, bid = [0.0] * len(times), up["id"]   # the upper bone's turn on screen: its own plus its parents' (FK)
+            while bid in bones:
+                drive = [d + v for d, v in zip(drive, turn(bones[bid]))]
+                bid = bones[bid]["parent"]
+            drag_lo = [NATURAL_DRAG * m * (y - x) for m, y, x in zip(mask, follow_mod.spring(drive, 1 / fps, NATURAL_LAG, 0.35), drive)]
+            new_lo = [o + b + g for o, b, g in zip(own_lo, bend, drag_lo)]
+            if max(new_lo) - min(new_lo) > TOL_DEG:
+                _write(lo, "rotation", (0.0, dur), _thinned(times, new_lo, "rotation"))
+            else:
+                lo["keys"] = [k for k in lo.get("keys", []) if k.get("prop") != "rotation"]
+                lo["rotation"] = round(new_lo[0], 3)
+            if en is not None:
+                drive2 = [d + l for d, l in zip(drive, new_lo)]
+                drag_en = [NATURAL_DRAG * m * (y - x) for m, y, x in zip(mask, follow_mod.spring(drive2, 1 / fps, 2 * NATURAL_LAG, 0.35), drive2)]
+                if max(map(abs, drag_en)) > TOL_DEG:
+                    own_en = [float(value_at(en, "rotation", t)) for t in times]
+                    _write(en, "rotation", (0.0, dur), _thinned(times, [o + g for o, g in zip(own_en, drag_en)], "rotation"))
+
+    if not hasattr(build, "finishers"):
+        build.finishers = []
+    build.finishers.append(natural)
+    return {"layer": layer, "limb": limb, "follow": follow, "blink": blink, "walk": walk, "idle": idle, "pose": pose}
 
 
 SIDES = {"right": 0.0, "down": 90.0, "left": 180.0, "up": 270.0}
@@ -383,6 +551,42 @@ class _Rand:
 
     def __call__(self):
         return self.r.random()
+
+
+def _outside(times, spans, ramp):
+    """1 away from every span, 0 inside one, a smooth ramp of `ramp` s at its edges."""
+    out = []
+    for t in times:
+        m = 1.0
+        for a, b in spans:
+            d = max(a - t, t - b, 0.0)
+            m = min(m, _smooth(d / ramp) if ramp > 0 else float(d > 0))
+        out.append(m)
+    return out
+
+
+def _body_color(rig: dict, bone_id: str, skip: set) -> str:
+    """The fill of the largest plain-coloured layer bound to this bone or the nearest bone above it that has one."""
+    bones = {b["id"]: b for b in rig["bones"]}
+    layers, stack = {}, list(rig.get("layers", []))
+    while stack:
+        n = stack.pop()
+        layers[n.get("id")] = n
+        stack += n.get("layers", [])
+    while bone_id:
+        best = None
+        for b in rig.get("binds", []):
+            n = layers.get(b.get("layer"))
+            if b.get("bone") != bone_id or n is None or n["id"] in skip:
+                continue
+            fill = n.get("fill")
+            if isinstance(fill, str) and fill.startswith("#") and float(n.get("opacity", 1)) > 0.5:
+                area = float(n.get("w", 0) or 0) * float(n.get("h", 0) or 0)
+                best = max(best or (area, fill), (area, fill))
+        if best:
+            return best[1]
+        bone_id = bones.get(bone_id, {}).get("parent")
+    return PLACEHOLDER
 
 
 def _thinned(times, values, field):

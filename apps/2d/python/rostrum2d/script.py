@@ -503,6 +503,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
              **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
+        for finish in getattr(b, "finishers", ()):     # end-of-script passes (rig.motion: limbs' natural bend, colour)
+            finish()
         _grow_drawings(b.root)
         _check_links(b.root, b.taken)
     except Exception as e:
@@ -517,7 +519,7 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=)",
-       "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / idle(chest, head=, arms=) / follow(bone) / blink(slot, open=, closed=)",
+       "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",
        "device(id, kind=phone|laptop|browser) / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: guide ui-and-product-animation",
        "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",

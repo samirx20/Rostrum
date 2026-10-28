@@ -53,3 +53,34 @@ with scr:
     total = d.item("total")
     assert total["counter"] and total["countPrefix"] == "$" and [k["v"] for k in keys_of(total, "count")] == [0, 186.4]
     assert d.item("phone_screen")["clip"] and d.item("list_r1_title")["body"] == "Ben"
+
+
+def test_an_arm_keyed_on_its_upper_bone_alone_bends_at_rest_and_follows_the_swing_and_takes_the_body_colour():
+    src = '''
+comp("c", duration=4, fps=30)
+with rig("bot", w=1200, h=900):
+    hip = bone("hip", x=600, y=600, angle=-90, length=0)
+    chest = bone("chest", parent=hip, length=200)
+    body = shape("body", w=200, h=240, x=600, y=480, fill="#f2b23c")
+    bind(layer=body, bone=chest)
+    armR = limb("armR", parent=chest, x=720, y=420, lengths=(120, 110, 20), widths=(40, 34, 50))
+    assert armR.out == -1                                     # negative turns swing a screen-right arm away from the body
+    armR.upper.key("rotation", {0: 0, 1: 0, 1.6: -130, 4: -130})
+    legL = limb("legL", parent=hip, x=560, y=600, lengths=(150, 140, 40), kind="leg")
+    legR = limb("legR", parent=hip, x=640, y=600, lengths=(150, 140, 40), kind="leg")
+    idle(chest, legs=[legL, legR], start=0, end=4)
+    pose({armR: -60, layer("chest"): {"rotation": 6}}, at=3.5, take=0.6)
+'''
+    d = Document.new(KIND)
+    d.run_script("bot.py", run_source(src, "bot.py"))
+    lo, up = d.item("armR_lower"), d.item("armR_upper")
+    assert value_at(lo, "rotation", 0.5) > 12                            # relaxed: the elbow bent, hand toward the body
+    assert value_at(lo, "rotation", 2.5) < -20                           # raised: the forearm bends on up the way it swung
+    assert d.item("armR")["fill"] == "#f2b23c"                           # no colour given: the body's
+    lift = value_at(up, "rotation", 3.5 - 0.6 * 0.55)                    # pose: a pull back before the move ...
+    assert lift < -130 and value_at(up, "rotation", 3.5) > -60           # ... a swing past, then it settles
+    assert abs(value_at(up, "rotation", 3.85) + 60) < 0.01
+    hip = d.item("hip")                                                  # weight shift: the hip slides foot to foot
+    xs = [value_at(hip, "moveX", t) for t in (0.5, 1.5, 2.5, 3.5)]
+    assert max(xs) - min(xs) > 3
+

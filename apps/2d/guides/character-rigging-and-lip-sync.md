@@ -42,7 +42,10 @@ show the same thing.
 
 ## 3. Pose with keys (FK)
 
-Bone fields that move: `rotation` (turn from rest, adds to the parent's turn), `scale`, `moveX`, `moveY`. Animate them
+Bone fields that move: `rotation` (turn from rest, adds to the parent's turn), `scale`, `moveX`, `moveY`. **Which way
+it turns:** positive `rotation` turns a bone clockwise on screen. So an arm hanging down on the right of the screen swings
+up and away from the body with negative values, one on the left with positive values (a limb tells you: `arm.out` is the
+sign that swings it away from the body, so `arm.upper.key("rotation", {1: arm.out * 100})` raises either arm). Animate them
 like any layer field: `key.add target=thigh prop=rotation t=0.5 v=25`; a person's pose drag on the canvas keys the same way at the playhead (`key.add` on a bone's `rotation`, or an IK chain's `targetX` / `targetY`). A root
 bone's `moveX/moveY` move the whole figure. Rest fields (x, y, angle, length) are not animatable: they describe the
 skeleton, not a moment.
@@ -98,8 +101,22 @@ sizes, colours and timing are yours.
   elbow or knee by a bend bind (`soft` = how wide the fold is); `"parts"` is two bars, each rigid, overlapping at the
   joint; `"none"` makes bones only, for your own pictures (bind them with `bind`). A leg gets an IK chain (`<id>_ik`), an
   arm only with `ik=True`. `bend` is the way the joint folds: `"left"`, `"right"`, `"up"`, `"down"` (the side of the screen
-  it points to) or `clockwise` / `counterclockwise`. A foot points along `end_angle` (0 = right, 180 = left). It returns
-  the limb: `arm.upper`, `arm.lower`, `arm.end`, `arm.ik`, `arm.parts`, and `arm.reach({t: (x, y)})` keys its IK target.
+  it points to), `"out"` / `"in"` (away from / toward the body: the parent bone's joint) or `clockwise` /
+  `counterclockwise`; an arm's default is `"out"`, a leg's `"right"`. A foot points along `end_angle` (0 = right,
+  180 = left). It returns the limb: `arm.upper`, `arm.lower`, `arm.end`, `arm.ik`, `arm.parts` (its shapes),
+  `arm.out` (see "Which way it turns" above), `arm.reach({t: (x, y)})` keys its IK target, `arm.pose({t: turn})` keys
+  its swing, `arm.set(fill="#f2b23c")` sets a field on every part.
+  - **Colour.** `color=` (and `end_color=` for the hand or foot). Without one, the parts take the fill of the biggest
+    plain-coloured layer bound to the bone the limb hangs from (the body), worked out at the end of the script, so bind
+    the body before or after: either works. Nothing bound there: light grey.
+  - **Rest pose.** An arm without IK rests with its elbow bent `relax` degrees (default 20; a leg without IK 6) toward
+    `bend`, the upper bone turned back half that much so the hand hangs under the shoulder. `relax=0` is dead straight.
+  - **A living arm from upper keys alone** (`natural=True`, the default, for limbs without IK). Key only
+    `arm.upper`'s `rotation` (or `arm.pose`) and, at the end of the script, the lower bone gets: the relaxed bend while
+    the arm hangs or swings up to about 50°; past that it turns into a bend the way the arm swings (a raised arm's
+    forearm keeps going up), fully by about 100°, at 1.5 × `relax`; that bend arrives a beat late and swings past a
+    little (a spring); and where you did not run `follow()` on that arm, a lighter follow-through of the forearm and hand.
+    Keys you put on `arm.lower` add to this bend (0 = the natural bend, 30 = 30° more). `natural=False` keys it raw.
 - **`walk(legs=[a, b], body=hip, arms=[a, b], head=, start=, end=, step=0.5, stride=, lift=, bounce=, travel=True,
   facing="right")`** keys a walk: each foot's IK target planted on the ground for half the cycle and lifted on an arc for
   the other half (the foot kept flat against the shin's turn, its toe tipping in the swing by `toe` degrees), the body's
@@ -108,10 +125,19 @@ sizes, colours and timing are yours.
   moves on `stride` each step and a planted foot stays put on the floor; with `travel=False` it walks on the spot (the
   feet slide back under it: for a background that moves instead). `stride=0` steps in place. It blends in over half a
   step, and after `end` settles to standing over half a step. It points the knees the way it walks.
-- **`idle(chest, head=, arms=, start=, end=, breath=3.5, amount=1, seed=0)`** adds breathing and weight shift on top of
-  what the bones do: the chest bone's scale rising with each breath (a quicker in, a slower out), a slow sway, the head
-  drifting and kept level against the sway, the shoulders lifting. Each breath is a little longer or shorter than the
-  last (`seed` changes the pattern), so a hold never freezes. `amount` scales it all.
+- **`idle(chest, head=, arms=, legs=, start=, end=, breath=3.5, amount=1, seed=0)`** adds breathing and weight shift on
+  top of what the bones do: the chest bone's scale rising with each breath (a quicker in, a slower out), a slow sway, the
+  head drifting and kept level against the sway, the shoulders lifting. Each breath is a little longer or shorter than
+  the last (`seed` changes the pattern), so a hold never freezes. `amount` scales it all. **With `legs=[left, right]`**
+  (two leg limbs) the hip also slides slowly from foot to foot (`shift` px, default 3.5 % of the leg), tips a little and
+  sinks, so with IK feet planted the knees bend in turn; an FK leg bends its knee as the weight leaves it.
+  `weight=False` leaves that out. Legs drawn as plain shapes bound to the hip can't bend: make them with `limb(…, kind="leg")`.
+- **`pose({limb or bone: value, …}, at=, take=0.5, anticipate=0.12, overshoot=0.1, settle=0.35, stagger=0.04)`** moves
+  several bones into a key pose together, landing at `at`: each starts from where it is `take` s before, first pulls
+  back by `anticipate` of the move, arrives swung past by `overshoot` of it and settles `settle` s later; each next entry
+  lands `stagger` s after the one before (overlap). A value is a turn (a limb's upper bone, a bone's `rotation`), a
+  dict of fields for a bone (`{"rotation": 8, "moveY": -20}`), or for a limb `{"upper": a, "lower": b, "end": c}`.
+  `anticipate=0, overshoot=0` is a plain ease. Write poses in time order: each starts from what the one before left.
 - **`follow(bone, start=, end=, lag=0.12, overshoot=0.4, amount=1)`** is `rig.follow` in a script (see Staging below).
   `walk` and `idle` run it on the arms' upper bones by default (`follow_through=False` leaves it out), so forearms and
   hands trail.
@@ -119,6 +145,15 @@ sizes, colours and timing are yours.
   script: hold keys on the swap set's `show`, never over a key that is there.
 - **`layer("id")`** gives back an item made earlier in the same script (a layer, a group, a bone, an IK chain), to key it
   or hand it to `lipsync(shapes=…)`, `bind(layer=…)` and the calls above.
+
+Key poses across a whole shot with a few `pose` calls, an `idle` over the holds between them, and `follow` on a gesture:
+
+```python
+pose({armR: armR.out * 105, armL: armL.out * 15, neck: 6}, at=4.0)            # a wave up
+pose({armR: armR.out * 80}, at=4.5, take=0.25, anticipate=0, overshoot=0)      # the wave's beats: plain keys work too
+pose({armR: 0, armL: 0, neck: 0}, at=7.0, take=0.7)                             # back to rest
+idle(chest, head=neck, arms=[armL, armR], legs=[legL, legR], start=7.2, end=12)
+```
 
 Walks and idles only put keys inside their time range and blend into what the bones do before and after, so layer a
 gesture on top (key `armR.upper` after the walk call) or hand-key the stretch around it. A re-run rewrites their range.
@@ -224,7 +259,8 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
 - **Draw the set.** One layer per drawing, all placed where they should sit, as children of the group. Keep the same
   registration (the same pivot and size) so a swap does not make the part jump. A child may have its own animation
   (opacity fades, moves); it plays only while it is the one showing.
-- **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script, or `swap.show` with `t` and `layer`
+- **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script: each child is named by its id
+  (the text you gave it when you made it), or its place (0 is the first). As an operation, `swap.show` with `t` and `layer`
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
   `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
 - **Blink.** In a script, `blink(eyes, open="eyes_open", closed="eyes_shut")`; as an operation, `blink.add` on the eyes'
@@ -234,7 +270,8 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
   blinks every run; change it for others. It never moves or replaces a key that is there, so keep a blink you like and
   key the rest by hand. Look at a few blink frames.
 - **Lip sync into a slot.** Put the mouth drawings in a swap set and give `lipsync(..., slot=mouth)` (or the operation
-  `lipsync.apply` on the swap set) the shapes as before. The slot's `show` is keyed, one key per change of mouth, in
+  `lipsync.apply` on the swap set) the shapes as before (`shapes={"X": mX, …}` takes the layers or their ids; a later
+  `mouth.show({24.6: "mouth_smile"})` names a child by id). The slot's `show` is keyed, one key per change of mouth, in
   place of an opacity key per layer. A person can move any of those keys on the timeline.
 
 ## Tips
