@@ -77,7 +77,8 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             pixels = look_empty.scan_pngs(tiny, every, duration)
         rows = review.ranked(pixels + cuts + faults, duration)
         return Reply("", {"times": times, "sheet": str(dest), "width": w, "height": h, "comp": comp["id"],
-                          "faults": [{k: r[k] for k in ("kind", "start", "end", "text") if k in r} | ({"id": r["id"]} if "id" in r else {}) for r in rows]},
+                          "faults": [{k: r[k] for k in ("kind", "start", "end", "text", "id", "ids") if k in r} for r in rows],
+                          "info": [r["text"] for r in review.info(faults)]},
                      [dest], [dest], scene.get("warnings", []) + notes + more)
 
     got = ctx.long(f'run_script look {comp["id"]}', job_fn)
@@ -91,8 +92,10 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     said = (f'\nLook at {comp["id"]}: contact sheet of {len(times)} moments ({", ".join(f"{t:g}" for t in times)} s), {seen["width"]}×{seen["height"]}. '
             + (f"Weakest moments, most visible first ({len(rows)}):\n" + "\n".join(map(_line, rows[:FAULTS]))
                + (f"\n({len(rows) - FAULTS} more in data.look.faults.)" if len(rows) > FAULTS else "")
-               + "\nFix in the script and re-run it under the same name with look." if rows else
-               "No weak moment found (blank, held, cut-off, faint leftovers, stray specks, crowded lock-ups). Judge the sheet for the rest."))
+               + "\nLayout faults (a device cut, a text crossed, a pointer on a label, a tiny end card) come first and name the fix. "
+                 "Fix in the script and re-run it under the same name with look." if rows else
+               "No weak moment found (blank, held, cut-off, faint leftovers, stray specks, crowded lock-ups, texts crossed or on texts, "
+               "a pointer on a label, a device cut by the edge, a tiny end card). Judge the sheet for the rest."))
     reply.summary += said
     reply.data["look"] = seen
     reply.files += got.files

@@ -71,6 +71,19 @@ def rise(item, at, by=40, dur=0.6):
     item.key("opacity", {at: 0, at + dur * 0.5: 1})
 ```
 
+## Place and frame by name, not by numbers
+
+Raw coordinates are where a film written as one script goes wrong: a rectangle worked out by hand for the frame, a
+card's `y` that overlaps the bar above it once a size changes. Let the calls do it:
+
+- A product screen: `device("phone")` sizes and centres itself to the picture (`fit=`, `anchor="left"`), and the
+  blocks made inside its screen without `y` stack under each other (`.bottom` is where one ends). Guide
+  `ui-and-product-animation`, "Building blocks".
+- The camera: `frame().fit(["phone"], at=…, pad=0.06)` frames the device whole, `frame().fit(["hero"], at=…,
+  pad=0.04)` pushes deep onto one part of it by id. Frame a device whole or one part of it, never most of it with the
+  top or bottom nibbled off ("Framing a device" in the same guide).
+- A tap: `tap(pointer(), layer("pay"), at=…)` lands the cursor's tip beside the button's words, with the press.
+
 ## A value from your own maths
 
 When a field should follow a function you write (a spring, a noise walk, a value from a table), key it from Python:

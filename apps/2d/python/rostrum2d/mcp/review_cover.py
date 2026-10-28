@@ -1,14 +1,11 @@
-"""review's cover facts, read from the document's boxes (review_sample): a text crossed by a layer drawn in front of it, a
-character more than half hidden behind layers in front of it, and a character on a bare set (apart from it and the
-background, almost nothing). Each fault is {kind, start, end, id, text} with times; no taste: a title revealed from
+"""review's cover facts, read from the document's boxes (review_sample): a character more than half hidden behind layers
+in front of it, and a character on a bare set (apart from it and the background, almost nothing). Each fault is {kind, start, end, id, text} with times; no taste: a title revealed from
 behind a shape, or a character peeking over a wall, may be meant."""
 from __future__ import annotations
 
 from .geometry import covers, drawn_box
 from .review_sample import Sampled, quad_points, runs
 
-CROSS_MIN = 0.1           # a text with this share of its box painted over by one layer in front is crossed ...
-CROSS_S = 1.0             # ... for this long or longer
 HIDDEN_FROM = 0.5         # a character with more than this share of its body behind layers in front is hidden ...
 HIDDEN_S = 1.0            # ... for this long or longer
 BARE_THINGS = 3           # a set with fewer things than this (layers or groups, apart from the character and background) ...
@@ -36,34 +33,6 @@ def _over(o: dict, box) -> float:
         return 0.0
     painted = sum(covers(o, l + (r - l) * u, t + (btm - t) * v) for u in (0.1, 0.5, 0.9) for v in (0.1, 0.5, 0.9)) / 9
     return (r - l) * (btm - t) / max((x1 - x0) * (y1 - y0), 1.0) * painted
-
-
-def crossed(s: Sampled) -> list[dict]:
-    """Each text crossed by a layer above it in the stack (not one of its own groups) over CROSS_MIN of its box, for
-    CROSS_S or more; one line per text and layer, its longest stretch."""
-    hits: dict[tuple, dict[int, float]] = {}
-    for i, (t, nodes) in enumerate(s.frames):
-        for k, n in enumerate(nodes):
-            if n["type"] != "text" or not s.seen(n):
-                continue
-            box = drawn_box(n)
-            for o in nodes[k + 1:]:
-                if _related(n, o) or not _in_front(s, o):
-                    continue
-                share = _over(o, box)
-                if share >= CROSS_MIN:
-                    hits.setdefault((n["id"], o["id"]), {})[i] = share
-    out = []
-    for (tid, lid), at in hits.items():
-        found = runs([i in at for i in range(len(s.times))], s.times, s.step, CROSS_S)
-        if not found:
-            continue
-        t0, t1, a, b = max(found, key=lambda r: r[1] - r[0])
-        pct = round(100 * max(at[i] for i in range(a, b + 1)))
-        out.append({"kind": "text_crossed", "start": t0, "end": t1, "id": tid, "ids": [tid, lid], "cover_pct": pct,
-                    "text": f'{t0:g}–{t1:g} s: "{lid}", drawn in front of text "{tid}", crosses it ({pct} % of the text\'s box '
-                            f'painted over)'})
-    return out
 
 
 def _rig_index(nodes: list[dict], rid: str) -> int | None:
@@ -123,7 +92,7 @@ def staging(s: Sampled) -> list[dict]:
     return out
 
 
-CHECKS = (crossed, staging)
+CHECKS = (staging,)       # a text crossed by a layer in front: review_layout.overlaps (with _over, _in_front from here)
 
 
 def facts(s: Sampled) -> list[dict]:

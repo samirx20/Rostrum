@@ -12,6 +12,7 @@ from .geometry import _apply, _invert, comp_size
 MOST_IN_PCT = 50          # at least this share of the box is in the picture
 SOME_IN_PCT = 5           # a character is named when at least this share of it is in the picture
 CUT_MIN_PCT = 8           # an edge counts when this share of the box's size lies beyond it
+SOFT_BLUR = 20            # a layer blurred this much or more is atmosphere (a glow, a colour blob), never a cut subject
 PARTS = ("shape", "text", "image", "video", "drawing", "path")      # what a rig's posed body is made of
 
 
@@ -91,10 +92,17 @@ def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict
     return out, notes
 
 
+def soft(layer: dict) -> bool:
+    """A layer blurred by SOFT_BLUR px or more: a glow or a colour blob of the atmosphere, with no edge a crop could cut."""
+    return any(e.get("type") == "blur" and float(e.get("radius", 0)) >= SOFT_BLUR for e in layer.get("effects", []))
+
+
 def subjects_at(comp: dict, t: float, rigs: dict[str, tuple]) -> list[tuple[str, str, tuple]]:
-    """(id, type, box in picture px) of every showing top-level layer at t, and each rig's posed body (replacing the rig layer's own box)."""
+    """(id, type, box in picture px) of every showing top-level layer at t (not a soft blurred one), and each rig's posed
+    body (replacing the rig layer's own box)."""
+    blurred = {layer["id"] for layer in comp.get("layers", []) if soft(layer)}
     rows = [(r["id"], r["type"], tuple(r["box"][k] for k in ("left", "top", "right", "bottom")))
-            for r in wf.in_frame(comp, t) if r["showing"] and r["id"] not in rigs and r["type"] != "rig"]
+            for r in wf.in_frame(comp, t) if r["showing"] and r["id"] not in rigs and r["type"] != "rig" and r["id"] not in blurred]
     return rows + [(rid, "rig", box) for rid, box in rigs.items()]
 
 
