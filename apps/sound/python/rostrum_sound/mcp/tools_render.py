@@ -212,11 +212,20 @@ def register(tools: Tools):
             copied = _copy_to(target, r, files) if target and not partial else []
             loud = loudness(r, master_now, before) if master and not partial else None
             said = summary(r, goal, loud) + (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "") + "." if copied else "")
-            weak = []
+            weak, found = [], None
             if not partial:
                 job.progress(note="listening")
-                heard, weak = weakest_words(r["file"], moments, *stop_limiter.read(ctx, doc, r, moments))
+                limiter, peaky = stop_limiter.read(ctx, doc, r, moments)
+                try:
+                    raw = fault_check(r["file"], moments, limiter, peaky=peaky)["faults"]
+                except RostrumError:                         # the ears cannot read it: weakest_words says so
+                    raw = None
+                heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
+                if raw is not None:
+                    found = fault_shape.all_faults(doc, raw, r["file"], r.get("lufs"), goal, r.get("ducks"))
+                    if ctx.tool == "render_mix":             # a delivery; run_script's look is a check, never refused
+                        deliver_checked(state, item, r, found, args.get("keep"), copied)
             return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files, faults=found)

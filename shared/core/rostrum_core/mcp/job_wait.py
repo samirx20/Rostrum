@@ -15,7 +15,8 @@ from .reply import Reply
 
 VERBS = ("look", "render")
 TRUE_S, MOST_S = 50, 600                    # true: under the ~60 s many MCP clients allow a call (CONVENTIONS § 7)
-SCHEMA = {"type": ["boolean", "number"], "minimum": 0, "maximum": MOST_S,
+MARK = "x-rostrum-wait"                      # survives a copy (combine.py copies every part's arguments)
+SCHEMA = {"type": ["boolean", "number"], "minimum": 0, "maximum": MOST_S, MARK: True,
           "description": f"When the tool answers with a job: wait for it in this call and answer with the finished file. "
                          f"true waits up to {TRUE_S} s, a number that many seconds (up to {MOST_S}). Past it the reply says the job "
                          "is still running, with its job_id (inspect_job). A failed job is an error, never a success."}
@@ -33,8 +34,8 @@ def with_wait_schema(name: str, schema: dict) -> dict:
 
 
 def ours(schema: dict) -> bool:
-    """The tool's `wait` is this one (not an argument of the tool's own)."""
-    return schema.get("properties", {}).get("wait") is SCHEMA
+    """The tool's `wait` is this one, or a copy of it (a combined tool's), not an argument of the tool's own."""
+    return bool((schema.get("properties", {}).get("wait") or {}).get(MARK))
 
 
 def take(args: dict | None) -> tuple[dict | None, float]:

@@ -66,7 +66,7 @@ def runtime(script_fails):
 def test_run_script_look_renders_after_a_script_that_ran_and_never_after_one_that_failed():
     run, ctx, rendered = runtime(script_fails=False)
     out = run(ctx, {"source": "x", "look": {"name": "cue"}})
-    assert rendered == [{"name": "cue", "_look": True}] and out.summary.startswith("Script ran.\nRendered.") and out.data["look"]["result"]["file"] == "x.wav"
+    assert rendered == [{"name": "cue"}] and out.summary.startswith("Script ran.\nRendered.") and out.data["look"]["result"]["file"] == "x.wav"
     with pytest.raises(RostrumError):                       # render_mix doesn't take it: refused before the script runs
         run(ctx, {"source": "x", "look": {"stem": True}})
     run, ctx, rendered = runtime(script_fails=True)

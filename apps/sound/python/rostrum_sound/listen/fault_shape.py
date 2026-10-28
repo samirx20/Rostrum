@@ -49,7 +49,7 @@ def shape(found: list[dict], doc) -> list[dict]:
 
 def loudness_fault(measured, target) -> list[dict]:
     """The mix off the master's loudness target (`target` None: no target, nothing to miss) by more than LOUD_LU."""
-    if target is None or measured is None or abs(measured - target) <= LOUD_LU:
+    if not isinstance(target, (int, float)) or measured is None or abs(measured - target) <= LOUD_LU:
         return []
     short = measured < target
     fix = (f"raise master maxLimit (edit_loudness {{\"apply\": \"best\"}} measures it) or the quietest parts' volumes to gain "
@@ -68,7 +68,7 @@ def duck_faults(data: dict, ducks: list | None) -> list[dict]:
         if not mine:
             continue
         spans = seen.get(t["id"], [])
-        dip = -min((s[2] for s in spans), default=0.0)
+        dip = max(0.0, -min((s[2] for s in spans), default=0.0))
         if dip < DUCK_MIN_DB:
             d = mine[0]
             where = f"{spans[0][0]:g}–{spans[0][1]:g} s" if spans else None
