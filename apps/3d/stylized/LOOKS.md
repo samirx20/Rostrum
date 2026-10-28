@@ -81,7 +81,7 @@ Ink outlines and creases. Drawn only on materials with `lines` on (unless the fr
 | `linesWobble` | 0.3 | Width varies along the line: width × (1 + wobble × 1.6 × noise), noise −1..1 over about 40 output pixels; where it reaches 0 the line breaks. 0 = even. |
 | `linesCreaseAngle` | 40° | A fold where the surface turns sharper than this angle (between neighbouring pixels one output pixel apart) gets a crease line, fading in over the 15° below it (less for small angles). 180 = outlines only. |
 
-Which pixels get a line: a pixel of this material whose neighbour is another object, the background, or the same object much farther away (a fold in front of itself, 5 % of the depth) is on an **outline**; only the nearer side carries it. A crease (above) gets the same width. The width is measured per pixel, then the ink pass draws a round dot of that width at every such pixel; the line is the union of the dots, coloured by the material of the pixel the dot came from.
+Which pixels get a line: a pixel of this material whose neighbour is another object, the background, or the same object much farther away (a fold in front of itself, 5 % of the depth) is on an **outline**; only the nearer side carries it (where two objects meet at the same depth, such as a wall corner or a box on the floor, the one with the higher id does, so the seam is one solid line, not a dotted one). A crease (above) gets the same width. The width is measured per pixel, then the ink pass draws a round dot of that width at every such pixel; the line is the union of the dots, coloured by the material of the pixel the dot came from.
 
 ### 2.4 Halftone
 
@@ -150,8 +150,8 @@ Name = `rostrum:<group>:<name>`; in the shaders it becomes `u_<group>_<name>`. A
 | Setting | Default | What it does |
 |---|---|---|
 | `rostrum:ss` | 2 | Supersampling: renders at this multiple of the size (1–4) and filters down. The viewport sends 1; a render sends its `supersample` (default 2). Higher = smoother lines, slower, more video memory (section 7). |
-| `rostrum:shadow:size` | 2048 | Shadow-map size in pixels (256–8192), one square map per shadowed light. |
-| `rostrum:shadow:soft` | 1.5 | Shadow edge softness, in shadow-map texels (a 5×5 blur). |
+| `rostrum:shadow:size` | 2048 | Shadow-map size in pixels (256–8192), one square map per shadowed light. Rostrum3D sends 2048 in the live view and 4096 for a supersampled render. |
+| `rostrum:shadow:soft` | 1.5 | Shadow edge softness, in shadow-map texels (a 5×5 tent blur, widened up to 4× where the light grazes a surface so banded shadow edges stay round, not stepped). |
 | `rostrum:shadow:offset` | auto | Pushes the shadow lookup off the surface, in scene units. Unset (or below 0): 8 texels of that light's map where the lit objects are, so a 25 cm product and a room both work. Raise if surfaces speckle with their own shadow; lower if shadows detach. |
 | `rostrum:bg:color` | (0, 0, 0) | Colour where nothing is drawn, when the camera doesn't see a dome. A dome the camera sees is shown instead, as Storm and Cycles show it: its picture by view direction (USD's lat-long, the dome's `turn` applied) × colour × intensity, or its colour × intensity without a picture. |
 | `rostrum:brush:amount` | 0 | Brush strokes push "how lit" up and down (Light to colour and legacy ramps; plain shading is not changed). 0 = off. |
