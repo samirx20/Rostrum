@@ -6,7 +6,7 @@ import soundfile as sf
 from rostrum_core import RostrumError
 
 from rostrum_sound import deliver
-from rostrum_sound.listen import drop_gap, fault_shape
+from rostrum_sound.listen import drop_gap, fault_shape, passing
 from rostrum_sound.mcp import asked_keep
 
 SR = 48000
@@ -38,6 +38,8 @@ def test_the_briefs_own_moment_is_kept_only_near_passing():
     found = [{"id": "marker_onset:hit", "what": "no hit", "when": "31.50 s", "fix": "put notes"}]
     near = asked_keep.mark(raw, found, [{"at": 31.5, "kind": "hit"}])
     assert near == {"marker_onset:hit": False} and "cannot be kept" in found[0]["what"]
+    stop = {"kind": "soft_stop", "at_s": 36.0, "measured": {"weak": True, "times_typical": 3.6, "rank": 53}}
+    assert not passing.near(stop) and "rank among the file's onsets 3 or less (now 53" in passing.words(stop)
 
 
 def test_a_kick_in_the_gap_is_heard_on_the_drum_track(tmp_path):

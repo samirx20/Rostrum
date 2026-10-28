@@ -25,7 +25,7 @@ _FALL = ("fall_after_db", ">=", mo.STOP_DROP_DB, 6.5, "fall in the second after 
 RULES = {
     "weak_hit": [_ATTACK, _RANK], "weak_climax": [_ATTACK, _RANK], "weak_stop": [_ATTACK, _RANK],
     "weak_entry": [("times_typical", ">=", mo.WEAK_ENTRY_X, 1.8, "attack", "x a normal note")],
-    "soft_stop": [_ATTACK, _BEFORE, _FALL], "blurred_stop": [_BEFORE, _FALL],
+    "soft_stop": [_ATTACK, _RANK, _BEFORE, _FALL], "blurred_stop": [_BEFORE, _FALL],
     "flat_lift": [("rise_lu", ">=", mo.LIFT_LU, 1.5, "the 3 s after over the 3 s before", " LU")],
     "flat_top": [("grew_db", ">=", mo.GROW_DB, 4.5, "top end brighter than the start", " dB")],
     "squashed_hit": [("reduced_db", "<=", SQUASH_DB, 4.0, "limiting on it", " dB")],
@@ -63,9 +63,10 @@ def gaps(f) -> list[dict]:
 
 
 def near(f) -> bool:
-    """Every failing number within its stated distance (and at least one number measured)."""
+    """Every failing number within its stated distance. A fault none of whose numbers fail is failing on something
+    unmeasured here: never near (round sound-tighten: a stop ranked 53rd was kept while only its attack was read)."""
     g = gaps(f)
-    return bool(g) and all(x["ok"] or x["close"] for x in g)
+    return any(not x["ok"] for x in g) and all(x["ok"] or x["close"] for x in g)
 
 
 def _short(unit) -> str:
@@ -79,11 +80,9 @@ def _n(v, unit) -> str:
 def words(f) -> str:
     """What a passing version of this moment measures, with this one's number and the keepable bound."""
     g = [x for x in gaps(f) if not x["ok"]]
-    if not g and not gaps(f):
+    if not g:
         need = "a sound starting on the time" if f["kind"].startswith("no_") else "its fix"
         return f"passes with {need} (no number to be near, so it cannot be kept: fix it, or move the moment itself in the script)"
-    if not g:
-        return ""
     side = {">=": "or more", "<=": "or less"}
     return "passes at: " + "; ".join(f"{x['what']} {_n(x['passes'], x['unit'])} {side[x['op']]} (now {_n(round(x['now'], 2), _short(x['unit']))}; "
                                      f"keepable from {_n(x['near'], _short(x['unit']))})" for x in g)
