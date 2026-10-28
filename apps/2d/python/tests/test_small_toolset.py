@@ -18,6 +18,8 @@ def test_the_small_toolset_shows_four_tools_and_reaches_a_hidden_check(tmp_path,
     assert made["ok"], made
     moves = rt.call("look", {"check": "look_motion", "what": "moves"}, AGENT)[0]
     assert moves["ok"] and "title" in moves["summary"]
+    curve = rt.call("look", {"check": "look_motion", "what": "moves", "limit": "5", "full": "true"}, AGENT)[0]
+    assert curve["ok"], curve                                              # a number sent as text is read as the number
     bad = rt.call("look", {"check": "look_motion", "nonsense": 1}, AGENT)[0]
     assert not bad["ok"] and "look_motion" in bad["summary"]
     assert "look" in rt.call("look_frame", {}, AGENT)[0]["summary"]          # an old name says the tool to use

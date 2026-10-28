@@ -58,11 +58,32 @@ def as_tool(ctx, name: str):
     return dataclasses.replace(ctx, tool=name)
 
 
+def _typed(args: dict, schema: dict) -> dict:
+    """A check's arguments are not in look's / run_script's own schema, so agents send numbers as text ("12"); read text
+    as the number or true/false the part's schema asks for (the bench's B films lost 8 calls to this). Anything else is
+    left for the part's own check to refuse loudly."""
+    props, out = schema.get("properties", {}), dict(args)
+    for k, v in args.items():
+        kinds = {props.get(k, {}).get("type")} | {s.get("type") for s in props.get(k, {}).get("anyOf", [])}
+        if not isinstance(v, str):
+            continue
+        try:
+            if "integer" in kinds and re.fullmatch(r"-?\d+", v.strip()):
+                out[k] = int(v)
+            elif "number" in kinds:
+                out[k] = float(v)
+            elif "boolean" in kinds and v.strip().lower() in ("true", "false"):
+                out[k] = v.strip().lower() == "true"
+        except ValueError:
+            pass
+    return out
+
+
 def _part(ctx, tools: dict, name: str, args: dict, outer: str, key: str):
     """Run the hidden tool `name` with its own arguments, checked by its own schema; an error names outer + key."""
     part = dataclasses.replace(tools[name], name=outer)
     try:
-        return tools[name].fn(as_tool(ctx, name), part.check(args))
+        return tools[name].fn(as_tool(ctx, name), part.check(_typed(args, part.schema)))
     except RostrumError as e:
         if e.where.startswith(name) or e.where == outer:
             e.where = f'{outer} ({key} "{name}")'
