@@ -80,7 +80,7 @@ def render_export(ctx, args):
             quiet = video._quiet_stretches(Path(facts["file"]), s["start"])
             cuts = video._edge_cuts(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
             data.update(quiet_stretches=quiet[1], edge_cuts=cuts[1])
-            say += f'. {quiet[0]}{" " + cuts[0] if cuts[0] else ""} Before calling it done, look at it: look_frame what "sheet" with video "{facts["file"]}"'
+            say += f'. {quiet[0]}{" " + cuts[0] if cuts[0] else ""} ' + exporting.next_steps(f'look_frame what "sheet" with video "{facts["file"]}"', "sound" in facts, folder).rstrip(".")
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,
