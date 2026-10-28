@@ -55,7 +55,8 @@ class Runtime:
         if self.app.opened and not self._told:
             self._told = True
             if self.app.folder == folder:                # a first call that switched project says so itself
-                reply["summary"] = f"{self.app.opened}\n{reply['summary']}"
+                first, *rest = reply["summary"].split("\n", 1) if "faults" in reply else ("", reply["summary"])   # faults stay first
+                reply["summary"] = "\n".join(t for t in (first, self.app.opened, *rest) if t)
         return reply, images
 
     def _run(self, name: str, args: dict | None, who: Who) -> tuple[dict, list]:

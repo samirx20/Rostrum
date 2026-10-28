@@ -11,6 +11,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, sheet
+from rostrum_core.mcp.faults import fault
 from rostrum_core.mcp.files import look_path
 
 from . import edge_cut, look_empty, render, review
@@ -100,4 +101,5 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     reply.data["look"] = seen
     reply.files += got.files
     reply.images += got.images
+    reply.faults = [fault(f'{r["kind"]}:{r["id"]}' if r.get("id") else r["kind"], r["text"], "change it in the script and re-run under the same name", f'{r["start"]:g} s' if "start" in r else None) for r in rows]   # faults first (shared faults.py)
     return reply

@@ -32,6 +32,7 @@ class Job:
         self.note = ""
         self.result: Reply | None = None
         self.reason = ""
+        self.error: RostrumError | None = None   # the RostrumError a failed job raised
         self.started = self.ended = None        # time.monotonic() when it began and ended (None: not yet)
         self.stepped = None                     # time.monotonic() of the last progress step (a stall shows as it grows)
         self.owner = None                       # another program's process id (a job seen through its file), else None
@@ -149,7 +150,7 @@ class InProcessJobs:
             if job.cancel_requested.is_set():             # stopped on purpose (its stop hook ended its process): not a failure
                 job.status, job.reason = "cancelled", "cancelled"
             elif isinstance(e, RostrumError):
-                job.status, job.reason = "failed", e.line()
+                job.status, job.reason, job.error = "failed", e.line(), e
             else:                                         # a bug in the job: say so, keep the traceback
                 where = self._log(traceback.format_exc()) if self._log else "no log"
                 job.status, job.reason = "failed", f"unexpected {bug.said(e)} (log: {where})"
@@ -234,6 +235,8 @@ class InProcessJobs:
 
 def outcome(job: Job, where: str) -> Reply:
     """The reply for a job: the result when done, a progress line while it runs, an error when it failed or was stopped."""
+    if job.status == "failed" and job.error is not None and job.error.code == codes.CHECK_FAILED:
+        raise job.error.within(where)                 # refused for open faults (faults.deliver): its own words, not "nothing was written"
     if job.status == "failed":
         raise RostrumError(codes.JOB_FAILED, where, job.id, f"({job.label}) failed: {job.reason}", hint="The job's output is incomplete; nothing was written.")
     if job.status == "cancelled":
@@ -243,7 +246,7 @@ def outcome(job: Job, where: str) -> Reply:
         return Reply(f"Job {job.id} ({job.label}) {job.note}.", state)
     if job.status == "done":
         r = job.result
-        return Reply(r.summary, {**state, "result": r.data}, r.files, r.images, r.warnings, r.changed)
+        return Reply(r.summary, {**state, "result": r.data}, r.files, r.images, r.warnings, r.changed, r.faults)
     prog = f" {job.done} of {job.total}." if job.total else ""
     if job.total and job.status == RUNNING and job.stepped is not None and time.monotonic() - job.stepped >= 10:
         prog += f" Nothing new for {time.monotonic() - job.stepped:.0f} s (a stuck frame fails the job by itself after its limit)."
