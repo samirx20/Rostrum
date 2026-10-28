@@ -1,4 +1,5 @@
-"""Which project the 2D server works on: the person's last one at start-up, and switching while it runs.
+"""Which project the 2D server works on: at start-up the agent's own (rostrum_core/agent_start.py: --project, else the
+project this session last opened, else a fresh scratch project; never the person's by itself), and switching while it runs.
 
     run_open_project (what: recent) {}                         the person's recent projects (folder, item, name, last changed)
     run_open_project {folder, item?}                   close the open documents and open another project, as start-up does
@@ -10,7 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from rostrum_core import Document, bug, live
+from rostrum_core import Document, agent_start, bug, live
 from rostrum_core.mcp import Reply, Tools, open_folder
 from rostrum_core.storage import paths
 from rostrum_paint import library
@@ -37,12 +38,10 @@ def open_documents(project: str, items: list[str]) -> dict:
     return docs
 
 
-def start_choice(project: str | None, items: list[str] | None) -> tuple[str | None, list[str]]:
-    """What to open at start-up: --project / --item as given, else the person's last project (nothing when they have none)."""
-    if project:
-        return project, items or [last.default_item(project, explicit=True)]
-    row = last.last_project()
-    return (row["folder"], items or [row["item"]]) if row else (None, [])
+def start_choice(project: str | None, items: list[str] | None) -> agent_start.Start:
+    """What to open at start-up: --project / --item as given, else this agent session's own project, else a fresh
+    scratch project (agent_start.py); never the person's last project."""
+    return agent_start.choose("rostrum-2d", KIND.ext, project, items, last.default_item)
 
 
 def open_project(app, folder: str | None, items: list[str]) -> None:
@@ -65,7 +64,7 @@ def with_no_project_sentence(runtime) -> None:
 
 @tools.tool("inspect_recent_projects", {})
 def inspect_recent_projects(ctx, args):
-    """The person's recent Rostrum2D projects, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the first is what the server opens at start-up."""
+    """The person's recent Rostrum2D projects, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the server never opens one by itself."""
     rows = [last.describe(r) for r in last.recent_rows()]
     now = ctx.app.folder
     listed = "; ".join(f'{r["name"]} ({r["folder"]}, item {r["item"]}, changed {r["changed"]})' for r in rows)

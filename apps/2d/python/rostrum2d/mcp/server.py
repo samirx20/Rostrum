@@ -1,11 +1,12 @@
 """The `rostrum-2d` MCP server.
 
-    python -m rostrum2d.mcp                                          (stdio; opens the person's last project)
+    python -m rostrum2d.mcp                                          (stdio; the agent's own project, never the person's)
     python -m rostrum2d.mcp --project <folder> [--item <id> ...]     (that project; --item opens or creates each item)
 
-With no options the server opens the project the 2D screen would open: the newest row of Open recent still on disk.
-With none, no document is open (inspect_project says so). While running, run_open_project lists the person's projects
-(what "recent") and switches. Every change is saved at once, so the 2D screen process can open the same file.
+With no options the server opens the project this agent session last opened (a resumed session gets it back),
+else a fresh scratch project with an empty document (rostrum_core/agent_start.py); never the person's last project. The
+first reply says what is open and whose. While running, run_open_project lists the person's projects (what "recent") and
+switches. Every change is saved at once, so the 2D screen process can open the same file.
 Tools: the shared ones from rostrum_core, plus the 2D ones, few and clear (tool_groups.py joins the related ones under one
 name with a `what` argument): look_frame, look_motion, look_at, look_drawing, look_painting, inspect_layout, inspect_sounds,
 inspect_fonts, inspect_diagnose, render_video, render_export, run_import, run_brush, run_brand_kit, run_open_project, edit_sound_cue.
@@ -18,6 +19,7 @@ from pathlib import Path
 
 import anyio
 from mcp.server.stdio import stdio_server
+from rostrum_core import agent_start
 from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
@@ -35,7 +37,7 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "loop, loopTimes and loopStepX / loopStepY (inspect_guide 'drawing-and-frame-by-frame'); to paint strokes on over time (write on), key drawnSoFar 0 → 1 on the drawing layer or painted element (strokes in painting order, each along its path); a filled polygon (a ridge, a silhouette) is fill.add or ink.fill in a script. A painting (painting.add) is a canvas many shapes and paths can use as one shared fill (layer.fill type \"painted\"): paint.stroke on it (its own px, or `through` a layer using it, in that layer's px; on a seamless painting a stroke over an edge comes back on the opposite side), look_painting (repeats: 1 shows it 3 × 3), look_painting what \"facts\" (with a seam check), look_at (where a point lands in it); to make it boil, frame.add on the painting (eachFrame turns on; every use boils from its own start, always looping, `phase` in layer.fill starts a use on another drawing). "
                 "Every reply ends with a clock line (time since your first call; the minutes left when you have a budget): the time is "
                 "for making, looking and refining in passes, and inspect_project what \"session\" lists what is still unchecked. "
-                "The server opens the project you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
+                "The server starts on your own project: the one you last opened from this folder (a resumed session gets it back), else a fresh scratch project made for you, never the person's work (the first reply says which); the person's projects open only when you ask: run_open_project lists them (what \"recent\") and switches.")
 
 
 SCRIPT_HELP = ("The 2D script layer. Write the whole film as one script (scenes as functions of a start time, shared timing "
@@ -119,12 +121,14 @@ async def _serve(app: App):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="rostrum2d.mcp", description="The rostrum-2d MCP server (stdio). With no options it opens the person's last project.")
-    ap.add_argument("--project", help="The project folder. Default: the person's last project (Open recent).")
+    ap = argparse.ArgumentParser(prog="rostrum2d.mcp", description="The rostrum-2d MCP server (stdio). With no options it opens the agent's own last project, else a fresh scratch project; never the person's.")
+    ap.add_argument("--project", help="The project folder. Default: this agent session's own project, else a new scratch project (not the person's Open recent).")
     ap.add_argument("--item", action="append", help="A document's item id (repeat for several). Default: the project's recent item, else its only / newest one.")
     a = ap.parse_args(argv)
-    project, items = start_choice(a.project, a.item)
-    anyio.run(_serve, make_app(project, items))
+    start = start_choice(a.project, a.item)
+    app = make_app(start.folder, start.items)
+    agent_start.settle(app, start)                  # on disk, remembered, and said in the instructions and first reply
+    anyio.run(_serve, app)
 
 
 if __name__ == "__main__":

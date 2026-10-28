@@ -142,6 +142,7 @@ Renders, simulations, AI models and big analyses go through the **one jobs queue
 ```
 
 - `inspect_job { "job_id": "job_7f3a", "wait_s": 20 }` waits up to `wait_s` (at most 25) and returns the result, or how far it has got (`"frames 120 of 240"`).
+- Every `look_*` and `render_*` tool takes `"wait"`: `true` (about 50 s) or a number of seconds (up to 600). When the tool answers with a job it waits for it in the same call and answers with the finished reply and its files; past the wait the reply says the job is still running, with its `job_id`; a failed job is an error. The server adds it (`rostrum_core/mcp/job_wait.py`), so no app writes its own. A wait over ~60 s suits `shared/mcp/call.py` (no time limit), not every MCP client.
 - Jobs live in the project service, not in the MCP server, so they survive a server restart. A job that was cut off says so; it is never just "unknown".
 - Asking for the same work again joins the running job instead of starting a second one.
 - The CLI (`rostrum-2d render …`) waits and prints progress instead of returning a job id.

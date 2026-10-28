@@ -44,7 +44,7 @@ is a pickup), `land(bar(n), at=T, ramp_from=bar(m))` glides the tempo so bar n l
 - `run_script` merges what the script makes into the document. Anything a person moved by hand stays where they put it
   and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite. Changing only
   the tempo and running again keeps every note (and a person's edits to them): nothing is removed and re-made.
-- Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
+- Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`. Or pass `"wait": true` (or a number of seconds) to `render_mix` or any `look_*` tool: it waits for its job and answers with the finished file (past the wait: still running, with the job id).
 
 ## Writing parts, or changing what is there
 
@@ -190,6 +190,9 @@ t.note('D4', at=bar(1), dur=beats(4))"}}
 
 - **`run_script` `name`.** The same name replaces and merges what that script made before; a new name that
   makes the same tracks is refused (it would double every note) and names the script to run under. One name per song, for every run.
+- **Without an MCP client of your own:** `python shared/mcp/call.py --name <you> -- <server command> :: <tool> '<json>'`. The first
+  command starts a session that keeps the server running (later commands answer in about a second, and a job started in one
+  command is still there in the next); `:: stop` ends it, 30 min without a call ends it too. `python shared/mcp/call.py` alone prints the help.
 - **A call list stops at the first failed step.** Run through `devtools/mcp_session.py` (or `shared/mcp/call.py`), a list of
   calls stops at the first reply with `ok: false`: the later steps are not run, the output says which step failed and which
   were not run, and the exit code is 1. So a render never runs on a song the failed script did not change. If you call

@@ -18,7 +18,7 @@ from mcp.server.stdio import stdio_server
 from .. import bug, plugin_parts
 from ..errors import RostrumError, codes
 from ..who import Who
-from . import shared_edit, shared_inspect, shared_markers, shared_screen, tools_list
+from . import job_wait, shared_edit, shared_inspect, shared_markers, shared_screen, tools_list
 from .context import App, Groups, ToolContext
 from .guides import URI
 from .jobs import InProcessJobs
@@ -46,11 +46,23 @@ class Runtime:
         self.jobs = jobs or InProcessJobs(log=bug.log)
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
+        self._told = False                              # the first reply said what is open (call)
 
     def call(self, name: str, args: dict | None, who: Who) -> tuple[dict, list]:
+        """Run one tool; the session's first reply starts with what is open and whose (App.opened, agent_start.py)."""
+        folder = self.app.folder
+        reply, images = self._run(name, args, who)
+        if self.app.opened and not self._told:
+            self._told = True
+            if self.app.folder == folder:                # a first call that switched project says so itself
+                reply["summary"] = f"{self.app.opened}\n{reply['summary']}"
+        return reply, images
+
+    def _run(self, name: str, args: dict | None, who: Who) -> tuple[dict, list]:
         """Run one tool. Returns (reply dict, images). A failure is `ok: false`, never an exception."""
         try:
             tool = self.tools.get(name)
+            args, wait_s = job_wait.take(args) if job_wait.ours(tool.schema) else (args, 0)
             checked = tool.check(args)
             group = self.groups.current(who, (args or {}).get("group"))
             ctx = ToolContext(self.app, who, group, self.jobs, name, self.tools)
@@ -61,6 +73,7 @@ class Runtime:
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")
+            reply = job_wait.finish(self.jobs, reply, wait_s, name)   # outside the lock: a job never touches the document
             said = ctx.notes + [w for d in ctx.seen for w in [*plugin_parts.missing_of(d), *d.kind.warnings(d.data)]]   # never silent (kind.warn, a plugin it lacks)
             reply.warnings.extend(n for n in dict.fromkeys(said) if n not in reply.warnings)
             return reply.to_dict(), reply.images
@@ -100,7 +113,7 @@ def build_server(app: App, tools: Tools | None = None, runtime: Runtime | None =
             raise RostrumError(codes.NOT_FOUND, "resources/read", f'"{params.uri}"', "is not a Rostrum resource", [URI + t for t in app.guides.topics()])
         return types.ReadResourceResult(contents=[types.TextResourceContents(uri=params.uri, mime_type="text/markdown", text=app.guides.get(topic))])
 
-    server = Server(app.name, version=app.version, instructions=f"{app.instructions}\n\n{STANDARD_INSTRUCTIONS}".strip(),
+    server = Server(app.name, version=app.version, instructions="\n\n".join(t for t in (app.instructions, app.opened, STANDARD_INSTRUCTIONS) if t),
                     on_list_tools=list_tools, on_call_tool=call_tool, on_list_resources=list_resources, on_read_resource=read_resource)
     server.runtime = rt
     return server

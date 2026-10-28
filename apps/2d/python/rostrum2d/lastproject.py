@@ -1,13 +1,13 @@
-"""The person's last Rostrum2D project, read from the one Open recent list the 2D screen keeps too
-(rostrum_core/recent.py: rows {folder, item, name}, newest first, only ones still on disk). The MCP server opens the first row when it is started
-with no options, so an agent works on what the person was just working on.
+"""The person's recent Rostrum2D projects, read from the one Open recent list the 2D screen keeps too
+(rostrum_core/recent.py: rows {folder, item, name}, newest first, only ones still on disk). The MCP server lists them for
+run_open_project (what "recent"); it never opens one by itself (rostrum_core/agent_start.py).
 """
 from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
 
-from rostrum_core import agent_last, project, recent
+from rostrum_core import project, recent
 from rostrum_core.storage import paths
 
 from . import KIND
@@ -30,13 +30,6 @@ def describe(row: dict) -> dict:
     name = Path(row["folder"]).name
     return {"folder": row["folder"], "item": row["item"], "name": name if row["item"] == DEFAULT_ITEM else f"{name} ({row['item']})",
             "changed": datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec="seconds")}
-
-
-def last_project() -> dict | None:
-    """What the server opens at start-up: the project this working folder's agent last opened when that changed after
-    the person's newest recent row (a resumed agent session gets its project back), else that row; None when neither."""
-    rows = recent_rows()
-    return agent_last.pick("rostrum-2d", KIND.ext, rows[0] if rows else None)
 
 
 def docs_in(folder) -> list[str]:
