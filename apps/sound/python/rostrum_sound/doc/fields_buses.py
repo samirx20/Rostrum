@@ -17,6 +17,11 @@ PAN = dict(lo=-1, hi=1, display="pan")
 OUTPUT = Param.text("output", group="Mix", importance="secondary", label="Output", control="pick",   # screens: Master / the buses
                     help='Where it plays to: "master" or a bus id (the bus takes the whole track after its fader).')
 
+ROLE = Param.choice("role", ["music", "dialogue"], group="Mix", importance="secondary", label="Role",
+                    labels={"music": "Music or effects", "dialogue": "Dialogue (speech)"},
+                    help='Dialogue: speech (a voice-over file, an interview). A duck with no tracks named dips under every '
+                         'dialogue track, for whole lines. A voice track (it speaks lines) is dialogue already. Left out = music.')
+
 FIELDS = {
     "bus": [
         Param.text("name", group="Group", importance="secondary"),
@@ -32,19 +37,22 @@ FIELDS = {
                      help="On: the send ignores the track's fader. Off: it follows it."),
     ],
     "duck": [
-        Param.list("under", "id", group="Duck", kind="track", min_items=1, label="Under",
-                   help="Track ids that push this track down while they sound."),
+        Param.list("under", "id", group="Duck", kind="track", label="Under",
+                   help="Track ids that push this track down while they sound; empty = every dialogue track "
+                        '(role "dialogue", or a voice track).'),
         N("depth", 0, 1, "Duck", display="percent", help="How far it dips: 0 = not at all, 1 = silent."),
         N("attack", 0.001, 2, "Duck", "s", "secondary", help="How fast it dips."),
         N("release", 0.01, 5, "Duck", "s", "secondary", help="How fast it comes back."),
-        N("hold", 0, 2, "Duck", "s", "secondary", help="How long it stays down after the others stop."),
-        Param.toggle("voice", group="Duck", importance="secondary",
-                     help="Dialogue mode: keeps the bass and lets the music swell back between words."),
+        N("hold", 0, 2, "Duck", "s", "secondary", help="How long it stays down after the others stop. Left out: "
+          "0.3 s in whole-line mode (it bridges the gaps between words), else 0."),
+        Param.toggle("voice", group="Duck", importance="secondary", label="Whole lines",
+                     help="Dialogue mode: dips for the whole line and keeps the bass. Left out: on when every track it is "
+                          "under is dialogue, else a short pump per hit. Off by hand: a pump even under speech."),
         N("lookahead", 0, 0.1, "Duck", "s", "deep", help="Starts dipping this early, so the dip lands before the sound."),
     ],
 }
 DEFAULTS = {
     "bus": dict(volume=1, pan=0, mute=False, output=names.MASTER_OUT),
     "send": dict(level=0.3, pre=False),
-    "duck": dict(depth=0.5, attack=0.02, release=0.3, hold=0, voice=False, lookahead=0.01),
+    "duck": dict(under=[], depth=0.5, attack=0.02, release=0.3, lookahead=0.01),   # voice, hold: worked out unless written (dialogue.py)
 }

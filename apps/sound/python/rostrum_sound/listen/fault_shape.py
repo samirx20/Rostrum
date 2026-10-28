@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 from rostrum_core.mcp import faults as shared
 
+from .. import dialogue
 from .core import db, load
 
 LOUD_LU = 0.5          # the mix this far off the master's loudness target is a fault
@@ -99,7 +100,7 @@ def duck_faults(data: dict, ducks: list | None, stems: dict | None = None) -> li
         if not mine:
             continue
         spans = seen.get(t["id"], [])
-        speaking = _speaking(stems, mine[0].get("under"))
+        speaking = _speaking(stems, dialogue.under_of(mine[0], t["id"], data.get("tracks", [])))   # empty: every dialogue track
         dip = _mean_dip(spans, speaking) if speaking is not None else max(0.0, -min((s[2] for s in spans), default=0.0))
         if dip < DUCK_MIN_DB:
             d = mine[0]

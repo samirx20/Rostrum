@@ -5,6 +5,7 @@ under other tracks). Each is checked by the same Params as `bus.add` / `send.add
     verb = bus("verb", volume=0.8); verb.effect("reverb", space="hall", mix=1.0)
     keys = track("keys", builtIn="piano", output="verb")        # plays to the bus instead of the master
     keys.send("verb", level=0.3); bass.duck(under=["kick"], depth=0.5)
+    vo = track("vo", role="dialogue"); music.duck(depth=0.7)    # no `under`: every dialogue track, whole lines (dialogue.py)
 """
 from __future__ import annotations
 
@@ -38,9 +39,10 @@ class Routing:
                                                 FD.DEFAULTS["send"])))
         return self
 
-    def duck(self, under, depth=None, attack=None, release=None, hold=None, voice=None, lookahead=None):
-        """Dip this track while the tracks in `under` sound: duck(under=["kick"], depth=0.5)."""
-        given = {"under": list(under), "depth": depth, "attack": attack, "release": release, "hold": hold, "voice": voice,
+    def duck(self, under=None, depth=None, attack=None, release=None, hold=None, voice=None, lookahead=None):
+        """Dip this track while the tracks in `under` sound: duck(under=["kick"], depth=0.5). No `under`: under every
+        dialogue track (role="dialogue", or a voice track), for whole lines; none in the song fails the render loudly."""
+        given = {"under": list(under or ()), "depth": depth, "attack": attack, "release": release, "hold": hold, "voice": voice,
                  "lookahead": lookahead}
         self._routing().append(("duck", checked("duck", given, f"track {self.id} › duck", FD.DEFAULTS["duck"])))
         return self
