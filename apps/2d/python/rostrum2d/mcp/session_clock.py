@@ -206,4 +206,10 @@ def _fix_pass(ctx, args, reply: Reply, clock: Clock) -> str:
         said = review.after_export(doc.data, comp, payload.get("quiet_stretches") or [], payload.get("edge_cuts") or [])
     except Exception as e:      # noqa: BLE001  (the export stands; the review's failure is said, not hidden)
         said = f"(The review could not run: {e}; call look_review.)"
-    return f"\n{clock.left_said()}{said}"
+    left = clock.left_said()
+    if said.startswith("Weakest") and left.startswith("Time left"):
+        # gaps2 benchmark: agents copied the named faults into their summary as "weak spots" and ended the turn with
+        # 11 minutes left. Say plainly that the work is not over while both remain.
+        left = ("Not finished yet: the weak moments below are still in the film and you have time. Keep going until time "
+                "is up or each one left is a choice you made. " + left)
+    return f"\n{left}{said}"
