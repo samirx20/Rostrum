@@ -156,6 +156,14 @@ void ColorOut::write_png(const Picture& p, const std::string& file, const std::s
   write_whole(buf, file, OIIO::TypeDesc::UINT8);
 }
 
+void write_png8(const unsigned char* rgba, int width, int height, const std::string& file) {
+  OIIO::ImageSpec spec(width, height, 4, OIIO::TypeDesc::UINT8);
+  spec.alpha_channel = 3;
+  OIIO::ImageBuf buf(spec);
+  buf.set_pixels(OIIO::ROI::All(), OIIO::TypeDesc::UINT8, rgba);
+  write_whole(buf, file, OIIO::TypeDesc::UINT8);
+}
+
 std::string frame_path(const std::string& pattern, int frame) {
   auto at = pattern.find("{frame}");
   if (at == std::string::npos) return pattern;

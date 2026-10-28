@@ -45,6 +45,9 @@ class ColorOut {
   std::string display_, name_;
 };
 
+// straight RGBA8, top row first (a finished view picture: view_post.h), as an 8-bit PNG
+void write_png8(const unsigned char* rgba, int width, int height, const std::string& file);
+
 // "C:/out/f-{frame}.png", 12 -> "C:/out/f-0012.png"
 std::string frame_path(const std::string& pattern, int frame);
 

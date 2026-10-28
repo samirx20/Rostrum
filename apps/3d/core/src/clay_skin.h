@@ -92,6 +92,9 @@ class Skinning {
   void weigh(Block& b) const;
   void pose_block(Block& b) const;
   Affine blend_at(const Block& b, int tri, const double bary[3]) const;
+  // one point's move from its influences (bone, weight): dual quaternions mixed with a share of the linear blend
+  // (see linear_share in clay_skin.cpp), or linear alone; `pivot` = the heaviest influence's bone
+  Affine blend(const std::pair<int, double>* in, int count, int pivot) const;
 
   std::shared_ptr<const SkinRig> rig_;
   std::vector<BoneMove> moves_;   // what the blocks are posed with
