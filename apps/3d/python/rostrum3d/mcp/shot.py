@@ -19,7 +19,7 @@ TIME = {
     "at": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (instead of frame)."},
 }
 LOOK = {
-    "quality": {"enum": list(QUALITY), "default": "fast", "description": "fast = Storm (about a second a frame), final = Cycles (path traced, what export gives)."},
+    "quality": {"enum": list(QUALITY), "description": "fast = Storm (about a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look."},
     "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials)."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": LOOK_WIDTH, "description": "Picture width in px; the height follows the shot's shape."},
 }
@@ -74,3 +74,11 @@ def size_of(info: dict, args: dict, default_width: int | None = None) -> tuple[i
 
 def renderer_of(args: dict, default_quality: str = "fast") -> str:
     return args.get("renderer") or QUALITY[args.get("quality", default_quality)]
+
+
+def look_renderer(args: dict, doc, infos: list[dict]) -> str:
+    """A look's renderer: the call's renderer or quality, else stylized when every shot looked at renders Stylized (Storm can't
+    draw Lines or Halftone, and the stylized look is as quick), else Storm."""
+    if "renderer" in args or "quality" in args:
+        return renderer_of(args)
+    return "stylized" if all(render_settings(doc, i)["renderer"] == "stylized" for i in infos) else "storm"

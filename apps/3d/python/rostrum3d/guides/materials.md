@@ -237,7 +237,7 @@ its own colours in every band.
 - **Shadow below** (`shadowBelow`, 0–1): below this much light, the shadow colour.
 - **Lit from** (`litFrom`, 0–1): from this much light up, the lit colour. Between the two, the middle colour. When Shadow
   below is higher than Lit from, Lit from counts for both: two bands, no middle.
-- **Edges** (`lightEdges`): **Steps** = hard edges between the bands; **Smooth** = each edge blends over **Softness**
+- **Edges** (`lightEdges`: `"steps"` or `"smooth"`): **Steps** = hard edges between the bands; **Smooth** = each edge blends over **Softness**
   (`lightSoftness`, 0.01–0.5), measured on the same how-lit scale either side of Shadow below and Lit from.
 - The surface's own shading is replaced by the bands: no highlights or reflections (roughness, metal, coat and glass
   don't show on it); glow still adds on top.
@@ -246,9 +246,12 @@ its own colours in every band.
 ### Halftone (Stylized look)
 
 Printed dots or lines over the surface whose size follows how lit it is: none where it is fully lit, solid where it is in
-full shadow, in between in proportion.
+full shadow, in between in proportion. It reads how lit, not the Light to colour bands: a face whose how lit is 1 or more
+(a strong light on it, or glow-lit) shows none, and then only the shadows other things cast on it get the pattern, as
+small marks along their soft edges. To spread it over a face, the light reaching that face must be below 1: a weaker or
+farther light, or a light that grazes the face.
 
-- **Shape** (`halftoneShape`): **Dots** or **Lines**.
+- **Shape** (`halftoneShape`: `"dots"` or `"lines"`): **Dots** or **Lines**.
 - **Size** (`halftoneSize`, 2–40 px): the spacing of the dots or lines, in pixels of the finished picture.
 - **Angle** (`halftoneAngle`, −90–90°): the turn of the rows of dots or of the lines.
 - **Colour** (`halftoneColor`): the ink's colour, over the surface's own colour.
@@ -265,8 +268,13 @@ full shadow, in between in proportion.
 - **Look: Stylized** appears in the viewport's Camera and look menu (and **Stylized** in the render sheet's Quality) while
   any material of the project has Lines or Halftone on. When the last one is turned off the view goes back to Quick and
   says so. Shift+F still flips Quick and Final.
+- Stylized shows colours as you picked them: no film curve on the way to the screen (Quick and Final use ACES, which
+  darkens and greys light colours), so a cream Light-to-colour floor under its lit band shows cream.
+- Round shapes are made with 64 steps around (`segments`), so outlines stay smooth when a disc or ball fills the frame;
+  the ink line follows the real edge, so fewer steps show as corners in the line.
 - A render with Quality **Stylized** uses the same renderer as the view, drawn at twice the size and smoothed down for
-  clean edges, so the render is the view you saw. Agents: `look_frame` with `renderer: "stylized"`;
+  clean edges, so the render is the view you saw. Agents: `look_frame`, `look_sheet` and `look_shots` draw a shot whose
+  Quality is Stylized with the stylized renderer when no `renderer` or `quality` is given, or say `renderer: "stylized"`;
   `render_still` / `render_video` follow the shot's Quality when no `renderer` or `quality` is given (Stylized there renders
   Stylized), and `renderer: "stylized"` renders it for any shot.
 

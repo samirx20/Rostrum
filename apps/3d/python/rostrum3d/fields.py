@@ -21,10 +21,10 @@ from .item_fields import COMBINE_OPS, FIELDS, SOLIDS  # noqa: F401
 from .clay_fields import STILL as CLAY_STILL
 from .copies_fields import STILL as COPIES_STILL
 from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, STILL as LIGHT_STILL  # noqa: F401
-from .mesh_fields import SHAPES  # noqa: F401
+from .mesh_fields import SHAPE_DEFAULTS, SHAPES  # noqa: F401
 from .sim import fields as SIM
 
-KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
+KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS), "mesh": ("shape", SHAPE_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay", "copies")      # scene items (USD prims)
 KEYED = (*ITEMS, "effector", "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine", "copies")

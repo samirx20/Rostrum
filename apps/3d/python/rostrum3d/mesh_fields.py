@@ -12,6 +12,8 @@ from .outline_fields import FIELDS as OUTLINE_FIELDS, OUTLINE_SHAPES
 from .paint_fields import MESH as PAINT_MESH
 
 SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
+ROUND_SEGMENTS = 64      # a round shape's steps around when made: its outline stays smooth filling the frame (24 shows facets)
+SHAPE_DEFAULTS = {s: {"segments": ROUND_SEGMENTS} for s in ("sphere", "cylinder", "cone", "capsule", "disc", "torus")}
 
 MESH = [
     dataclasses.replace(CH("shape", [*SHAPES, "poly"], "Shape", "Shape", "box"), labels={"poly": "Editable mesh"}),
@@ -29,7 +31,8 @@ MESH = [
     N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder", *OUTLINE_SHAPES),
       help="Rounded edges this wide; real products almost never have razor edges"),
     N("segments", "Segments", "Shape", 1, 256, 1, "", D, {"all": [NOT("shape", "plane"), NOT("shape", "poly")]}, integer=True, default=24,
-      help="Box: steps around each bevel. Round shapes: steps around"),
+      help=f"Box: steps around each bevel (24 when made). Round shapes: steps around ({ROUND_SEGMENTS} when made, so "
+      "an outline stays smooth even filling the frame; fewer = lighter, facets show on big shapes)"),
     T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets. An editable mesh keeps "
       "edges sharper than 30° hard either way"),
     # An editable mesh's own data (screens never show it as fields; ops_mesh.py changes it). Like USD's mesh.
