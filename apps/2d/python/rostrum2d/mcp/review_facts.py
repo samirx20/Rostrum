@@ -21,6 +21,8 @@ GHOST_S, HOLLOW_S = 1.0, 2.0
 SET_MIN = 3               # this many siblings named alike (bar_0, bar_1 …) make a set
 
 
+TITLE_H = 0.035        # a text this share of the frame's height or taller reads as a title or caption
+
 def _runs(times: list[float], flags: list, step: float, least: float):
     """(start, end, first index, last index) of each run of truthy flags lasting at least `least` seconds."""
     out, a = [], None
@@ -183,7 +185,8 @@ def layer_facts(comp: dict, times: list[float], step: float) -> list[dict]:
     for (t0, t1), hits in spans.items():
         hits.sort(reverse=True)
         who = f'text "{hits[0][1]}" is' if len(hits) == 1 else f'{len(hits)} texts ({", ".join(chr(34) + h[1] + chr(34) for h in hits[:3])}{" …" if len(hits) > 3 else ""}) are'
-        out.append({"kind": "text_edge", "start": t0, "end": t1, "id": hits[0][1], "ids": [h[1] for h in hits], "height_px": round(hits[0][0]),
+        kind = "text_edge" if hits[0][0] >= TITLE_H * H else "small_text_edge"     # small screen text cropped by a push-in ranks low
+        out.append({"kind": kind, "start": t0, "end": t1, "id": hits[0][1], "ids": [h[1] for h in hits], "height_px": round(hits[0][0]),
                     "text": f'{_at(t0, t1, step)}: {who} cut off by the {hits[0][2]} edge of the frame'})
     for (faint, over), rows in ghost.items():
         for t0, t1, _, _ in _spans([r[0] for r in rows], step, GHOST_S):

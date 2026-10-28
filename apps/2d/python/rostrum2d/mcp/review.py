@@ -19,7 +19,7 @@ EVERY = look_empty.EVERY
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "set_hidden": 70, "block": 65, "pose_held": 60,
-        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "washed": 25}
+        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
 
 
 def _kind(r: dict, duration: float) -> str:

@@ -1,6 +1,6 @@
 """A subject cut by the frame edge: a layer, group or rig (a character's whole posed body) whose box crosses an edge of the
 picture by a meaningful share while most of it is in the picture. From boxes, no drawing. Not flagged: what is fully in or out,
-what spans the picture on that axis (a background, a ground strip), and bleeds under CUT_MIN_PCT. Facts with times, never a
+what spans the picture on either axis (a background, a wall, a ground strip: none of its edges), and bleeds under CUT_MIN_PCT. Facts with times, never a
 verdict: a crop can be meant, the agent decides (guide: character-rigging-and-lip-sync.md › Staging a character)."""
 from __future__ import annotations
 
@@ -26,11 +26,9 @@ def cut_edges(box: tuple[float, float, float, float], width: float, height: floa
     inside = max(0.0, min(r, width) - max(l, 0)) * max(0.0, min(b, height) - max(t, 0)) / (bw * bh)
     if inside * 100 < (SOME_IN_PCT if character else MOST_IN_PCT):
         return {}
-    out = {}
-    if character or not (l < 0 and r > width):          # crossing both sides of an axis = it spans the picture: a bleed on purpose
-        out["left"], out["right"] = max(0.0, -l) / bw, max(0.0, r - width) / bw
-    if character or not (t < 0 and b > height):
-        out["top"], out["bottom"] = max(0.0, -t) / bh, max(0.0, b - height) / bh
+    if not character and ((l <= 0 and r >= width) or (t <= 0 and b >= height)):
+        return {}       # spans the picture on an axis: a backdrop, wall, sky or ground strip, its other edges bleed on purpose too
+    out = {"left": max(0.0, -l) / bw, "right": max(0.0, r - width) / bw, "top": max(0.0, -t) / bh, "bottom": max(0.0, b - height) / bh}
     return {e: round(100 * v) for e, v in out.items() if v * 100 >= CUT_MIN_PCT}
 
 
