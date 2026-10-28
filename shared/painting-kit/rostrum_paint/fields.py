@@ -19,7 +19,8 @@ LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
 HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
-GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}, {"not": IS("granulation", 0.0)}]}   # the paper shows
+GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}, {"not": IS("granulation", 0.0)},
+                  {"not": IS("bloom", 0.0)}]}   # the paper shows
 TURNS = {"any": [{"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}},   # tips whose turn shows,
                  {"not": IS("texture", "none")}]}                                         # or a tip picture's
 
@@ -76,6 +77,9 @@ BRUSH = [
     A("granulation", "Granulation", 0.0, D, group="Wash",
       help="Pigment settles in the paper's tooth: more paint in the paper's valleys, a speckled wash (the Paper "
            "and Paper scale choose the tooth)"),
+    A("bloom", "Bloom", 0.0, D, group="Wash",
+      help="Wet paint creeps past the stroke's edge into the damp paper, in feathery, uneven fingers along the "
+           "paper's fibres, up to about half the brush size out at 100 % (laid once the stroke is done)"),
     Param.choice("paper", PAPERS, label="Paper", group="Brush", default="tooth", importance=D, valid_when=GRAINY,
                  help="The paper's tooth; it stays put on the canvas (or moves with the layer), never with the stroke"),
     N("paper_scale", "Paper scale", 0.25, 4, 0.05, 1.0, D, "×", when=GRAINY, help="How big the paper's tooth is"),

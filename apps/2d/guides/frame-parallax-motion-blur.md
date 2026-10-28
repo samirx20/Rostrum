@@ -243,6 +243,13 @@ streak at the default 8, a still frame or a slow move costs no more than before,
 (the fastest frames of a whip pan take 4 to 7 times as many steps). What moves inside a layer (a path changing shape, letters playing their
 keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples`.
 
+**What it costs.** Each step draws the whole frame again (every layer, its depth-of-field blur, its effects), so an
+export takes about as long as its steps: measured on a 30 s, 30 fps piece with 5 depth layers, about 250 shapes and
+depth of field, a normal frame took ~0.29 s at `shutterSamples` 8 and ~0.40 s at 16, and a whip-pan frame (about 100
+steps, chosen by the motion) ~1.6 s. Raising `shutterSamples` does not make fast moves smoother (they get their steps
+anyway); it only makes every frame slower. Keep 8 unless steps show inside a layer, and look at a few frames before
+exporting the whole film.
+
 The frame at time t is the average of the samples centred on t. Layers that do not move stay sharp. Motion of keys, groups,
 rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. What a layer shows never blurs, only how it moves: a counting number stays one sharp number per frame and a drawing drawn frame by frame shows one drawing, as in After Effects. A layer that shows in a frame shows in all its samples, so the first frame of the piece (or of a layer) is as strong as the next. Preview
 and export blur the same way. While the picture moves (playing, or dragging the playhead) the canvas draws one step so it

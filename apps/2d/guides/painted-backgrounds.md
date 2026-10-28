@@ -125,7 +125,10 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   water pulls pigment to the wet edge; it shows most on firm edges (`hardness` 0.5 and up) and barely on very soft
   ones. Overlapping strokes each keep their own rim, which is how separate passes read as separate. `granulation`
   lays more paint in the paper's valleys, a speckle that follows the `paper` and `paper_scale` and stays put on the
-  canvas; it reads on flat areas and on a dark ground.
+  canvas; it reads on flat areas and on a dark ground. `bloom` lets the wet paint creep past the stroke's edge into
+  the damp paper, in ragged, feathery fingers that follow the paper's grain (up to about half the brush size out at
+  1.0); it is what makes an edge read as a watercolour bleed rather than a clean digital one. `grain` breaks the paint
+  itself up on the paper's tooth (a dry brush skipping over the paper), so the paper shows through inside the stroke.
 - **A wash to the edges.** `paint.wash` (script `p.wash(...)`) covers the whole canvas, a `box` or an `outline` with
   passes that run past every side, with a crisp, soft (`edge`) or running (`bleed`) edge, flat or graded (`to`,
   `bands`); drawing-and-frame-by-frame.md › A wash to the edges lists every setting. Hand-laid rows leave bare strips

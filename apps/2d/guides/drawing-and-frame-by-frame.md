@@ -129,6 +129,7 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 | `taper_start`, `taper_end` | the stroke starts / ends thin over this many tip sizes |
 | `wobble`, `swell`, `pool` | a hand's line from plain x, y points: the path drifts side to side (up to `wobble` × size, smoothly), the width breathes along it (thinning by up to `swell`), and ink gathers where the brush lands and lifts (`pool`, 0..2: the ends wider and denser over about half a size). Each 0 = off |
 | `edge_darken`, `granulation` | how a wash dries: a darker rim just inside its edge (about a fifth of the size wide), and pigment settled in the paper's valleys (the `paper` and `paper_scale` pick the tooth). Laid once the stroke is done, in the stroke's own `mode` |
+| `bloom` | wet paint creeping past the stroke's edge into damp paper, ragged and feathery along the paper's grain, up to about half the size out at 1.0. Laid once the stroke is done |
 | `texture` | tip picture: `none`, `sponge`, `speckle`, `streaks`, `ragged`, `charcoal`, or a picture in the project's library; it turns with the tip |
 | `paper`, `paper_scale`, `grain` | the paper's tooth (`tooth`, `canvas`, `cold press`, `laid`, `rough`, or the project's own) and how much it breaks up the paint; it stays put on the canvas |
 | `color_jitter`, `hue_jitter`, `jitter`, `size_jitter`, `angle_jitter`, `spacing`, `even` | colour drift along the stroke, scatter, random size and turn per dab, dab spacing, softer tips closer together |
@@ -259,6 +260,11 @@ id, so every drawing scatters differently. A painting (a painted fill) boils wit
 ## Stepped timing
 
 - **Drawings:** each drawing is held until the next, so "on twos" is drawings at frames 0, 2, 4 …; "on threes" is 0, 3, 6.
+  The drawing rate is the composition's `fps` divided by the hold: 12 drawings a second is on twos at 24 fps or on
+  threes at 36 fps, and at 30 fps on twos gives 15 a second. The composition's `fps` is only what you set (default
+  30); nothing changes it for you. A brief asking for "12 drawings a second and at least 30 fps" fits 36 fps on threes
+  (a 36 fps file plays everywhere) or 30 fps with drawings at frames 0, 2, 5, 7, 10 … (holds of 2 and 3 in turn).
+  More frames a second means more pictures to make: every frame of a Drawn so far key is its own picture.
   `frame.hold frames=N` changes how long one shows and shifts the later ones. The last drawing is held to the layer's end
   (`end`); add a drawing after it to end a hold.
 - **Other layers:** the `hold` ease makes any field jump at the next key instead of travelling: `layer.key("x", {0: 100, 0.2: 300}, ease="hold")`

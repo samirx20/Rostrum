@@ -42,10 +42,20 @@ def amount_at(item: dict, t: float) -> float:
     return round(min(1.0, max(0.0, float(value_at(item, DRAWN, t)))), 4)
 
 
+_LENGTHS: dict = {}     # id(mark) -> (the mark, its length): each picture asks for every mark's share of the pen's time
+
+
 def _length(s: dict) -> float:
+    got = _LENGTHS.get(id(s))
+    if got is not None and got[0] is s:         # a document never changes a mark in place
+        return got[1]
     pts = np.asarray([q[:2] for q in s.get("points", [])], float)
     run = float(np.hypot(*np.diff(pts, axis=0).T).sum()) if len(pts) > 1 else 0.0
-    return run + (float(s.get("size", 12.0)) if s.get("type") == "stroke" else 0.0)
+    out = run + (float(s.get("size", 12.0)) if s.get("type") == "stroke" else 0.0)
+    if len(_LENGTHS) > 50000:
+        _LENGTHS.clear()
+    _LENGTHS[id(s)] = (s, out)
+    return out
 
 
 def marks(frame: dict) -> list[tuple[int, int, float]]:
