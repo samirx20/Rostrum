@@ -101,7 +101,9 @@ def beside(it: dict) -> tuple[float, float, float]:
         cols = max(1, it.get("columns", 4))
         rows = max(1, -(-n // cols))
         x, z = x + it.get("spacingX", 0.0) * (min(n, cols) - 1) / 2, z + it.get("spacingZ", 0.0) * (rows - 1) / 2
-    return round(x, 4), round(y + 0.3, 4), round(z, 4)       # a little above: seen, and not inside a copy
+    # a little above, so it is seen and not inside a copy, but well within its starting reach: the copies by the middle
+    # change at once (0.3 m above, with a reach of two steps, reached none of them)
+    return round(x, 4), round(y + 0.6 * reach(it), 4), round(z, 4)
 
 
 def near_calls(f, kind: str) -> list[dict]:

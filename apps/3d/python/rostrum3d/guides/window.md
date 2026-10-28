@@ -215,8 +215,8 @@ One thing, many times, without making a thousand items (the guide *copies* has t
   turn and size just that copy; the drop keeps it there (it never moves again when you change the count or the layout; **Release held
   copies** in the right-click menu lets them go back). One undo step.
 - **Change near ›** (right-click a copies item): **Scale**, **Turn**, **Push** or **Colour** the copies close to something.
-  With another item selected too (Ctrl+click), the change follows that item; alone, a small sphere is added beside the copies
-  and selected: move it and the copies near it change. Its settings (Radius, Amount, Falloff) are the effector's row under
+  With another item selected too (Ctrl+click), the change follows that item; alone, a small sphere is added just above the middle
+  of the copies, so the ones under it change at once, and selected: move it and the copies near it change. Its settings (Radius, Amount, Falloff) are the effector's row under
   the copies in the scene list; key Amount or Radius for change over time.
 
 ## Simulate
