@@ -14,7 +14,8 @@ SmallPopup {
     id: pop
     property Item anchorItem: null
     property real natural: 0
-    readonly property real anchorTop: anchorItem && parent ? anchorItem.mapToItem(parent, 0, 0).y : 0
+    property real anchorTop: 0          // the anchor's top in the window, measured each place() (a panel still laying
+                                        // out moves the row after the popup opened; a stale value let it run off the edge)
     readonly property real below: parent ? parent.height - 2 * Theme.grid - (anchorItem ? anchorTop + anchorItem.height + Theme.grid : 0) : 400
     readonly property real above: anchorItem ? anchorTop - 2 * Theme.grid - Theme.grid : 0
     readonly property bool upward: natural > below && above > below
@@ -31,10 +32,12 @@ SmallPopup {
         const ov = parent
         if (!ov || !anchorItem) return
         const p = anchorItem.mapToItem(ov, 0, 0)
+        if (anchorTop !== p.y) anchorTop = p.y      // fit and the content's height follow; onHeightChanged places again
         x = Math.max(Theme.grid, Math.min(p.x, ov.width - width - Theme.grid))
         y = upward ? Math.max(Theme.grid, p.y - Theme.grid - height)
                    : Math.max(Theme.grid, Math.min(p.y + anchorItem.height + Theme.grid, ov.height - height - Theme.grid))
     }
     onHeightChanged: if (visible) place()
     onClosed: anchorItem = null
+    Timer { interval: 100; repeat: true; running: pop.visible; onTriggered: pop.place() }   // the row may still move
 }
