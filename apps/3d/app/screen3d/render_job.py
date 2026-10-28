@@ -64,7 +64,7 @@ class RenderJob(QObject):
         self._engine, self._stop = None, threading.Event()
         self._landed.connect(self._on_landed)
         self._expect, self._measured, self._t0, self._s = 0.0, False, 0.0, {}
-        self._drawn = None                                 # the last (share done, ms drawing) Cycles reported
+        self._drawn = None                                 # [first, last] (share done, ms) Cycles reported for the frame
         self._tick = QTimer(self, interval=1000)          # the seconds so far, against the time it said
         self._tick.timeout.connect(self._on_tick)
 
@@ -155,7 +155,7 @@ class RenderJob(QObject):
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
                 _, files, _ = still("render", snap, info, scene, engine, frame, s["renderer"], size, FORMATS, 0, cyc, folder, layers, stop.is_set,
-                                    step=lambda line: setattr(self, "_drawn", (line["fraction"], line["ms"])))
+                                    step=self._on_step)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was
@@ -170,6 +170,11 @@ class RenderJob(QObject):
 
         self._thread = threading.Thread(target=work, name="render-still", daemon=True)
         self._thread.start()
+
+    def _on_step(self, line: dict):
+        """Cycles' share of the frame so far (worker thread): keep the first report and the newest."""
+        now = (line["fraction"], line["ms"])
+        self._drawn = [self._drawn[0] if self._drawn else now, now]
 
     @Slot()
     def cancel(self):

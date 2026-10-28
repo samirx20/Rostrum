@@ -169,9 +169,12 @@ def render_still(ctx, args):
     engine, item = draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
-        def drawn(line):                     # Cycles' share of the frame so far: the time left, measured on this frame
+        first = []
+
+        def drawn(line):                     # Cycles' share of the frame so far: the time left, at the rate since its first report
             f, ms = line["fraction"], line["ms"]
-            left = f" · about {ms * (1 - f) / f / 1000:.0f} s left" if f >= 0.03 and ms >= 800 else ""
+            f0, ms0 = (first or first.append((f, ms)) or first)[0]
+            left = f" · about {(ms - ms0) / (f - f0) * (1 - f) / 1000:.0f} s left" if f - f0 >= 0.03 and ms - ms0 >= 800 else ""
             job.progress(round(f * 100), 100, f"drawing {f:.0%}{left}")
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
                                  _cycles(args, renderer, s), ctx.app.folder, passes, step=drawn)

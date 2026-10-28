@@ -77,12 +77,14 @@ def words(seconds: float, measured: bool) -> str:
     return f"about {human(max(1.0, seconds))}" + ("" if measured else ", a first guess")
 
 
-def left(fraction: float, ms: float) -> float | None:
-    """Seconds left of a frame Cycles has drawn `fraction` of in `ms` (its step lines), plus writing the files; None until
-    there is enough of it to go by (3 % and most of a second: before that, the share is mostly the frame's set-up)."""
-    if fraction < 0.03 or ms < 800:
+def left(first: tuple[float, float], last: tuple[float, float]) -> float | None:
+    """Seconds left of a frame from two of Cycles' step reports (share done, ms since the frame began): the rate between
+    them, so the frame's set-up before its first samples (scene sync, kernels: seconds on a big clay) doesn't count as
+    drawing; plus writing the files. None until 3 % more of the frame and most of a second lie between the two."""
+    (f0, ms0), (f1, ms1) = first, last
+    if f1 - f0 < 0.03 or ms1 - ms0 < 800:
         return None
-    return ms * (1 - min(fraction, 1.0)) / fraction / 1000 + WRITE_S
+    return (ms1 - ms0) / (f1 - f0) * (1 - min(f1, 1.0)) / 1000 + WRITE_S
 
 
 def words_left(seconds: float) -> str:
