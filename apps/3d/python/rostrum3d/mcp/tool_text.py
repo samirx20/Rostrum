@@ -8,7 +8,7 @@ from rostrum_core.mcp import short_text
 
 # By name, for every part with the argument; "" = no words (the name and type say it).
 ARG = {
-    "item": "",
+    "item": "Document id, not an object; default the open scene.",
     "wait": "Wait for the job: true (50 s) or seconds.",
     "at": "Seconds from the shot's start.",
     "frame": "",
@@ -76,7 +76,7 @@ ARG_OF = {
 }
 
 MOST = 15
-PLAIN = {"wait"} | {k for k, v in ARG.items() if not v}      # said without the choices that take them (a wrong one is refused by name)
+PLAIN = {"wait", "item"} | {k for k, v in ARG.items() if not v}      # said without the choices that take them (a wrong one is refused by name)
 
 
 def shorten(tools):

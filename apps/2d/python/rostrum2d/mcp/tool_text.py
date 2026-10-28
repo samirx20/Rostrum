@@ -65,7 +65,7 @@ ARG = {
     "y": "",
     "x": "",
     "wait": "Wait for the job: true (50 s) or seconds.",
-    "item": "",
+    "item": "Document id, not a layer; default the open one.",
     "comp": "",
     "time": "",
     "frame": "",
@@ -157,7 +157,7 @@ ARG_OF = {
 }
 
 MOST = 15        # argument words kept from a part's own text when neither table names it
-PLAIN = {"wait", "width"} | {k for k, v in ARG.items() if not v}    # said without the choices that take them (a wrong one is refused by name)
+PLAIN = {"wait", "width", "item"} | {k for k, v in ARG.items() if not v}    # said without the choices that take them (a wrong one is refused by name)
 
 
 def shorten(tools):

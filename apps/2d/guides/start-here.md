@@ -86,7 +86,7 @@ that the layout, an anchor or a marker can give you.
 - `lay-out-a-screen`: rows, columns, grids, stacks, Tailwind words (`tw=`).
 - `timing-to-music`: markers, layers timed from a marker, beats, the song from RostrumSound.
 - `ui-and-product-animation`: devices, screen blocks, counters, pointers, glass and depth.
-- `type-and-kinetic-text`: fonts, per-letter animation, scrambles.
+- `type-and-kinetic-text`: fonts, per-letter animation (typing on: key opacity 0 → 1 with `letterDelay`), scrambles.
 - `easing-and-overlap`: what each ease does, checking overlap.
 - `frame-parallax-motion-blur`: moving and cutting the frame, depth, motion blur.
 - `shape-and-path-animation`: the pen, combining shapes, drawing a stroke on.
