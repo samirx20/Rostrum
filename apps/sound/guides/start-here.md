@@ -14,7 +14,8 @@ effects), sections, markers and a master. You build it from ONE Python script an
    nothing is copied. A new name that makes the same tracks is refused (it would double every note).
 5. Repeat until the reply says `DONE:`, then deliver with `render_mix` (`name`, `folder`, `format`). A delivery is refused
    while a fault is open, unless `keep: {"fault_id": "why"}` explains it; a fault on the moment the brief asked for is kept
-   only after a render that tried the fix, with the measured number in the reason.
+   only after a render that tried the fix, and only when it measures near passing (the fault says what passes); else
+   fix it, or move the moment itself in the script when the brief allows.
 
 ## Bars first
 
