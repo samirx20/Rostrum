@@ -127,7 +127,8 @@ def child_fields(kind: str) -> list[Param]:
 # A size the layout sets is absent: a group fitting its content, a layer filling its slot or a share of it.
 _SHARED = {a: {"all": [PLACED, {"any": [IS(f"size{A}", "fill"), IS(f"size{A}", "percent")]}]} for a, A in (("w", "W"), ("h", "H"))}
 SIZE_SET = {a: {"not": {"any": [{"all": [ON, IS(f"size{A}", "fit")]}, _SHARED[a]]}} for a, A in (("w", "W"), ("h", "H"))}
-LAYER_SIZE_SET = {a: {"not": _SHARED[a]} for a in ("w", "h")}       # a shape's or an image's
+_BOTH = {"not": {"all": [_SHARED["w"], _SHARED["h"]]}}      # a shape's or an image's Size (W | H) is one setting: one
+LAYER_SIZE_SET = {"w": _BOTH, "h": _BOTH}                    # rule for both halves, shown unless the layout sets both
 _OWN = {p.name for p in child_fields("shape") + child_fields("text")}
 
 
