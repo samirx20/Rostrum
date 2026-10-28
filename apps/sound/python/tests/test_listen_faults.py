@@ -101,3 +101,23 @@ def test_dull_top_end_named_and_a_bright_mix_passes(tmp_path):
     r = check(str(tmp_path / "dull.wav"))
     assert "dull_top" in kinds(r) and "4–16 kHz" in r["words"] and "up an octave" in r["words"]
     assert "dull_top" not in kinds(check(str(tmp_path / "bright.wav")))
+
+
+def test_a_stronger_attack_just_before_a_climax_takes_the_moment(tmp_path):
+    """Deliver-clean Ascent r2: a pickup 1.9x the climax's attack, 0.93 s early, was heard as the climax arriving early."""
+    path = _piece(tmp_path / "rival.wav", hit_amp=0.6, gap_before=0.5)
+    y, _ = sf.read(path)
+    n = sum(_note(f, 1.2) for f in (98.0, 196.0, 784.0, 1568.0))       # a loud bright stroke at 9.1 s
+    a = int(9.1 * SR)
+    y[a:a + n.size] += n[:, None]
+    sf.write(path, 0.8 * y / np.abs(y).max(), SR, subtype="PCM_24")
+    r = check(path, [{"at": 10.0, "kind": "climax"}], whole=False)
+    f = [f for f in r["faults"] if f["kind"] == "early_rival"]
+    assert f and abs(f[0]["measured"]["rival_s"] - 9.1) < 0.05 and "moment(" in f[0]["words"], r["words"]
+    clean = check(_piece(tmp_path / "clear.wav", hit_amp=1.5, gap_before=0.5), [{"at": 10.0, "kind": "hit"}], whole=False)
+    assert "early_rival" not in kinds(clean)
+
+
+def test_dull_top_gives_the_shelf_that_clears_it():
+    from rostrum_sound.listen.faults import shelf_fix
+    assert '"gain": 4,' in shelf_fix(-21.8) and '"gain": 8,' in shelf_fix(-40.0) and "the most" in shelf_fix(-40.0)

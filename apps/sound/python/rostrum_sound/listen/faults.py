@@ -7,6 +7,8 @@ stop, drop, climax, lift, voice span) are read in moments.py; the whole-piece fa
 says what is measured and the usual ways to change it; a drone that is meant to be a drone may stay."""
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .core import load, mono, num
@@ -15,16 +17,17 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
-from . import drop_gap, lead_in, stop_fall, stop_soft, tempo_fit
+from . import drop_gap, lead_in, rival, stop_fall, stop_soft, tempo_fit
 
 NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words,
-             "drums_in_gap": drop_gap.words}
+             "drums_in_gap": drop_gap.words, "early_rival": rival.words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
 HELD_MOVED_DB = 12.0   # ...unless its level moves this much (a long swell or a fade is movement the ear follows)
 DULL_DB = -20.0       # the brightest tenth of the piece's top end (4–16 kHz) under this against 250 Hz–1 kHz: dull
-MONO_CORR = 0.9        # left and right this alike: the mix is near mono (wide mixes measure 0.4–0.8)
+SHELF_SHARE, SHELF_MARGIN, SHELF_MOST_DB = 0.85, 1.5, 8.0   # dull_top's exact fix: shelf_fix
+MONO_CORR = 0.9       # left and right this alike: the mix is near mono (wide mixes measure 0.4–0.8)
 SQUASH_DB = 3.0        # the master's limiter holding one moment down this far flattens its attack
 _SR = 22050
 _HOP = 2048
@@ -107,6 +110,15 @@ def heard(d) -> str:
     return ", ".join(bits)
 
 
+def shelf_fix(brightest_db: float) -> str:
+    """The master high shelf that lifts the brightest tenth over DULL_DB with SHELF_MARGIN to spare (a 4 kHz shelf of G dB
+    moves the measure by about SHELF_SHARE x G: measured on bench mixes, 3/6/9 dB -> +2.6/+5.2/+7.7)."""
+    g = min(SHELF_MOST_DB, math.ceil(2 * (DULL_DB + SHELF_MARGIN - brightest_db) / SHELF_SHARE) / 2)
+    more = "" if g < SHELF_MOST_DB else f" (that is the most a shelf should add; brighten the parts for the rest)"
+    return (f'master.effect("eq", bands=[{{"shape": "highshelf", "freq": 4000, "gain": {g:g}, "q": 0.7}}]) in a script '
+            f"(+{g:g} dB over 4 kHz on the whole mix){more}")
+
+
 def headroom_fix(d) -> str:
     return (f"make headroom: the build already peaks at {d['build_peak_db']:.1f} dBFS, {d['headroom_db']:.1f} dB under the "
             "file's loudest peak, so the hit cannot be louder; keep the build's peaks 4–6 dB under the ceiling (its velocities "
@@ -184,7 +196,7 @@ def _words(f) -> str:
                 "against 250 Hz–1 kHz (benchmark: bright pop and lo-fi -2 to -9, orchestral and dark cues -13 to -19, dull mixes "
                 "under -20); what brightens it: a bright part up an octave, higher velocity on recorded instruments (their "
                 "loud layers are brighter), a cymbal, glockenspiel or bell at an audible level, less build-up of parts in "
-                "250 Hz–1 kHz")
+                f"250 Hz–1 kHz; or, measured to clear it: {shelf_fix(d['brightest_db'])}")
     if k == "flat_top":
         return (f"top end did not grow into {t:.2f} s: 4–16 kHz against 250 Hz–1 kHz {d['start_db']:g} dB at the start "
                 f"({d['start_s']:g} s) and {d['at_db']:g} dB from the moment ({d['grew_db']:+g} dB; builds that open up "

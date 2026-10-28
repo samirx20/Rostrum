@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from . import attack, drop_gap, stop_fall
+from . import rival as rival_attack
 from .brightness import growth
 from .core import load, mono, num
 from .dsp_events import find_peaks, onset_strength
@@ -67,6 +68,8 @@ def _hit(wav, m, sr, at, kind):
     out = [{"kind": f"weak_{kind}", "at_s": at, "measured": {"onset_s": s["at_s"], **{k: v for k, v in s.items() if k != "at_s"}}}] if weak else []
     if kind in ("hit", "climax") and not weak and at_ceiling(s):     # a weak one's fixes lead with headroom already
         out.append({"kind": "build_at_ceiling", "at_s": at, "measured": {k: s[k] for k in ("build_peak_db", "file_peak_db", "headroom_db")}})
+    if kind in ("hit", "climax"):                    # a stronger attack just before takes the moment (rival.py)
+        out += rival_attack.faults(wav, at, kind, s)
     if kind == "stop":
         c = attack.curves(wav)
         env, t, pk = c["env"], c["t"], c["pk"]
