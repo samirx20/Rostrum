@@ -510,6 +510,21 @@ impl Painter {
         self.cache.cached.clear();
     }
 
+    /// How many pictures are kept; `truncate_cached(n)` lets those after the first n go (a motion-blur bucket's moved
+    /// layers, scene_serve.rs `buckets`, once the bucket is drawn).
+    pub fn cached_len(&self) -> usize {
+        self.cache.cached.len()
+    }
+
+    pub fn truncate_cached(&mut self, n: usize) {
+        self.cache.cached.truncate(n);
+    }
+
+    /// The view every paint draws through: (scale, page px at the picture's left, top).
+    pub fn view(&self) -> (f32, f32, f32) {
+        self.view
+    }
+
     /// Trades the picture surfaces (and their size, view and last picture) for the second set, made on first use at
     /// the current size; a second call trades them back. The world picture draws the frame's export in the second set.
     pub fn swap_aside(&mut self) -> Result<(), String> {

@@ -7,10 +7,13 @@ use std::collections::HashMap;
 
 use blitz_dom::NodeId;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Run {
     Skip,
     Cached(usize),
+    /// Rostrum patch (motion-blur buckets): kept picture `k` moved by an affine in device px (CSS `matrix()` order),
+    /// for a layer that only moved since it was kept (`PaintScene::draw_cached_moved`).
+    Moved(usize, [f64; 6]),
 }
 
 thread_local! {

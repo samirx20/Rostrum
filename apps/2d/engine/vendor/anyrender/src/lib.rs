@@ -293,6 +293,12 @@ pub trait PaintScene: RenderContext {
         false
     }
 
+    /// Rostrum patch (motion-blur buckets): kept picture `k` moved by `m` (an affine in device px: a, b, c, d, e, f as
+    /// CSS `matrix()`), its edges stretched past where it was drawn; false when it has none.
+    fn draw_cached_moved(&mut self, _k: usize, _m: [f64; 6]) -> bool {
+        false
+    }
+
     /// Rostrum patch (E3): a layer whose content is captured as one picture, then drawn as each glow (the picture
     /// with the glow's filter, at its strength, added: `plus-lighter`, under the glow's clip), then as itself: in a
     /// layer with `alpha`, `blend` (normal when None) and `filter` under `clip`, or as it is when `clip` is None (no

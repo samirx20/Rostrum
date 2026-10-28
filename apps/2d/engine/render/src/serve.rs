@@ -47,7 +47,7 @@
 //!
 //! Errors reply `{"error": "…"}` (an asset that failed to load names its URL); the process keeps serving.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Condvar, Mutex, OnceLock};
@@ -92,6 +92,8 @@ pub(crate) struct Session {
     pub(crate) next_pieces: Option<Vec<String>>,
     /// The next frame's motion-blur sub-frames cut the same way, one list per sub-frame (`samples` in order).
     pub(crate) sample_pieces: Vec<Vec<String>>,
+    /// Grouped sub-frames (scene_serve.rs `stage_at`): each sample's group's middle sample; empty when not grouped.
+    pub(crate) sample_bases: Vec<usize>,
     /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
     pub(crate) shm: Option<crate::shm::Shm>,
     /// A frame drawn with `defer` (serve_ahead.rs): its output started, handed over when it is asked for.
@@ -154,7 +156,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, deferred: None, painting, over: None, stage_open: false }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false }, reply))
 }
 
 /// What a drawing worker's session copies from the export's (`twin`): size, depth, colour and what paints.
@@ -195,7 +197,7 @@ pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let painting = like.painting.clone();
-    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, deferred: None, painting, over: None, stage_open: false })
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false })
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -326,6 +328,31 @@ pub(crate) fn open_stage(s: &mut Session, open: bool) {
     }
     drop(m);
     s.stage_open = open;
+}
+
+/// The paint plan of grouped sub-frame `i` drawn from its group's kept pictures (still_runs.rs): still runs as kept, each
+/// kept moved layer moved by its own matrix, every other piece drawn as the page holds it, which must be the same
+/// text as this sample's (the page was last staged from sample `applied`; `base` is the group's middle sample, whose
+/// pieces were kept). None when a piece is neither.
+fn moved_plan(kids: &[NodeId], cuts: &[Vec<String>], runs: &[std::ops::Range<usize>], keep: &HashMap<usize, (usize, [f64; 6])>, i: usize, base: usize, applied: Option<usize>, view: (f32, f32, f32)) -> Option<HashMap<NodeId, blitz_paint::Run>> {
+    let (cut, page) = (&cuts[i], &cuts[applied?]);
+    if kids.len() != cut.len() || page.len() != cut.len() {
+        return None;
+    }
+    let mut plan = if runs.is_empty() { HashMap::new() } else { crate::still_runs::kept(kids, runs) };
+    for (p, piece) in cut.iter().enumerate() {
+        if runs.iter().any(|r| r.contains(&p)) {
+            continue;
+        }
+        if let Some(&(slot, from)) = keep.get(&p) {
+            // Compared with the base's piece (the one kept), not the page's: the page may hold another sample's matrix.
+            let to = crate::still_runs::moved(piece, &cuts[base][p])?;
+            plan.insert(kids[p], blitz_paint::Run::Moved(slot, crate::still_runs::delta(to, from, view)?));
+        } else if *piece != page[p] {
+            return None;
+        }
+    }
+    Some(plan)
 }
 
 /// Paints the kept page (`held`: over the motion-blur sum, painter.rs); an effect shader that failed fails the
@@ -480,6 +507,8 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     let (mut diff_ms, mut layout_ms, mut edits, mut paint_ms, mut record_ms) = (0.0, 0.0, 0, 0.0, 0.0);
     let (mut taps, mut tap_read_ms, mut tap_write_ms) = (0, 0.0, 0.0);
     let (mut still_ms, mut still_pieces) = (0.0, 0);
+    // Grouped sub-frames drawn from their group's kept pictures (no staging, no layer painted again): `timing.movedSamples`.
+    let mut moved_samples = 0;
     let mut timed = |s: &mut Session, mk: Option<&str>, draw: bool, held: bool| -> Result<(), String> {
         if let Some(mk) = mk {
             let (d, l, e) = apply(s, mk)?;
@@ -501,19 +530,38 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         // Each sub-frame is staged from its pieces when the caller cut them (restage.rs): only what moved is parsed.
         // The runs of pieces that are the same in every sub-frame are painted once, at the first (still_runs.rs).
         let own = s.next_pieces.take();
-        let runs = crate::still_runs::of(&s.sample_pieces);
-        let pieces = s.sample_pieces.first().map_or(0, Vec::len);
-        let mut cut = std::mem::take(&mut s.sample_pieces).into_iter();
+        let cuts = std::mem::take(&mut s.sample_pieces);
+        let bases = std::mem::take(&mut s.sample_bases);
+        let runs = crate::still_runs::of(&cuts);
+        let pieces = cuts.first().map_or(0, Vec::len);
+        let grouped = bases.len() == samples.len() && cuts.len() == samples.len();
         let k = 1.0 / samples.len() as f32;
+        let view = s.painter.view();
         let drawn = (|| -> Result<(), String> {
-            for (i, mk) in samples.iter().enumerate() {
-                s.next_pieces = cut.next();
-                timed(s, Some(mk), false, false)?;
+            // Grouped sub-frames (still_runs.rs `order`): the group's moved layers kept at its middle sample, by piece:
+            // (kept picture, the matrix it was drawn through); `applied` is the sample the page was last staged from.
+            let (mut group, mut keep): (Option<usize>, HashMap<usize, (usize, [f64; 6])>) = (None, HashMap::new());
+            let (mut applied, mut still_kept) = (None::<usize>, 0);
+            for (nth, i) in crate::still_runs::order(if grouped { &bases } else { &[] }, samples.len()).into_iter().enumerate() {
+                // Another sample of the group whose base is drawn: its moved layers' pictures moved, its other pieces
+                // as the page shows them (the same text as the sample it was last staged from), nothing staged.
+                if grouped && bases[i] != i && group == Some(bases[i]) {
+                    if let Some(plan) = moved_plan(&stage_kids(s), &cuts, &runs, &keep, i, bases[i], applied, view) {
+                        blitz_paint::set_plan(plan);
+                        timed(s, None, true, false)?;
+                        s.painter.accumulate(nth == 0, k)?;
+                        moved_samples += 1;
+                        continue;
+                    }
+                }
+                s.next_pieces = cuts.get(i).cloned();
+                timed(s, Some(samples[i]), false, false)?;
+                applied = Some(i);
                 let kids = stage_kids(s);
                 if runs.is_empty() || kids.len() != pieces {
                     blitz_paint::set_plan(Default::default());
                 } else {
-                    if i == 0 {
+                    if nth == 0 {
                         let t = Instant::now();
                         for r in 0..runs.len() {
                             blitz_paint::set_plan(crate::still_runs::only(&kids, &runs, r));
@@ -521,11 +569,29 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
                             s.painter.keep_cached();
                         }
                         (still_ms, still_pieces) = (t.elapsed().as_secs_f64() * 1000.0, crate::still_runs::count(&runs));
+                        still_kept = s.painter.cached_len();
                     }
                     blitz_paint::set_plan(crate::still_runs::kept(&kids, &runs));
                 }
+                if grouped && bases[i] == i && kids.len() == pieces {
+                    // A group's base: each of its frame-moved layers painted alone and kept, then drawn in its place.
+                    s.painter.truncate_cached(still_kept);
+                    keep.clear();
+                    group = Some(i);
+                    let mut plan = if runs.is_empty() { HashMap::new() } else { crate::still_runs::kept(&kids, &runs) };
+                    for (p, piece) in cuts[i].iter().enumerate() {
+                        let Some(m) = crate::still_runs::movable(piece).filter(|_| !runs.iter().any(|r| r.contains(&p))) else { continue };
+                        blitz_paint::set_plan(kids.iter().enumerate().filter(|&(q, _)| q != p).map(|(_, &o)| (o, blitz_paint::Run::Skip)).collect());
+                        timed(s, None, true, false)?;
+                        s.painter.keep_cached();
+                        let slot = s.painter.cached_len() - 1;
+                        keep.insert(p, (slot, m));
+                        plan.insert(kids[p], blitz_paint::Run::Cached(slot));
+                    }
+                    blitz_paint::set_plan(plan);
+                }
                 timed(s, None, true, false)?;
-                s.painter.accumulate(i == 0, k)?;
+                s.painter.accumulate(nth == 0, k)?;
             }
             Ok(())
         })();
@@ -542,7 +608,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     }
     if req["noRead"].as_bool() == Some(true) {
         // Drawn and kept on the GPU (the frame's export for the world picture, scene_world.rs): nothing read back.
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "edits": edits, "samples": samples.len().max(1), "decodeMs": decode_ms });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "edits": edits, "samples": samples.len().max(1), "movedSamples": moved_samples, "decodeMs": decode_ms });
         return Ok((json!({ "ok": true, "timing": timing }), None));
     }
     let t2 = Instant::now();
@@ -569,7 +635,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         // The comp-cache buffers the frame tapped are on disk before it is answered (the host looks them up next).
         s.painter.taps_written()?;
         tap_write_ms += s.painter.last_tap_write_ms;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "encodeWaitMs": wait_ms, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "movedSamples": moved_samples, "stillMs": still_ms, "stillPieces": still_pieces, "encodeWaitMs": wait_ms, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
         return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes }), None));
     }
     let image = req["image"].as_str();
@@ -583,7 +649,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         s.painter.taps_written()?;
         tap_write_ms += s.painter.last_tap_write_ms;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": 0.0, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms, "gpuOutput": true });
+        let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": 0.0, "edits": edits, "samples": samples.len().max(1), "movedSamples": moved_samples, "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms, "gpuOutput": true });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         let t4 = Instant::now();
         let path = image.unwrap();
@@ -631,7 +697,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
         let (pw, ph) = s.painter.size();
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "edits": edits, "samples": samples.len().max(1), "movedSamples": moved_samples, "stillMs": still_ms, "stillPieces": still_pieces, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         let mut reply = json!({ "ok": true, "width": pw, "height": ph, "timing": timing, "boxes": boxes, "scopes": scopes_out });
         if req["defer"].as_bool() == Some(true) {
@@ -646,7 +712,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     convert(&mut s.painter, &s.color, &mut raw, w, deep, fast, index, &mut pixels)?;
     taps_done(s, &mut tap_write_ms)?;
     paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-    let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
+    let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "movedSamples": moved_samples, "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
     let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
     if let Some(path) = image {
         let t4 = Instant::now();

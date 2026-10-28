@@ -66,6 +66,16 @@ moving under 1 px per step) keeps `shutterSamples`, at no extra cost but the pro
 millisecond each on a typical scene). Not measured: what moves inside a layer (a path's shape, letters playing their
 keys, a rig's warp, tilt's perspective); raise `shutterSamples` for those.
 
+**A fast frame move is cheap** (engine `scene_serve.rs` `stage_at`, `still_runs.rs`). When the frame (camera) moves
+faster than the layers do on their own, the steps are measured a second time with the frame held where it is at the
+frame's time (`steps.rs` `own_steps`): that many steps are what the layers' own moves need. The n sub-frames are then
+split into that many equal groups. In a group the layers are as at its middle sub-frame and only the frame moves, so
+each top-level layer that blends normally is painted once per group and its picture is moved for the other
+sub-frames (staging, layout and painting skipped). A whip pan needing 128 steps whose layers need 16 paints 16 times,
+not 128. The picture is the same up to resampling (a picture moved by a fraction of a px is sampled smoothly) and the
+few px a move uncovers at the frame's edge, which take the picture's edge px. Layers with a blend mode, glow or frosted
+glass are still drawn each sub-frame. A request's own `shutterSamples` never groups.
+
 **Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
 the comp's values for that one frame, and its `shutterSamples` is then the exact count, not adapted (1 sample = no blur:
 a fast preview while playing; or a timing test at 8 vs 16). The screen's playback sends 1 while time moves unless
