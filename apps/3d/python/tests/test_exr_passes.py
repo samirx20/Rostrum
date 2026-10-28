@@ -15,7 +15,7 @@ from rostrum3d.runtime import find_exe
 SCENE = '''
 grey = material("grey", baseColor="#808080", roughness=0.9)
 mesh("floor", shape="plane", width=10, depth=10, material=grey)
-mesh("box", name="The box", shape="box", y=0.5, material=grey)
+mesh("box", name="The box", shape="box", material=grey)
 light("key", kind="rect", width=1, height=1, intensity=6, x=1, y=2.5, z=1).aim((0, 0, 0))
 cam = camera("cam", focalLength=30, y=2.0, z=4.0).aim((0, 0.5, 0))
 shot("hero", camera=cam, fps=24, start=0, end=1)

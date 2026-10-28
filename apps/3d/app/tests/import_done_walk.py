@@ -39,7 +39,7 @@ SCENE = '''
 floor = material("floor", baseColor="#3a3d42", roughness=0.8)
 stone = material("stone", baseColor="#bdb6aa", roughness=0.7)
 mesh("ground", shape="plane", width=6, depth=6, material=floor)
-mesh("plinth", shape="cylinder", radius=0.22, height=0.6, bevel=0.01, y=0.3, material=stone)
+mesh("plinth", shape="cylinder", radius=0.22, height=0.6, bevel=0.01, material=stone)
 light("key", kind="rect", width=1.2, height=0.8, intensity=6, x=1.4, y=1.8, z=1.2).aim((0, 0.6, 0))
 light("sky", kind="dome", color="#9fb2cc", intensity=0.3)
 cam = camera("cam", focalLength=40, y=1.25, z=1.9).aim((0, 0.62, 0))

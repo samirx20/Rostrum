@@ -48,7 +48,7 @@ def two_shots() -> list[str]:
 def lid_turn() -> list[str]:
     """Start args for the sample with a lid on the block that opens: Turn X 0 → −105° from 0.8 s to 1.6 s (mockup 07)."""
     script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "lid_turn.py"
-    script.write_text(SOURCE + 'mesh("lid", shape="box", width=0.5, height=0.04, depth=0.5, y=0.32, material=clay)'
+    script.write_text(SOURCE + 'mesh("lid", shape="box", width=0.5, height=0.04, depth=0.5, y=0.3, material=clay)'
                       '.key("rx", {0.8: 0, 1.6: -105})\n', encoding="utf-8")
     return ["--script", str(script)]
 
@@ -108,7 +108,7 @@ def buds(layout: str = "line") -> list[str]:
     script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / f"buds_{layout}.py"
     where = ('layout="line", count=12, spacingX=0.09' if layout == "line"
              else 'layout="surface", surface="block", count=400, minSpacing=0.02, seed=3')
-    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.03, z=0.7, material=clay)'
+    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, z=0.7, material=clay)'
     script.write_text(f"{SOURCE}{bud}\ncopies(\"buds\", source=bud, {where})\n", encoding="utf-8")
     return ["--script", str(script)]
 
@@ -117,7 +117,7 @@ def drop() -> list[str]:
     """Start args for the sample with twelve buds that fall (a copies item set to Falls) and the ground plane set to Stays still
     (brief 25): the Simulate row, the bodies' badges, the Scene panel's Simulation group."""
     script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "drop.py"
-    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.6, z=0, material=clay)'
+    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.57, z=0, material=clay)'
     source = SOURCE.replace('mesh("ground", ', 'mesh("ground", simulate="still", ')
     script.write_text(f'{source}{bud}\ncopies("buds", source=bud, layout="line", count=12, spacingX=0.09, simulate="falls")\n',
                       encoding="utf-8")

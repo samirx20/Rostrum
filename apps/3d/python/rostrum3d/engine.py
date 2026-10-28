@@ -24,7 +24,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 LOG_DIR = Path.home() / ".rostrum" / "logs"
-from .runtime import find_exe, need_stylized, runtime_env             # where the libraries are and how the engine program finds them
+from .runtime import need_stylized, run_exe, runtime_env             # where the libraries are and how the engine program finds them
 
 
 class EngineError(RuntimeError):
@@ -61,7 +61,7 @@ def _end_all():
 
 class Engine:
     def __init__(self, exe: Path | None = None, env: dict | None = None, args: tuple = ("serve",)):
-        self.exe, self.args = (Path(exe) if exe else find_exe()), tuple(args)
+        self.exe, self.args = (Path(exe) if exe else run_exe()), tuple(args)
         self._env = env
         self.proc, self.pid, self.log_path = None, None, None
         self._lines: queue.Queue = queue.Queue()

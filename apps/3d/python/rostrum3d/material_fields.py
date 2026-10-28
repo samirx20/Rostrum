@@ -52,7 +52,9 @@ MATERIAL = [
       help="A soft glow at grazing angles from tiny fibres (fabric, velvet, dust, peach fuzz) (Cycles)"),
     N("sheenRoughness", "Sheen roughness", "Sheen", 0, 1, 0.01, "", D, NOT("sheen", 0), default=0.5,
       help="Low = a narrow rim along the outline; high = spread over the whole surface"),
-    C("sheenTint", "Sheen colour", "Sheen", "#ffffff", D, NOT("sheen", 0)),
+    C("sheenTint", "Sheen colour", "Sheen", "#ffffff", D, NOT("sheen", 0),
+      help="The fibres' colour: a dyed cloth's is its base colour (white on a coloured cloth turns it pale, like paper); "
+           "white = dust, frost, peach fuzz"),
     N("anisotropy", "Anisotropy", "Brushed", 0, 1, 0.01, "", D, help="Stretches highlights along one direction (brushed metal) (Cycles)"),
     CH("brushDirection", BRUSH, "Brushed along", "Brushed", "uv", D, NOT("anisotropy", 0),
        help="uv = along the mesh's U (straight brushing); around x / y / z = circles round that axis of the item, "

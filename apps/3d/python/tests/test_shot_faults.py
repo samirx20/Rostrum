@@ -11,8 +11,8 @@ from rostrum3d.mcp import shot_faults
 
 SRC = '''
 camera("cam", z=3)
-mesh("ball", shape="sphere", radius=0.2, y=0.5)
-mesh("crate", shape="box", width=0.2, height=0.2, depth=0.2, y=0.1, x=0.5)
+mesh("ball", shape="sphere", radius=0.2, y_world=0.5)
+mesh("crate", shape="box", width=0.2, height=0.2, depth=0.2, x=0.5)
 shot("hero", camera="cam", fps=24, start=0, end=24)
 '''
 

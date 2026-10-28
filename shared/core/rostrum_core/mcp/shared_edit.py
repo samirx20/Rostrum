@@ -85,7 +85,7 @@ def register(tools: Tools):
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
-        reply = Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings() + _new_advice(doc, advised), changed=changed)
+        reply = Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=[*getattr(tree, "notes", ()), *report.warnings(), *_new_advice(doc, advised)], changed=changed)
         look = args.get("look")
         return ctx.app.script_look(ctx, doc, look, reply) if look not in (None, False, []) and ctx.app.script_look else reply
 

@@ -11,6 +11,9 @@ distance (`subsurfaceRadius`) and the colour whose channels are the others' shar
 Light to colour with its bands in neutral greys (white lit, so the base colour itself shows where it is lit), and for
 Ink & flat lines on too. Their bands are physical settings (how much light makes a band), never a colour scheme: a
 person or an agent picks the colours afterwards.
+Fabric's sheen is the colour of its fibres (a dyed thread scatters its dye's colour): its sheen colour is its base colour,
+and a fabric made with another base colour gets that one as its sheen colour too (start_values). A white sheen over a
+dyed cloth turned every flat, top-lit stretch of it pale pink-white like paper (round 5 of the 3D gaps, Drape r2).
 """
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ STARTS: dict[str, dict] = {
     "ceramic": {"label": "Ceramic", "values": {"baseColor": "#e0e0e0", "roughness": 0.3, "coat": 1,
                                                "coatRoughness": 0.05, "ior": 1.5}},
     "fabric": {"label": "Fabric", "values": {"baseColor": "#8c8c8c", "roughness": 0.9, "sheen": 0.6,
-                                             "sheenRoughness": 0.6}},
+                                             "sheenRoughness": 0.6, "sheenTint": "#8c8c8c"}},   # dyed fibres shine in their dye
     "wood": {"label": "Wood", "values": {"baseColor": "#8a5a36", "roughness": 0.55}},
     "car paint": {"label": "Car paint", "values": {"baseColor": "#8c8c8c", "roughness": 0.4, "coat": 1,
                                                    "coatRoughness": 0.03}},
@@ -63,7 +66,11 @@ def start_values(key: str, given: dict) -> dict:
     base colour image is given) is dropped, so a start never refuses a field; a given field that doesn't apply still
     fails loudly where it is written."""
     from . import fields as F
-    merged = {**STARTS[key]["values"], **given}
+    start = STARTS[key]["values"]
+    merged = {**start, **given}
+    for k in ("sheenTint",):                                    # a start's colour that is its base colour follows it
+        if k not in given and start.get(k) == start["baseColor"] and "baseColor" in given:
+            merged[k] = given["baseColor"]
     item = {**F.defaults("material"), **merged}
-    off = set(F.not_valid("material", item, [k for k in STARTS[key]["values"] if k not in given]))
+    off = set(F.not_valid("material", item, [k for k in start if k not in given]))
     return {k: v for k, v in merged.items() if k not in off}

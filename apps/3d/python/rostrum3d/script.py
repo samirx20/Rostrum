@@ -27,6 +27,10 @@ script made earlier; asked twice, the same handle. `remove("a", "b")` takes thin
 under its name changes them again); a field a person changed since is held back, as for any script. A re-run that leaves
 out most of what its last run made is refused (script_rerun.py).
 
+Ground first (script_ground.py): a mesh, import or group made directly in the scene stands on the ground, its `y` the height of
+its base above it (`y_world=` for its origin's world height); place by relation with place_on / row (script_place.py); frame
+with shot(frame=…) and light in stops with light(brightness=…) (script_shot.py).
+
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
 script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
 """
@@ -43,7 +47,7 @@ from rostrum_core.keys import key_id
 from . import aim, build, clay_detail, start_lights, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from rostrum_core.tree import walk
 
-from . import script_figure, script_rerun
+from . import script_figure, script_ground, script_place, script_pose, script_rerun, script_shot
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -64,7 +68,13 @@ class Item:
         self._b, self.node, self.id = b, node, node["id"]
 
     def set(self, **values) -> "Item":
+        if "y_world" in values:                          # its origin at a world height: no longer grounded
+            script_ground.release(self._b, self.id)
+            values["y"] = values.pop("y_world")
         build.fill(self.node, _ids(values), f"script › {self.id}")
+        self._b.given.setdefault(self.id, set()).update(values)
+        if self.id in self._b.grounded:                  # y = its base's height above the ground (script_ground.py)
+            script_ground.settle(self._b, self.node, "y" in values)
         return self
 
     def key(self, prop: str, keys, ease: str = "smooth", **curve) -> "Item":
@@ -74,6 +84,9 @@ class Item:
         "visible" takes True / False (1 / 0): shown or hidden from that key to the next, never in between.
         The first key() of a field in a run replaces that field's keys (so keys on a thing taken over with edit() are
         never doubled); a later key() of it in the same run adds to them, a key at the same time replacing."""
+        if self.node["type"] == "shot" and prop == "frame":    # a push-in: camera keys (script_shot.py)
+            script_shot.key_frame(self._b, self.node, self._b.framing.get(self.id, {}), keys, ease)
+            return self
         keys = _key_dict(self.id, prop, keys)
         if (id(self.node), prop) not in self._b.keyed:
             self._b.keyed.add((id(self.node), prop))
@@ -98,7 +111,7 @@ class Item:
                     raise ValueError(f"{where}: {prop} is on / off; a key's value is True / 1 or False / 0")
                 value = 1.0 if value else 0.0
             else:
-                value = p.check(value, where)
+                value = script_ground.key_value(self._b, self.node, prop, p.check(value, where))
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
                  ("c" if p.type == "color" else "v"): value, "ease": e}
             if set(own) - set(CURVE):
@@ -106,6 +119,8 @@ class Item:
                                  f'a key takes v, ease and {", ".join(CURVE)}')
             build.fill(k, own, where)                      # checked, and loud when a setting doesn't fit the ease
             self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
+        if self.id in self._b.grounded and prop != "y":    # a turn or a size keyed: its base measured again
+            script_ground.settle(self._b, self.node, False)
         return self
 
     def aim(self, target, roll: float | None = None) -> "Item":
@@ -130,6 +145,7 @@ class Item:
             from .sim.cloth_check import over as place
             if kind != "cloth":
                 raise ValueError(f"{self.id}.simulate: over= only places a cloth")
+            script_ground.release(self._b, self.id)
             tree = self._b.root if _id_of(over) in self._b.taken else (self._b.doc.data if self._b.doc else self._b.root)
             self.set(**place(tree, self.node, _id_of(over)))
         return self
@@ -152,28 +168,29 @@ class Item:
             dy = lift(tree, self.id, sid, float(from_top))
         except NotInView as e:
             raise ValueError(f"{self.id}.start_in_view: can't start in view of shot {sid!r}: {e}") from None
+        script_ground.release(self._b, self.id)
         return self.set(y=round(float(self.node.get("y", 0.0)) + dy, 4))
 
-    def place_on(self, other, at=None, normal=None) -> "Item":
-        """Stand this mesh on `other`. Without `at`: on top of a mesh made earlier in the same group, its base on that
-        mesh's top, over its middle (move it along the top afterwards with .set(x=…, z=…)); both unturned. With
+    def take_view(self, pos, look_at) -> "Item":
+        """A camera: stand at `pos` (world) and aim at `look_at` (a point (x, y, z) or an item)."""
+        return script_shot.take_view(self, pos, look_at)
+
+    def place_on(self, other=None, at=None, normal=None, beside=None, side=None, in_front_of=None,
+                 gap: float = 0.0) -> "Item":
+        """Place this thing by another, by both things' real room in the world (turned, in groups; script_place.py):
+        place_on(other) its base on other's top, over its middle (gap= metres between); place_on(other,
+        beside="left"|"right"|"front"|"back") or place_on(beside=other, side=…) next to it on that world side (front =
+        +Z), lined up with its middle, gap= metres between, its base level with the other's; place_on(in_front_of=other). With
         `at=(x, y, z)`, a point in the world on `other`'s surface (a clay or a mesh made earlier anywhere): its base
         on the surface there, standing along `normal` (left out: straight out from `other`'s upright middle line).
         On a clay whose Mirror is on, a point off its middle (farther than the mesh's half size) also makes the
         mesh's mirrored copy, which follows it (mesh.mirror; edit_place_on does the same from a pixel of a look). On a
         clay the mesh also follows its pose (follow=<clay>, followPose): posed, it moves with the bone nearest it."""
         if at is not None:
+            script_ground.release(self._b, self.id)
             return self._place_at(other, [float(c) for c in at], normal)
-        o = other.node if isinstance(other, Item) else next(
-            (n for n in self._siblings() if n["id"] == other), None)
-        if o is None or o not in self._siblings():
-            raise ValueError(f"{self.id}.place_on: {_id_of(other)!r} is not a mesh made earlier in the same group")
-        mine, theirs = self.node, o
-        for n, v in ((self.id, mine), (o["id"], theirs)):
-            if v["type"] != "mesh" or any(v.get(k, 0) for k in ("rx", "ry", "rz")):
-                raise ValueError(f"{self.id}.place_on: {n} must be an unturned mesh")
-        y = theirs["y"] + shape_size.half_height(theirs) * theirs["sy"] + shape_size.half_height(mine) * mine["sy"]
-        return self.set(x=theirs["x"], y=round(y, 6), z=theirs["z"])
+        script_place.place(self._b, self.node, other, beside, side, in_front_of, float(gap))
+        return self
 
     def _place_at(self, other, at, normal) -> "Item":
         oid = _id_of(other)
@@ -251,11 +268,17 @@ class Item:
         pts, node = [list(p) for p in profile], self.node
         return self._step(clay_steps.spin_values(node, _vec(values), pts, clay_detail.detail(self._b.root, node)))
 
-    def pose(self, part: str, keys, holds=None, ease: str = "smooth") -> "Item":
-        """Pose a clay figure by dragging a part: {seconds: (x, y, z)} world points the part's end goes to at each
-        time (pose.drag; "hand.R", "head", "foot.L" …); holds= joints that stay put. Its joints are found (the engine)
-        the first time it is posed, so pose after the last lump."""
-        script_figure.pose(self._b, self._clay_node("pose"), part, keys, holds, ease)
+    def pose(self, at, keys=None, holds=None, ease: str = "smooth", **parts) -> "Item":
+        """Pose a clay figure at one time: .pose(seconds, **{"hand.R": target, "head": target, …}); chain calls for a
+        motion. A target is a world point (x, y, z) or {"up": m, "out": m, "forward": m} from where the part is at rest
+        (the figure's own up / away from its middle / the way it faces). Names: "hand.R", "right hand", "picture-left
+        hand" (as the shot's camera sees it). holds= joints that stay put. The older .pose("hand.R", {seconds: target})
+        still works. Out of reach / far side of the body: a note in the reply. Pose after the last lump."""
+        node = self._clay_node("pose")
+        if isinstance(at, str):
+            script_pose.pose(self._b, node, at, keys, holds, ease)
+        else:
+            script_pose.pose_at(self._b, node, at, parts, holds, ease)
         return self
 
     def bend(self, joint: str, keys, ease: str = "smooth") -> "Item":
@@ -287,6 +310,8 @@ class Item:
 
     def __exit__(self, *exc):
         self._b.holders.pop()
+        if self.id in self._b.grounded:                  # a group stands on the ground as a whole
+            script_ground.settle(self._b, self.node, False)
 
 
 def _key_dict(owner: str, prop: str, keys) -> dict:
@@ -347,6 +372,7 @@ def _copies(b: "Build", id_=None, source=None, **values) -> Item:
     siblings[siblings.index(nodes[0]):siblings.index(nodes[0])] = [it.node]     # takes the first source's place
     for n in nodes:
         siblings.remove(n)
+        script_ground.release(b, n["id"])                # inside the copies now: its y is plain
         n.update(x=0.0, y=0.0, z=0.0)
         it.node["children"].insert(len([c for c in it.node["children"] if c["type"] != "effector"]), n)
     return it
@@ -372,7 +398,12 @@ class Build:
         self.doc, self.name, self.owned = doc, name, {}                    # owned: id -> its list, things already in the document it takes
         self.reserved |= script_rerun.reserved(doc, name)                  # a counted id never lands on another's id
         self.handles, self.removing, self.keyed = {}, set(), set()         # edit()'s handles; remove()'s ids; (node, field) keyed this run
+        self.notes = []                                                    # sentences for the reply's warnings (run_source's Tree)
         self.figures = {}                                                  # clay id -> {ground}: rests on the ground at the end (script_figure.py)
+        self.grounded = {}                                                 # id -> the offset from its base to its y (script_ground.py)
+        self.given = {}                                                    # id -> the fields the script gave (a remade start item keeps the rest)
+        self.framing, self.bright = {}, {}                                 # shot id -> frame= settings; light id -> (stops, at_distance)
+        self.replace_lights = False                                        # light(..., replace_start_lights=True)
 
     def _found(self, id_: str, what: str) -> tuple[str, dict]:
         """(its list, the document's node) of a thing directly in the scene, for edit / remove."""
@@ -423,17 +454,20 @@ class Build:
         copy is the other script's last output of it when there is one (so a person's later edit is held back, as for any
         script), else the document's own."""
         doc = self.doc
-        if doc is None:
-            return
-        script_rerun.guard(self)                             # a re-run leaving out most of what it made: refused
-        script_rerun.remade(self)                            # made again under an id already in the scene: replaces it
-        for lst in ROOT_LISTS:                               # made again under a new-scene id: replaces that one
-            for n in self.root[lst]:
-                if n["id"] not in self.owned and _start_owned(doc, n["id"], lst):
-                    self.owned[n["id"]] = lst
-        for id_ in start_lights.replaced(doc, self.root["items"], lambda i, lst: _start_owned(doc, i, lst)):     # its own lights replace the start's
-            self.owned.setdefault(id_, "items")
-        if not self.owned:
+        if doc is not None:
+            script_rerun.guard(self)                         # a re-run leaving out most of what it made: refused
+            before = set(self.owned)
+            script_rerun.remade(self)                        # made again under an id already in the scene: replaces it
+            for lst in ROOT_LISTS:                           # made again under a new-scene id: replaces that one
+                for n in self.root[lst]:
+                    if n["id"] not in self.owned and _start_owned(doc, n["id"], lst):
+                        self.owned[n["id"]] = lst
+            script_rerun.keep_fields(self, set(self.owned) - before - set(self.handles))   # keeps what it didn't say
+            for id_ in start_lights.replaced(doc, self.root["items"], lambda i, lst: _start_owned(doc, i, lst),
+                                             self.replace_lights):              # replace_start_lights=True, or a dome
+                self.owned.setdefault(id_, "items")
+        script_shot.check(self)                              # a shot with no camera: refused, naming the fix
+        if doc is None or not self.owned:
             return
         base = doc.script_bases.setdefault(name, KIND.blank())
         for id_, lst in self.owned.items():
@@ -462,6 +496,7 @@ class Build:
     def add(self, type_: str, id_, values: dict, into: list) -> Item:
         node = build.make(type_, self.new_id(type_, id_), _ids(values),
                           f"script › {type_} {id_ or ''}".strip())
+        self.given[node["id"]] = set(values)
         into.append(node)
         return Item(self, node)
 
@@ -477,6 +512,13 @@ class Build:
 
     def item(self, type_: str, id_=None, **values) -> Item:
         into = self.holders[-1]["children"] if self.holders else self.root["items"]
+        floating = "y_world" in values
+        if floating:
+            values["y"] = values.pop("y_world")
+        light = {k: values.pop(k) for k in ("replace_start_lights", "brightness", "at_distance") if k in values}
+        if light and type_ != "light":
+            raise ValueError(f"{', '.join(light)}: only a light takes these")
+        self.replace_lights |= bool(light.get("replace_start_lights"))
         parts = values.pop("parts", []) if type_ == "import" else []
         if (on := values.pop("attach_to", None)) is not None:      # moves (and bends) with what it is attached to
             values.update(self._attach(type_, on))
@@ -485,9 +527,14 @@ class Build:
             values, found = ops_import.read_file(values, keep)
             parts += [p for p in found if p not in parts]
         it = self.add(type_, id_, values, into)
+        if "brightness" in light:
+            self.bright[it.id] = (float(light["brightness"]), light.get("at_distance"))
         names = ops_import.part_names(parts)
         for path in parts:
             it.part(path, name=names[path])
+        if not floating and script_ground.wants(it.node, not self.holders):
+            self.grounded[it.id] = 0.0
+            script_ground.settle(self, it.node, True)
         return it
 
 
@@ -524,11 +571,12 @@ def _import(name, *args, **kw):
     raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, zip … are already there")
 
 
-API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
-       "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
+API = ["y = height of the base above the ground (mesh, import, group made in the scene); y_world= for the origin's world height",
+       "group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, brightness= stops, at_distance=, replace_start_lights=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
+       "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other, gap=) / place_on(other, beside=\"left\"|\"right\"|\"front\"|\"back\", gap=) / place_on(in_front_of=other) / place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
-       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(part, {seconds: (x, y, z)}, holds=)", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
+       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(seconds, **{\"right hand\": (x, y, z) or {\"up\": m, \"out\": m, \"forward\": m}, \"head\": …}, holds=): one pose per call, chain for motion; names hand.R / right hand / picture-left hand", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
 def run_source(source: str, name: str, doc=None) -> dict:
@@ -538,7 +586,9 @@ def run_source(source: str, name: str, doc=None) -> dict:
     b = Build(_reserved(source), doc, name)
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
-             "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
+             "shot": lambda id=None, **v: script_shot.make(b, id, v),
+             "row": lambda items, gap=0.1, centre=True, axis="x", at=None: script_place.row(
+                 b, [b.edit(i).node for i in items], float(gap), centre, axis, at),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              "clay": lambda id=None, **v: _clay(b, id, **v),
              "copies": lambda id=None, source=None, **v: _copies(b, id, source, **v),
@@ -551,12 +601,26 @@ def run_source(source: str, name: str, doc=None) -> dict:
         line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            API) from e
-    for clay_id in b.figures:
-        node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == clay_id), None)
-        if node is not None:
-            script_figure.settle(b, node)
+    try:
+        for clay_id in b.figures:
+            node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == clay_id), None)
+            if node is not None:
+                script_ground.settle_clay(b, node)
+        for light_id, (stops, far) in b.bright.items():
+            script_shot.brightness(b, next(n for n in walk(b.root, KIND.lists) if n.get("id") == light_id), stops, far)
+    except ValueError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed: {e}", API) from e
     b.take_over(name)
-    return b.root
+    return Tree(b.root, b.notes)
+
+
+class Tree(dict):
+    """run_source's document tree, carrying the run's notes (Build.notes: a pose target out of reach …), which
+    run_script adds to its reply's warnings."""
+
+    def __init__(self, root: dict, notes: list):
+        super().__init__(root)
+        self.notes = list(dict.fromkeys(notes))
 
 
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the open document

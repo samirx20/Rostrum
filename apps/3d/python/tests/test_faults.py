@@ -40,3 +40,15 @@ def test_still_and_in_frame_is_done_and_a_camera_looking_up_has_no_floor():
     sky = still.replace('camera("cam", z=4, y=0.8)', 'camera("cam", z=4, y=0.8, rx=25)')
     found, _ = _faults(sky)
     assert "no_floor:hero" in found, found
+
+
+def test_a_seen_sky_photo_past_the_floor_is_a_backdrop_edge_and_an_unseen_one_is_not():
+    """Drape (round 5): a low camera saw the Studio photo's room above the floor's far edge."""
+    still = SRC.replace('.key("x", {0: 0.17, 2: 0.5}).key("y", {0: 0.45, 2: 0.07})', "").replace('.key("z", {0: 0, 2: 2.5})', "")
+    seen = still + 'light("sky", kind="dome", texture="sky:studio")\n'
+    found, _ = _faults(seen)
+    assert "backdrop_edge:sky" in found and "seenByCamera=False" in found["backdrop_edge:sky"]["fix"], found
+    found, _ = _faults(seen.replace('texture="sky:studio"', 'texture="sky:studio", seenByCamera=False'))
+    assert "backdrop_edge:sky" not in found, found
+    found, _ = _faults(seen.replace('camera("cam", z=4, y=0.8)', 'camera("cam", z=4, y=2.5, rx=-35)'))
+    assert "backdrop_edge:sky" not in found, found                          # looking down: all floor

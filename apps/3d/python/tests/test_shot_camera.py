@@ -11,7 +11,7 @@ from rostrum3d.resolve import Frames
 
 SAM = Who.person()
 SRC = '''
-mesh("box", shape="box", width=0.4, height=0.2, depth=0.3, x=0.5, y=0.1)
+mesh("box", shape="box", width=0.4, height=0.2, depth=0.3, x=0.5)   # its base on the ground: its middle at 0.1
 with group("rigged", ry=30, x=1):
     camera("cam", focalLength=50, z=4)
 camera("aimed", y=1, z=3).aim((0, 0, 0))

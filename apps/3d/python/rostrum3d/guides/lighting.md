@@ -92,7 +92,9 @@ To see what a light sees, look through it: in the screen's viewport select a rec
 
 A new project already holds a key and a rim aimed at the middle of the ground (`key_light`, `rim_light`) with the Studio sky as
 fill, so a thing put there reads at once. They are ordinary lights: move, aim, re-balance with `exposure`, or delete them and
-start from nothing as below. A script that makes a dome of its own takes the start sky out; one that makes any other light takes the key and rim out (guide `script`).
+start from nothing as below. A script that makes a dome of its own takes the start sky out; any other light of its own adds to the key and rim unless made with `replace_start_lights=True` (guide `script`). To set a light in plain stops: `brightness=0` lights its subject as the start key lights its own (+1 twice, -1 half), at the distance to what it aims at or `at_distance=` metres; it sets `intensity` (Same brightness at any size) and `exposure`.
+
+The start Studio sky lights and reflects but the camera doesn't see it (`seenByCamera` off): past the ground's far edge a low or level camera sees the shot's plain `background`, set to the start floor's tone, so the floor runs to a soft horizon instead of showing the photographed room's walls and lamps. Recolour the ground and set the shot's `background` to the far floor's colour too (else the horizon is a line between two colours). A sky photo the camera sees in the picture past the floor is the fault `backdrop_edge:<dome>`; keep it only when that photo is meant to be the backdrop (an outdoor sky).
 
 1. Start with one light (the key) and nothing else. Render; judge the shape and the shadow.
 2. Add one light at a time, each with one job. Turn each off and on (`visible`) to see what it adds; remove lights that add nothing.

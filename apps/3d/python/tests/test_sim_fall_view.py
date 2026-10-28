@@ -20,8 +20,8 @@ from rostrum3d.sim.inputs import JOLT_VERSION, SIM_VERSION
 SAM = Who.person()
 SRC = '''
 cam = camera("cam", focalLength=40, x=0, y=1.25, z=1.55).aim((0, 0.78, 0))
-mesh("table", shape="box", width=1.4, height=0.06, depth=0.9, y=0.72).simulate("still")
-mesh("sweet", shape="sphere", radius=0.035, x=-0.2, y=1.6).simulate("falls")
+mesh("table", shape="box", width=1.4, height=0.06, depth=0.9, y_world=0.72).simulate("still")
+mesh("sweet", shape="sphere", radius=0.035, x=-0.2, y_world=1.6).simulate("falls")
 shot("spill", camera=cam, fps=24, start=0, end=1, width=1280, height=720)
 '''
 

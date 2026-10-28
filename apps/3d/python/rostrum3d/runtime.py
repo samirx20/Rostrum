@@ -44,6 +44,16 @@ def find_exe() -> Path:
     return REPO / "apps" / "3d" / "core" / ".build" / "install" / "rostrum3d-core.exe"
 
 
+def run_exe() -> Path:
+    """The engine program to start: ROSTRUM3D_CORE as given, else a run copy of this checkout's build
+    (engine_copy.py: a rebuild never collides with a running engine)."""
+    if os.environ.get("ROSTRUM3D_CORE"):
+        return find_exe()
+    from .engine_copy import copy_of
+    exe = find_exe()
+    return copy_of(exe.parent, "3d-core", only=(exe.name,)) / exe.name
+
+
 def stylized_dir() -> Path:
     """ROSTRUM3D_STYLIZED, else this checkout's build of the stylized plug-in (apps/3d/stylized/build.bat)."""
     if os.environ.get("ROSTRUM3D_STYLIZED"):
@@ -72,8 +82,9 @@ def runtime_env(base: dict | None = None) -> dict:
         if not d.is_dir():
             raise LibsMissing(f"3D libraries missing: {d} not found. Run: python -I apps\\3d\\libs\\lay_out.py "
                               "(or set ROSTRUM3D_LIBS to a folder it made)")
-    if stylized_found():
-        plugins.append(stylized_dir())
+    if stylized_found():                              # a run copy (engine_copy.py) unless named by ROSTRUM3D_STYLIZED
+        from .engine_copy import copy_of
+        plugins.append(stylized_dir() if os.environ.get("ROSTRUM3D_STYLIZED") else copy_of(stylized_dir(), "3d-stylized"))
     env = dict(os.environ if base is None else base)
     env["PATH"] = os.pathsep.join([str(d) for d in dirs] + [env.get("PATH", "")])
     ours = [str(p) for p in plugins]                  # ours first, then whatever the person already set (no duplicates)

@@ -93,6 +93,9 @@ class Hydra {
   // one render through a scene camera; with `s.aovs` (Cycles only) their outputs are read into `aovs`
   Picture draw(const std::string& renderer, const PXR_NS::SdfPath& camera, int frame, int width, int height,
                const DrawSettings& s, GpuMemWatch& mem, Aovs* aovs = nullptr);
+  // the colour and depth textures the last draw() of this size left (Storm without extra outputs: its own depth), for
+  // laying the viewport's contact shading over a quick-look PNG (Core::storm_png)
+  ViewDrawn last_drawn(int width, int height);
   // one live viewport picture through `frustum` (a scene camera's or the free camera's)
   ViewDrawn view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
                  const ViewLook& look, GpuMemWatch& mem);

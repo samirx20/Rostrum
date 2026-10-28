@@ -52,7 +52,7 @@ def test_no_hand_bound_key_left_in_the_window():
 SRC = '''
 cam = camera("cam", z=3)
 m = material("red", baseColor="#cc3333")
-mesh("box", shape="box", y=0.5, material=m)
+mesh("box", shape="box", material=m)
 mesh("ball", shape="sphere", x=1)
 light("lamp", kind="rect", y=2)
 shot("s", camera=cam, fps=10, start=0, end=20)

@@ -174,6 +174,9 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
 
   auto& hy = hydra();
   mem_.reset_peak();
+  // a Storm picture saved only as a PNG (every quick look, sheet and Storm export) is drawn as the viewport draws it:
+  // a quick look without contact shading made every resting thing read as floating (3e audit R5)
+  const bool quick_png = renderer == "storm" && exr.empty() && !png.empty();
   JsArray frames;
   const auto t0 = Clock::now();
   double first_ms = 0;
@@ -190,6 +193,16 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
     if (report) s.onStep = step(0.0, twice ? 0.5 : 1.0);
     clay_->pose_frame(f);  // CL5: each skinned clay posed for this frame
     const double weldMs = renderer == "cycles" ? clay_->whole_for_cycles() : 0.0;  // CL6: one closed mesh per clay
+    if (quick_png) {  // 3e-3d R5: the quick look as the viewport draws it, contact shading and all
+      storm_png(cam, f, w, h, view, exposure, frame_path(png, f), s);
+      JsObject fo{{"frame", JsValue(f)}, {"png", JsValue(frame_path(png, f))}, {"ms", JsValue(r1(ms_since(tf)))}};
+      if (f == first) first_ms = ms_since(tf);
+      frames.push_back(JsValue(fo));
+      if (report)
+        progress(JsObject{{"progress", JsValue(f - first + 1)}, {"of", JsValue(last - first + 1)},
+                          {"frame", JsValue(f)}, {"ms", JsValue(r1(ms_since(tf)))}});
+      continue;
+    }
     Aovs lit, unshadowed;
     Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_, &lit);
     if (twice) {  // the Shadow pass: the same frame again with no shadows
@@ -235,6 +248,31 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
                                 {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
                                 {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
       {"ramPeakMb", JsValue(r1(ram_peak_mb()))}};
+}
+
+void Core::storm_png(const SdfPath& cam, int f, int w, int h, const std::string& view, double exposure,
+                     const std::string& file, const DrawSettings& s) {
+  auto& hy = hydra();
+  hy.draw("storm", cam, f, w, h, s, mem_);  // the render itself, as before; its colour and depth then finished as
+  ViewPostIn post;                          // the viewport finishes its own (view_post.h), contact shading laid in
+  post.width = w;
+  post.height = h;
+  post.config = color_.config_name();
+  post.display = color_.display();
+  post.view = view;
+  post.exposure = exposure;
+  post.ao = 1.0;
+  background(stage_, post.background);
+  ViewCamera vc;
+  vc.camera = cam;
+  post.projection = frustum_of(stage_, vc, f, w, h).ComputeProjectionMatrix();
+  const ViewDrawn pic = hy.last_drawn(w, h);
+  post.color = pic.color;
+  post.depth = pic.depth;
+  if (!post_) post_ = std::make_unique<ViewPost>();
+  std::vector<unsigned char> rgba(size_t(w) * h * 4);
+  post_->run(post, rgba.data());
+  write_png8(rgba.data(), w, h, file);
 }
 
 JsObject Core::view(const JsObject& o) {

@@ -17,7 +17,7 @@ sizes in the settings panel.
 In a script, stand one mesh on another with `place_on`: its base on the other's top, over its middle; move it along
 the top afterwards.
 
-      mesh("plinth", shape="box", width=0.5, height=0.3, depth=0.5, y=0.15)
+      mesh("plinth", shape="box", width=0.5, height=0.3, depth=0.5)        # on the ground
       mesh("cap", shape="cone", radius=0.04, height=0.09).place_on("plinth").set(x=0.12)
 
 **On a mirrored clay** (a clay whose Mirror is on, as a new one is), a shape clicked anywhere off its middle gets a

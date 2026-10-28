@@ -97,6 +97,30 @@ def shot_take_view(ctx, targets, args):
     _put(ctx, cam, values, at)
 
 
+def view(fr: Frames, cam: str, f: int, shot: dict):
+    """(eye, axes (right, up, forward, unit), tan of half the picture's width and height, the camera's values) at f."""
+    world, v = fr.world(cam, f), fr.values(cam, f)
+    eye = aim.point(world, [0.0, 0.0, 0.0])
+    axes = [_unit([a - b for a, b in zip(aim.point(world, d), eye)]) for d in ([1, 0, 0], [0, 1, 0], [0, 0, -1])]
+    tan_w = v["sensorWidth"] / (2 * v["focalLength"])
+    return eye, axes, tan_w, tan_w * shot.get("height", 1080) / shot.get("width", 1920), v
+
+
+def subject_eye(axes, corners, tan_w: float, tan_h: float, near: float, at=(0.5, 0.5), fill: float = 0.6) -> list:
+    """Where a camera looking along `axes` stands so the subject (its box's corners) has its middle at `at` (fractions
+    of the picture from the left and the top) and its height takes `fill` of the picture's height (never wider than
+    the room between `at` and the nearer side edge). The script's shot(frame=…) uses it."""
+    right, up, fwd = axes
+    mid = [sum(c[k] for c in corners) / len(corners) for k in range(3)]
+    rel = [[a - b for a, b in zip(c, mid)] for c in corners]
+    span = lambda ax: max(_dot(d, ax) for d in rel) - min(_dot(d, ax) for d in rel)   # noqa: E731
+    room = 2 * min(at[0], 1 - at[0]) * 0.95
+    dist = max(span(up) / (2 * tan_h * fill), span(right) / (2 * tan_w * max(room, 1e-3)),
+               near - min(_dot(d, fwd) for d in rel))
+    r, u = (2 * at[0] - 1) * dist * tan_w, (1 - 2 * at[1]) * dist * tan_h
+    return [m - dist * f - r * a - u * b for m, f, a, b in zip(mid, fwd, right, up)]
+
+
 def slide(base, axes, corners, tan_w: float, tan_h: float, near: float) -> float:
     """How far forward from `base` along the view line (axes: right, up, forward, unit) a camera stands so every corner
     sits inside the frame shrunk to FILL, the tightest one on its edge; negative = back."""
@@ -127,11 +151,7 @@ def shot_frame(ctx, targets, args):
         lo, hi = item_bounds.world_box(ctx.doc, list(args["items"]), at)
     except ValueError as e:
         ctx.fail(codes.BAD_ARGUMENT, '"items"', str(e))
-    world, v = fr.world(cam, f), fr.values(cam, f)
-    eye = aim.point(world, [0.0, 0.0, 0.0])
-    axes = [_unit([a - b for a, b in zip(aim.point(world, d), eye)]) for d in ([1, 0, 0], [0, 1, 0], [0, 0, -1])]
-    tan_w = v["sensorWidth"] / (2 * v["focalLength"])
-    tan_h = tan_w * shot.get("height", 1080) / shot.get("width", 1920)
+    eye, axes, tan_w, tan_h, v = view(fr, cam, f, shot)
     corners = [[(lo, hi)[i >> k & 1][k] for k in range(3)] for i in range(8)]
     mid = [(a + b) / 2 for a, b in zip(lo, hi)]
     base = eye if v["aim"] == "item" else mid          # an item's aim rules the direction: only along the line

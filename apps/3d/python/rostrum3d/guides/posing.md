@@ -76,15 +76,28 @@ leaves the part where it was put.
 **From the script (the usual way)**, after the clay's last piece (guide `script`):
 
 ```python
-c.bend("arm.R", {0: (0, 0, 0), 0.8: (0, 0, -100), 3: (0, 0, -100), 3.6: (0, 0, 0)})   # degrees, at each time
-c.bend("forearm.R", {0.8: (0, 0, 0), 1.1: (0, 0, 25), 1.4: (0, 0, -25)})             # a joint further down the arm
-c.pose("hand.L", {1: (0.15, 0.2, 0.05)}, holds=["foot.L", "foot.R"])              # pose.drag at each time
+# a wave: one pose per call, at that time (seconds); chain the calls
+(c.pose(0, **{"picture-right hand": {"up": 0.1}})
+  .pose(0.4, **{"picture-right hand": {"up": 0.12, "out": 0.04}})
+  .pose(0.8, **{"picture-right hand": {"up": 0.12, "out": -0.02}, "head": {"forward": 0.01}}))
+c.bend("arm.R", {0: (0, 0, 0), 0.8: (0, 0, -100)})          # or turn one joint by degrees, at each time
 ```
 
+- `pose(seconds, **{part: target, …}, holds=, ease=)` moves each named part's end to its target at that time (the
+  drag solve, `pose.drag`) and keys the joints that moved. Several parts in one call make one pose; a part not named
+  keeps its last pose. A **target** is a world point `(x, y, z)`, or `{"up": m, "out": m, "forward": m}`: metres
+  from where that part is **at rest**, along the figure's own up, away from its middle (left / right parts only) and
+  the way it faces; negative goes down / in / back. The older `pose("hand.L", {1: target, 2: target})` still works.
+- **Names:** `"hand.R"` (the joint names below), `"right hand"` / `"left foot"` (the figure's own sides: `.R` is
+  its right, the −x side as it faces +Z), or `"picture-left hand"` / `"picture-right hand"`: the hand the shot's
+  camera sees on the left / right of the picture at that time (a figure facing the camera has its right hand on the
+  picture's left). A wrong name fails, listing the parts the figure has.
+- **Notes in the reply** (the pose is still made): a target out of reach ("hand.R target is 0.30 m from the shoulder,
+  its reach is 0.11 m; it stops short") and a target past the body's middle ("did you mean hand.L / picture-left
+  hand?"). Read them and move the target.
 - `bend` turns the joint about the **clay's own X, Y, Z** (it faces +Z), as the joint sits at rest, by that many
   degrees from its rest; its children go with it. About Z swings an arm up or down in the front view (on `arm.R`, the
   −x side, negative raises it); about Y turns the head, about X nods it.
-- `pose` is `pose.drag` at each time (world points, `holds` as below).
 - The first of them finds the joints (`pose.find_joints`, with the engine); a piece added to the clay after it fails,
   so make the whole shape first. A wrong name fails with the joints the clay has.
 - What makes the finder read a figure: something on top of the body's ball gives `head` (a narrower neck between

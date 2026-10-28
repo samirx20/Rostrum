@@ -65,6 +65,9 @@ class Core {
  private:
   Hydra& hydra();  // the GL context and engines are made on first use
   void need_scene(const char* request) const;
+  // a Storm frame saved as a PNG: the quick look drawn as the viewport draws it (contact shading laid in, view_post.h)
+  void storm_png(const PXR_NS::SdfPath& cam, int frame, int width, int height, const std::string& view, double exposure,
+                 const std::string& file, const DrawSettings& s);
   PXR_NS::SdfPath camera(const std::string& id, const char* request) const;
   void check_frame(int frame, const char* where) const;
   // the built mesh of a top-level `mesh` or `combine` item (geometry, unfold); loud about anything else

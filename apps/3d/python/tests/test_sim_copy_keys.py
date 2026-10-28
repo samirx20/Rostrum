@@ -22,7 +22,7 @@ SRC = '''
 cam = camera("cam", z=4, y=0.5)
 shot("drop", camera=cam, fps=10, start=0, end=1)
 bowl = mesh("bowl", shape="box", width=1, height=0.1, depth=1).simulate("still")
-bud = mesh("bud", shape="sphere", radius=0.05, y=1)
+bud = mesh("bud", shape="sphere", radius=0.05, y_world=1)
 copies("buds", bud, layout="line", count=3).simulate("falls")
 '''
 

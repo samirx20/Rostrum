@@ -14,8 +14,14 @@ from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 from .render_fields import shutter_frames
 from . import clay_fields
 from .sim import fields as SIM_FIELDS
+from rostrum_core.errors import RostrumError, codes
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
+
+
+class RequestFault(RostrumError, ValueError):
+    """A fault in what was asked (a shot with no camera), not in Rostrum: the reply says what to change. A ValueError
+    too, so callers that catch one still do."""
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
@@ -42,7 +48,8 @@ def shot_info(data: dict, shot_id: str) -> dict:
     s = _shot(data, shot_id)
     start, end = round(s["start"] * s["fps"]), round(s["end"] * s["fps"]) - 1
     if not s.get("camera"):
-        raise ValueError(f'shot "{shot_id}" has no camera yet (shot.set camera=<camera id>)')
+        raise RequestFault(codes.BAD_ARGUMENT, f'shot "{shot_id}"', "", "has no camera yet",
+                           hint='Give it one: shot("' + shot_id + '", camera=cam) in the script, or shot.set camera=<camera id>.')
     if end < start:
         raise ValueError(f'shot "{shot_id}" is shorter than one frame at {s["fps"]} fps')
     return {"id": s["id"], "camera": s["camera"], "fps": s["fps"], "start": start, "end": end,

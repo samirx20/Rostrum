@@ -18,8 +18,8 @@ cKDTree = pytest.importorskip("scipy.spatial").cKDTree
 SRC = '''
 cam = camera("cam", z=3, y=1)
 shot("drape", camera=cam, fps=24, start=0, end=3.5)
-mesh("box", shape="box", width=0.45, height=0.4, depth=0.45, x=-0.28, y=0.2).simulate("still")
-mesh("ball", shape="sphere", radius=0.22, x=0.3, y=0.22, z=0.05).simulate("still")
+mesh("box", shape="box", width=0.45, height=0.4, depth=0.45, x=-0.28).simulate("still")
+mesh("ball", shape="sphere", radius=0.22, x=0.3, z=0.05).simulate("still")
 mesh("sheet", shape="plane", width=1.5, depth=1.5, y=0.85).simulate("cloth", clothWeight=0.08, stiffness=0.15, clothAir=3)
 '''
 

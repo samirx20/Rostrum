@@ -23,8 +23,11 @@ makes. Look after each step: `look_frame` with `quality: "fast"` takes about a s
 
 **The usual way: the whole scene as one Python script, look, edit, re-run.** Keep the script in a .py file and run it with
 `run_script` `path`; after each look, edit that file and run it again (same name): it replaces what it made and keeps what a
-person moved by hand. Every step below has a script form (`clay(…)`, `.lump(…)`, `.bend(…)`; guide `script`).
+person moved by hand. Every step below has a script form (`clay(…)`, `.lump(…)`, `.pose(…)`; guide `script`).
 The steps here use single operations and pixel tools, the way to fix one thing you see in a look.
+In a script, things stand on the ground: a mesh's `y` is the height of its base above the ground (**changed**: it was its
+middle; `y_world=` for that); place by relation with `place_on(other, beside="left")` and `row([...])`; frame with
+`shot("shot_1", frame=c, at=(1/3, 0.5), fill=0.6)`; your own light adds to the start key and rim (guide `script`).
 Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; render_still / render_video refuse open faults unless `keep: {id: why}` explains them.
 
 ### 1. The body: ONE clay, every part a piece of it
@@ -81,8 +84,9 @@ would make, the reply says so (`spotSize`, about a sixth of the body's width at 
 ### 4. The wave: bend the joints at several times
 
 In the script, after the last piece: `c.bend(joint, {seconds: (x, y, z)})` turns a joint by those degrees about the
-clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(part, {seconds: (x, y, z)}, holds=[…])` drags
-a part's end to a world point at each time instead. The first one finds the joints from the shape (with the engine):
+clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(seconds, **{"picture-right hand": {"up": 0.1}})`
+moves a part's end at that time instead (a world point, or up / out / forward metres from its rest; chain `.pose(…)`
+calls for a wave; "picture-left hand" names the hand on the picture's left; the reply notes a target out of reach). The first one finds the joints from the shape (with the engine):
 `body`, `chest`, `head`, `arm.L` / `forearm.L`, `foot.L` …; `.R` is the character's right, the −x side, on the
 picture's left. A wrong joint name fails with the list of the ones it has.
 
@@ -105,7 +109,7 @@ Guide `posing` has the rest (keys at several times, `pose.rest`).
 - **Angle first.** `shot.take_view` (`target: ["shot_1"]`, `position` [x, y, z], `lookAt` [x, y, z], `focalLength`)
   moves Shot 1's camera; for a view from a little to the side and above, put it about 1.3 m away, 0.3–0.5 m up,
   looking at the character's middle. `shot.frame` (`items: ["buddy"]`) then moves it nearer or farther so the
-  character fills the picture with a margin, keeping its direction. Look again.
+  character fills the picture with a margin, keeping its direction (in a script: `shot("shot_1", frame=c, fill=0.6)`). Look again.
 - **Then the light.** `edit_document` `light.add` (`id`, `kind: "rect"`: the Soft light), then `edit_place_on what "highlight"`
   with `light`, a pixel `x`, `y` of the cheek in the picture you were shown (and its `width`) and `fresh: true` (a
   light just added: it also gets a distance and a starting brightness). The light moves so its shine lands there.

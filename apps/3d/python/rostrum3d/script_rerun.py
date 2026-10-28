@@ -81,3 +81,18 @@ def guard(b) -> None:
         "under the same name replaces everything the script made: send the whole script with your edit",
         hint=f'To change a few things only, run a short script under a NEW name with edit("id", …). If removing them is '
              f'meant, add remove({names}) to the script.')
+
+
+def keep_fields(b, ids: set) -> None:
+    """Things this run makes again under an id already in the scene (the new scene's shot_1, ground, key_light …):
+    every field the script didn't give keeps the scene's value (`shot("shot_1", end=3)` keeps its camera), so making
+    it again changes what was said and nothing else. A list (keys, children, steps) is the script's."""
+    for lst in ROOT_LISTS:
+        for n in b.root[lst]:
+            now = in_scene(b.doc, lst, n["id"]) if n["id"] in ids else None
+            if now is None or now.get("type") != n.get("type"):
+                continue
+            given = b.given.get(n["id"], set())
+            for k, v in now.items():
+                if k not in given and k not in ("id", "type") and not isinstance(v, list):
+                    n[k] = copy.deepcopy(v)

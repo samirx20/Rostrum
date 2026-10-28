@@ -259,6 +259,11 @@ std::unique_ptr<Hydra::Engine> Hydra::make_engine(const std::string& renderer) {
   return e;
 }
 
+ViewDrawn Hydra::last_drawn(int w, int h) {
+  auto& fb = framebuffer(w, h);
+  return ViewDrawn{fb.color_texture(), fb.depth_texture()};
+}
+
 Framebuffer& Hydra::framebuffer(int w, int h) {
   if (!fb_ || fb_->width() != w || fb_->height() != h) {
     fb_.reset();

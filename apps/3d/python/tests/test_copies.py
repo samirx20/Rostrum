@@ -12,7 +12,7 @@ SRC = '''
 cam = camera("cam", z=3)
 shot("hero", camera=cam, fps=10, start=0, end=0.5)
 ground = mesh("ground", shape="plane", width=4, depth=4)
-bud = mesh("bud", shape="sphere", radius=0.05, x=1, y=0.5)
+bud = mesh("bud", shape="sphere", radius=0.05, x=1, y_world=0.5)
 ball = mesh("ball", shape="sphere", radius=0.1)
 ball.key("x", {0: 0, 0.4: 2}, ease="linear")
 c = copies("buds", bud, layout="grid", count=12, columns=4)
@@ -81,7 +81,7 @@ def test_a_start_spread_reaches_the_fall_and_keeps_a_persons_edit_on_a_rerun():
     src = '''
 cam = camera("cam", z=3)
 shot("hero", camera=cam, fps=24, start=0, end=2)
-bud = mesh("bud", shape="sphere", radius=0.05, y=0.5)
+bud = mesh("bud", shape="sphere", radius=0.05, y_world=0.5)
 copies("buds", bud, layout="grid", count=12, columns=4, varyMove=0.02).simulate("falls")
 '''
     d = Document.new(KIND)
