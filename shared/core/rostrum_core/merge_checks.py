@@ -73,9 +73,9 @@ def twin_hint(doc, name: str, output: dict) -> str:
     if not twins:
         return ""
     names = ", ".join(f'"{n}"' for n in twins)
-    return (f"script {names} already made some of these items. A script run again under the same name replaces what it "
+    return (f". If that is the cause: script {names} already made some of these items. A script run again under the same name replaces what it "
             f'made, a new name ("{name}") adds a second copy. Run it under {names if len(twins) == 1 else "that script\'s"} '
-            f"name to replace them, or give these items other ids. The check says: ")
+            f"name to replace them, or give these items other ids.")
 
 
 def _up_to_date(doc, output: dict) -> dict:

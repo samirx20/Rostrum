@@ -101,7 +101,7 @@ placed by its top-left `x`, `y` in the parent's px (the screen's, inside `with s
 | `nav_bar(title, w=, y=, back=, action=)` | a big title, an optional back label and action word |
 | `tab_bar(labels, w=, parent_h=scr.h, active=0, accent=)` | tabs across the bottom, each an icon square and a label |
 | `rows = list_rows(rows, x=, y=, w=, row_h=84, avatar=True)` | one group per row (`<id>_r0` …): avatar with an initial, title, detail line, value on the right, divider. A row is a string, `(title, detail)` or `(title, detail, value)`. Returns the row groups, top first. |
-| `card(id, x=, y=, w=, h=, title=, detail=, value=, fill=, radius=28, shadow=True)` | a rounded card with text at its top-left and a big value at its bottom-left; make more of its layers inside `with` it |
+| `card(id, x=, y=, w=, h=, title=, detail=, value=, fill=, color=, muted=, radius=28, shadow=True)` | a rounded card with text at its top-left and a big value at its bottom-left; `color` is the title and value text (dark ink by default), `muted` the detail line: pass light ones when `fill` is dark or strongly coloured; make more of its layers inside `with` it |
 | `button(label, x=, y=, w=, h=, fill=, outline=False)` | a pill with its label centred (`<id>_bg`, `<id>_label`) |
 | `toggle(id, x=, y=, on=False)` | a switch: `<id>_track` and `<id>_knob`; flip it by keying the knob's `x` and the track's `fill` |
 | `bars = bars(values, x=, y=, w=, h=, labels=, top=)` | a bar chart standing on its bottom edge (each bar anchored there: a key on `scaleY` from 0 grows it upward). Returns the bars, left first. |

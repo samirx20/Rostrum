@@ -60,6 +60,7 @@ def _edge_cuts(data: dict, comp: dict, start: float, end: float) -> tuple[str, l
                                             **exporting.QUALITY_ARGS,
                                             "sound": {"type": "boolean", "description": "Put the project's sound under the picture, as render_export's mp4 does (the scene's soundtrack, else the project's main mix; the song is mixed afresh from its current document, cached while it is unchanged, so no render_mix is needed first). Default: on when the project has sound. If the mix fails, the render fails; never a silent file."},
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder; only the mp4 is written there unless `with_project` is true). Default: only the project's renders folder."},
+                                            "overwrite": {"type": "boolean", "description": "Accepted so a call with it works; has no effect. A project render always goes to a new version folder, and a `path` copy always replaces the file already there."},
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;

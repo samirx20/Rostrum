@@ -71,7 +71,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
         new = [p for p in problems if p not in had]
         if new:
             raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
-                               "would break its check, so nothing was merged: " + twin_hint(doc, name, output) + "; ".join(new)
+                               "would break its check, so nothing was merged: " + "; ".join(new) + twin_hint(doc, name, output)
                                + (f" (already broken before this run, not by it: {'; '.join(sorted(had))})" if had else ""))
         report.broken = sorted(had)
     first_run = name not in doc.script_bases

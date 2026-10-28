@@ -42,7 +42,7 @@ Motion blur never crosses a cut.
 | Operation | Does |
 |---|---|
 | `frame.fit to=view rect=[x, y, w, h] at=3` | The frame becomes the largest frame-shaped box in that rectangle (world px), keeping its turn, keyed at `at`. If the frame had no keys yet, its place now is also keyed at 0 s, so it starts where it was and arrives there. |
-| `frame.fit to=items ids=[hills, tree] at=3` | The frame shows those layers as they will look in the export at `at` (depth included), with 5 % room (`pad`). |
+| `frame.fit to=items ids=[hills, tree] at=3` | The frame shows those layers as they will look in the export at `at` (depth included), with 5 % room (`pad`, 0 to 0.45 where 1 = 100 %: write 0.05 for 5 %). |
 | `frame.fit to=items ids=[head] keep=[body] at=3` | `keep` lists layers (or rig parts) that stay whole in the frame as well: the fit takes `ids` and `keep` together, so the head is as large as it can be with the body still in. In a script: `frame().fit(["head"], at=3, keep=["body"])`. Without it only `ids` count, and a close-up cuts the rest at the frame edge. |
 | `frame.fit … at=3 ease=easeInOut` | The same, and the move into it takes that ease (any key ease name: `smooth`, `easeInOut`, `snappy`, `linear` …). It goes on the key the move starts from (the frame's key before `at`, or the 0 s key the fit adds). |
 | `frame.cut at=2.4` | Two keys: the frame's place one frame before `at` with the Hold ease, and the same place at `at`. Then move the frame to the next shot: that sets the key at `at`. |

@@ -64,7 +64,7 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 ## Typeset equations (fractions, sums, roots)
 
 `math_text` typesets LaTeX-style maths into **ordinary path layers**: one path per symbol and per rule (a fraction bar and
-a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on.
+a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on. Write the formula as a raw string (`r"..."`) so `rac` keeps its backslash, and close every `\left` with a `ight` and every `{` with a `}`: a piece typeset on its own (to highlight one term) must be balanced by itself, so cut the formula between terms, not inside a bracket pair.
 
 ```python
 comp("eq", width=1920, height=1080, fps=30, duration=5, background="#0c0d12")
