@@ -53,7 +53,7 @@ Roughness, Metallic, Glow colour, Normal, Style.
 - Each add, wire, move or change is one undo step. **‹ Back** or **Esc** goes back to the timeline; the blocks stay.
 - A block marked **Final only** (Bevel shading, Ambient occlusion) shows in the Final look and renders, not in Quick.
 - **Noise** draws the same pattern in Quick and Final: Quick runs Final's own noise. Detail takes whole layers.
-- **Brightness in Quick:** a material with blocks is as bright in Quick as in Final, under every light.
+- **Brightness in Quick:** a material with blocks is as bright in Quick as in Final under bulbs, spots and panels.
 
 ## For agents: the same, as operations
 
