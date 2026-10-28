@@ -68,7 +68,8 @@ def render_video(ctx, args):
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
-    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out and unchanged stretches: `quiet_stretches`; subjects cut by the frame edge: `edge_cuts`) and ends with the time left and the film's weakest moments with times, ranked (look_review): fix the top one and export again."""
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out and unchanged stretches: `quiet_stretches`; subjects cut by the frame edge: `edge_cuts`) and ends with the time left and the film's weakest moments with times, ranked (look_review): fix the top one and export again.
+    `beats`: the brief's timed beats, kept for the session; every export then names one that never happens or comes too soon."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),

@@ -76,7 +76,7 @@ depth just above it ("'Far' is at its largest; this stroke started 'Far 2'"), on
 | `look_drawing (what "tiles") layer tile: "B2"` | One tile close, with a canvas-pixel grid to place strokes (`grid: 0` to judge texture). The reply gives the tile's box in canvas px. |
 | `look_drawing` (`what: "depths"`) | Every drawing layer by depth: how much it moves, its canvas, and whether it covers the frame's move, in words ("312 px short on the right from 1.7 s"). |
 | `look_drawing` (`zoom`, `crop`, `paint`, `sampling`) | Any box of a layer, a part at 100 % (`crop: [x, y]`, to judge grain), or one paint layer alone. `look_drawing` (`what: "at"`) / `look_drawing` (`what: "landed"`) as for any drawing. |
-| `look_frame`, `look_frame` (`what: "sheet"`) | The layers together, through the frame, rendered by the engine: what the film shows. Check the first and last frame of the move. |
+| `look_frame`, `look_frame` (`what: "sheet"`) | The layers together, through the frame, rendered by the engine: what the film shows. Check the first and last frame of the move. A single frame also names any wash that is one flat value at frame size ("wash_3 on sky (…): one flat value at frame size, lightness spread 1.8 %, no darker edge, grain 0.2 %"); `washes` in its data has the numbers for every wash. |
 | `look_drawing` (`what: "coverage"`, `time`) | How much of the layer is painted at that time, per paint layer, and every bare area as a box in canvas and composition px ("bare paper: a 1920×104 px strip along the bottom edge …"); bare paper tinted magenta in the picture. Run it between passes, and at a few times while `drawnSoFar` paints on. |
 
 Coordinates in strokes are the layer's own canvas px. With scale 1 (what `background.add` sets), canvas px =
@@ -132,7 +132,10 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   `paper_scale` and stays put on the canvas; it reads on flat areas. `bloom` is a backrun: water running into the
   drying wash pushes the paint out past the edge to a wandering, cauliflower-shaped front, paler inside, with darker
   pigment dried along the front. `grain` breaks the paint itself up on the paper's tooth (a dry brush skipping over the
-  paper), so the paper shows through inside the stroke. `paint.wash` lays the first three by default.
+  paper), so the paper shows through inside the stroke. `paint.wash` lays `edge_darken` 0.85, `granulation` 0.7,
+  `pooling` 0.9 and `grain` 0.3 by default, and lets a box or outline's edge wander (`bleed`, a fifth of the size): at
+  frame size (a 1920 frame seen ~480 px wide) weaker settings average away and a wash reads as a flat, vector fill.
+  Each is turned down or off (0) by giving it.
 - **Which brush is which medium.** A watercolour or ink wash is a film, so it is laid with a soft `round` tip: the
   passes melt into one coat and the drying settings above give it life. A `bristle` tip is a dry brush: each hair
   leaves its own line, so rows of `bristle` strokes read as parallel streaks, never as a wash; it suits grass, wood,

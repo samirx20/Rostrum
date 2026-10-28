@@ -33,8 +33,9 @@ from . import limb as limb_mod, limb_parts, steps
 from .limb import PLACEHOLDER, Limb, bend_way
 from .model import tip
 
-SWING_BEND, SWING_FROM, SWING_TO = 1.5, 50.0, 100.0   # swung past SWING_FROM degrees the bend turns, by SWING_TO it
-                                                      # is SWING_BEND x relax the way it swings (a raised arm's forearm up)
+SWING_BEND, SWING_TO, SWING_BACK = 1.5, 75.0, 55.0   # swung past SWING_TO degrees the bend is SWING_BEND x relax the way
+                                                    # it swings (a raised arm's forearm up), back under SWING_BACK the rest
+                                                    # bend again: a jump the spring eases, so no held pose is straight
 NATURAL_LAG, NATURAL_OVER, NATURAL_DRAG = 0.1, 0.3, 0.6
 TOL_PX, TOL_DEG, TOL_SCALE = 0.25, 0.15, 0.0005
 
@@ -349,13 +350,14 @@ def for_script(build) -> dict:
         return at + (len(targets) - 1) * stagger + settle
 
     def natural():
-        """The end of the script: limbs left in the placeholder colour take their body's; each arm without IK gets
-        its elbow bend following the upper bone's swing (a lagging spring), and drag where follow() did not run."""
+        """The end of the script: limbs made with no widths are sized to their body; limbs left in the placeholder colour
+        take their body's; each arm without IK gets its elbow bend following the upper bone's swing (a lagging spring), and drag where follow() did not run."""
         if not build.holders or not limbs:
             return
         fps, dur = _comp(build)
         times = [i / fps for i in range(int(round(dur * fps)) + 1)]
         turns = {}                                      # a bone's turn per frame, sampled once (shared parents)
+        limb_mod.fit_widths(limbs)                      # widths=None: the limbs sized to their body
 
         def turn(node):
             if node["id"] not in turns:
@@ -368,7 +370,7 @@ def for_script(build) -> dict:
                 for p in lm.parts:
                     p.node["fill"] = col
             if rec["outline"] is not False:             # after the colour is known; a part given its own outline keeps it
-                limb_parts.outline_parts([p for p in lm.parts if not p.node.get("stroke")], rec["outline"], rec["outline_width"])
+                limb_parts.outline_parts([p for p in lm.parts if not p.node.get("stroke")], rec["outline"], limb_mod.line_width(rec))
             if lm.ik is not None and lm.kind == "leg" and lm.end is not None:
                 _flat_foot(lm, rig, times, walked.get(lm.end.node["id"], []))
             if not rec["natural"]:
@@ -379,10 +381,7 @@ def for_script(build) -> dict:
             rlx, sgn = rec["relax"], rec["sign"]
             delta = [v - rest_u for v in turn(up)]
 
-            def auto(dl):                               # the rest bend (forearm hanging) turns into a bend the way it swings
-                k = _smooth((abs(dl) - SWING_FROM) / (SWING_TO - SWING_FROM))
-                return sgn * rlx * (1 - k) + math.copysign(SWING_BEND * rlx, dl) * k
-            bend = follow_mod.spring([auto(dl) for dl in delta], 1 / fps, NATURAL_LAG, NATURAL_OVER)
+            bend = follow_mod.spring(_swing_bends(delta, sgn * rlx), 1 / fps, NATURAL_LAG, NATURAL_OVER)
             own_lo = [float(value_at(lo, "rotation", t)) if keys_of(lo, "rotation") else 0.0 for t in times]
             mask = _outside(times, followed.get(up["id"], []), 0.25)
             drive, bid = [0.0] * len(times), up["id"]   # the upper bone's turn on screen: its own plus its parents' (FK)
@@ -408,6 +407,16 @@ def for_script(build) -> dict:
     build.finishers.append(natural)
     return {"layer": layer, "limb": limb, "follow": follow, "blink": blink, "walk": walk, "idle": idle, "pose": pose,
             "step": steps.maker(build, lambda ref: _bone(build, ref), Item)}
+
+
+def _swing_bends(delta: list[float], rest: float) -> list[float]:
+    """The elbow's bend per frame from the upper bone's swing: `rest` (the forearm hanging), turned to SWING_BEND x it the
+    way the arm swings once swung past SWING_TO, until it comes back under SWING_BACK (two thresholds: no flicker)."""
+    out, up = [], False
+    for dl in delta:
+        up = abs(dl) >= (SWING_BACK if up else SWING_TO)
+        out.append(math.copysign(SWING_BEND * abs(rest), dl) if up else rest)
+    return out
 
 
 def _smooth(u: float) -> float:

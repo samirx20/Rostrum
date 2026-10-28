@@ -152,7 +152,7 @@ sizes and where they go are yours.
 | Wet-in-wet (colours melting into each other) | low `hardness` (0–0.2) so edges are soft; overlapping strokes of the two colours; then `smudge` on with `wet` 1 on a soft `round` tip along the join to blend (it drags paint, so work over an opaque base or a `ground`) |
 | Wet-on-dry (crisp, layered passes) | higher `hardness` (0.5+), `edge_darken` 0.3–0.7 so each pass keeps a dried rim; `mode: "multiply"` for each glaze over the last |
 | Dry brush (broken, scratchy paint) | `bristle` or `chalk` tip, `grain` 0.5–1 with a `paper`, little paint: `opacity` 0.5–0.8, fast strokes (few points); `texture` `streaks` or `ragged` for more break-up; on a `bristle` / `flat` tip, `dry` makes it run out along the stroke |
-| A watercolour wash (a film of pigment, not brush marks) | a soft `round` tip (`paint.wash` uses one), not `bristle` (its hairs leave parallel streaks: that is a dry brush), `opacity` under 1 so the paper and the layers below show through, `pooling` 0.3–0.8, `edge_darken` 0.3–0.6, a little `granulation`; a crisp, wandering edge from a paint mask (`paint.wash` `bleed` with a small `edge`) rather than a soft one, because a dried wash's edge is hard. Overlapping passes each keep their own dried edge |
+| A watercolour wash (a film of pigment, not brush marks) | a soft `round` tip (`paint.wash` uses one), not `bristle` (its hairs leave parallel streaks: that is a dry brush), `opacity` under 1 so the paper and the layers below show through, `pooling` 0.6–1, `edge_darken` 0.6–1, `granulation` 0.5–0.8 and `grain` 0.2–0.4 (`paint.wash`'s defaults sit here; lower values fade away in a 1920×1080 frame seen small and the wash reads as a flat fill); a crisp, wandering edge from a paint mask (`paint.wash` `bleed` with a small `edge`) rather than a soft one, because a dried wash's edge is hard. Overlapping passes each keep their own dried edge |
 | Gouache / opaque paint | `opacity` 1 in `normal`, `pooling` low (0.1–0.3), `edge_darken` low, `hardness` 0.5+; a `flat` tip with `load` 1 for flat, matte block-in with slightly ragged edges |
 | Granulating wash (speckled pigment) | `granulation` 0.3–0.8 with `paper` and `paper_scale` choosing the speckle; reads most on flat areas |
 | Backrun / bloom (water running into a drying wash) | `bloom` 0.3–1 on the wash's stroke; it reads best on mid and light washes and on a lighter ground |
@@ -168,12 +168,13 @@ stroke stopped short or a ragged brush end fell inside the area. It makes ordina
 
 - Region: the whole canvas (default), `box: [x0, y0, x1, y1]`, or `outline: [[x, y], …]` (a polygon), canvas px.
 - `edge`: px the edge is blurred (the mask's feather); 0 = as crisp as the brush. A side on the canvas's edge stays solid there.
-- `bleed`: the edge runs out unevenly past the region by up to this many px (paint creeping into damp paper).
+- `bleed`: the edge runs out unevenly past the region by up to this many px (paint creeping into damp paper), wandering in long swells and small ripples. Left out on a `box` or `outline`: a fifth of the size, at most 30 px; `bleed: 0` keeps the region's own straight edge.
 - `to` + `bands`: a graded wash from `color` (top, or left with `direction: "down"`) to `to`.
 - `overlap`: rows this many sizes apart; left out, as far apart as the `hardness` allows with no paler seams.
 - `size` defaults to a fifth of the region; every brush setting applies (`brush`, `opacity`, `granulation`, `edge_darken`, `pooling`, `bloom`, `paper`, `wobble`, `mode` …).
-- Left out, a wash dries like watercolour: `edge_darken` 0.4, `granulation` 0.3, `pooling` 0.5. Give any of them (0 turns it off) to change it.
+- Left out, a wash dries like watercolour, strongly enough to still read in a 1920×1080 frame seen small: `edge_darken` 0.85, `granulation` 0.7, `pooling` 0.9, `grain` 0.3 (the paper's tooth showing through in light specks). Give any of them (0 turns it off) to change it. Weaker drying (around 0.4 / 0.3 / 0.5 and no grain) averages away at frame size and the wash reads as a flat fill; `look_frame` names such an area (below).
 - The passes run past the region, but a masked stroke never grows the drawing past its mask, so a whole-canvas wash keeps the canvas size.
+- `look_frame` names a wash that is one flat value at frame size (a masked stroke, 1 % of the frame or more): its lightness spread, how much darker its edge is and its grain, in %. Under 3 % spread is flat; at the defaults a wash measures 4–6 % with a rim 3–7 % darker. Very dark washes measure lower: give them more `pooling` or a lighter `to`.
 - Where two washes meet edge to edge, a light seam shows (both edges are soft there): overlap them with `bleed`, or keep the seam on purpose.
 
 The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke

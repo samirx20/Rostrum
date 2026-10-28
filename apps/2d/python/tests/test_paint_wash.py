@@ -41,3 +41,12 @@ def test_a_wash_dries_like_watercolour_unless_told():
     assert all(s[k] == v for s in strokes for k, v in paint_wash.WATER.items())
     _, strokes = paint_wash.plan([0, 0, 200, 100], 400, 300, {"color": "#203060", "pooling": 0.0})
     assert strokes[0]["pooling"] == 0.0
+
+
+def test_a_box_wash_edge_wanders_by_default_and_bleed_0_keeps_it_straight():
+    from rostrum2d import paint_wash
+    mask, _ = paint_wash.plan([100, 100, 300, 200], 400, 300, {"color": "#203060"})
+    xs = [p[0] for p in mask["points"]]
+    assert min(xs) < 100 - 1 and max(xs) > 300 + 1                     # runs past the box, a little
+    mask, _ = paint_wash.plan([100, 100, 300, 200], 400, 300, {"color": "#203060", "bleed": 0})
+    assert mask["points"] == [[100, 100], [300, 100], [300, 200], [100, 200]]

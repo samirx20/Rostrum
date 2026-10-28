@@ -22,7 +22,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import inspect_keys, project_tool, session_clock, tool_groups
+from . import export_beats, inspect_keys, project_tool, session_clock, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -63,9 +63,10 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "inspect_guide 'start-here'. An error names the line and what to write instead. "
                "layer(\"id\") gives back an item made earlier in the script. Characters (guide character-rigging-and-lip-sync): "
                "limb(id, x=, y=, lengths=, widths=, kind=\"arm\"|\"leg\", parent=, color=) makes a bending arm or leg (bones, IK, "
-               "parts in the body's colour unless color= is given; an arm rests with a relaxed elbow and, keyed on arm.upper alone, "
+               "parts in the body's colour unless color= is given; without widths= sized to the body: the upper part 0.26 x its width, "
+               "a leg 0.3 x; a mitten hand with a thumb, hand=\"ball\" a circle; an arm rests with its elbow bent 35° (relax=) and, keyed on arm.upper alone, "
                "its forearm bends and trails by itself; arm.out is the rotation sign that swings it away from the body; it tapers "
-               "from widths[0] at the shoulder to a thinner wrist (taper=), has a joint= \"round\"|\"ball\"|\"none\" at the elbow / knee and a "
+               "from widths[0] at the shoulder to a thinner wrist (taper=0.2), has a joint= \"round\"|\"ball\"|\"none\" at the elbow / knee and a "
                "darker outline= so a bent arm reads in a small still, even across the body); make legs with limb(kind=\"leg\") "
                "so they can act: "
                "pose({limb or bone: turn}, at=) hits a key pose with anticipation and overshoot (pose({hip: {\"moveY\": 40}}) "
@@ -98,7 +99,8 @@ def make_runtime(app: App) -> Runtime:
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
     inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
-    session_clock.with_clock(runtime)                # last: every reply ends with the session's clock line
+    clock = session_clock.with_clock(runtime)        # every reply ends with the session's clock line
+    export_beats.with_beats(runtime, clock)          # the exports take the brief's beats; the clock keeps them
     return runtime
 
 

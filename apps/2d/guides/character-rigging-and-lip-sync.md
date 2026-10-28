@@ -95,7 +95,7 @@ These script calls build the usual parts in one line each and write the motion a
 make is bones, IK chains, shapes, binds and keys that you edit, retime or delete like your own. They choose no look:
 sizes, colours and timing are yours.
 
-- **`limb(id, x=, y=, angle=90, lengths=(upper, lower, end), widths=(…), parent=, kind="arm" | "leg")`** makes three
+- **`limb(id, x=, y=, angle=90, lengths=(upper, lower, end), widths=, parent=, kind="arm" | "leg")`** makes three
   bones from the joint at (x, y) along `angle` (`<id>_upper`, `<id>_lower`, `<id>_end`: the hand or foot; give two
   lengths for none), and plain shapes bound to them. `pieces="bend"` (the default) is one tapered piece bent across the
   elbow or knee by a bend bind (`soft` = how wide the fold is); `"parts"` is two tapered pieces, each rigid, meeting at
@@ -106,27 +106,38 @@ sizes, colours and timing are yours.
   180 = left). It returns the limb: `arm.upper`, `arm.lower`, `arm.end`, `arm.ik`, `arm.parts` (its shapes),
   `arm.out` (see "Which way it turns" above), `arm.reach({t: (x, y)})` keys its IK target, `arm.pose({t: turn})` keys
   its swing, `arm.set(fill="#f2b23c")` sets a field on every part.
+  - **Thickness.** `widths=(upper, forearm or calf, hand or foot)` in px. Leave it out and the limb is sized to its body
+    at the end of the script: the upper part 0.26 × the width of the biggest shape bound to the bone it hangs from (or
+    the nearest bone above with one; a leg 0.3 ×; legs on a bare hip use the body the arms found), the forearm or calf
+    0.85 × that, the hand 1.05 × (a foot 0.8 ×). A 250 px wide body gets 65 px arms. Nothing bound: 0.4 × the upper
+    length. Arms under about a fifth of the body's width read as noodles in a small still: `run_script`'s reply and
+    `look_review` name a character whose arms or legs are under 0.7 × that default width, with the numbers.
+  - **Hands.** `hand="mitten"` (the default) is an oval palm `widths[2]` wide and at least 1.25 × that long with a thumb
+    toward the body, one outlined path (`<id>_hand`) you can edit or swap like any layer; `hand="ball"` is a plain circle
+    (a robot's or puppet's hand). A hand of your own: bind it to `arm.end` and hide the made one.
   - **Colour.** `color=` (and `end_color=` for the hand or foot). Without one, the parts take the fill of the biggest
     plain-coloured layer bound to the bone the limb hangs from (the body), worked out at the end of the script, so bind
     the body before or after: either works. Nothing bound there: light grey.
   - **Reading in a small still.** Two even tubes of one colour don't read as bent when shrunk, and a forearm in front
     of a body of the same colour disappears. So by default a limb **tapers** (`widths[0]` at the shoulder or hip, a
     little thinner at the elbow or knee, swelling back to `widths[1]` along the forearm or calf, then thinner by `taper`
-    at the wrist or ankle; `taper=0` is even), has a **joint shape** at the elbow or knee (`joint="round"`: a circle
+    (default 0.2) at the wrist or ankle; `taper=0` is even), has a **joint shape** at the elbow or knee (`joint="round"`: a circle
     under the limb that rounds the outside of the bend; `"ball"`: on top, a visible ball joint for a robot or puppet;
     `"none"`), `joint_size` times the joint's width, and an **outline** (`outline=True`: each part's fill, darker;
     a colour; `False`: none) `outline_width` px wide (default a tenth of `widths[0]`, at least 2). Give the upper part
     and the forearm different widths (`widths=(44, 34, 60)`) and the bend shows in the silhouette alone. Check the
     pose in `look_frame` at the size the video will be watched; if an elbow still hides, bend it further or turn
     the outline colour up.
-  - **Rest pose.** An arm without IK rests with its elbow bent `relax` degrees (default 20; a leg without IK 6) toward
+  - **Rest pose.** An arm without IK rests with its elbow bent `relax` degrees (default 35; a leg without IK 10) toward
     `bend`, the upper bone turned back half that much so the hand hangs under the shoulder. `relax=0` is dead straight.
   - **A living arm from upper keys alone** (`natural=True`, the default, for limbs without IK). Key only
     `arm.upper`'s `rotation` (or `arm.pose`) and, at the end of the script, the lower bone gets: the relaxed bend while
-    the arm hangs or swings up to about 50°; past that it turns into a bend the way the arm swings (a raised arm's
-    forearm keeps going up), fully by about 100°, at 1.5 × `relax`; that bend arrives a beat late and swings past a
-    little (a spring); and where you did not run `follow()` on that arm, a lighter follow-through of the forearm and hand.
-    Keys you put on `arm.lower` add to this bend (0 = the natural bend, 30 = 30° more). `natural=False` keys it raw.
+    the arm hangs or swings up to 75°; past that it turns into a bend the way the arm swings (a raised arm's
+    forearm keeps going up) at 1.5 × `relax`, back to the relaxed bend under 55° (an elbow is never straight in a
+    held pose); that bend arrives a beat late and swings past a little (a spring); and where you did not run `follow()`
+    on that arm, a lighter follow-through of the forearm and hand. Keys you put on `arm.lower` add to this bend (0 = the
+    natural bend, 30 = 30° more). `natural=False` keys it raw. `look_review` names an arm whose elbow stays bent under
+    25° for 4 s or more ("holds its arms nearly straight"): a straight arm reads as a stick in a small still.
 - **`walk(legs=[a, b], body=hip, arms=[a, b], head=, start=, end=, step=0.5, stride=, lift=, bounce=, travel=True,
   facing="right")`** keys a walk: each foot's IK target planted on the ground for half the cycle and lifted on an arc for
   the other half (the foot kept flat against the shin's turn, its toe tipping in the swing by `toe` degrees), the body's
@@ -180,8 +191,8 @@ drawn from the side; for a figure facing the camera use `stride=0` (a step in pl
 with rig("kid", w=1920, h=1080):
     hip = bone("hip", x=500, y=600, angle=-90, length=0)
     chest = bone("chest", parent=hip, length=200); neck = bone("neck", parent=chest, length=40)
-    legB = limb("legB", parent=hip, x=500, y=600, lengths=(170, 160, 60), widths=(48, 42, 34), kind="leg")
-    armF = limb("armF", parent=chest, x=500, y=420, lengths=(120, 110, 20), widths=(34, 30, 46))
+    legB = limb("legB", parent=hip, x=500, y=600, lengths=(170, 160, 60), kind="leg")
+    armF = limb("armF", parent=chest, x=500, y=420, lengths=(120, 110, 20))
     ...                                                   # the other leg and arm, the torso and head bound to chest / neck
     walk(legs=[legF, legB], arms=[armB, armF], body=hip, head=neck, start=0.3, end=4.3, step=0.5, stride=150)
     idle(chest, head=neck, arms=[armF, armB], start=4.6)

@@ -1,6 +1,9 @@
 """What a 2D document may hold that is valid but probably not meant. Replies to edit_document and run_script carry
-what a call made new (rostrum_core DocKind.advise): a drawing set that has several drawings but shows only the first."""
+what a call made new (rostrum_core DocKind.advise): a drawing set that has several drawings but shows only the first;
+a character's arms or legs thin next to its body (rig/thin.py)."""
 from __future__ import annotations
+
+from .rig import thin
 
 _HOLDERS = ("comps", "paintings", "layers")        # never down into drawings: thousands of strokes live there
 
@@ -20,4 +23,8 @@ def advise(data: dict) -> list[str]:
             out.append(f'"{item["id"]}" holds {n} drawings but shows only the first one, because "Draw each frame" is off. '
                        f'Turn it on to play them in turn: in a script {item["id"]}.set(eachFrame=True), in an edit '
                        f'"{item["type"]}.set" with {{"eachFrame": true}} on "{item["id"]}".')
+    for rig in thin.rigs(data):
+        rows = thin.thin_limbs(rig)
+        if rows:
+            out.append(thin.say(rig["id"], rows) + ".")
     return out
