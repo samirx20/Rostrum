@@ -27,8 +27,13 @@ def run(build, node: dict, op_name: str, args: dict) -> None:
     from .kind import KIND
     op = KIND.registry.get(op_name)
     where = f"{node['id']}.{op_name.split('.')[1]}()"
+    if op_name == "layer.anchor" and isinstance(args.get("at"), str):    # (its `at` is seconds only: pivot(at="#m"))
+        from .script_time import seconds
+        args = {**args, "at": seconds(build, args["at"], f"{where} at")}
     args = _check_args(op, args, where)
     ctx = Context(KIND, build.root, where)
+    from .script_time import times
+    ctx.marker_times = times(build)                 # the project's markers and the ones this script makes (marker())
     if not holds(op.valid_when, node, ctx.facts(node)):
         raise ValueError(f"{where}: {node['id']} {refusal(op)}")
     op.fn(ctx, [node["id"]], args)

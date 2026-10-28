@@ -58,6 +58,7 @@ def test_edit_markers_carries_with_lead_in_and_warns_without(tmp_path, monkeypat
     d.save()
     app, rt = start(tmp_path, monkeypatch, [{"folder": str(tmp_path / "p"), "item": "cue", "name": "p"}])
     try:
+        assert rt.call("run_open_project", {"folder": str(tmp_path / "p"), "item": "cue"}, AGENT)[0]["ok"]  # agents start in their own scratch song
         move = lambda args: rt.call("edit_markers", {"ops": [{"op": "marker.move", "target": ["reveal"], "args": args}]}, AGENT)[0]  # noqa: E731
         listed = rt.call("inspect_notes", {"track": "s", "from": "#reveal-4"}, AGENT)[0]
         assert listed["ok"] and "rise  17 s" in listed["summary"].replace(".00", "")

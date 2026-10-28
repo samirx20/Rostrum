@@ -46,7 +46,9 @@ def use(engine):
         stack.pop()
 
 
-def _engine():
+def engine():
+    """The engine to ask on this thread: the innermost one registered with `use`, else this module's own (started
+    now). layout.py asks it for layouts too."""
     global _own
     stack = getattr(_local, "engines", [])
     if stack:
@@ -55,6 +57,7 @@ def _engine():
         _own = open_engine()
         atexit.register(_own.close)
     return _own
+
 
 
 def warm() -> None:
@@ -93,7 +96,7 @@ def sizes(texts: list[dict]) -> list[tuple[float, float]]:
         new = list(dict.fromkeys(k for k in keys if k not in _sizes))
         if not new:
             return [_sizes[k] for k in keys]
-        got = _engine().measure([{"id": str(i), **dict(zip(FIELDS, k))} for i, k in enumerate(new)])
+        got = engine().measure([{"id": str(i), **dict(zip(FIELDS, k))} for i, k in enumerate(new)])
         fresh = {k: got[str(i)] for i, k in enumerate(new)}
         out = [fresh[k] if k in fresh else _sizes[k] for k in keys]
         if len(_sizes) + len(fresh) > KEEP:

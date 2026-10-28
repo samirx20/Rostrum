@@ -47,7 +47,8 @@ Check a feature by looking: `look_frame` at full width (`width=1920`) on the gly
 ## Per-letter animation
 
 `letterDelay` (seconds, not animatable) makes each letter (or word) play the layer's own keys that much later than the one
-before. 0 = the layer moves as one.
+before. 0 = the layer moves as one. Inside a `row` or `column` such a text takes the room of its one line (it doesn't wrap), so
+a sentence typed word by word is a `row` of texts with a `gap`, each with its own `letterDelay`.
 
 | Field | What it does |
 |---|---|

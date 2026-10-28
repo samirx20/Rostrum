@@ -213,13 +213,13 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True, peaky=None) -> dict:
+def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None) -> dict:
     """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
     is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
     the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
-    drivers are unknown."""
+    drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them)."""
     timed = [m for m in moments or [] if m.get("kind") != "tempo"]
-    found = moment_faults(wav, timed) if timed else []
+    found = moment_faults(wav, timed, drums) if timed else []
     found = stop_soft.merge(found, limiter, peaky) + [f for m in moments or [] if m.get("kind") == "tempo" for f in tempo_fit.faults(m)]
     if whole:
         found += _whole(wav)

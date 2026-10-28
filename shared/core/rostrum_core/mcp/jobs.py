@@ -1,7 +1,9 @@
 """Jobs for long work: a small in-process stand-in for the project service's one queue (CONVENTIONS § 7).
 
 The real queue (shared/project-service/CONTRACT.md) swaps in behind `Jobs`: same four calls, same job fields.
-Other programs see a waiting or running job, and can stop it, through its job file (job_files.py).
+Other programs see a waiting or running job, and can stop it, through its job file (job_files.py), and read its end
+there. A job outlives the session that started it: its worker thread keeps the server process alive until the job ends
+(the session's end closes the server's input; the server then exits once its jobs are done).
 A job's function runs in a worker thread and must NOT touch the document: it returns a Reply, and the
 document changes only through an operation afterwards (OPERATIONS.md § 1).
 """
@@ -32,6 +34,7 @@ class Job:
         self.note = ""
         self.result: Reply | None = None
         self.reason = ""
+        self.error: RostrumError | None = None   # the RostrumError a failed job raised
         self.started = self.ended = None        # time.monotonic() when it began and ended (None: not yet)
         self.stepped = None                     # time.monotonic() of the last progress step (a stall shows as it grows)
         self.owner = None                       # another program's process id (a job seen through its file), else None
@@ -87,6 +90,9 @@ def _seen(state: dict) -> Job:
         job.stepped = time.monotonic() - prog["last_step_s_ago"] - max(0.0, time.time() - state.get("updated", time.time()))
     if job.status in ENDED:
         job.finished.set()
+    if job.status == "done" and isinstance(state.get("result"), dict):   # its end, kept in the file (job_files.ended)
+        r = state["result"]
+        job.result = Reply(r.get("summary", ""), r.get("data") or {}, r.get("files") or [], [], r.get("warnings") or [])
     return job
 
 
@@ -122,7 +128,7 @@ class InProcessJobs:
             self._publish(job, force=True)
             if self._running < self._workers:
                 self._running += 1
-                threading.Thread(target=self._worker, name="rostrum-job", daemon=True).start()
+                threading.Thread(target=self._worker, name="rostrum-job", daemon=False).start()   # not daemon: the process waits for it
             self._cv.notify()
         return job
 
@@ -149,15 +155,19 @@ class InProcessJobs:
             if job.cancel_requested.is_set():             # stopped on purpose (its stop hook ended its process): not a failure
                 job.status, job.reason = "cancelled", "cancelled"
             elif isinstance(e, RostrumError):
-                job.status, job.reason = "failed", e.line()
+                job.status, job.reason, job.error = "failed", e.line(), e
             else:                                         # a bug in the job: say so, keep the traceback
                 where = self._log(traceback.format_exc()) if self._log else "no log"
                 job.status, job.reason = "failed", f"unexpected {bug.said(e)} (log: {where})"
         finally:
             job.ended = time.monotonic()
             job.finished.set()
-            if self._shared:
-                job_files.remove(job.id)
+            if self._shared:                              # its end, readable from another session for a day
+                end = job.state()
+                if job.status == "done" and job.result is not None:
+                    r = job.result
+                    end["result"] = {"summary": r.summary, "data": r.data, "files": [str(f) for f in r.files], "warnings": list(r.warnings)}
+                job_files.ended(end)
 
     def _publish(self, job: Job, force: bool = False):
         """Write the job's file for other programs (a step at most once a second)."""
@@ -185,7 +195,7 @@ class InProcessJobs:
             time.sleep(0.5)
             try:
                 job = self.get(job_id)
-            except RostrumError:                          # its file went: the job ended there (its result stays with that program)
+            except RostrumError:                          # its file went (cleared): the job ended there
                 job.status, job.note = "done", f"ended in its program (process {job.owner}); ask that program for its result"
                 job.finished.set()
         job.finished.wait(max(0.0, until - time.monotonic()))
@@ -234,16 +244,18 @@ class InProcessJobs:
 
 def outcome(job: Job, where: str) -> Reply:
     """The reply for a job: the result when done, a progress line while it runs, an error when it failed or was stopped."""
+    if job.status == "failed" and job.error is not None and job.error.code == codes.CHECK_FAILED:
+        raise job.error.within(where)                 # refused for open faults (faults.deliver): its own words, not "nothing was written"
     if job.status == "failed":
         raise RostrumError(codes.JOB_FAILED, where, job.id, f"({job.label}) failed: {job.reason}", hint="The job's output is incomplete; nothing was written.")
     if job.status == "cancelled":
         raise RostrumError(codes.JOB_INTERRUPTED, where, job.id, f"({job.label}) was stopped", hint="Its output is incomplete. Run it again if you still need it.")
     state = job.state()
-    if job.status == "done" and job.owner:            # another program's: its result stays there
+    if job.status == "done" and job.owner and job.result is None:   # another program's, its end not kept
         return Reply(f"Job {job.id} ({job.label}) {job.note}.", state)
     if job.status == "done":
         r = job.result
-        return Reply(r.summary, {**state, "result": r.data}, r.files, r.images, r.warnings, r.changed)
+        return Reply(r.summary, {**state, "result": r.data}, r.files, r.images, r.warnings, r.changed, r.faults)
     prog = f" {job.done} of {job.total}." if job.total else ""
     if job.total and job.status == RUNNING and job.stepped is not None and time.monotonic() - job.stepped >= 10:
         prog += f" Nothing new for {time.monotonic() - job.stepped:.0f} s (a stuck frame fails the job by itself after its limit)."

@@ -31,13 +31,12 @@ INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document 
                 "one name with look: true (it renders and listens), read the listening check in the reply, edit the script and run it again under the same name "
                 "(a removed track, note or marker disappears; a new name that re-makes the same tracks is refused). "
                 "Make an asked moment read with moment(name, at) in the script (rest before it, stop the band, strike its layers; inspect_guide 'script' › Moments that read). "
-                "DELIVERY (look or render_mix with folder) waits for a clean check: the mix is copied to the folder only when no fault is open, or when keep "
-                "explains each one ([{\"fault\": kind, \"at\": s, \"why\": a sentence}]); otherwise the reply says NOT DELIVERED and what to change. "
+                "A delivery (render_mix, or look with folder) is refused while a fault is open unless keep: {id: why} explains it; the brief's own moment is kept only after a render that tried the fix, with a measured number in the reason. "
                 "Use edit_document only for one-off touch-ups. "
                 "Check with look_arrangement (a picture, and which tracks start on each marker), look_sound (loudness, levels, spectrum, stereo, "
                 "low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
-                "with render_voice, then render. The server opens the song you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last song; run_open_project lists the recent ones "
-                "(what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render asks for a fix pass: listen, name the three weakest moments, change the script, run it again.")
+                "with render_voice, then render. The server starts on your own song: the one you last opened from this folder (a resumed session gets it back), else a fresh scratch project made for you, never the person's work (the first reply says which); "
+                "the person's songs open only when you ask: run_open_project lists them (what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render asks for a fix pass: listen, name the three weakest moments, change the script, run it again.")
 
 
 NO_PROJECT = "No project is open. Open one in RostrumSound, or call run_open_project with a folder."

@@ -230,8 +230,8 @@ FIELDS: dict[str, list[Param]] = {
     ],
     "shape": [
         CH("shape", SHAPE_KINDS, "Shape", "Shape", "rect", labels=SHAPE_WORDS),
-        N("w", "Width", "Shape", 0, 20000, 1, "px", default=200.0, help="A line's or arrow's length"),
-        N("h", "Height", "Shape", 0, 20000, 1, "px", default=200.0),
+        N("w", "Width", "Shape", 0, 20000, 1, "px", when=_layout.LAYER_SIZE_SET["w"], default=200.0, help="A line's or arrow's length"),
+        N("h", "Height", "Shape", 0, 20000, 1, "px", when=_layout.LAYER_SIZE_SET["h"], default=200.0),
         N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when={"any": [{"all": [IS("shape", "rect"), IS("eachCorner", False)]},
                                                                          *(IS("shape", k) for k in ("triangle", "polygon", "star"))]}),
         T("eachCorner", "Each corner", "Shape", False, D, IS("shape", "rect"), help="A radius per corner",
@@ -287,8 +287,8 @@ FIELDS: dict[str, list[Param]] = {
     "image": [
         X("src", "File", "Image", "", help="Absolute path, or relative to the project folder", control="file",
           filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
-        N("w", "Width", "Image", 0, 20000, 1, "px", default=640.0),
-        N("h", "Height", "Image", 0, 20000, 1, "px", default=360.0),
+        N("w", "Width", "Image", 0, 20000, 1, "px", when=_layout.LAYER_SIZE_SET["w"], default=640.0),
+        N("h", "Height", "Image", 0, 20000, 1, "px", when=_layout.LAYER_SIZE_SET["h"], default=360.0),
         CH("fit", ["cover", "contain", "stretch"], "Fit in box", "Fit in box", "cover", S),
         N("radius", "Corner radius", "Image", 0, 10000, 1, "px", S),
     ] + TRANSFORM + GRADED,
@@ -323,7 +323,7 @@ FIELDS: dict[str, list[Param]] = {
         CH("loop", looping.MODES, "Loop", "3D render", "off", D, labels=looping.WORDS,
            help="What happens when the render ends: Loop starts again, Ping-pong plays it back and forth (Off holds the last frame)"),
     ] + TRANSFORM + GRADED,
-    "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
+    "group": [      # a size the auto layout sets (fit, fill, percent) is absent: the layout sets it (layout_fields.py)
         N("w", "Width", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["w"], default=1920.0),
         N("h", "Height", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["h"], default=1080.0),
         T("clip", "Clip to box", "Box", False, S, help="Hide children outside the group's box"),
@@ -484,7 +484,7 @@ STATE = [T("locked", "Locked", "Layer", False, D, help="Locked: the screen won't
          T("hidden", "Hidden", "Layer", False, D, help="Not drawn, in the preview and in an export, until shown again")]
 for _t in LAYERS:
     if _t != "camera":
-        FIELDS[_t] += STATE + _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
+        FIELDS[_t] += STATE + _layout.child_fields(_t)
     FIELDS[_t] += _stepped.LAYER
 for _t in _paint.TYPES:                    # paint on an element (paint_fields.py): its Paint group
     FIELDS[_t] += _paint.ELEMENT

@@ -1,8 +1,9 @@
-"""What agents rely on: the 2D server, started with no options, opens the person's last project (never Sam's real one in
-a test: the settings live in a temp folder), says so plainly when there is none, and run_open_project switches."""
+"""What agents rely on: the 2D server, started with no options, opens the agent's own project, never the person's last one
+(rostrum_core/agent_start.py; the settings live in a temp folder in a test), its first reply says which, and
+run_open_project lists the person's projects and switches."""
 import json
 
-from rostrum_core import Who
+from rostrum_core import Who, agent_start
 from rostrum_core import recent as recent_list
 from rostrum_core.mcp import Runtime
 
@@ -26,16 +27,19 @@ def start(tmp_path, monkeypatch, recent):
     recent_file = recent_list.file("2d")                                # the one Open recent list (rostrum_core/recent.py)
     recent_file.parent.mkdir(parents=True, exist_ok=True)
     recent_file.write_text(json.dumps(recent), encoding="utf-8")
-    folder, items = start_choice(None, None)
-    app = make_app(folder, items)
+    start = start_choice(None, None)
+    app = make_app(start.folder, start.items)
+    agent_start.settle(app, start)
     return app, make_runtime(app)
 
 
-def test_no_options_opens_the_newest_recent_project_and_run_open_project_switches(tmp_path, monkeypatch):
+def test_no_options_never_opens_the_persons_last_project_and_run_open_project_switches(tmp_path, monkeypatch):
     a, b = project(tmp_path / "a", "intro"), project(tmp_path / "b")
     app, rt = start(tmp_path, monkeypatch, [{"folder": str(tmp_path / "gone"), "item": "main"}, {"folder": a, "item": "intro"}, {"folder": b, "item": "main"}])
-    assert app.folder == a and list(app.documents) == ["intro"]            # the missing newest row is skipped
-    reply, _ = rt.call("run_open_project", {"what": "recent"}, AGENT)
+    assert app.folder not in (a, b) and "agent-scratch" in app.folder and list(app.documents) == ["main"]
+    reply, _ = rt.call("inspect_project", {}, AGENT)                          # the first reply says what is open and whose
+    assert reply["summary"].startswith("Open: a fresh scratch project made for you") and "not the person's work" in reply["summary"]
+    reply, _ = rt.call("run_open_project", {"what": "recent"}, AGENT)        # the missing newest row is skipped
     assert [r["folder"] for r in reply["data"]["recent"]] == [a, b]
     reply, _ = rt.call("inspect_recent_projects", {}, AGENT)             # an old name never silently works: it names the new call
     assert not reply["ok"] and reply["error"]["code"] == "UNKNOWN_TOOL" and 'run_open_project with what: "recent"' in reply["summary"]
@@ -55,24 +59,18 @@ def test_run_open_project_makes_a_new_folder_and_a_refused_call_makes_nothing(tm
     assert reply["ok"] and (tmp_path / "new" / "piece" / "docs" / "main.mtn").is_file()
 
 
-def test_with_no_recent_project_nothing_is_open_and_nothing_is_created(tmp_path, monkeypatch):
-    app, rt = start(tmp_path, monkeypatch, [])
-    assert app.documents == {} and app.folder is None
-    reply, _ = rt.call("inspect_project", {}, AGENT)
-    assert reply["ok"] and reply["summary"].startswith("No project is open. Open one in Rostrum2D, or call run_open_project")
-    assert not any(tmp_path.glob("*/docs"))
-
-
 def test_a_resumed_session_gets_its_project_back(tmp_path, monkeypatch):
     # The fair benchmark's refine turns all began with "no document is open": the resumed session's new server had forgotten
     # the project the agent opened with run_open_project (it never enters the person's Open recent list).
     person = project(tmp_path / "person")
     app, rt = start(tmp_path, monkeypatch, [{"folder": person, "item": "main"}])
-    assert app.folder == person
+    assert app.folder != person
     reply, _ = rt.call("run_open_project", {"folder": str(tmp_path / "agent" / "piece")}, AGENT)
     assert reply["ok"], reply
-    folder, items = start_choice(None, None)                                 # the next server, same working folder
-    assert folder == str((tmp_path / "agent" / "piece").resolve()) and items == ["main"]
+    app, rt = start(tmp_path, monkeypatch, [{"folder": person, "item": "main"}])   # the next server, same working folder
+    assert app.folder == str((tmp_path / "agent" / "piece").resolve()) and list(app.documents) == ["main"]
+    reply, _ = rt.call("inspect_project", {}, AGENT)
+    assert "your project from earlier in this session" in reply["summary"]
     empty = make_runtime(make_app(None, []))
     reply, _ = empty.call("look_frame", {}, AGENT)
     assert not reply["ok"] and "run_open_project" in reply["summary"]      # with nothing open, the reply says how to fix it

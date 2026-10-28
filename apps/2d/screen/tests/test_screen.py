@@ -20,7 +20,7 @@ comp("c", width=320, height=180, fps=10, duration=2)
 t = text("title", body="Hi", size=40, x=100, y=90)
 t.key("opacity", {0.0: 0, 1.0: 1})
 shape("box", w=40, h=40, x=200, y=90)
-with group("row", w=300, h=60, layout="row", gap=10, hugWidth=False):
+with group("row", x=960, y=540, w=300, h=60, layout="row", gap=10, sizeW="fixed"):   # off the picture, as before parent-centre placement
     for n in ("ra", "rb", "rc"):
         shape(n, w=60, h=60)
 '''
@@ -49,6 +49,14 @@ class FakeEngine:
 
     def measure(self, items):
         return {i["id"]: (0.5 * i["size"] * len(i["body"]), i["size"] * i["lineHeight"]) for i in items}
+
+    def layout(self, trees):        # the engine's `layout` (rostrum2d/layout.py): the Python tests' stand-in lays out
+        import importlib.util, pathlib
+        path = pathlib.Path(__file__).parents[2] / "python" / "tests" / "fake_layout.py"
+        spec = importlib.util.spec_from_file_location("fake_layout", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.FakeEngine().layout(trees)
 
     def close(self):
         pass

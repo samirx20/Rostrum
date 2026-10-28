@@ -63,7 +63,8 @@ def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) 
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
-                        "paint": boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30)), p),
+                        "paint": (0.0, 0.0, w, h) if layer["type"] == "group" and p.get("background") else
+                                 boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30)), p),   # a group's background box paints
                         "frame": frame_number(t, comp.get("fps", 30)), "layer": layer,
                         "broken": follow.problem(layer, layers),
                         "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),

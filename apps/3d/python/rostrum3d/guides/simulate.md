@@ -69,7 +69,9 @@ A plane is made fine enough to fold on its own (a 96 × 96 grid of points, so wr
 for silk that clings to every shape, towards 0.6–1 for canvas or card that stands off in broad bends. A still thing whose
 shape is closed and has no dents (a box, a ball, a plinth) is solid to cloth; one with dents or holes (a chair, a bowl)
 is draped by its own faces. The sheet rests about 0.6 of a grid square (under 1 cm on a 1 m sheet) off what it lies on, so
-sharp corners don't poke through it. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
+sharp corners don't poke through it. A cloth touches itself: where it folds over or gathers on the floor its layers stay
+about 0.9 of a grid square apart (1.4 cm on a 1.5 m sheet) instead of passing through each other, so corners fold into soft
+rolls, not crumpled spikes. Pin a side the cloth has an edge on: a sheet lying flat has no top edge (pinning `top` holds all of it, which
 fails); pin its `back` instead. Start it just above what it should land on, not touching it.
 
 **Timing the drape in a long shot:** a sheet takes about 1.5–2.5 s from letting go to lying still. In a 10 s shot with
@@ -96,7 +98,7 @@ when a cloth starts over nothing it can land on, or slides off what it started o
 Cloth plays back from the stored result like a falling thing (Timing and Simplify apply too), but it never becomes keys: its
 folds stay a simulation (`sim.to_keys` leaves it as it is; on a shot whose only simulated thing is cloth it fails saying
 so, and the window offers no Turn into keys). While it is cloth, keys on its place are not used: it stays where it
-was at the first frame and the cloth moves inside it. Cloths don't touch each other (two sheets pass through each other).
+was at the first frame and the cloth moves inside it. Two cloths don't touch each other (two sheets pass through each other); one cloth does touch itself.
 
 ## Compute it
 

@@ -260,6 +260,13 @@ class Engine:
         sizes = self._request({"measure": {"items": items}})["sizes"]
         return {k: (float(w), float(h)) for k, (w, h) in sizes.items()}
 
+    def layout(self, trees: list[dict]) -> list[dict[str, tuple[float, float, float, float]]]:
+        """Each layout tree (a box with its children, texts and leaves: ENGINE_CONTRACT.md § 1 `layout`) laid out by
+        the engine's CSS flex / grid with real text wrapping: per tree {node id: (x, y, w, h)}, the border box in its
+        parent node's px. One round trip for the list; needs no scene loaded. Callers go through layout.py."""
+        boxes = self._request({"layout": {"trees": trees}})["boxes"]
+        return [{k: tuple(float(v) for v in b) for k, b in tree.items()} for tree in boxes]
+
     def shapes(self, items: list[dict]) -> dict[str, dict]:
         """Each parametric shape (arc, triangle, polygon, star, line, arrow, spiral) as the path it is drawn as: items
         are shape layers' fields with an id; {id: {path field: value}}, `d` in its own box px plus the path settings and

@@ -9,13 +9,15 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp import faults as shared_faults
 
 from .. import deliver, handoff, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
-from ..listen import weakest
-from . import deliver_hold, session_clock, stop_limiter, tools_fit
+from ..listen import fault_shape, weakest
+from ..listen.faults import check as fault_check
+from . import asked_keep, session_clock, stop_limiter, tools_fit
 from .moments_arg import EXPECT, parse as parse_expect
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -104,14 +106,6 @@ def _copy_to(folder: Path, r: dict, files: list[str]) -> list[str]:
     return [str(Path(p)) for p in out]
 
 
-def _loud_fix(loud: dict | None) -> str:
-    """The change that lands a render on its loudness target, in the words a script and a call use."""
-    if loud and loud.get("push_max_limit"):
-        m = loud["push_max_limit"]
-        return f"raise the master's maxLimit to {m:g} (a script: master(maxLimit={m:g}); or edit_loudness {{\"apply\": \"best\"}})"
-    return "edit_loudness {\"apply\": \"best\"} lands it in one measured call"
-
-
 def asked_moments(doc, expect) -> list[dict]:
     """The moments a finished render is checked against: `expect` when given, else the song's markers named for one
     ("hit", "drums back", "climax", listen/weakest.py)."""
@@ -120,13 +114,27 @@ def asked_moments(doc, expect) -> list[dict]:
     return weakest.from_markers(markers.all(doc.data))
 
 
-def weakest_words(wav, moments, limiter=None, peaky=None) -> tuple[str, list[str]]:
-    """The reply's weakest-moments lines; a file the ears cannot read is said, not hidden (the render itself stands)."""
+def weakest_words(wav, moments, limiter=None, peaky=None, found=None) -> tuple[str, list[str]]:
+    """The reply's weakest-moments lines; a file the ears cannot read is said, not hidden (the render itself stands).
+    `found`: fault_check's faults when already measured (not measured twice)."""
     try:
-        said = weakest.words(wav, moments, limiter, peaky)
+        said = weakest.words(wav, moments, limiter, peaky, found)
     except RostrumError as e:
         return f"The listening check could not read the mix: {e}", []
     return said, [ln.split(". ", 1)[1] for ln in said.splitlines()[1:]]
+
+
+def deliver_checked(state, item, r, found, keep, copied) -> None:
+    """faults.deliver on the file that is delivered (the copy in `folder` when there is one, else the render's own file,
+    whose new name is written back so the looks that follow read it)."""
+    target = copied[0] if copied else r["file"]
+    try:
+        shared_faults.deliver(found, keep, "render_mix", target)
+    except RostrumError:
+        if not copied:
+            r["file"] = str(Path(r["file"]).with_name(f"{Path(r['file']).stem}.NOT-DONE{Path(r['file']).suffix}"))
+            state.remember(item, r)
+        raise
 
 
 def register(tools: Tools):
@@ -152,14 +160,14 @@ def register(tools: Tools):
         "folder": {"type": "string", "description": "An absolute folder path (made when it is not there): the finished mix, under `name`, is also copied there (and the stems, in a folder beside it called \"<name> stems\"), so the file lands where you want it with no shell copy. The render stays in the project's renders/ as its next version; the reply's `copied` lists the new files."},
         **{"expect": {**EXPECT["expect"], "description": EXPECT["expect"]["description"] + " The finished reply lists the three weakest of them "
                       "(time, what is weak, the measured number, the first fix). Default: the song's markers named hit, stop, drums out, drums back, climax or lift."}},
+        **shared_faults.KEEP,
         "ring_past_length": {"anyOf": [{"type": "boolean"}, {"type": "number", "minimum": 0, "maximum": deliver.MOST_RING_S}], "default": False,
-                             "description": f"False (default): when the song has a length the file is exactly that long: trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply says by how much). True: the file may run on up to {deliver.RING_S:g} s past the length (the usual delivery allowance) while the ring-out dies away, faded inside that; a number: up to that many seconds (at most {deliver.MOST_RING_S:g})."},
-        **deliver_hold.KEEP}})
+                             "description": f"False (default): when the song has a length the file is exactly that long: trim never cuts below it, and a ring-out that would run past it is faded out inside it (the reply says by how much). True: the file may run on up to {deliver.RING_S:g} s past the length (the usual delivery allowance) while the ring-out dies away, faded inside that; a number: up to that many seconds (at most {deliver.MOST_RING_S:g})."}}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, Rhodes, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them.
         A first render often lands 1 to 3 dB under the master's loudness target (-16 LUFS): gentle limiting holds the mix to `maxLimit` (2 dB) instead of squashing it. The reply says so and edit_loudness {"apply": "best"} (or keep_balance) reaches the target in one measured call; do not leave it quiet. This file is for checking and delivery: 2D's render_video does not use it, it renders the song's current document itself (cached while the song is unchanged), so a video's sound always follows the song, not the last render_mix.
-        Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. The file is exactly the song's length when it has one (trim never cuts below it; a ring-out running past it is faded out inside it: `ring_past_length` true lets it run on). `folder` also copies the mix there under `name`. The finished reply lists the three weakest moments of the mastered mix against the asked moments (`expect`, else the song's markers named hit / stop / drums out / drums back / climax / lift), one line each with the time, what is weak, the measured numbers and the first fix (data.weakest; the same check as look_sound / look_music faults: a hit's attack against a normal note and the bed before it), then asks for a fix pass and says the time and passes left. Returns a job. The quickest loop is run_script with `look` (true, or these same arguments): the whole piece as one script, rendered and checked in one call; edit the script and run it again."""
+        Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. The file is exactly the song's length when it has one (trim never cuts below it; a ring-out running past it is faded out inside it: `ring_past_length` true lets it run on up to 2 s). `folder` also copies the mix there under `name`. The finished reply lists the three weakest moments of the mastered mix against the asked moments (`expect`, else the song's markers named hit / stop / drums out / drums back / climax / lift), one line each with the time, what is weak, the measured numbers and the first fix (data.weakest; the same check as look_sound / look_music faults: a hit's attack against a normal note and the bed before it), then asks for a fix pass and says the time and passes left. Replies open NOT DONE: with each fault (id, when, fix) or DONE:; render_mix (and run_script look with folder) refuses open faults (the file is kept as <name>.NOT-DONE.wav) unless keep: {id: why} explains them; a fault on the moment the brief asked for (its what says so) can be kept only when the previous render named it too (a fix was tried) and the why quotes a measured number. The faults are the listening check's plus: loudness more than 0.5 LU off the master's target (id loudness), a duck under a voice dipping under 3 dB (duck:<track>), a marker named for a moment (hit, stop, drop, climax ...) with no sound starting within 30 ms (marker_onset:<marker>), a true peak over the master's ceiling (true_peak), clipped samples (clipped), and sound above -50 dBFS after the song's end, after the ring ring_past_length allows (rings_past_end). Returns a job. The quickest loop is run_script with `look` (true, or these same arguments): the whole piece as one script, rendered and checked in one call; edit the script and run it again."""
         doc = ctx.document(args.get("item"))
         args = presets.expand(args, args.get("preset"))             # a wrong preset answers now
         item = doc.item_id
@@ -174,13 +182,11 @@ def register(tools: Tools):
         partial = bool(args.get("solo") or args.get("mute"))
         options = {k: args[k] for k in ("format", "sampleRate", "trim") if k in args}
         ring = deliver.ring_allowed(args.get("ring_past_length"))     # a wrong one answers now
-        length_s = None
         if schedule.get("length") is not None:
             with markers.project(getattr(doc, "folder", None)):     # in seconds: the song may write it in beats or bars
-                length_s = options["length"] = times.seconds(doc.data["length"], doc.data, "length")   # asked = delivered (deliver.py)
+                options["length"] = times.seconds(doc.data["length"], doc.data, "length")   # asked = delivered (deliver.py)
             if ring:
                 options["ring"] = ring
-        keep = deliver_hold.read_keep(args.get("keep"))            # a wrong keep answers now
         target = _target_folder(args.get("folder"))         # a wrong folder answers now, not after the render
         with markers.project(getattr(doc, "folder", None)):          # a time may name a project marker
             moments = [] if partial else asked_moments(doc, args.get("expect"))   # a wrong expect answers now
@@ -192,9 +198,12 @@ def register(tools: Tools):
         goal = (schedule.get("master") or {}).get("loudness")       # the target the engine was given (None: no target)
         master_now = (doc.data.get("master") or [{}])[0] if master else {}
         try:                                                         # what the last render predicts for this one (the Export sheet's sentence)
-            before = fit.landing(master_now, state.last_render(item, "render_mix")) if master else {}
+            last = state.last_render(item, "render_mix")
         except Exception:  # noqa: BLE001  no render yet: nothing to predict
-            before = {}
+            last = {}
+        before = fit.landing(master_now, last) if master and last else {}
+        seen_before = set(last.get("faultIds") or [])      # the faults the previous render named (asked_keep.py)
+        drum_ids = [t["id"] for t in doc.data.get("tracks", []) if t.get("instrument") in ("kit", "kitSfz") or t.get("hits")]
 
         def work(job):
             job.progress(note="rendering")
@@ -207,29 +216,31 @@ def register(tools: Tools):
                                    markers_file=bool(args.get("markers")), name=args.get("name") or "")
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
+            copied = _copy_to(target, r, files) if target and not partial else []
             loud = loudness(r, master_now, before) if master and not partial else None
-            weak, copied, hold = [], [], {}
-            said = summary(r, goal, loud)
+            said = summary(r, goal, loud) + (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "") + "." if copied else "")
+            weak, found = [], None
             if not partial:
                 job.progress(note="listening")
-                lim = stop_limiter.read(ctx, doc, r, moments)
-                heard, weak = weakest_words(r["file"], moments, *lim)
-                found = deliver_hold.open_faults(r, moments, master_now, length_s, ring, _loud_fix(loud), *lim) if master else []
-                still, kept = deliver_hold.decide(found, keep)
-                hold = {"open_faults": [{k: f[k] for k in ("kind", "at_s", "words")} for f in still], **({"kept": kept} if kept else {})}
-                if target and still:       # the delivery waits for a clean check (deliver_hold.py); the render stands
-                    said = deliver_hold.held_words(still, str(target)) + "\n" + said
-                    hold["delivered"] = False
-                elif target:
-                    copied = _copy_to(target, r, files)
-                    said += (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "")
-                             + ". " + deliver_hold.clean_words(found, kept))
-                    hold["delivered"] = True
-                else:
-                    said += " " + deliver_hold.pending_words(still)
+                limiter, peaky = stop_limiter.read(ctx, doc, r, moments)
+                try:
+                    raw = fault_check(r["file"], moments, limiter, peaky=peaky,
+                                      drums=[r["stems"][i] for i in drum_ids if (r.get("stems") or {}).get(i)])["faults"]
+                except RostrumError:                         # the ears cannot read it: weakest_words says so
+                    raw = None
+                heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
-            return Reply(said, {**hold, **({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+                if raw is not None:
+                    found = fault_shape.all_faults(doc, raw, r["file"], r.get("lufs"), goal, r.get("ducks"), r.get("stems"),
+                                                   ring_s=ring, peak=(r.get("truePeak"), master_now.get("truePeak", -1)), clipped=r.get("clipped"),
+                                                   push=(loud or {}).get("push_max_limit"))
+                    asked_keep.mark(raw, found, moments)
+                    r["faultIds"] = [f["id"] for f in found]
+                    state.remember(item, r)
+                    if ctx.tool == "render_mix" or copied:   # a delivery; run_script's look without folder is a check, never refused
+                        deliver_checked(state, item, r, found, asked_keep.screen(found, args.get("keep"), seen_before), copied)
+            return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
-                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
+                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files, faults=found)
 
-        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments, str(target), keep)))}")
+        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments, args.get('folder'), args.get('keep'))))}")

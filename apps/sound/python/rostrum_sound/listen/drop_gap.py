@@ -5,7 +5,12 @@ drums kept rattling through 24–26 s passed (sound-script-first brief 5: judged
 Chords keep sounding under a drop, so total level says little: this measures the drums' own part, the percussive part
 of the spectrogram (median over frequency against median over time, the split librosa's HPSS uses) above 4 kHz, where
 hats, snare crack and cymbals live and keys hardly reach. The gap against the 2 s before it: benchmark drops that read
-measure 18–65 dB down, the one judged not to read 9 dB."""
+measure 18–65 dB down, the one judged not to read 9 dB.
+
+A kick left in the gap lives under the bass, which keeps playing, so the mix alone cannot hear it (the next round's lo-fi
+run 1: a kick at 24.3 and 25.6 s, 26 dB down over 4 kHz and judged "drums keep playing"). When the render has the drum
+tracks' own files (`drums`: their stems), the gap is read there, at every frequency: the drums' level in the gap against
+the 2 s before, under STEM_GAP_DB is a fault. Only the drum tracks count, so a vinyl crackle on its own track never does."""
 from __future__ import annotations
 
 import numpy as np
@@ -14,6 +19,7 @@ from .core import num
 from .dsp import fft_frequencies, stft
 from .dsp_events import _median
 
+STEM_GAP_DB = 20.0     # the drum tracks themselves: the gap's loudest 50 ms under this far below the 2 s before's: a hit is still there
 GAP_DB = 14.0          # the drums' part in the gap under this far below the 2 s before: still heard
 DEFAULT_GAP_S = 1.5    # no return given ("drums back" / end): the gap read is this long
 RETURN_WITHIN_S = 16.0 # an entry this soon after a drop is its return
@@ -46,28 +52,56 @@ def measure(m, sr, at, end) -> dict | None:
     return {"down_db": num(db(pre) - db(gap), 1), "before_db": num(db(pre), 1)}
 
 
+def stem_measure(drums, at, end) -> dict | None:
+    """{down_db, before_db} of the drum tracks' own files summed (every frequency), the gap against the 2 s before;
+    None when they cannot be read or carry nothing before the drop."""
+    from .core import load, mono
+    total, sr = None, None
+    for f in drums or []:
+        y, sr = load(f)
+        m = mono(y).astype(np.float64)
+        total = m if total is None else total[:len(m)] + m[:len(total)]
+    if total is None:
+        return None
+    seg = lambda a, b: total[max(0, int(a * sr)):max(0, int(b * sr))]
+    lv = lambda x: 10 * np.log10(float(np.mean(x ** 2)) + 1e-20) if len(x) else None
+    pre, gap = lv(seg(at - BEFORE_S, at - 0.03)), lv(seg(at + 0.05, end - 0.05))
+    if pre is None or gap is None or pre < QUIET_DB:
+        return None
+    # a hit in the gap is heard by its loudest moment, not its average: the gap's loudest 50 ms against the 2 s before's
+    n = max(1, int(0.05 * sr))
+    peak = lambda x: max(lv(x[i:i + n]) for i in range(0, max(1, len(x) - n + 1), n))
+    return {"down_db": num(peak(seg(at - BEFORE_S, at - 0.03)) - peak(seg(at + 0.05, end - 0.05)), 1), "before_db": num(pre, 1)}
+
+
 def return_of(moments, at) -> float | None:
     """The drop's return: its own `end`, else the first entry ("drums back") after it within RETURN_WITHIN_S."""
     later = [float(mo["at"]) for mo in moments if mo.get("kind") == "entry" and at < float(mo["at"]) <= at + RETURN_WITHIN_S]
     return min(later) if later else None
 
 
-def faults(m, sr, at, end) -> list[dict]:
-    """`drums_in_gap` when the drums' part in the gap (at..end, or DEFAULT_GAP_S when end is None) is under GAP_DB down."""
+def faults(m, sr, at, end, drums=None) -> list[dict]:
+    """`drums_in_gap` when the drums in the gap (at..end, or DEFAULT_GAP_S when end is None) are under the threshold
+    down: the drum tracks' own files when given (STEM_GAP_DB, every frequency), else the mix over 4 kHz (GAP_DB)."""
     assumed = end is None
     end = at + DEFAULT_GAP_S if assumed else end
-    d = measure(m, sr, at, end)
-    if d is None or d["down_db"] >= GAP_DB:
+    d = stem_measure(drums, at, end) if drums else None
+    on, limit = ("tracks", STEM_GAP_DB) if d is not None else ("mix", GAP_DB)
+    d = d if d is not None else measure(m, sr, at, end)
+    if d is None or d["down_db"] >= limit:
         return []
-    return [{"kind": "drums_in_gap", "at_s": at, "measured": {**d, "to_s": num(end, 2), "gap_assumed": assumed}}]
+    return [{"kind": "drums_in_gap", "at_s": at, "measured": {**d, "to_s": num(end, 2), "gap_assumed": assumed, "on": on}}]
 
 
 def words(f) -> str:
     t, d = f["at_s"], f["measured"]
     span = (f"the {DEFAULT_GAP_S:g} s after it (no return given: pass end, or an entry / a \"drums back\" marker)"
             if d["gap_assumed"] else f"{t:g}–{d['to_s']:g} s")
-    return (f"drums still heard in the drop at {t:.2f} s: their part (hats, snare, cymbals: the percussive part over "
-            f"4 kHz) is only {d['down_db']:g} dB under the 2 s before in {span} (drops that read: 18 dB or more); "
+    what = ("the drum tracks' own sound (every frequency, kick included; their loudest moment)" if d.get("on") == "tracks" else
+            "their part in the mix (hats, snare, cymbals: the percussive part over 4 kHz)")
+    need = STEM_GAP_DB if d.get("on") == "tracks" else 18
+    return (f"drums still heard in the drop at {t:.2f} s: {what} is only {d['down_db']:g} dB under the 2 s before in {span} "
+            f"(drops that read: {need:g} dB or more); "
             "end every drum note, roll and cymbal ring before the drop and start none until the return; in a script "
             f"m = moment(\"drums out\", at={t:g}); m.stop(<every drum and percussion track>, until=<the return>) clears "
             "them, ghost notes and fills included")

@@ -43,6 +43,8 @@ NOT_A_FIELD = {
     "mask": "item.mask(id, x=, y=, w=, h=) cuts a layer to a box; matte=\"id\" shows it through a layer beside it",
     "shadow": "item.effect(\"shadow\", dy=10, radius=30, strength=0.3)",
     "gradient": "item.effect(\"gradient\", color1=\"#fff\", color2=\"#f75\", angle=90), or fillType=\"linear\" on a shape",
+    "anchor": 'anchor="top-left" (or "top", "center", a pair (0, 1) …) names the pivot where a layer is made; on an '
+              'item: anchorX= / anchorY= (0 = left / top, 1 = right / bottom), or item.pivot(x, y)',
     "scaleXY": "scale= (both), or scaleX= / scaleY=",
 }
 NOT_A_NAME = {

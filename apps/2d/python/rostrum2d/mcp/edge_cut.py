@@ -4,14 +4,17 @@ what spans the picture on either axis (a background, a wall, a ground strip: non
 verdict: a crop can be meant, the agent decides (guide: character-rigging-and-lip-sync.md › Staging a character)."""
 from __future__ import annotations
 
+import re
+
 from rostrum2d.frame import view
 
 from . import world_facts as wf
-from .geometry import _apply, _invert, comp_size
+from .geometry import _apply, _invert, comp_size, flatten
 
 MOST_IN_PCT = 50          # at least this share of the box is in the picture
 SOME_IN_PCT = 5           # a character is named when at least this share of it is in the picture
 CUT_MIN_PCT = 8           # an edge counts when this share of the box's size lies beyond it
+SOFT_BLUR = 20            # a layer blurred this much or more is atmosphere (a glow, a colour blob), never a cut subject
 PARTS = ("shape", "text", "image", "video", "drawing", "path")      # what a rig's posed body is made of
 
 
@@ -49,19 +52,52 @@ def rig_parts(comp: dict) -> dict[str, list[str]]:
     return found
 
 
+_UNDRAWN = re.compile(r'"([^"]+)" is not drawn at this time')
+
+
+def rig_chains(comp: dict, rigs: set[str]) -> dict[str, set[str]]:
+    """{rig id: its own id and its groups' ids}, what flatten needs to say whether the rig is showing (`only`)."""
+    out, todo = {}, [(layer, ()) for layer in comp.get("layers", [])]
+    while todo:
+        layer, path = todo.pop()
+        if layer["id"] in rigs:
+            out[layer["id"]] = {*path, layer["id"]}
+        todo.extend((c, (*path, layer["id"])) for c in layer.get("layers", []))
+    return out
+
+
+def shown_at(comp: dict, t: float, rid: str, chain: set[str]) -> bool:
+    """The rig is in its time (and its groups in theirs) and not fully see-through at t: worth asking the engine about.
+    A character off stage made every one of its parts fail an engine ask of ~0.1 s, at each of 160 times."""
+    row = next((n for n in flatten(comp, t, only=chain) if n["id"] == rid), None)
+    return row is None or (row["in_time"] and row["opacity"] > 0)
+
+
 def ask_drawn(ask, t: float, ids: list[str]) -> dict:
-    """The engine's placements of `ids` at t, leaving out parts not drawn then (a swapped-out mouth or eye fails a whole
-    ask, so a failed ask is retried part by part)."""
-    try:
-        return ask(t, ids) if ids else {}
-    except Exception:       # noqa: BLE001  (one undrawn part fails the whole ask)
-        places = {}
-        for i in ids:
-            try:
-                places.update(ask(t, [i]))
-            except Exception:       # noqa: BLE001  (not drawn at t: simply not measured)
-                pass
-        return places
+    """The engine's placements of `ids` at t, leaving out parts not drawn then. A swapped-out mouth or eye fails the
+    whole ask, naming itself: it is dropped and the rest asked again, one ask per undrawn part (asking part by part made
+    a character of 250 parts cost 250 engine asks per time: the showreel export's checks took 15 minutes)."""
+    ids = list(ids)
+    while ids:
+        try:
+            return ask(t, ids)
+        except Exception as e:      # noqa: BLE001  (one undrawn part fails the whole ask)
+            named = _UNDRAWN.search(str(e))
+            if not named or named.group(1) not in ids:
+                return _one_by_one(ask, t, ids)
+            ids.remove(named.group(1))
+    return {}
+
+
+def _one_by_one(ask, t: float, ids: list[str]) -> dict:
+    """A failure that names no part: each asked alone, the undrawn simply not measured."""
+    places = {}
+    for i in ids:
+        try:
+            places.update(ask(t, [i]))
+        except Exception:       # noqa: BLE001  (not drawn at t: simply not measured)
+            pass
+    return places
 
 
 def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict[str, tuple]], list[str]]:
@@ -71,12 +107,15 @@ def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict
     if not rigs or not times:
         return [{} for _ in times], []
     ask = placement.asker(doc_data, comp["id"], (min(times), max(times)))
+    chains = rig_chains(comp, set(rigs))
     w, h = comp_size(comp)
     out, notes = [], []
     for t in times:
         inv = _invert(view.world_matrix(comp, view.shot(comp, t), {"screenLock": True}))
         row = {}
         for rid, ids in rigs.items():
+            if not shown_at(comp, t, rid, chains[rid]):
+                continue                # out of its time or see-through: not in the picture, so nothing to ask the engine
             places = ask_drawn(ask, t, ids)
             if not places:
                 note = f'rig "{rid}" could not be measured for the edge check: no part is drawn at {t:g} s'
@@ -91,10 +130,17 @@ def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict
     return out, notes
 
 
+def soft(layer: dict) -> bool:
+    """A layer blurred by SOFT_BLUR px or more: a glow or a colour blob of the atmosphere, with no edge a crop could cut."""
+    return any(e.get("type") == "blur" and float(e.get("radius", 0)) >= SOFT_BLUR for e in layer.get("effects", []))
+
+
 def subjects_at(comp: dict, t: float, rigs: dict[str, tuple]) -> list[tuple[str, str, tuple]]:
-    """(id, type, box in picture px) of every showing top-level layer at t, and each rig's posed body (replacing the rig layer's own box)."""
+    """(id, type, box in picture px) of every showing top-level layer at t (not a soft blurred one), and each rig's posed
+    body (replacing the rig layer's own box)."""
+    blurred = {layer["id"] for layer in comp.get("layers", []) if soft(layer)}
     rows = [(r["id"], r["type"], tuple(r["box"][k] for k in ("left", "top", "right", "bottom")))
-            for r in wf.in_frame(comp, t) if r["showing"] and r["id"] not in rigs and r["type"] != "rig"]
+            for r in wf.in_frame(comp, t) if r["showing"] and r["id"] not in rigs and r["type"] != "rig" and r["id"] not in blurred]
     return rows + [(rid, "rig", box) for rid, box in rigs.items()]
 
 

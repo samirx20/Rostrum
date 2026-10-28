@@ -114,7 +114,8 @@ def register(tools: Tools):
 LOOK = {"look": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
                  "description": "After the merge, look at the result in the same call: seconds, e.g. [2, 7, 12, 17, 22, 27], or true "
                                 "for 6 moments spread over the film. The reply carries one contact sheet of those moments and the "
-                                "film's weakest moments (named faults with times), so you can edit and re-run at once."}}
+                                "film's weakest moments (named faults with times), so you can edit and re-run at once. The reply opens NOT DONE: "
+                                "with each fault (id, when, fix), or DONE: when there are none."}}
 LOOK_LEAD = ("Write the whole film as one script; pass look to get stills + faults back; edit and re-run under the same name. ")
 
 

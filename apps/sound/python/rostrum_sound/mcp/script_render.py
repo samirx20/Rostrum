@@ -25,12 +25,10 @@ AGAIN = "and run_script again with the edited source, the same name and look"
 SCHEMA = {"anyOf": [{"type": "boolean"}, {"type": "object"}],
           "description": "Render the mix after the script merges and answer with render_mix's listening check: true, or an "
                          "object with render_mix's arguments ({\"name\": \"Late Set\", \"folder\": \"C:/out\", \"expect\": "
-                         "[{\"at\": 31.5, \"kind\": \"stop\"}, {\"kind\": \"tempo\", \"bpm\": 132}]}). The call waits for the "
-                         "render (up to 150 s; longer: the reply names the job for inspect_job). A failing script renders nothing. With `folder` it "
-                         "is the delivery: held while a fault is open, unless `keep` (here too) explains each: {\"folder\": \"C:/out\", "
-                         "\"keep\": [{\"fault\": \"held_tone\", \"at\": 0, \"why\": \"…\"}]}."}
+                         "[{\"at\": 31.5, \"kind\": \"stop\"}, {\"kind\": \"tempo\", \"bpm\": 132}]}). The reply opens NOT DONE: with each fault (id, when, fix) or DONE:. With `folder` it is a delivery, refused while a fault is open unless `keep` explains it (render_mix › keep). The call waits for the "
+                         "render (up to 150 s; longer: the reply names the job for inspect_job). A failing script renders nothing."}
 LEAD = ("The loop: write the whole piece as one script with `look` (true, or render_mix's arguments with `expect`), read "
-        "the reply's weakest moments, edit the script and run it again under the same name with `look`, until the list is clean. A `look` with `folder` is the delivery: it copies the mix there only when the check is clean or `keep` explains each open fault (render_mix › keep). ")
+        "the reply's weakest moments, edit the script and run it again under the same name with `look`, until the list is clean. ")
 
 
 def _allowed(ctx) -> set:
@@ -65,10 +63,10 @@ def _rendered(ctx, rargs) -> Reply:
 
 def after_run(ctx, doc, look, reply: Reply) -> Reply:
     """App.script_look: the merge's reply, then the render and its listening check."""
-    r = _rendered(ctx, render_args(look, _allowed(ctx), getattr(doc, "item_id", None)))
+    r = _rendered(ctx, render_args(look, _allowed(ctx), getattr(doc, "item_id", None)))    # ctx.tool is run_script: a check, never refused for open faults
     said = r.summary.replace(session_clock.AGAIN, AGAIN)
     return Reply(f"{reply.summary}\n{said}", {**reply.data, "look": r.data}, [*reply.files, *r.files], [*reply.images, *r.images],
-                 [*reply.warnings, *r.warnings], reply.changed)
+                 [*reply.warnings, *r.warnings], reply.changed, r.faults)
 
 
 def with_look(runtime) -> None:

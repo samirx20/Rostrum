@@ -152,9 +152,10 @@ def _voice(y, sr, at, end):
     return []
 
 
-def check(wav, moments) -> list[dict]:
+def check(wav, moments, drums=None) -> list[dict]:
     """moments: [{"at": s, "kind": one of KINDS, "end": s (voice: the span; drop: the drums' return, else the first
-    entry after it, else drop_gap.DEFAULT_GAP_S)}] -> the faults found, in time order."""
+    entry after it, else drop_gap.DEFAULT_GAP_S)}] -> the faults found, in time order. `drums`: the render's drum
+    tracks' own files, so a drop's gap is read on them (drop_gap.py)."""
     y, sr = load(wav)
     m = mono(y)
     ev = envelope(m, sr) if any(mo.get("kind") == "drop" for mo in moments) else None
@@ -167,7 +168,7 @@ def check(wav, moments) -> list[dict]:
             out += _lift(y, sr, at) + _flat_top(wav, at)
         elif kind == "drop":
             end = mo.get("end")
-            out += _drop(m, sr, ev, at) + drop_gap.faults(m, sr, at, float(end) if end is not None else drop_gap.return_of(moments, at))
+            out += _drop(m, sr, ev, at) + drop_gap.faults(m, sr, at, float(end) if end is not None else drop_gap.return_of(moments, at), drums)
         elif kind == "climax":
             out += _climax(wav, m, sr, y, at) + _flat_top(wav, at)
         elif kind == "voice" and mo.get("end") is not None:

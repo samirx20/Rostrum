@@ -62,43 +62,42 @@ makes. Look after each step: `look_frame` with `quality: "fast"` takes about a s
 
 **The usual way: the whole scene as one Python script, look, edit, re-run.** Keep the script in a .py file and run it with
 `run_script` `path`; after each look, edit that file and run it again (same name): it replaces what it made and keeps what a
-person moved by hand. Every step below has a script form (`clay(…, draw=[…])`, `.draw(…)`, `item.key(…)`; guide `script`).
+person moved by hand. Every step below has a script form (`clay(…)`, `.lump(…)`, `.bend(…)`; guide `script`).
 The steps here use single operations and pixel tools, the way to fix one thing you see in a look.
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; render_still / render_video refuse open faults unless `keep: {id: why}` explains them.
 
-### 1. The body: an outline in metres
+### 1. The body: ONE clay, every part a piece of it
 
-`run_script` with `clay(id, draw=[…])`. The points are in the scene, in metres. To stand the character in Shot 1's
-middle, facing the camera:
+Build the whole figure as **one clay**: body, head, arms and feet are its pieces, joined into one surface, so nothing
+can float off or drift apart, and its joints are found from that one shape. Separate meshes for the limbs are the
+hard way (they have to be kept touching and moved together by hand).
 
-- Draw on the plane **z = 0** with `facing=(0, 0, 1)` (its front towards the camera, which stands on +z).
-- Centre the outline on **x = 0** and put its **lowest point at y = 0**. The clay then stands on the ground, and its
-  own space is the scene's own space: its origin is the drawing's middle at its lowest point, here (0, 0, 0). So
-  later outlines can use the same numbers.
-- Sizes that suit Shot 1: a body about 0.26 m tall and 0.18 m wide. 24 to 40 points around the outline is plenty.
-- Give it its material in the same call; the starting point `clay` with your colour gives matte clay.
+- `clay(id, radius=r)` starts it as a ball **standing on the ground**: its middle at (0, r, 0), the clay's origin on
+  the ground under it. So every piece position is (x, **height above the ground**, z), the same numbers as the scene:
+  feet at height 0, a head above the body ball's top (2 r). A piece reaching below the ground lifts the whole figure
+  (and what is attached) to stand on it. `at=(x, y, z)` places the ball's middle there instead, and pieces are then
+  measured from that point.
+- `.lump(at, radius, name=)` joins a ball; `.lump(at, radius, to=…)` a capsule from `at` to `to` (an arm, a leg).
+  Positions are in the clay's own space; start each piece **inside** the one it joins, so they blend into one.
+- Mirror is on (`symmetry="x"`): make one arm and one foot on the +x side, the other side comes with it.
+- Shape it for posing: a **head on a narrower neck** (the head's ball overlapping the body's a little, not sunk into
+  it), and **arms held a little out from the body** (a slight A), not pressed to its side. The joint finder reads a
+  narrowing as a neck and a branch as a limb.
+- Sizes that suit Shot 1: a figure about 0.2–0.3 m tall. A drawn outline works too (`clay(id, draw=[…],
+  facing=(0, 0, 1))`, its lowest point at y = 0) when the body is not round (guide `sculpting`).
 
 ```python
-orange = material("body_orange", start="clay", baseColor="#e07a3f")
-c = clay("buddy", draw=[(x, y, 0.0) for x, y in body_outline], facing=(0, 0, 1), material=orange)
+c = clay("buddy", radius=0.07, material=material("body", start="clay", baseColor="#e07a3f"))   # middle at 0.07 high
+c.lump((0, 0.195, 0), 0.055, name="head")                       # overlaps the body: a neck forms between
+c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")  # from inside the body, out and a little down
 ```
 
-Then `look_frame` (`shot: "shot_1"`). Mirror (`symmetry="x"`) is on by default: it mirrors across the clay's x = 0.
+Then `look_frame` (`shot: "shot_1"`), and `look_shape` (`target: "buddy"`) for its outline and size in numbers.
 
-### 2. Arms and feet: join by drawing
+### 2. Detail: more pieces, carving, strokes
 
-`c.draw(outline)` in the same script joins a shape on, in the clay's own space (here the same as the scene). Start
-the outline **inside the body's edge** so it overlaps; draw only one side, Mirror makes the other.
-
-- An arm: a thin oval from about 3 cm inside the body's side out to 10–12 cm past it (about 4–5 cm tall).
-- A foot: a small oval (about 7 × 3.5 cm) at the bottom of the body, its lowest point at y = 0, off the middle.
-- `name="arm"` on each `draw` names the step, so you can find it again (`claystep.set`).
-
-To add a shape later without re-running the script: `edit_document` with `clay.draw` (`target: ["buddy"]`,
-`outline`, clay's own space). Re-run the same script under the same `name` to change what it made; what a person
-moved since is kept.
-
-Check the form in numbers with `look_shape` (`target: "buddy"`): its outline from the front, side and top, its
-height, widths and how even its two sides are. Sculpt with `clay.stroke` (guide `sculpting`, "For agents").
+`.lump(…, mode="carve")` cuts (a mouth), a small `.lump` adds (a nose), `.draw(outline)` joins a flat drawn shape
+(an ear, a foot sole), `.stroke(…)` sculpts (guide `sculpting`, "For agents"). Make the whole shape before posing it.
 
 ### 3. Eyes: place on a pixel
 
@@ -113,35 +112,30 @@ would make, the reply says so (`spotSize`, about a sixth of the body's width at 
   the surface, away from edges (`edit_place_on` checks two neighbours too).
 - In a script instead: `mesh(...).place_on("buddy", at=(x, y, z))` with a world point on the surface, for example
   `look_at`'s `point`.
+- Or in the script with numbers: `mesh("eye", …, x=…, y=…, z=…, attach_to=c)`, in the same space you built the clay in
+  (it moves with the clay when the clay comes to rest on the ground, and bends with its pose).
 - A shiny black: `material("eye_black", start="glossy plastic", baseColor="#101010")`. A material is shared by the
   eye and its copy.
 
-### 4. The wave: find the joints, hold, drag
+### 4. The wave: bend the joints at several times
 
-All through `edit_document`:
+In the script, after the last piece: `c.bend(joint, {seconds: (x, y, z)})` turns a joint by those degrees about the
+clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(part, {seconds: (x, y, z)}, holds=[…])` drags
+a part's end to a world point at each time instead. The first one finds the joints from the shape (with the engine):
+`body`, `chest`, `head`, `arm.L` / `forearm.L`, `foot.L` …; `.R` is the character's right, the −x side, on the
+picture's left. A wrong joint name fails with the list of the ones it has.
 
-1. `pose.find_joints` (`target: ["buddy"]`). The reply lists the joints it found by name. The names follow the
-   shape, so use the ones it gives: an arm usually gets `arm.R` (shoulder) and `forearm.R` (elbow, at its middle
-   when it is straight), but a long or bent arm may get a third (`arm2.R`), and a body gets `chest` only when it is
-   tall enough to bend in two (else its one joint is `body`). `.R` is the character's right, the −x side, on the
-   picture's left. To see where a joint is, `inspect_item` its id (its head and tail, in the clay's space). An arm
-   drawn hanging down must not touch the body's side (leave a gap of about a centimetre), or it is read as part of
-   the body.
-2. `pose.drag` with `part: "hand.R"` (the end of the arm, whatever its last joint is), `to` a world point and
-   `holds`. Keep `to` **within the arm's reach**: no farther from the shoulder joint's head than the arm's joints
-   are long together (about 10–13 cm for the arm above). Up and a little out from the shoulder reads as a wave. A
-   point out of reach stretches the arm straight and leans the body a little after it (a few degrees at most, the
-   eyes with it: parts placed on a clay follow its pose); drag again nearer.
-3. **Hold the feet**: `holds: ["foot.L", "foot.R"]`. Within reach only the arm and the shoulder round it move: the
-   body stays upright and its side stays where it is. Holding the body's upper joint too (`"chest"`, or `"body"`
-   when that is its only one) is optional: it keeps the body still even for a point out of reach.
+- Turning about Z swings an arm up or down in the picture's plane: on `arm.R` (the −x side) a negative angle raises
+  it, on `arm.L` a positive one. The arm turns at its shoulder joint, inside the body: about 60–90° from hanging
+  reads as raised; much more lays it against the head.
+- `holds=["foot.L", "foot.R", "body"]` on `pose`: the feet stay planted and the whole trunk upright (a held body
+  holds the chest too); only the arm moves. About Y turns the head left/right, about X nods it.
+- A wave: raise `arm.R`, then rock `forearm.R` back and forth a few times (small angles, about a third of a second
+  apart), then lower it. Keys between are eased (`ease=` like `item.key`).
+- Things attached to the clay (`attach_to=`, `place_on`) bend with the bone nearest them: the eyes stay on the head.
 
-```json
-{"op": "pose.drag", "target": ["buddy"], "args": {"part": "hand.R", "to": [-0.14, 0.27, 0.04], "at": 0,
- "holds": ["foot.L", "foot.R"]}}
-```
-
-Then `look_frame`: the arm bent at the shoulder and elbow, the hand up, the body upright.
+The same with single operations: `pose.find_joints`, then `pose.drag` (`part: "hand.R"`, `to`, `at`, `holds:
+["foot.L", "foot.R"]`) through `edit_document`.
 
 Guide `posing` has the rest (keys at several times, `pose.rest`).
 

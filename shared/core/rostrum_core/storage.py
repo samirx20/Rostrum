@@ -68,6 +68,8 @@ def open_doc(cls, folder, item, kind):
     if _upgrade(doc, kind, p["doc"]):
         items = None                                # brought up to date: everything is checked, not just the later steps
     problems = kind.problems(doc.data, items)
+    if problems and items is not None:              # the later steps' items fail the stricter check a change gets:
+        problems = kind.problems(doc.data)          # opening is never stricter than opening the same file whole
     if problems:
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["doc"]), "is damaged: it doesn't hold together "
                            f"({'; '.join(problems[:3])}{' …' if len(problems) > 3 else ''})",

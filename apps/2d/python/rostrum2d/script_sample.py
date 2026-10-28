@@ -30,8 +30,9 @@ def sample(item, prop, values, start=0.0, end=None, every=1, ease="linear"):
     """Key `prop` from `values` (a function of seconds, or a list: one value per `every` frames from `start`)."""
     from . import fields as F
     where = f"{item.id}.sample({prop!r}, …)"
-    if not isinstance(start, (int, float)) or (end is not None and not isinstance(end, (int, float))):
-        raise ValueError(f"{where}: start and end are seconds (numbers); a marker time like \"#drop\" works in .key()")
+    from .script_time import seconds
+    start = seconds(item._b, start, f"{where} start")                  # seconds or a marker time ("#drop+0.5")
+    end = None if end is None else seconds(item._b, end, f"{where} end")
     if not isinstance(every, int) or every < 1:
         raise ValueError(f"{where}: every={every!r} is a whole number of frames, 1 or more")
     comp = _comp(item._b, item.node)

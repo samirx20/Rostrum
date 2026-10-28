@@ -178,17 +178,29 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   frame, so a layer that runs off the frame (a full-frame paper, a ground painted to the bottom of the picture) keeps
   a clean border there while its edges inside the frame wobble. Look at the edges at 100 % (`look_frame` with an
   `area` and a `width` as large as the area) to judge it.
-- **Hand-lettered words.** Typed text fading in reads as typed. `paint.letters` (script `p.letters(text, x=, y=, height=, font=, **brush)` on a paint layer) writes words as brush strokes: each
-  letter's centre line from a single-stroke font (`font`: script, script heavy, cursive, sans, serif, italic,
-  blackletter …), in the order a hand writes it, painted with any brush, so every paint.stroke setting applies
-  (`taper_start` / `taper_end` for pointed entries and exits, `swell`, `pool`, `wobble`, `bristle` + `dry` for dry
-  brush). `height` is the capital height; brush `size` about 6–12 % of it reads as a pen, 15–25 % as a loaded brush.
-  `path` (SVG path data in composition px) bends the baseline along a curve, `start` slides the words along it;
-  `slant` leans them; `hand` (0–1) moves, turns and sizes each letter a little and lets the line drift, `hand_seed`
-  picks another hand. Put the words on their own drawing (or `layer: "new"`) and key that drawing's **Drawn so far**
-  (`drawnSoFar`) 0 → 1: they write on letter by letter, stroke by stroke, the pen at one speed, so the time you give
-  is the writing speed. They are ordinary strokes afterwards: `rough`, `grain`, a `glow` or more paint go on as on any
-  drawing. Look at the first and last frames of the write-on (`look_frame`) before moving on.
+
+## Hand-lettered words
+
+Typed text fading in reads as typed. `paint.letters` (script `p.letters(text, x=, y=, height=, font=, **brush)` on a paint layer) writes words as brush strokes: each
+letter's centre line from a single-stroke font (`font`: script, script heavy, cursive, sans, serif, italic,
+blackletter …), in the order a hand writes it, painted with any brush, so every paint.stroke setting applies
+(`taper_start` / `taper_end` for pointed entries and exits, `swell`, `pool`, `wobble`, `bristle` + `dry` for dry
+brush). `height` is the capital height; brush `size` about 6–12 % of it reads as a pen, 15–25 % as a loaded brush.
+`path` (SVG path data in composition px) bends the baseline along a curve, `start` slides the words along it;
+`slant` leans them; `hand` (0–1) moves, turns and sizes each letter a little and lets the line drift, `hand_seed`
+picks another hand. Put the words on their own drawing (or `layer: "new"`) and key that drawing's **Drawn so far**
+(`drawnSoFar`) 0 → 1: they write on letter by letter, stroke by stroke, the pen at one speed, so the time you give
+is the writing speed. They are ordinary strokes afterwards: `rough`, `grain`, a `glow` or more paint go on as on any
+drawing. Look at the first and last frames of the write-on (`look_frame`) before moving on.
+In a script, `x`, `y` are where the first line's baseline starts, in the drawing canvas's px (`align` "center" makes x the middle). Words run about 0.7–0.8 × `height` per character, spaces included ("Night Market" at height 140 is about 1200 px wide), so size them to the room you have:
+
+```python
+d = drawing("title_ink", w=1920, h=1080)
+p = d.frame(0).paint()
+p.letters("Night Market", x=960, y=600, height=140, font="script heavy", align="center",
+          size=26, color="#f4ead0", taper_start=0.6, taper_end=0.6, swell=0.3, hand=0.3)
+d.key("drawnSoFar", {0.3: 0, 3.0: 1}, ease="linear")
+```
 
 ## Ways of working (techniques, not rules)
 

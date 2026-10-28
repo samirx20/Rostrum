@@ -47,11 +47,13 @@ def _ranks(body: str, order: str, rnd) -> list[int]:
 
 
 def for_script(build) -> dict:
+    from .script_time import seconds
     L = build.layer
 
     def scramble(id="scramble", body="", start=0.0, end=1.0, rate=15.0, chars=None, order="forward", seed=1, **fields):
         """A swap set of texts cycling into `body` from `start` to `end` seconds, `rate` steps a second. Returns the group."""
         where = f'scramble("{id}")'
+        start, end = (seconds(build, v, f"{where} {w}") for v, w in ((start, "start"), (end, "end")))   # or "#marker+s"
         if not isinstance(body, str) or not body:
             raise ValueError(f"{where}: body is the final words, a non-empty string")
         if order not in ORDERS:
