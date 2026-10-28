@@ -40,8 +40,18 @@ def fitting_settings(estimate_s: float, budget_s: float, renderer: str, samples:
     if w >= 64:
         out.append({"change": "width", "to": w, "text": f"width {w} (now {width})" + (f", about {human(at('width', w))}" if at else "")})
     if renderer == "cycles":
-        out.append({"change": "quality", "to": "fast", "text": "quality fast (Storm, a draft; far quicker)"})
+        out.append({"change": "quality", "to": "fast", "text": "quality fast (Storm, a draft; far quicker, but no fabric sheen, "
+                                                               "no soft bounce light and hard shadows: the look a judge sees)"})
     return out
+
+
+def busy_words(note: str) -> str:
+    """The graphics-card caveat for a reply: "" on a free card. A busy-card probe is slower than the truth, and its figure
+    already holds that slowdown (round 4 of the 3D gaps: a drape measured at 54 s a frame while four other renders shared the
+    card drew in 4-5 s a frame on its own, and the agent gave up Cycles for it)."""
+    return (f"{note.rstrip('.')}; this figure was measured while it ran, so it already holds that slowdown, and on a free card the "
+            "render is faster (for this kind of scene often several times). Ask again once the card is free before trading quality "
+            "for time.") if note else ""
 
 
 def _largest(lo: int, hi: int, ok) -> int | None:
@@ -149,7 +159,9 @@ def render_estimate(ctx, args):
     The per-frame time includes the scene changing from frame to frame (a cloth or fall's stored shape, animation: one extra small frame is timed at the next frame), and is raised when the last full render of the same shot in this project took 10 %+ over its estimate (the reply says "raised ×N").
     Returns seconds a frame, the total, how it was measured, its slowest part, the probe picture, and settings that fit
     `budget_min`. A probe over its 90 s budget stops and says the job is at least that slow. When another job is using the
-    graphics card the reply says so (`gpu_busy`): the render is slower while it runs, and a probe taken then is not kept.
+    graphics card the reply says so (`gpu_busy`): the figure was measured under that load, so it is slower than a render on a free
+    card (ask again when it is free before lowering quality), and a probe taken then is not kept. A cloth costs little to
+    render (an 18k-triangle drape: about 0.6 s a frame more at 1280×720, 16 samples); samples, size and the lights cost the time.
     Always a job: ask with inspect_job (wait_s up to 25)."""
     doc, info = doc_and_shot(ctx, args)
     shots = [s["id"] for s in doc.data.get("shots", [])] if args.get("all_shots") else [info["id"]]
@@ -182,7 +194,7 @@ def render_estimate(ctx, args):
         lines = [f'{r["shot"]}: {r["text"]} ({r["width"]}×{r["height"]}, {r["samples"]} samples; {r["how"]}; slowest part: {r["slowest_part"]}).'
                  for r in rows]
         if note := next((r["gpu_busy"] for r in rows if r["gpu_busy"]), ""):
-            lines.append(note)
+            lines.append(busy_words(note))
         if len(rows) > 1:
             lines.append(f"All {len(rows)} shots: about {human(total)}.")
         if budget and total > budget:
