@@ -85,13 +85,18 @@ def test_a_script_without_lights_keeps_the_start_sky_and_lights(tmp_path):
     assert {"ground", "sky", "key_light", "rim_light", "cube"} <= _ids(d)
 
 
-def test_a_script_with_its_own_dome_replaces_the_sky_and_a_panel_replaces_the_start_panels(tmp_path):
+def test_a_dome_replaces_the_sky_a_panel_adds_to_the_start_panels_unless_it_replaces_them(tmp_path):
     d = _start(tmp_path)
     _run(d, 'light("dusk", kind="dome", color="#334466")')
     assert "sky" not in _ids(d) and {"dusk", "key_light", "rim_light"} <= _ids(d)       # a dome: only the sky goes
     _run(d, 'light("dusk", kind="dome", color="#334466")\nlight("softbox", kind="rect", x=1, y=1, z=1)')
+    assert {"dusk", "softbox", "key_light", "rim_light"} <= _ids(d)                    # a panel of its own: added
+    report = _run(d, 'light("dusk", kind="dome", color="#334466")\n'
+                     'light("softbox", kind="rect", x=1, y=1, z=1, replace_start_lights=True)')
     assert "key_light" not in _ids(d) and "rim_light" not in _ids(d) and {"dusk", "softbox"} <= _ids(d)
-    _run(d, 'light("dusk", kind="dome", color="#334466")\nlight("softbox", kind="rect", x=1, y=1, z=1)')   # a re-run changes nothing
+    assert "key_light" in report.summary() and "rim_light" in report.summary()       # the reply names what went
+    _run(d, 'light("dusk", kind="dome", color="#334466")\n'
+            'light("softbox", kind="rect", x=1, y=1, z=1, replace_start_lights=True)')   # a re-run changes nothing
     assert _ids(d) >= {"dusk", "softbox", "ground"} and not {"sky", "key_light"} & _ids(d)
 
 
@@ -101,3 +106,18 @@ def test_making_the_sky_again_or_editing_it_keeps_the_other_start_lights(tmp_pat
     assert {"sky", "key_light", "rim_light"} <= _ids(d) and d.item("sky")["intensity"] == 0.4
     _run(d, 'light("sky", kind="dome", intensity=0.4)', "again.py")
     assert {"sky", "key_light", "rim_light"} <= _ids(d)
+
+
+def test_the_start_sky_lights_but_is_not_seen_so_a_low_camera_sees_a_plain_horizon(tmp_path):
+    """Drape (round 5): a low camera saw the Studio photo's room (a black band, a grey panel) above the floor."""
+    d = _start(tmp_path)
+    assert d.item("sky")["seenByCamera"] is False and d.item("sky")["texture"] == "sky:studio"
+    from rostrum3d.start_scene import HORIZON
+    assert d.data["shots"][0]["background"] == HORIZON != "#000000"
+
+
+def test_a_fabric_made_in_a_colour_shines_in_that_colour():
+    """Drape (round 5): a white sheen turned flat red cloth pale pink-white like paper."""
+    from rostrum3d.material_starts import start_values
+    assert start_values("fabric", {"baseColor": "#b3262e"})["sheenTint"] == "#b3262e"
+    assert start_values("fabric", {"baseColor": "#b3262e", "sheenTint": "#ffffff"})["sheenTint"] == "#ffffff"

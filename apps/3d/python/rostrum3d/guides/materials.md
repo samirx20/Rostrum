@@ -136,12 +136,13 @@ A painted product (a car body, a coloured phone back, a lacquered toy) is two la
 
 - `sheen` 0.3–1 for cloth; leave `baseColor` the fibre's colour and `roughness` high (0.7–1).
 - **`sheenRoughness`**: low makes a narrow, bright rim along the outline (velvet); high spreads a soft haze over the whole surface (brushed cotton, felt).
-- **`sheenTint`**: the colour of that glow. White reads as dust or fine fibres catching light; the fibre's own colour, lighter, reads as a dyed fabric.
+- **`sheenTint`**: the colour of that glow. A dyed cloth's is its own colour (`baseColor`): a white sheen on a coloured cloth turns every flat stretch lit from above, or seen low along the floor, pale pink-white like paper. White reads as dust, frost or peach fuzz.
 - Sheen shows at grazing angles, so judge it on curved shapes and at the edges, lit from the side or from behind.
 - Sheen is drawn only by Cycles (Final): a Storm (fast) video of a cloth reads as painted paper. Export a fabric shot with Cycles;
   a draped sheet adds little to its time (guide `rendering`, the time estimate).
 - The **Fabric** start (Material ▾) is a matte surface with a soft sheen (`roughness` 0.9, `sheen` 0.6, `sheenRoughness`
-  0.6); set the colour yourself. Sheen is a Final setting: the quick view shows the plain surface.
+  0.6, `sheenTint` its base colour); set the colour yourself: `material("cloth", start="fabric", baseColor=…)` gives
+  the sheen that colour too (a later `baseColor` change leaves `sheenTint` as it was; change both). Sheen is a Final setting: the quick view shows the plain surface.
 
 **A woven or printed pattern** is a **Pattern** block wired into the surface (Blocks above): checks (gingham, a
 tablecloth), stripes (ticking, a deckchair), or a plain weave of two thread colours whose threads go over and under
