@@ -12,13 +12,10 @@ tools = Tools()
 
 @tools.tool("inspect_animations", {"required": ["owner"], "properties": {
     "item": ITEM_SHOT["item"],
-    "owner": {"type": "string", "description": "The id of the scene item (mesh, group, light, camera, rig …) whose animations to list."}}})
+    "owner": {"type": "string", "description": "The scene item's id."}}})
 def inspect_animations(ctx, args):
-    """An item's animations as the timeline shows them. Per setting (X, Y and Z of Position are one, a "Move"; Turn X / Y
-    / Z one "Turn"; Scale X / Y / Z one "Scale"; any other field its own): its keys, its stretches (neighbouring key pairs:
-    ids, start, length, ease, preset, from / to) and its line (overlapping animations go on separate lines). Times are
-    document seconds. Ease a stretch with anim.ease (targets: the stretch's ids); move keys with key.set, stretch them in
-    time with key.scale."""
+    """An item's animations as the timeline shows them: per setting its keys and stretches (ids, start, length, ease). Ease
+    with anim.ease, move keys with key.set."""
     doc = ctx.document(args.get("item"))
     anims = animations(doc.item(args["owner"]))
     words = [f'{a["label"]} {a["start"]:g}–{a["end"]:g} s (line {a["line"] + 1}, {len(a["stretches"])} stretches)' for a in anims]

@@ -35,14 +35,13 @@ from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot
 
 tools = Tools()
 FIRST = 1001                                   # the first frame of every picture hand-off (shared/HANDOFFS.md § 6)
-QUALITY_ARG = {"enum": list(QUALITY), "description": "final = Cycles (path traced), fast = Storm (a draft). Default: the shot's render Quality "
-                                                    "(Stylized there renders Stylized, every other Quality renders Final)."}
+QUALITY_ARG = {"enum": list(QUALITY), "description": "final = Cycles, fast = Storm (a draft). Default: the shot's render Quality."}
 SETTINGS = {
-    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (materials' Lines, Halftone and Light to colour; drawn at twice the size and smoothed down; no passes)."},
-    "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "Picture width in px. Default: the shot's render size (renderSize); the height follows."},
-    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Cycles samples per pixel. Default: the shot's render quality (draft 32, good 128, final 512)."},
-    "denoise": {"type": "boolean", "description": "Cycles noise clean-up. Default: the shot's render settings (on)."},
-    "exposure": {"type": "number", "default": 0, "description": "Stops, applied to the PNG only (the EXR stays scene-linear)."},
+    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality by name (stylized: no passes)."},
+    "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "The picture's width in px. Default: the shot's render size."},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Cycles samples per pixel. Default: the shot's render quality."},
+    "denoise": {"type": "boolean", "description": "Cycles noise clean-up. Default: the shot's (on)."},
+    "exposure": {"type": "number", "default": 0, "description": "Stops, on the PNG only."},
     "passes": layers.PASSES_ARG,
 }
 
@@ -174,10 +173,9 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                              "formats": {"type": "array", "items": {"enum": ["png", "exr"]}, "minItems": 1, "uniqueItems": True,
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
-    """One final picture of a shot through the shot camera (the shot's render Quality by default: Cycles, or Stylized when the Quality is Stylized), as a project render with a manifest: png (sRGB, through
-    OpenColorIO) and/or exr (scene-linear, for the Editor; its passes as named layers, listed in the manifest's `exr`). The picture is checked
-    (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture): the reply opens NOT DONE: with each
-    fault (id, when, fix) or DONE:, and the files are refused (kept as <name>.NOT-DONE.png) unless `keep: {id: why}` explains each. Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25), whose note shows how far Cycles has got and the time left measured on this frame ("drawing 40% · about 12 s left")."""
+    """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. Checked first (as look_frame):
+    the reply opens NOT DONE: with each fault or DONE:, and a file with open faults is kept as <name>.NOT-DONE unless
+    `keep` explains each. A job: inspect_job shows progress. Guide 'rendering'."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, s = frame_of(ctx, info, args), render_settings(doc, info)
@@ -208,26 +206,18 @@ def render_still(ctx, args):
 
 
 @tools.tool("render_video", {"properties": {**ITEM_SHOT, "quality": QUALITY_ARG, **SETTINGS, **faults.KEEP,
-                                             "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default 0."},
-                                             "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (the frame at this time is the last one). Default: the last frame of the shot."},
-                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants), with its passes as layers (passes)."},
-                                             "output_folder": {"type": "string", "description": "A folder (absolute path) to copy the finished mp4 and its share copy into, besides the project render. Made if missing; checked before rendering: a folder that can't be written fails at once."},
-                                             "file_name": {"type": "string", "description": "The copy's name in output_folder (\".mp4\" optional; its share copy is <name>-share.mp4). Default: the render's own name. A file already there is replaced."},
-                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. The time is measured first (render_estimate's probe, kept for the scene); if the estimate is over this, nothing is rendered and the error names settings that should fit, each with its time."},
-                                             "estimate_only": {"type": "boolean", "default": False, "description": "Return the measured estimate (render_estimate's probe of the middle frame, kept for the scene) and render no video."}}})
+                                             "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default 0."},
+                                             "end": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start: the last frame. Default: the shot's end."},
+                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as EXR (with passes) for the Editor."},
+                                             "output_folder": {"type": "string", "description": "An absolute folder to copy the mp4 and share copy into (made if missing)."},
+                                             "file_name": {"type": "string", "description": "The copy's name in output_folder. Default: the render's name."},
+                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend; over it nothing renders and the error names settings that fit."},
+                                             "estimate_only": {"type": "boolean", "default": False, "description": "Only measure the time (render_estimate's probe); render nothing."}}})
 def render_video(ctx, args):
-    """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (the shot's render Quality by default:
-    Cycles, or Stylized when the Quality is Stylized; quality fast = Storm for a draft), then encoded by ffmpeg, plus a small share copy
-    `<name>-share.mp4` beside it (about 8 Mbit/s at 1920×1080, scaled by the picture's size). A project render with a manifest; `exr` keeps the EXR frames too;
-    `output_folder` (+ `file_name`) also copies the mp4 and its share copy there. A stopped or failed render keeps the frames it finished: the same call
-    again (nothing rendered changed) continues from them and draws only the missing frames; the reply says "Continues from N finished frames". Always a
-    job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frame n of m'. With `budget_min` or `estimate_only` the reply waits
-    (up to 25 s) for the measured estimate: over the budget it is an error at once that names the settings that fit, and `estimate_only` returns the figures
-    (never a failed job), also when over the budget. With no quality, renderer or samples it never renders lower than your
-    last export of this shot (a refine keeps the first video's Cycles and samples even if the shot's Quality is lower) and says so;
-    asking for lower is done, and the reply says what it loses (Storm: no fabric sheen, no soft bounce light). The first, middle and last frame are
-    checked (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture): the reply opens
-    NOT DONE: with each fault (id, when, fix) or DONE:, and the video is refused (kept as <name>.NOT-DONE.mp4) unless `keep: {id: why}` explains each."""
+    """An mp4 of a shot (or `start`–`end`), plus a small <name>-share.mp4; `exr` keeps EXR frames, `output_folder` copies
+    the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` / `estimate_only`
+    measure first. First, middle and last frames are checked (NOT DONE: / DONE:; refused unless `keep` explains each
+    fault). A job. Guide 'rendering'."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
     if gate is None or not gate.wait(ESTIMATE_WAIT_S):
@@ -263,7 +253,7 @@ class Gate:
 def next_steps(count: int, fps: float, item: str) -> str:
     """What a finished video's reply says next: a concrete look-and-fix pass with the 3D look tools (the clock line after it
     says how many such passes the time left allows). In the benchmark agents quit after the first video with most of their time unused."""
-    return (f"Next, a fix pass: look at it again, now with the look tools: look_sheet (all {count} frames at {fps:g} fps, the whole move), look_frame at its weakest "
+    return (f"Next, a fix pass: look at it again, now with the look tools: look_frame what \"sheet\" (all {count} frames at {fps:g} fps, the whole move), look_frame at its weakest "
             "times (renderer cycles for the final look), look_at on a spot you doubt, look_motion for what moves; name its three weakest moments "
             "(something cut off or hidden, a pose or move that reads stiff, a surface or light that looks flat, an empty stretch), fix each with "
             f"run_script and {item} again with the same output name.")

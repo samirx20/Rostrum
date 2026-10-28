@@ -100,4 +100,4 @@ with grid("kpis", x=120, y=120, w=1680, columns=4, gap=24):
 `span=4` lets the chart take the whole grid row. Animate a laid-out layer with `scale`, `opacity`, `shiftX` or
 `shiftY` (they don't push the others); key its `w` / `h` and the others move to make room.
 
-Check what the layout did with `inspect_layout` (each layer's place and size at a time) and `look_frame`.
+Check what the layout did with `look_frame` `what: "layout"` (each layer's place and size at a time) and `look_frame`.

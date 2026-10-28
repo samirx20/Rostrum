@@ -13,7 +13,7 @@ from rostrum3d.sim.fall_view import fall_note
 
 from . import draw, onion_look, paint_canvas, picture_facts, shot_faults, step_look, text_facts
 from .shape_look import length
-from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, look_renderer, seconds, size_of
+from .shot import COUNT, ITEM_SHOT, LOOK, TIME, WIDTH, count_of, width_of, check_frame, doc_and_shot, frame_of, look_renderer, seconds, size_of
 
 tools = Tools()
 LOOK_SAMPLES = 64                         # Cycles samples for a look (denoised); render_still has its own
@@ -23,8 +23,7 @@ def _settings(renderer: str) -> dict:
     return {"samples": LOOK_SAMPLES, "denoise": True} if renderer == "cycles" else {}
 
 
-THROUGH = {"through": {"type": "string", "description": "A light's id (rect, disk, strip, sphere, distant): look from where it stands along "
-                                                         "the way it shines (60° tall view, level) instead of through the shot camera, to aim it."}}
+THROUGH = {"through": {"type": "string", "description": "A light's id: look from the light the way it shines, to aim it."}}
 
 
 def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
@@ -41,18 +40,7 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
 
 @tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
 def look_frame(ctx, args):
-    """One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you
-    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized); neither on a shot
-    whose Quality is Stylized = stylized. stylized = the
-    stylized look: the only one that draws materials' Lines and Halftone (Light to colour shows in final too). through = a light's
-    id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped
-    (blown out; stylized: pure white, its picked colours are shown as they are), which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known, and
-    for every text in the picture which way it reads from this camera (left to right, mirrored, upside down, seen from behind or
-    edge-on, its angle to the horizontal; data `text`).
-    onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc
-    or a spacing; a quick look only (not final), drawn by the live view, so no studio light or outline. highlight = "steps:arm" or
-    "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step`
-    names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
+    """One frame (`through` a light, `onion` ghosts, `highlight` clay steps); says what is clipped, how texts read."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args)
@@ -106,14 +94,13 @@ def _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene):
     return " Outlined: " + "; ".join(said) + ".", {"highlight": marks}
 
 
-@tools.tool("look_sheet", {"properties": {**ITEM_SHOT, **LOOK, "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default 0."},
-                                           "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default: the last frame."},
-                                           "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 6, "description": "Frames in the sheet, evenly spaced."},
+@tools.tool("look_sheet", {"properties": {**ITEM_SHOT, **LOOK, "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default 0."},
+                                           "end": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default: its last frame."},
+                                           **COUNT,
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 3."},
-                                           "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
+                                           **WIDTH}})
 def look_sheet(ctx, args):
-    """A contact sheet: `count` frames spread over the shot (or a range) in one image, each tile labelled with its frame and time. Drawn fast
-    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
+    """`count` frames over the shot or `start`–`end`: check a whole move."""
     doc, info = doc_and_shot(ctx, args)
     fps, first, last = info["fps"], info["start"], info["end"]
     f0 = first + round(args.get("start", 0.0) * fps)
@@ -121,9 +108,9 @@ def look_sheet(ctx, args):
     if f0 >= f1:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"range {f0}–{f1}", f"must run forward inside the shot (frames {first}–{last})")
     check_frame(ctx, info, f0), check_frame(ctx, info, f1)
-    count = args.get("count", 6)
+    count = count_of(ctx, args, 6, 2, 24)
     frames = sorted({round(f0 + (f1 - f0) * i / (count - 1)) for i in range(count)})
-    renderer, tile_w = look_renderer(args, doc, [info]), args.get("width", 480)
+    renderer, tile_w = look_renderer(args, doc, [info]), width_of(ctx, args, 480, 1280)
     w, h = size_of(info, {"width": tile_w})
     cols = args.get("cols", min(3, len(frames)))
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
@@ -155,22 +142,13 @@ def _painted_words(p: dict | None) -> str:
 @tools.tool("look_at", {"properties": {**ITEM_SHOT, **TIME, "x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture."},
                                         "y": {"type": "number", "minimum": 0, "description": "Pixels from the top of the picture."},
                                         "points": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 2, "maxItems": 2},
-                                                   "description": "Several points as [[x, y], …] (instead of x and y), up to 64 in one call."},
-                                        "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "Width of the picture the pixels count in (the one look_frame gave). Default 960."},
-                                        "height": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Height of that picture. Default: follows the shot's shape."}}})
+                                                   "description": "Several points [[x, y], …] instead of x and y (up to 64)."},
+                                        "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "Width of the picture you were shown (x, y count in it). Default 960."},
+                                        "height": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "That picture's height. Default: the shot's shape."}}})
 def look_at(ctx, args):
-    """What is at a pixel (x, y) of a picture from the shot camera at a frame: the item id, the part (prim), its material, the point in the
-    world (metres), the distance from the camera and `normal`, the surface direction there (world, unit length: "facing [0, 1, 0]" is a
-    top); on a mesh with face materials `faceSet`, that face's own material; on a mesh also `uv`, the spot on its unfolded surface (paint canvas pixel
-    x = u × paintSize, y = (1 − v) × paintSize; guide `painting`; look_where is the reverse) and, where it is painted, `painted`
-    {layer, name, channel, colour, alpha}: the topmost shown paint layer with paint there; on a clay `local` and `localNormal`, the point and the surface's
-    normal in the clay's own space (a clay paint stroke's `anchors`: [x, y, z, nx, ny, nz, pressure]; guide `painting`); on a posed
-    clay also `rest`, the same spot on its rest shape: anchor paint there, as the screen does. On a clay also `step`, the step that made
-    the surface there ({id, name, kind, label "arm, drawn"}; a mirrored step counts on both sides) and, once its joints are found,
-    `joint` ({joint "elbow.R"-style name, distance in metres to that bone}): name parts by them in clay.step.set, look_frame
-    highlight="steps:<name>" and pose.drag. Counted from the top-left of a width×height picture, the same whatever
-    renderer drew it. `view` in the reply: this picture's camera as stroke.add's From the view fields (viewEye, viewTarget,
-    viewFov, viewSize, viewFrame, viewShot): add `viewPoints` [[x, y, pressure], …] in this picture's px to paint from the view."""
+    """What is at pixel (x, y) of the picture you were shown (same `width`): the item, its part, material, world point,
+    distance and surface direction; on a clay its `step` and nearest `joint`; on a painted surface `uv` and `painted`.
+    Several points at once with `points`. The reverse is look_frame what "where". Guide 'agents' (The loop) and 'painting'."""
     doc, info = doc_and_shot(ctx, args)
     points = args.get("points") or ([[args["x"], args["y"]]] if "x" in args and "y" in args else None)
     if not points or ("points" in args and ("x" in args or "y" in args)):

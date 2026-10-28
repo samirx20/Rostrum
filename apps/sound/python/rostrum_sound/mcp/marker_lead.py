@@ -92,5 +92,4 @@ def with_song_markers(runtime) -> None:
         return Reply(f"{line} Project markers (shared with every app): {shared.summary or 'none'}",
                      {"markers": rows, "song_markers": own})
     runtime.tools._tools["inspect_markers"] = dataclasses.replace(
-        old, fn=inspect_markers, description=old.description + " In Sound it lists each open song's own markers first "
-        "(`song_markers`: name, seconds, song; M in the app makes one), then the project's.")
+        old, fn=inspect_markers, description=old.description + " In Sound the songs' own markers come first.")

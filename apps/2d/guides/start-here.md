@@ -1,316 +1,100 @@
 # Start here: Rostrum2D
 
-Rostrum2D makes motion graphics: type, shapes, images, UI animation. You and a person edit **the same document**, so
-whatever you build stays editable by hand, and whatever they move stays moved.
+Rostrum2D makes motion graphics: type, shapes, screens, drawings, characters. You and a person edit **the same
+document**: what you build stays editable by hand, and what they move stays moved. This page is the whole way of
+working on one page; the topic guides at the end hold the detail.
 
-**The way to work: the film as one script.** Write the whole film as one Python program, run it with
-`run_script {"path": "C:/work/film.py", "look": true}` (the reply brings a contact sheet and the film's weakest moments),
-edit the file, and run it again under the **same name**. The small tools (`edit_document`, the `*.set` operations) stay
-for quick changes to one thing. How to structure it: guide `the-film-as-one-script`.
+## The loop
 
-**Your time.** Every reply ends with a clock line (time since your first call, and the minutes left when you were given a
-budget). A first version usually takes a fraction of the time: the rest is for looking at it (sheets of the whole span, the
-export, single frames, zooms) and refining what you see, in passes. `inspect_project` with `what: "session"` lists what is
-still unchecked. More in [Using your time](#using-your-time).
+1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
+2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet and
+   the film's weakest moments. It opens `NOT DONE:` with each fault (what, when, the fix), or `DONE:`.
+3. **Read the faults.** Each one names a layer and a time.
+4. **Fix the script**, not the document: change the lines the fault points at.
+5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
+   by hand stays. A new name adds a second copy of everything.
+6. **Deliver** with `render_export {"what": "video"}`: it waits for the file and replies with its checks.
 
-## Open or make a project
+Every reply ends with a clock line. Use the time to look and refine in passes; `inspect_project` with
+`what: "session"` lists what you have not checked yet.
 
-The server starts on your own project, never the person's: the one you last opened from this working folder (a resumed
-session gets it back), else a fresh scratch project made for you (in `~/.rostrum/projects/agent-scratch/`, with an empty
-document `main`). The first reply says which. To work on the person's project, somewhere else, or to start a new piece:
+## Lay out first
 
-- `run_open_project {"folder": "C:/Users/me/Videos/launch"}`: the folder is an absolute path. If it doesn't exist yet it
-  is made (with any folders above it), with an empty document `main` in it; an existing project opens as it is.
-- `item` names the document: `{"folder": "...", "item": "teaser"}` opens `teaser`, or starts it empty beside the others.
-- `run_open_project {"what": "recent"}` lists the person's recent projects.
-- A refused call (a path that isn't absolute, a file instead of a folder, a document name with spaces) makes nothing.
+Place things with boxes, not x / y sums. `row`, `column`, `grid(columns=3)` and `stack` place and size what you make
+inside them:
 
-## The document
+- `padding`, `gap`, `align` (`start` `center` `end` `stretch`), `justify` (`start` `center` `end` `between` …).
+- Sizes in px, `"50%"`, `"fill"` or `"fit"`; `grow=1` takes the room left; texts wrap where the box ends.
+- Inside a box, `x=` / `y=` fail (the box places the layer) unless you give `apart=True` (a badge, a pointer).
+- **A layer with no `x`, `y` sits at its parent's centre** (the frame's middle, or its group's).
+- **Named anchors:** `anchor="top-left"`, `"top"`, `"bottom-left"`, `"bottom-right"`, `"center"` … say which point
+  of the layer its `x`, `y` place, and where it turns and grows from (`anchor="bottom"` grows a bar up from its floor).
 
-```
-document
-  comps
-    comp
-      layers: shape | text | image | video | path | drawing | rig | group (a group holds layers),
-              and each scene's own frame (what the export shows; made with the scene)
-        each layer has:
-          effects  (blur, glow, gradient, shadow)
-          masks    (the part that shows)
-          keys     (the animation)
-```
+Keep raw `x`, `y` for motion and art: a moving shape, a painted world, a camera path.
 
-- Every part has an **id** (`title`, `bg`, `title.opacity.k200`). Use ids, never names or positions. `inspect_item` with no `id`
-  lists them; with an `id` it shows one part's values and the operations that fit it right now. Its keys come as a
-  summary per field (how many, first and last time and value); `keys: "all"` lists every key.
-- `inspect_operations` lists everything you can do (`text.set`, `shape.set`, `key.add`, `value.set`, `layer.arrange` …) with
-  arguments. `edit_document` applies a list of them, all or nothing.
-- Copy a comp with everything in it with `comp.duplicate` (the copy lands right after it, named "<name> copy"), put comps in order with `comp.move` (`index` 0 = first), delete a throw-away comp with `comp.remove` (never the last one; Undo brings it back). A comp added without a name is numbered: "Scene 2", "Scene 3". Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
-- A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`, `shutter` (motion blur, degrees; 0 = off; see frame-parallax-motion-blur). A layer's `x`, `y` is where its **anchor** sits
-  in its parent (comp px, 0,0 top-left; or the group's box). **Leave `x`, `y` out and it sits at its parent's centre.**
-  The anchor by name: `anchor="top-left"`, `"top"`, `"left"`, `"center"` (the default), `"bottom-right"` … or a pair
-  `anchor=(0, 1)`; as numbers `anchorX`/`anchorY`, 0 to 1 across the box.
-  To turn round a known spot, `item.pivot(x, y)` puts the anchor on that comp point and nothing moves (any layer; the
-  way for a drawing, whose canvas grows).
-  A group's children are placed inside the group's own box (its top-left is 0,0).
-- Colours are `#rrggbb` (or short, `#fff`). Mixing colours between keys happens in linear light.
+## Time by name
 
-## The one animation model: keys + ease
+- `marker("reveal", 3)` makes a shared project marker at 3 s and gives `"#reveal"`. It adds like a number:
+  `"#reveal+0.5"`. Any time takes it: a key, `start=`, `end=`. Drag the marker (here or in Sound) and everything
+  timed from it moves.
+- `after(item, gap=0.2)`: the moment an item's last key lands, plus a gap.
+- `stagger(items, every=0.1, start=)`: `[(time, item), …]`, each one `every` seconds after the one before.
+- `beats()`: the song's beats in seconds; `beats(bpm=120, start=)` a beat grid when there is no song yet.
 
-A field is either **still** (it has a value) or **animated** (it has keys). Once a field has any key, **the keys alone decide**
-its value and the layer's own value is ignored.
+Never hand-count times like `t0 + i * 0.5`.
 
-- A key is "this field has this value at this time". Between two keys the value travels; the **first key's `ease`** shapes
-  the way to the next key. Before the first key and after the last, the value holds.
-- One key never moves anything; you need two keys with different values.
-- `ease` names: `linear`, `hold` (jumps at the next key), `smooth`, `snappy`, `natural`, `heavy`, `easeIn`, `easeOut`,
-  `easeInOut`, `spring`, `bounce`, `custom` (x1 y1 x2 y2). See the guide `easing-and-overlap`.
-- Which fields can be animated: every number and colour field, except the composition's own and a layer's `start`, `end`
-  and `boxWidth`. `inspect_operations name: key.add` says which.
+## Keys and ease
 
-**`value.set` vs `key.add`.** `value.set` changes a field "as a person sees it now": on a still field it changes the value; on
-an animated field it adds or changes the key at `at`. `key.add` always writes a key at time `t`. `key.clear` stops animating a
-field and keeps its value at a time. When a person says "make the title bigger", use `value.set` (with `at` if animated).
+A field is still (one value) or animated (keys). `item.key("opacity", {0.0: 0, 0.6: 1}, ease="easeOut")`: each key
+is a value at a time; the **first key's ease** shapes the way to the next. Before the first key the value holds the
+first key's value. Eases: `linear`, `hold`, `smooth`, `snappy`, `natural`, `heavy`, `easeIn`, `easeOut`,
+`easeInOut`, `spring`, `bounce`.
 
-## Timing to the story: layers timed from a marker
+## A tiny example
 
-Cuts, entrances and beats that other apps also use (the music's drop, the 3D product landing) go on the project's
-**shared markers** (`inspect_markers`, `edit_markers`), never copied as numbers. Give a layer or a whole group
-**Timed from marker** (`marker="reveal"`): its *Starts at*, *Ends at* and keys, and everything inside it, count
-from that marker. Move the marker in any app and the shot moves with it; Sound's music follows the same marker.
-
-In a script, `marker("reveal", 3)` makes that shared marker (re-running moves it, removing the line removes it) and
-gives `"#reveal"`, which adds like a number. A layer's `start="#reveal+0.5"` makes it Timed from marker with its other
-numbers still meaning comp seconds as written; `end="#out"` is Ends at marker. `after(item, gap=)` is when its last
-key lands, `stagger(items, every=, start=)` gives each item its start, `beats(bpm=120, start=)` a beat grid without a
-song: no hand-counted `t0 + i * 0.5` (guide `the-film-as-one-script`).
+The technique only, not a piece to copy:
 
 ```python
-with group("reveal_shot", marker="reveal", end=4.0):     # visible from the marker for 4 s
-    t = text("name", body="Lull", size=180)
-    t.key("opacity", {0.0: 0, 0.4: 1})                     # 0.0 = the moment of the marker
+comp("main", width=1920, height=1080, fps=30, duration=6, background="#101014")
+go = marker("go", 1.0)                                   # gives "#go"
+with column("list", gap=24, align="start"):              # no x / y: centred in the frame
+    rows = [text(f"row{i}", body=w, size=72) for i, w in enumerate(["One", "Two", "Three"])]
+for t, row in stagger(rows, every=0.15, start=go):
+    row.key("opacity", {t: 0, t + 0.4: 1}, ease="easeOut")
+    row.key("shiftY", {t: 30, t + 0.4: 0}, ease="easeOut")
+text("tag", body="v2", size=36, anchor="bottom-left", x=80, y=1000, start=after(rows[-1], gap=0.3))
 ```
 
-- Inside a timed group, `start`, `end` and key times are **seconds from the marker**: `end=4.0` is 4 s after it, not
-  at 4 s of the comp.
-- A layer inside a timed group with its own `marker` counts from its own marker.
-- **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
-  reveal starts, wherever either marker moves.
-- **Cuts:** the frame jumps on a key timed on a marker: `frame().cut(at="#reveal", to="rect", rect=(2240, 0, 1920, 1080))`
-  (or `frame.cut` with `at: "#reveal"`), so the cut moves with the marker (see `frame-parallax-motion-blur`).
-- **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
-  A group's lead-in shows its children too: a child left at *Starts at* 0 starts with its group; a child with a
-  start of its own counts it from the marker (`start=0.2` appears 0.2 s after it).
-- **A key on its own marker:** a key's time may name a marker, as Sound's times do: `t.key("opacity", {0.0: 0,
-  "#drop-0.1": 0.2, "#drop+0.2": 1})` (or `key.add` with `"t": "#drop+0.2"`). It lands at that moment of the
-  project, whatever its layer counts from, so one layer can hit "drop" and "logo lands" both, and a key may sit
-  before the layer's start (a pre-roll: the move is under way when the layer appears). Moving the marker moves the
-  key; a marker that is gone stops the render naming the key. `look_motion` (`what: "curve"`), the curve editor and the settings panel
-  show the marker ("drop +0.2 s"); dragging such a key keeps it on its marker with a new offset.
-- Drawings' frames, effects', masks' and a rig's keys move with their layer.
-- `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
-  shows the times as written, from the marker.
-- A marker the project doesn't have stops the render with a message, and `inspect_diagnose` lists it.
-- Move a marker with `edit_markers` and `marker.move`; its target may be the marker's name or its id:
-  `{"op": "marker.move", "target": ["drop"], "args": {"at": 5.5}}`.
+## The five core tools
 
-## Scripts (`run_script`)
+- `run_script`: build or change the whole film from your script; `look: true` checks it in the same reply.
+- `look_frame`: see one moment, or `what: "sheet"` (a contact sheet), `"review"` (the weakest moments), `"diagnose"`
+  (what is broken), `"world"`, `"in_frame"`, `"empty"`.
+- `look_motion`: what moves and when, read from the keys (no picture).
+- `inspect_guide`: these guides; `{"topic": "script-reference"}`, and `section` for one part of a long one.
+- `render_export`: deliver. `what: "video"` is the project's mp4; `format` gives the Export button's formats (WebM,
+  GIF, ProRes, PNG, Lottie …).
 
-Write Python with the script API (below). The script builds the whole document tree; the server **merges** it in.
-Save the script as a file and pass its path, or pass the text itself:
+**Never** place by picture coordinates inside a device, row or column, and never hand-compute a position or a time
+that the layout, an anchor or a marker can give you.
 
-```
-run_script {"path": "C:/work/promo.py"}                       the file; its name (promo.py) is the script's name
-run_script {"source": "comp(\"main\", ...)", "name": "promo.py"}   the text, under a name
-```
+## Where next
 
-Run it again after editing it and:
-
-- what the script says changes; what you did not change stays;
-- **your own earlier output updates**: a value, a key's new time, a layer you dropped. Only someone else's work holds
-  a value back;
-- **what a person moved by hand stays where they put it** (and what another agent or script changed), and the reply
-  lists it as held back, naming the key and who changed it. Pass `force` with those keys (`"force": ["title.x"]`, or
-  `true` for all) only when you really mean to overwrite their work;
-- ids are what match old to new. Give your layers **explicit ids** (`text("title", ...)`) so a re-run finds the same layer.
-  Left out, ids are counted per type (`text_1`, `text_2`) and skip any word quoted in the script.
-- Keys have ids made from layer, field and time, so a key at the same time is the same key on re-run; a key you move to
-  another time in the script is a new key in place of the old one (a person's retimed key keeps its id and stays).
-- A script starts with `comp("id", ...)`: a layer line before it is refused ("make a composition first"). The scene arrives with its own frame; when the project already has a frame called `frame`, the new scene's is called `<scene id>-frame`. Ids the project already holds (a person's, another scene's) are never taken by a counted id.
-
-**Replace or add depends on the script's `name`.** Run under the **same `name`**, a script replaces and merges what it made before (a person's edits stay). Run under a **new `name`**, it adds a second copy beside the first, and the reply warns that it did. To change something an earlier script made, run under that script's name. A second script can't make a scene an earlier script made (`comp("main")` again) or key its layers (`layer("dot0")`): the refusal names the script that made them; put the lines in that script. When a check fails because two scripts made the same things (for instance "drawings must be at different frames, in order"), the refusal names the earlier script: run under its name to replace them.
-
-**Scripts cannot `import` anything but `math` and `random`, and cannot define classes.** `numpy`, `os` and the rest are refused. `math` and `random` are already there (`import math`, `import random` are fine), and so are these plain built-ins (and no others): `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `divmod`, `pow`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `any`, `all`, `list`, `dict`, `tuple`, `set`, `frozenset`, `float`, `int`, `str`, `bool`, `isinstance`, `chr`, `ord`, and the errors `ValueError`, `KeyError`, `IndexError`, `TypeError`, `ZeroDivisionError`. There is no `print` (look at what the script made with `inspect_item`, `look_motion`, `look_frame`). `random` is **seeded**: it gives the same numbers on every run, so a re-run gives the same piece. `random.uniform(a, b)`, `random.randint(a, b)`, `random.choice(seq)`, `random.random()` use the script's own generator; `r = random(7)` makes another with its own seed (`r.uniform(...)`, `r.randint(...)`, `r.choice(...)`), handy to give each item in a loop its own: `random(100 + i)`. A `class` is refused ("classes aren't allowed in scripts; use functions and dicts"). A field can be keyed from your own Python: `item.sample("y", lambda t: …, start=, end=)` writes one key per frame (a list of values works too). For maths and data, scripts also have `plot_area`, `curve_points`, `line_d`, `nice_ticks`, `view3d`, `parse_table` and the rest (`data-math-and-graphs`); numpy work happens in your own Python, which hands the script its numbers.
-
-```python
-comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
-t = text("headline", body="Words", size=160)               # no x / y: the comp's centre
-t.key("opacity", {0.0: 0, 0.6: 1}, ease="easeOut")          # {time: value} or {time: (value, ease)}
-t.effect("shadow", dy=24, radius=60)
-t.mask("reveal", w=0).key("w", {0.0: 0, 0.8: 1400})
-with group("cluster", y=800) as cluster:                     # x left out: the centre across               # layers made inside go into the group
-    shape("dot", shape="ellipse", w=24, h=24)
-cluster.end = 4                                               # a field as an attribute is .set(end=4); t.x reads it back
-```
-
-Unknown fields, bad values, and animating something that cannot be animated fail loudly, naming the line and what to
-write instead. A field written as an attribute (`t.end = 4`) goes through the same check as `.set(end=4)`: it is set or
-refused, never dropped.
-
-### What to write (the fields agents reach for)
-
-| Layer | Its main fields |
-|---|---|
-| every layer | `x`, `y` (where its anchor sits, px; −20000 to 20000, so a tall parallax world or a long camera travel fits in that range: scale the world down or shorten the travel), `scale`, `scaleX`/`scaleY` (stretch one way; negative mirrors; key `scaleX` to squash), `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
-| `comp` | `width`, `height`, `fps`, `duration` (s), `background`, `shutter` (motion blur angle, 0 = off), `shutterSamples`, `workStart` / `workEnd` (the work area the screen shows on its ruler, s; 0 = none; export a part with `start` / `end`) |
-| `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
-| `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
-| `path` | `d` (any SVG path data: M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z, so reading it back shows those), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` + `gap` (px; `dash=0` = solid; key `dashOffset` to march) |
-| `drawing` | `w`, `h` (its canvas, px), `eachFrame`, `loop`, `drawnSoFar` (0–1: key 0 → 1 to paint its strokes on in the order they were painted) |
-| `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
-
-Effects: `item.effect(type, id=None, **fields)`: the **type comes first**, the id is optional (counted for you,
-like a layer's), and it **returns the effect**, which keys like a layer: `t.effect("blur", radius=30).key("radius",
-{0.0: 30, 0.8: 0})` is a blur-in. Fields: `"blur"` (`radius`, px), `"shadow"` (`dx`, `dy`, `radius`, `color`, `strength`), `"glow"`, `"gradient"` (`color1`,
-`color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom; it arrives as the layer's **gradient fill**,
-so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"rough"` (edges wobble as if drawn by hand: `amount` px, `size` px of a bump, `detail`, `boil` frames), `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
-
-The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
-`width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,
-`steps` (= `timing`), `shape="circle"`, `ease="ease-out"`, `stroke="#fff"` (= stroke on in that colour), `fill="none"`
-(= no fill; `filled=False`), `backgroundColor`. A colour never has transparency: use `opacity` or `fillOpacity`.
-
-Things that surprise people the first time:
-
-- **Keys are in the comp's seconds**, whatever the layer's `start` (`start` only hides it before then). Inside a group or
-  layer timed from a marker (`marker="beat"`), times count from that marker. A key time may also name a marker
-  (`"#beat"`, `"#beat-0.3"`).
-- **Before its first key a field holds the first key's value.** A ripple keyed `{5.0: 0.5, 5.6: 0}` is half-visible from
-  frame 0: start it with a key at 0 (`{4.9: 0, 5.0: 0.5, 5.6: 0}`) or give it `start=4.9`.
-- **A spring settles at its last key and wobbles on the way:** with the default bounce it first reaches the target a
-  fifth of the way through the stretch, overshoots most at about 30 %, and has settled by the last key. To land *on* a
-  marker, put that first arrival there: `{"#beat-0.15": 0, "#beat+0.65": 1}` with `ease="spring"` (a 0.8 s stretch),
-  then check with `look_motion` (overshoot) and `look_frame` at the marker.
-- **Arrange things with boxes, not x / y sums:** `with column(padding=24, gap=16):`, `row`, `grid(columns=3)`,
-  `stack` place and size what is made inside them, with `align`, `justify`, `grow=1`, sizes in px, `"50%"`, `"fill"`
-  or `"fit"`, and texts that wrap where the box ends (guide `lay-out-a-screen`). Inside a box `x=` / `y=` fail unless
-  `apart=True`. Keep raw `x`, `y` for motion and art: a moving shape, a painted world, a camera path.
-- **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0); a child with no `x`, `y` sits at the
-  box's centre. A group made without `w`, `h` fits around what is inside when its `with` block ends: its children's
-  `x`, `y` count from a comp-sized box, so a child left without them sits on the group's own `x`, `y`. To arrange
-  several, use a `column` / `row` / `stack` instead of sums.
-- **Stacking order:** layers are drawn in the order they are made: the first one made is at the bottom, each later one
-  on top of it (inside a group the same, among its children). Make the background first; `layer.arrange` with `index`
-  (0 = bottom) moves one later.
-- **A text's real width:** `w, h = title.measure()` in a script gives its box in its own px (before `scale`), measured
-  by the code that draws it; place by it (`note.x = title.x + title.measure()[0] / 2 * title.scale + 24`). To measure
-  words you have **not** made a layer for, `w, h = measure_text("SIGNAL", size=120, weight=700, font="…")` takes the same
-  text fields and makes no layer, so nothing is left in the picture (never make a probe text just to measure it).
-- **Text sits on its anchor too, and its anchor follows its alignment:** every text, made by a script, an operation
-  or a person's Text tool, starts centred on `x`, `y` (anchor 0.5, `align="center"`). Without a `boxWidth`, changing
-  `align` moves the across anchor with it, as After Effects' point text: `align="left"` makes `x` the left edge (anchor
-  0), `"right"` the right edge (anchor 1), so a left-aligned column is just `align="left"` and its lines all start at
-  `x`; changing the alignment later keeps `x` and the words re-flow around it. An anchor you set yourself (`anchorX`
-  given with it, moved, keyed) is kept. `boxWidth` wraps the words into a box that wide, placed by its anchor like any
-  box; there `align` only places each line inside the box, which stays put.
-- **A rounded clip:** `clip=True` cuts to the group's rectangle. For rounded corners (a phone screen) give the group a
-  mask with a radius: `screen.mask("round", x=0, y=0, w=390, h=844, radius=56)`.
-- **`trimEnd` draws along the path in the order its points are written**, from the first point; on a closed path the
-  closing segment (back to the start) comes last. To draw the other way round, write the points in the other order.
-- **A path's points:** with no `x`, `y`, `w`, `h`, `d` is read as SVG reads it, in comp px (or the group's box): a line
-  through (360, 600) passes through (360, 600). With any of them, `d` is in the path's own box (0, 0 = its top-left).
-  A path is filled light grey by default; a line wants `fill="none"` (or `filled=False`) and a stroke.
-- **Ids are one in the whole document**, effects' and masks' too: in a loop write `f"shadow{i}"`, or leave the id out.
-- **A track matte** (`matte="logo_shape"`) must be a layer beside it (same group or comp); the matte layer itself is then
-  only used as the matte.
-- **Stepped timing** ("on twos / threes"): `timing="2"` (or `steps=2`) on the comp, a group or a layer (in the settings panel, **Animate on**; its first choice reads **Same as its group** inside a group and **Same as the scene** for a layer straight in a scene).
-
-## Seeing your work (do it every time)
-
-You can't judge motion from the script. Look.
-
-| Tool | Use it to |
-|---|---|
-| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
-| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. With `video: "<mp4 path>"` (with `sheet`, or `times`) the sheet is made of a **finished mp4's own frames**: the export itself, no item needed. |
-| `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. `area: [x, y, w, h]` (comp px) draws only that part, sharp at `width` (a zoom on a mouth or an edge); `times` + `cols` for a sheet of chosen moments. |
-| `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
-| `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
-| `look_frame` (`what: "in_frame"`) | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
-| `look_frame` (`what: "empty"`) | Find **blank, pale and standing-still stretches** from tiny pictures every 0.5 s (seconds to run), with times and numbers: near-empty frames (almost only background), washed-out frames (all pale, low contrast), nothing moving for `min_still` s (default 2), and whether the piece ends on one. Facts, not verdicts: a held title is yours to judge. `video: "<mp4 path>"` checks a finished file. |
-| `look_review` | List the film's **weakest moments, ranked**, each a located fault with times: a near-empty stretch, a text cut off by the frame edge, an old heading still faintly behind a new one, a set of parts (a chart's bars, a list's rows) not drawn in yet while the rest of its group shows, a plain card opening empty, a character's pose barely changing for 6 s or more, an arm held nearly straight for 4 s or more, a character's arms or legs thin next to its body (also named in `run_script`'s reply), framing held 10 s or more (no camera move or cut), nothing moving, a subject cut by the edge (a layer blurred 20 px or more is atmosphere and never named), a title closer to the frame edge than the safe margin, a stray small dot that later grows (a wipe circle left showing), a layer showing outside the screen it belongs to (a cursor beside the phone), a lock-up whose parts touch, a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film), opening shots that look alike (the same layers on the same ground, about as big), the last picture held unchanged for over a fifth of the film, a text partly crossed (10–85 % of it, 1 s or more) by a layer drawn in front of it (a panel's own background counts; a text fully under a panel or sheet is hidden, not crossed; a frosted scrim never counts) with where to place the block instead ("place \"hero\" below \"nav\" (\"nav\" ends at y = 164)"), a text cut by the edge of the screen or box that clips it, two showing texts on top of each other, a pointer (a layer named cursor, pointer, mouse, finger or hand) covering a fifth of a label, an end card whose mark or lock-up is tiny in the frame, a device (`device()`) cut by the frame edge where it is placed, or nibbled by camera push-ins while its sides show (with the frame key, the share of the film it is cut, and `frame().fit(["phone"], at=…, pad=0.06)` or a push onto one part; a push-in that fills the picture but still shows the device's body at a side of the frame (dark bars beside the screen) is named as a broken frame; a deep push-in filling the whole picture is meant and only listed in `data.info`, with the screen texts it cuts, except a label sliced by the edge, which is always named), a character more than half hidden behind layers in front of it, or standing on a bare set (fewer than 3 things or under 15 % of the frame besides it and the background). `beats: [{"at": 25, "to": 30, "expect": "camera move"}]` (also `cut`, `pose change`, `<layer id> moves`, `<layer id> shows`, `<layer id> reveals`: more of it showing over at..to, never whole before) names a beat of the brief that never happens or comes at the wrong time ("'lamp shows' already happened at 0 s; the beat is meant at 24 s"). A whole object made of several layers: name its group. Seconds to run on a 30 s film; `video` reads an exported mp4's pictures. Facts, not taste: a held title may be meant. |
-| `render_video` | Export an mp4. Always a job; the call waits for its own file (`wait_s`, default 120 s) and replies with it; past that, `inspect_job` with `wait_s` follows it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out or unchanged stretches: `quiet_stretches`; subjects cut by the edge: `edge_cuts`) and ends with the time left and the weakest moments from `look_review`. Takes `beats` as `look_review` does; they are kept for the session and every later export checks them. |
-
-**The loop: make → export → review → fix.** Every finished export's reply ends with the time left and its top weakest
-moments (from `look_review`), e.g. *Time left: 11 min. Weakest moments, most visible first: 1. 22–23 s: near-empty …
-2. 12 s: text "headline" is cut off by the right edge …* Fix the top one, export again, and repeat while time is left:
-each pass is a few minutes. Give the brief's timed moments as `beats` on your first export ("the lamp is
-revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`); until you do, the reply asks for them. Also look at a sheet of the finished piece (`look_frame` `what: "sheet"` with `video` = the
-mp4's path, after your last edit): `look_review` names what can be measured, your eyes judge the rest. A sheet from
-before your last edit doesn't count.
-
-### Using your time
-
-Every reply ends with a clock line, e.g. *Session 6 min 12 s of real time since your first call (your thinking included) · 23 calls · last look at
-the picture 4 edits ago*. The session starts at your first call; if `ROSTRUM_SESSION_BUDGET_MIN` is set it also says how many
-minutes are left. After an export it also names the kinds of look not done yet (a full-size single frame, the motion with
-`look_motion`). The clock is the only time you have: a long stretch without a reply is not time used up, and the time
-you were given is for making **and looking**.
-
-`inspect_project` with `what: "session"` says what is still unchecked: edits since you last looked at the picture, times
-of the piece you have never looked at (a look at a time covers 2 s either side of it, a sheet covers each of its tiles),
-whether the export was looked at, and the stretches the last empty check named. A technique for the time you have:
-
-- Work in **passes**, not one long build: structure and timing first, then look at sheets of the whole span, then refine what the
-  sheets show (a moment looks different at 100 % in one frame than in a tile, so also look at single frames and `area` zooms).
-- Use the time to look: a sheet of the whole span after each pass, a sheet of the **export** after each render, a zoom on
-  anything small. A piece you have not looked at is not finished, however long the script is.
-- Stop when the checks say nothing is unchecked **and** the picture at every time looks as you mean it, not when a count of
-  calls or minutes feels enough.
-
-Look pictures go to the project's `looks` folder (`<project folder>\looks\`; with no project open, to Rostrum's look cache); every reply gives the full path in `files`. `look_frame` and `look_frame` (`what: "sheet"`) use the
-same engine as export, so what you see is what the file will be.
-
-## Music and sound
-
-Sound is made in **RostrumSound**, never in 2D: its own MCP server (`rostrum-sound`) opened on the **same project
-folder** (its `run_open_project`). Read its guides `start-here` and `scoring-motion` there. What it makes plays here
-with the picture and goes under an mp4 export (`render_video`, `sound`, on by default when the project has sound).
-Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), never copied times. From 2D:
-
-- `inspect_sounds` lists what you can tie to a layer: a note or hit on the song's own instruments, the person's
-  recordings, RostrumSound's library; `edit_sound_cue {layer, sound}` ties one to the layer's start (Sound mixes it).
-- `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
-  suggests notes and hits for each landing).
-- **No sound?** A render of a project with no RostrumSound item, or with `sound: false`, makes a silent mp4; it never fails for that. The Sound server is only needed to make or change the music, not to render it.
-- In a script, `beats()` gives the beats of the scene's song in seconds, to cut or key on (`beats(bpm=120)` a grid with no song); a song's markers work as times (`"#drop"`), and `marker("drop", 8)` makes a shared one.
-- Guide `timing-to-music`: hearing the song, its beats, snapping and tying layers to its markers.
-
-## Reading errors
-
-A failed call says `ok: false` and the one line `Error: <where>: <subject> <what is wrong>. Accepted: … <hint>`. Read **Accepted**:
-it lists what would have worked; a wrong argument name also says which one you meant (`from` → "Did you mean start?").
-Edits are all or nothing, so nothing changed.
-
-## The guides (one line each: when to read it)
-
-| Guide | Read it when |
-|---|---|
-| `the-film-as-one-script` | you build a whole film: one script, scenes as functions of a start time, shared timing, loops, your own helpers, `look` on each run |
-| `type-and-kinetic-text` | you set type: fonts, variable axes, OpenType features, per-letter animation, gradient letters, scrambling characters into words, building a title in steps |
-| `lay-out-a-screen` | you arrange anything on screen (a title lock-up, a row of cards, a phone screen, a dashboard): `row`, `column`, `grid`, `stack` with padding, gap and align, `origin=`, Tailwind words (`tw=`) |
-| `ui-and-product-animation` | you build screens and product shots: devices and screen blocks in one call (`device`, `list_rows`, `card`, `bars` …), counting numbers (`counter`), boxes, masks, frosted glass, shadows, tilt and depth |
-| `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
-| `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
-| `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
-| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax, or hand-letter a title as brush strokes |
-| `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
-| `character-rigging-and-lip-sync` | you make a figure move from bones and IK (`limb`, `walk`, `idle`, `follow`, `blink`, `layer(id)` in a script), or make a mouth follow a voice |
-| `frame-parallax-motion-blur` | you move the frame, look through it, pin a title to it, set depth between layers, motion blur, smears, trails |
-| `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |
-| `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |
-| `text-on-a-path`, `curve-editor`, `expressions` | text follows a curve; you shape the easing by hand; you drive a value from a formula |
-| `data-math-and-graphs` | you plot an equation or a function, draw axes and ticks, a 3D-looking surface, a chart from a table, or one design filled in from many rows |
-
-`inspect_guide {"topic": ...}` gives a long guide's first sections and the headings of the rest; ask for one with
-`section` (words of its heading) or `"section": "all"`. Each guide says what exists today, with the tool, operation or field name. Where something is planned but missing, it says
-"not yet".
+- `script-reference`: every script function and field, ids, keys, effects, re-run rules, the first-time surprises,
+  reading errors.
+- `the-film-as-one-script`: how to structure the whole film; every look tool; using your time.
+- `lay-out-a-screen`: rows, columns, grids, stacks, Tailwind words (`tw=`).
+- `timing-to-music`: markers, layers timed from a marker, beats, the song from RostrumSound.
+- `ui-and-product-animation`: devices, screen blocks, counters, pointers, glass and depth.
+- `type-and-kinetic-text`: fonts, per-letter animation (typing on: key opacity 0 → 1 with `letterDelay`), scrambles.
+- `easing-and-overlap`: what each ease does, checking overlap.
+- `frame-parallax-motion-blur`: moving and cutting the frame, depth, motion blur.
+- `shape-and-path-animation`: the pen, combining shapes, drawing a stroke on.
+- `drawing-and-frame-by-frame`, `painted-backgrounds`: brush strokes, one picture per frame, big painted worlds.
+- `character-rigging-and-lip-sync`: limbs, poses, walks, mouths that follow a voice.
+- `data-math-and-graphs`: plots, axes, charts from a table.
+- `colour-and-blending`, `expressions`, `text-on-a-path`, `curve-editor`: blend modes and grades; a field from a
+  formula; text along a curve; easing by hand.
+- `import-and-export`, `3d-renders-in-2d`, `files`: files in and out, a Rostrum3D render in a comp, opening projects.
+- `the-screen`: the window, for when you help a person by hand.
+- `tools-in-detail`: every tool and argument in full (the tool list keeps one line each).

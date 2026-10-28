@@ -36,7 +36,7 @@ def moves(data: dict, info: dict, folder=None) -> dict | None:
         if kind == "cloth":
             skip[id_] = f"{id_} is cloth: its folds are simulated, not measured here (look_frame shows them)"
         elif kind == "falls" and item["type"] == "copies":
-            skip[id_] = f"{id_}'s copies fall in the simulation; each copy's path is not measured here (look_sheet shows them)"
+            skip[id_] = f"{id_}'s copies fall in the simulation; each copy's path is not measured here (look_frame what \"sheet\" shows them)"
         elif kind == "falls":
             falls.append(id_)
     if where is not None:

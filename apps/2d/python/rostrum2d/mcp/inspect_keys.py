@@ -10,8 +10,7 @@ from rostrum_core.keys import marked
 from rostrum_core.mcp.tools import _schema_of
 
 KEYS = {"keys": {"enum": ["summary", "all"], "default": "summary", "description":
-                 'A part\'s keys: "summary" (default: per field how many, first and last time and value) or "all" '
-                 "(every key's id, time, value, ease; detail \"full\" lists them too)."}}
+                 "A part's keys: summary (per field) or all."}}
 
 
 def summary(keys: list[dict]) -> dict:

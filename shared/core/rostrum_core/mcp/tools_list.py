@@ -32,7 +32,7 @@ def register(tools: Tools):
 
     @tools.tool("inspect_tools", schema)
     def inspect_tools(ctx, args):
-        """This server's tools, grouped by verb, each with a one-line purpose; with name, one tool's full description and arguments."""
+        """This server's tools: the core five to start with, then every tool by verb with a one-line purpose; with name, one tool's full description and arguments."""
         mine = {t.name: t for t in ctx.tools.all()}
         if "name" in args:
             if args["name"] not in mine:
@@ -49,5 +49,7 @@ def register(tools: Tools):
         verbs = [args["verb"]] if "verb" in args else list(VERBS)
         groups = {v: [{"name": t.name, "purpose": purpose(t), **_origin(t)} for t in mine.values() if t.verb == v] for v in verbs}
         counts = ", ".join(f"{v} {len(g)}" for v, g in groups.items())
-        listing = "\n".join(f"{v}: " + "; ".join(f'{t["name"]} ({t["purpose"]})' for t in g) for v, g in groups.items() if g)
-        return Reply(f"{sum(map(len, groups.values()))} tools ({counts}). Ask with name for one tool's arguments.\n{listing}", {"verbs": groups})
+        core = [n for n in ctx.tools.core if n in mine] if "verb" not in args else []
+        start = ("Start with: " + "; ".join(f"{n} ({purpose(mine[n])})" for n in core) + "\n") if core else ""
+        listing = start + "\n".join(f"{v}: " + "; ".join(f'{t["name"]} ({t["purpose"]})' for t in g) for v, g in groups.items() if g)
+        return Reply(f"{sum(map(len, groups.values()))} tools ({counts}). Ask with name for one tool's arguments.\n{listing}", {"verbs": groups, **({"core": core} if core else {})})

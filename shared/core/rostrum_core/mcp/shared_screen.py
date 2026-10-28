@@ -9,7 +9,7 @@ from ..errors import RostrumError, codes
 from .reply import Reply
 from .tools import Tools
 
-_ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
+_ITEM = {"item": {"type": "string", "description": "Project item id; default the open document."}}
 
 
 def _said(s: dict) -> str:

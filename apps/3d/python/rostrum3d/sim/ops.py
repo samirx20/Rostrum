@@ -6,7 +6,7 @@
     sim.start_in_view  a falling thing or cloth raised (or lowered) to start inside the shot camera's picture (in_view.py)
     sim.to_keys the stored result becomes ordinary keys on each falling item, which stops simulating (one undo step)
 
-How it stands (stored, out of date …) is a read, not an operation: sim/state.py `state`, the inspect_simulation tool.
+How it stands (stored, out of date …) is a read, not an operation: sim/state.py `state`, the run_simulation what "status" tool.
 """
 from __future__ import annotations
 

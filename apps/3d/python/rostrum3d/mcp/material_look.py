@@ -16,7 +16,7 @@ from rostrum3d.material_ball import BALL_SHAPE, final_reasons
 
 from . import draw
 from .look import _settings
-from .shot import ITEM_SHOT, QUALITY, RENDERERS, doc_and_shot
+from .shot import COUNT, ITEM_SHOT, LOOK, QUALITY, WIDTH, count_of, doc_and_shot, width_of
 
 tools = Tools()
 ELEVATION, DISTANCE, FOCAL = 20.0, 6.0, 50.0           # the camera: degrees above level, in radii from the ball, lens in mm
@@ -75,20 +75,13 @@ def staged(doc, info: dict, mat: dict, shape: str, radius: float, count: int) ->
 @tools.tool("look_material", {"properties": {
     **ITEM_SHOT,
     "material": {"type": "string", "description": "The material's id or name."},
-    "shape": {"enum": ["ball", "plane"], "default": "ball", "description": "ball = a sphere; plane = a flat square lying face up (to see a texture, grain or a brushed direction)."},
-    "count": {"type": "integer", "minimum": 4, "maximum": 8, "default": 6, "description": "Angles around it, evenly spaced, the first the way the shot camera sees it."},
-    "radius": {"type": "number", "exclusiveMinimum": 0, "default": 0.15, "description": "Ball radius (or half a plane's side) in metres; it sits where the shot camera's view meets the ground."},
-    "tile_width": {"type": "integer", "minimum": 64, "maximum": 640, "default": 256, "description": "Width of each (square) picture in px."},
-    "quality": {"enum": list(QUALITY), "description": "fast = Storm, final = Cycles. Default: Cycles when the material needs it (glass, metal, coat, Final-only settings), else Storm."},
-    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality."}}, "required": ["material"]})
+    "shape": {"enum": ["ball", "plane"], "default": "ball", "description": "ball, or plane: a flat square face up (for a texture or grain)."},
+    **COUNT,
+    "radius": {"type": "number", "exclusiveMinimum": 0, "default": 0.15, "description": "Ball radius (half a plane's side) in metres."},
+    **WIDTH,
+    "quality": LOOK["quality"], "renderer": LOOK["renderer"]}, "required": ["material"]})
 def look_material(ctx, args):
-    """One material of the document shown on a ball (or a flat square) as a small turntable: `count` angles in ONE strip, under the SCENE's
-    own lights (the document's lights, its sky; everything else hidden), not a studio. Drawn with Storm unless the material needs Cycles
-    (glass / transmission, metal, clear coat, Final-only settings): then Final is picked for you, and the reply says which renderer drew it
-    and why (ask quality fast to force Storm). Use it to judge a material's look, how its highlight travels, before putting it on a shot.
-    A material with blocks (graph.add / graph.connect) is drawn with them, and the reply lists its blocks and wires (`blocks`:
-    graph.describe's blocks and wires), as bright in Storm as in Final under bulbs, spots and panels. An unknown material fails, listing the document's materials; a scene with no light fails
-    (the ball would be black)."""
+    """A `material` on a turning ball under the scene's lights."""
     doc, info = doc_and_shot(ctx, args)
     mat = find(ctx, doc, args["material"])
     lights = [it["id"] for it in _walk(doc.data.get("items", [])) if it["type"] == "light" and it.get("visible", True)]
@@ -97,7 +90,7 @@ def look_material(ctx, args):
                            hint="Add a light (or a sky dome) to the document, then look again.")
     reasons = final_reasons(mat) + graph.final_only(mat)
     renderer, why = renderer_for(args, reasons)
-    shape, count, tile_w, radius = args.get("shape", "ball"), args.get("count", 6), args.get("tile_width", 256), args.get("radius", 0.15)
+    shape, count, tile_w, radius = args.get("shape", "ball"), count_of(ctx, args, 6, 4, 8), width_of(ctx, args, 256, 640), args.get("radius", 0.15)
     scene, cams, angles = staged(doc, info, mat, shape, radius, count)
     engine = draw.engine_of(ctx)
     dest = look_path(f'{doc.item_id or "doc"}_material_{mat["id"]}_{shape}_{renderer}', project=doc.folder)

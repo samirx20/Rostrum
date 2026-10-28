@@ -30,8 +30,6 @@ _C, _D = "|".join(CHECKS), "|".join(DOES)
 PHRASES = [
     (r"`run_open_project \{\"folder\": ", "`run_script {\"project\": "),
     (r"`\{\"folder\": \"\.\.\.\", \"item\"", "`{\"project\": \"...\", \"item\""),
-    (r"`render_export \{\"comp\": \"main\", \"format\": \"mp4\"\}` \(or `render_video`\)", "`export {\"comp\": \"main\", \"format\": \"mp4\"}`"),
-    (r"`look_review` with `beats`", "`look {\"check\": \"look_review\", \"beats\": [...]}`"),
 ]
 PHRASES = [(re.compile(p.replace(" ", r"\s+")), b) for p, b in PHRASES]
 SOUND = re.compile(r"\(its `run_open_project`\)|`run_open_project` on the same folder")    # RostrumSound's own tool: B has it too
@@ -54,14 +52,12 @@ def _call(m) -> str:
 def _bare(name: str, beats: bool) -> str:
     if name in DOES:
         return f"`run_script` (do `{name}`)"
-    return "`look`" if name == "look_review" and not beats else f"`look` check `{name}`"
+    return f"`look` check `{name}`"
 
 
 def _plain(m, beats: bool) -> str:
     if m[1] in DOES:
         return f"run_script (do {m[1]})"
-    if m[1] == "look_review" and not m[2] and not beats:
-        return "look"
     return f"look (check {m[1]}{f', what: {m[2]}' if m[2] else ''})"
 
 

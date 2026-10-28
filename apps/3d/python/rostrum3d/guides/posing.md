@@ -114,7 +114,7 @@ a drag's result with `look_frame` (a hand that didn't reach shows as an arm stre
 
 - **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`; `look_at` on a pixel names
   the nearest joint, "forearm.R, 3 cm off"): a joint in the wrong place is fixed with `pose.move_joint` before posing.
-  `look_shape` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
+  `look_frame what "shape"` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
   limbs.
 - **Grab by name** (`part="hand.R"`, `"RightHand"` or the bone id `c_hand_R`): the grabbed spot is the end of that
   bone. A short arm found with no hand of its own still answers to `hand.R` (its last bone: the end is the hand); the

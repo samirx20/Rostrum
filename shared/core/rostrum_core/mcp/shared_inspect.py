@@ -6,7 +6,7 @@ from ..errors import RostrumError, codes, did_you_mean
 from .reply import Reply
 from .tools import Tools
 
-_ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
+_ITEM = {"item": {"type": "string", "description": "Project item id; default the open document."}}
 _DETAIL = {"detail": {"enum": ["short", "full"], "default": "short", "description": "full adds the structured data behind the summary."}}
 NO_FOLDER = "This server was started without a project folder, so this shows the open document(s) only."
 
@@ -95,8 +95,7 @@ def register(tools: Tools):
 
     @tools.tool("inspect_history", {"properties": {**_ITEM, "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20}, "group": {"type": "string"}, **_DETAIL}})
     def inspect_history(ctx, args):
-        """Recent changes, newest last: step, who (kind and name), label, when, group, operations, and which
-        document (`doc`): the item's own, or the project's shared markers, which share one history (desk.py)."""
+        """Recent changes, newest last: step, who, label, when, group, operations and which document (the item or the shared markers)."""
         doc = ctx.document(args.get("item"))
         docs = [doc] + [m for m in [_markers(ctx.app.folder)] if m is not None and m.item_id != doc.item_id]
         changes = [(d, c) for d, c in desk.changes(docs) if not args.get("group") or c.session == args["group"]]
@@ -127,11 +126,9 @@ def register(tools: Tools):
         return Reply(f"{len(ops)} operations: {', '.join(ops)}. Ask with name for one's arguments.", {"operations": rows})
 
     @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}, "section": {"type": "string", "description":
-            'Only the section whose heading has these words (e.g. "Scripts"), or "all" for the whole guide. Default: start-here '
-            "whole; a long guide's first sections, then the headings of the rest."}}})
+'One section by heading words, or "all". A long guide comes as its first sections and the other headings.'}}})
     def inspect_guide(ctx, args):
-        """A how-to guide by topic; read 'start-here' first. The one argument is `topic`: {"topic": "start-here"} (there is no `name`); where a guide reads `inspect_guide 'x'`, x is the topic. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>).
-        A long guide comes as its first sections and the headings of the rest; ask for one with `section`."""
+        """A how-to guide by topic: {"topic": "start-here"} first (`inspect_guide 'x'` in a guide means topic x). No topic: the list of topics."""
         g = ctx.app.guides
         if "topic" not in args:
             return Reply(f"{len(g.topics())} guides: {', '.join(g.topics())}.", {"topics": [{"topic": t, "title": g.title(t), **({} if g.origin(t) == "builtin" else {"origin": g.origin(t)})} for t in g.topics()]})

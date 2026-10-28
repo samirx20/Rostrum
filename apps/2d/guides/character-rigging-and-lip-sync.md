@@ -111,7 +111,7 @@ sizes, colours and timing are yours.
     the nearest bone above with one; a leg 0.3 ×; legs on a bare hip use the body the arms found), the forearm or calf
     0.85 × that, the hand 1.05 × (a foot 0.8 ×). A 250 px wide body gets 65 px arms. Nothing bound: 0.4 × the upper
     length. Arms under about a fifth of the body's width read as noodles in a small still: `run_script`'s reply and
-    `look_review` name a character whose arms or legs are under 0.7 × that default width, with the numbers.
+    `look_frame` with `what: "review"` name a character whose arms or legs are under 0.7 × that default width, with the numbers.
   - **Hands.** `hand="mitten"` (the default) is an oval palm `widths[2]` wide and at least 1.25 × that long with a thumb
     toward the body, one outlined path (`<id>_hand`) you can edit or swap like any layer; `hand="ball"` is a plain circle
     (a robot's or puppet's hand). A hand of your own: bind it to `arm.end` and hide the made one.
@@ -136,7 +136,7 @@ sizes, colours and timing are yours.
     forearm keeps going up) at 1.5 × `relax`, back to the relaxed bend under 55° (an elbow is never straight in a
     held pose); that bend arrives a beat late and swings past a little (a spring); and where you did not run `follow()`
     on that arm, a lighter follow-through of the forearm and hand. Keys you put on `arm.lower` add to this bend (0 = the
-    natural bend, 30 = 30° more). `natural=False` keys it raw. `look_review` names an arm whose elbow stays bent under
+    natural bend, 30 = 30° more). `natural=False` keys it raw. `look_frame` with `what: "review"` names an arm whose elbow stays bent under
     25° for 4 s or more ("holds its arms nearly straight"): a straight arm reads as a stick in a small still.
 - **`walk(legs=[a, b], body=hip, arms=[a, b], head=, start=, end=, step=0.5, stride=, lift=, bounce=, travel=True,
   facing="right")`** keys a walk: each foot's IK target planted on the ground for half the cycle and lifted on an arc for
@@ -289,7 +289,7 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
 - **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script: each child is named by its id
   (the text you gave it when you made it), or its place (0 is the first). As an operation, `swap.show` with `t` and `layer`
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
-  `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
+  `look_frame (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
 - **Blink.** In a script, `blink(eyes, open="eyes_open", closed="eyes_shut")`; as an operation, `blink.add` on the eyes'
   slot (`{"op": "blink.add", "target": ["eyes"], "args": {"open": "eyes_open", "closed": "eyes_shut"}}`). Both take `open`,
   `closed` and optionally `half` (a half-closed drawing for the frame before and after). `every` is the mean gap in seconds,

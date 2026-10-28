@@ -26,7 +26,7 @@ def test_passes_left_after_a_video_and_the_clock_line():
     line = clock.line()                                           # 10 min left / (30 s export + 150 s pass)
     assert "the last video has not been looked at" in line and "10 min 00 s of your 12 min left" in line
     assert "about 3 more passes of look, fix and export" in line
-    clock.noted("look_sheet", {}, Reply("sheet"))
+    clock.noted("look_frame", {"what": "sheet"}, Reply("sheet"))
     assert "has not been looked at" not in clock.line()
     t[0] += 9 * 60
     assert "more pass" not in clock.line()                        # 1 min left: no pass fits

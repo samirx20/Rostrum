@@ -89,11 +89,11 @@ def report(data: dict, info: dict, folder) -> tuple[list[str], list[str], list[d
         elif not on:
             warns.append(f"Cloth {id_} started over {', '.join(under)} but ends touching "
                          f"{'only the ground' if on_ground else 'nothing'}: it slid off ({slid:.2f} m sideways). Look at "
-                         f"it with look_sheet; a heavier, stiffer or shorter cloth (clothWeight, stiffness, a smaller "
+                         f"it with look_frame what \"sheet\"; a heavier, stiffer or shorter cloth (clothWeight, stiffness, a smaller "
                          f"sheet that does not reach the ground) stays on better.")
         elif slid > size / 3:
             warns.append(f"Cloth {id_} moved {slid:.2f} m sideways while falling (a third of its size or more): it may "
-                         f"hang off one side of {', '.join(on)}; look at it with look_sheet.")
+                         f"hang off one side of {', '.join(on)}; look at it with look_frame what \"sheet\".")
     return parts, warns, facts
 
 

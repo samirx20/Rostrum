@@ -49,7 +49,7 @@ from . import script_layout, ui_blocks, ui_pointer
 from . import script_time
 from .lipsync import script as lipsync_script
 
-# Python's plain built-ins a script may use (start-here.md lists them; keep the two the same). No print (the MCP
+# Python's plain built-ins a script may use (script-reference.md lists them; keep the two the same). No print (the MCP
 # server talks over stdout), no open / eval / exec / getattr / type: a script only builds the document.
 BUILTINS = ("range", "len", "min", "max", "abs", "round", "sum", "divmod", "pow", "enumerate", "zip", "map", "filter",
             "sorted", "reversed", "any", "all", "list", "dict", "tuple", "set", "frozenset", "float", "int", "str", "bool",

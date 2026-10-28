@@ -24,7 +24,7 @@ def probe(mp4: Path, where: str) -> tuple[float, float]:
     return int(h) * 3600 + int(m) * 60 + float(s), float(f.group(1))
 
 
-VIDEO = {"video": {"type": "string", "description": "A finished mp4 to look at instead of drawing the composition (absolute path, e.g. render_video's `video`): with `times`, or what \"sheet\" "
+VIDEO = {"video": {"type": "string", "description": "A finished mp4 to look at instead of drawing the composition (absolute path, e.g. render_export's `video`): with `times`, or what \"sheet\" "
                                                     "with start / end / count (seconds in the film). The pictures are the film's own frames, so the export is what you judge; no item / comp needed."}}
 
 
@@ -35,7 +35,7 @@ def video_sheet(ctx, args: dict, times: list[float] | None):
     import tempfile
     mp4 = Path(args["video"])
     if not mp4.is_file():
-        raise RostrumError(codes.NOT_FOUND, ctx.tool, f'video "{mp4}"', "is not a file", hint="Give the absolute path of an mp4 (render_video's `video`).")
+        raise RostrumError(codes.NOT_FOUND, ctx.tool, f'video "{mp4}"', "is not a file", hint="Give the absolute path of an mp4 (render_export's `video`).")
     duration, fps = probe(mp4, ctx.tool)
     last = max(duration - 2 / fps, 0.0)       # ffmpeg seeks to a time at or before the last frame; the very last may give none
     if times is None:

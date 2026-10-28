@@ -17,9 +17,7 @@ VERBS = ("look", "render")
 TRUE_S, MOST_S = 50, 600                    # true: under the ~60 s many MCP clients allow a call (CONVENTIONS § 7)
 MARK = "x-rostrum-wait"                      # survives a copy (combine.py copies every part's arguments)
 SCHEMA = {"type": ["boolean", "number"], "minimum": 0, "maximum": MOST_S, MARK: True,
-          "description": f"When the tool answers with a job: wait for it in this call and answer with the finished file. "
-                         f"true waits up to {TRUE_S} s, a number that many seconds (up to {MOST_S}). Past it the reply says the job "
-                         "is still running, with its job_id (inspect_job). A failed job is an error, never a success."}
+          "description": f"Wait for the job in this call: true (up to {TRUE_S} s) or seconds (up to {MOST_S}); past it, its job_id."}
 
 
 def applies(name: str, schema: dict) -> bool:
