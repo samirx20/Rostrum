@@ -1,7 +1,7 @@
 # Listening without ears: the look tools
 
 You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. Render first
-(`render_mix`, then `inspect_job` until it is done; or `run_script` with `render`, which writes, renders and checks in
+(`render_mix`, then `inspect_job` until it is done; or `run_script` with `look`, which writes, renders and checks in
 one call); every look tool reads the last render unless you pass `wav`.
 Two read the document instead and need no render: `look_arrangement`, and `look_music` (`what: "harmony"`) on a song
 with notes written.
@@ -63,11 +63,11 @@ time, the measured numbers and the first fix (`data.weakest`). Name the moments 
 checked. A line that says "comes across" is a margin, not a fault. A missing moment comes first, then a silent start or
 a bent tempo (heard from the first second), then the weakest moments, then the other whole-piece faults.
 
-The quickest loop is one call: write the whole piece as one script and run it with `render` (`true`, or render_mix's
-arguments: `{"render": {"name": "cue", "expect": [{"at": 31.5, "kind": "stop"}, {"kind": "tempo", "bpm": 132}]}}`).
+The quickest loop is one call: write the whole piece as one script and run it with `look` (`true`, or render_mix's
+arguments: `{"look": {"name": "cue", "expect": [{"at": 31.5, "kind": "stop"}, {"kind": "tempo", "bpm": 132}]}}`).
 The script merges, the mix renders and the reply is the script's line followed by render_mix's whole listening summary
 (loudness, the weakest moments with their fixes, the files; `data.render`). Edit the script and run it again under the
-same `name` with `render` until the list is clean. A failing script renders nothing; a render over 150 s answers its
+same `name` with `look` until the list is clean. A failing script renders nothing; a render over 150 s answers its
 job id for `inspect_job`.
 
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a

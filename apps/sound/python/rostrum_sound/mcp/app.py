@@ -21,13 +21,14 @@ from .. import opening
 from ..doc import KIND, markers
 from ..engine import Engine
 from ..script import run_source
+from . import script_render
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"         # apps/sound/guides
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document holds tracks (an instrument, notes, "
                 "drum hits, recorded clips), effects, automation, markers and the master. Before composing, read inspect_guide 'writing-music' "
                 "and 'start-here'. THE LOOP: write the whole piece as ONE Python script (tempo map, sections, markers for the sync points, every "
                 "track's notes, dynamics, effects, the mix and the master target; names in inspect_guide 'script'), run it with run_script under "
-                "one name with render: true, read the listening check in the reply, edit the script and run it again under the same name "
+                "one name with look: true (it renders and listens), read the listening check in the reply, edit the script and run it again under the same name "
                 "(a removed track, note or marker disappears; a new name that re-makes the same tracks is refused). Use edit_document only for one-off touch-ups. "
                 "Check with look_arrangement (a picture, and which tracks start on each marker), look_sound (loudness, levels, spectrum, stereo, "
                 "low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
@@ -82,7 +83,8 @@ def make_app(folder: str | Path | None = None, items: list[str] | None = None) -
     engine = Engine()
     atexit.register(engine.close)
     instructions = INSTRUCTIONS if folder else f"{INSTRUCTIONS} {NO_PROJECT}"
-    app = App("rostrum-sound", {}, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES))
+    app = App("rostrum-sound", {}, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES),
+              script_look=script_render.after_run)
     app.state = SoundState(None, engine)
     open_project(app, folder, items or [])
     return app

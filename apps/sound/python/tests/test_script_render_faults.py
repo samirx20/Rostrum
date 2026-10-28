@@ -1,5 +1,5 @@
 """What agents rely on: the listening check names a silent start and a tempo bent from the brief's, and run_script's
-`render` renders after a script that ran, never after one that failed (no engine: render_mix is a stand-in job)."""
+`look` renders after a script that ran, never after one that failed (no engine: render_mix is a stand-in job)."""
 import dataclasses
 from types import SimpleNamespace
 
@@ -46,10 +46,11 @@ def test_a_tempo_expect_is_parsed_and_a_bent_tempo_named(tmp_path):
 def runtime(script_fails):
     rendered = []
 
-    def run_script(ctx, args):
+    def run_script(ctx, args):                              # the shared run_script: the hook runs only after a merge
         if script_fails:
             raise RostrumError(codes.BAD_ARGUMENT, "run_script", "the script", "has a syntax error")
-        return Reply("Script ran.", {"song": 1})
+        reply = Reply("Script ran.", {"song": 1})
+        return script_render.after_run(ctx, SimpleNamespace(item_id=None), args["look"], reply) if args.get("look") else reply
 
     def render_mix(ctx, args):
         rendered.append(args)
@@ -58,17 +59,17 @@ def runtime(script_fails):
     tools = {"run_script": Tool(run_script, {"properties": {"source": {}}}, "d"),
              "render_mix": Tool(render_mix, {"properties": {"name": {}, "expect": {}, "what": {}}}, "d")}
     rt = SimpleNamespace(tools=SimpleNamespace(get=tools.get, _tools=tools))
-    script_render.with_render(rt)
-    return tools["run_script"].fn, SimpleNamespace(jobs=InProcessJobs(shared=False)), rendered
+    script_render.with_look(rt)
+    return tools["run_script"].fn, SimpleNamespace(jobs=InProcessJobs(shared=False), tools=rt.tools), rendered
 
 
-def test_run_script_renders_after_a_script_that_ran_and_never_after_one_that_failed():
+def test_run_script_look_renders_after_a_script_that_ran_and_never_after_one_that_failed():
     run, ctx, rendered = runtime(script_fails=False)
-    out = run(ctx, {"source": "x", "render": {"name": "cue"}})
-    assert rendered == [{"name": "cue"}] and out.summary.startswith("Script ran.\nRendered.") and out.data["render"]["result"]["file"] == "x.wav"
+    out = run(ctx, {"source": "x", "look": {"name": "cue"}})
+    assert rendered == [{"name": "cue"}] and out.summary.startswith("Script ran.\nRendered.") and out.data["look"]["result"]["file"] == "x.wav"
     with pytest.raises(RostrumError):                       # render_mix doesn't take it: refused before the script runs
-        run(ctx, {"source": "x", "render": {"stem": True}})
+        run(ctx, {"source": "x", "look": {"stem": True}})
     run, ctx, rendered = runtime(script_fails=True)
     with pytest.raises(RostrumError):
-        run(ctx, {"source": "x", "render": True})
+        run(ctx, {"source": "x", "look": True})
     assert rendered == []

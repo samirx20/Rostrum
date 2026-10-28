@@ -1,6 +1,6 @@
 # The Sound script API (run_script)
 
-**The whole piece is one script, under one name.** Write it, run it with `run_script` and `render: true`, read the listening
+**The whole piece is one script, under one name.** Write it, run it with `run_script` and `look: true` (it renders and listens), read the listening
 check in the reply (loudness, the weakest asked moments with their fixes, faults such as "leading silence", "tempo far from
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
 touch-ups.

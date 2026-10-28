@@ -4,7 +4,7 @@
 
 1. **Write the whole piece as one Python script** (tempo map, sections, markers for the sync points, every track's notes,
    dynamics and effects, the mix, the master target) and run it with `run_script`, **one `name` for the song**, with
-   `render: true`.
+   `look: true` (it renders and listens).
 2. **Read the reply.** It carries the render's listening check: loudness, the weakest asked moments with a fix for each,
    and faults such as "leading silence", "tempo far from the brief's" (give the brief's with `expect`:
    `{"kind": "tempo", "bpm": 96}`) and "stop lands soft".
@@ -165,11 +165,11 @@ The range is read as the song was before the call. Operations' own arguments: `i
 2. **Pick the sounds.** The names are in this guide's "Instrument and kit names". `inspect_engine` (`what: "names"`, the default)
    answers the same names compactly; with `name` (an effect, `master`, an instrument, a kit) one thing's settings with units or its
    role and starting level; `what: "instrument"` with ONE of `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` gives its range.
-3. **Write the whole piece as one script and run it with `render: true`** (the loop above). The argument is `source`;
+3. **Write the whole piece as one script and run it with `look: true`** (the loop above). The argument is `source`;
    `name` is the song's one script name:
 
    ```json
-   {"tool": "run_script", "arguments": {"name": "song", "render": true, "source": "tempo(96); length(bar(9))
+   {"tool": "run_script", "arguments": {"name": "song", "look": true, "source": "tempo(96); length(bar(9))
 t = track('keys', builtIn='piano')
 t.note('D4', at=bar(1), dur=beats(4))"}}
    ```
