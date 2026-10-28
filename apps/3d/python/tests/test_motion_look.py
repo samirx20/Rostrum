@@ -92,3 +92,17 @@ def test_a_stored_fall_is_travelling_and_its_pass_through_is_found(tmp_path, mon
         assert out["ok"] and "OUT OF DATE" in out["summary"] and "No findings: nothing" not in out["summary"]
     finally:
         sim_ops.use_engine_factory(None)
+
+
+def test_a_rolled_ball_resting_on_a_box_does_not_pass_through_it():
+    """A ball turned 45° (a simulated ball rolls) and sitting on the box's top: its turned box would reach ~3 cm into the
+    box, a false 'passes through' on every simulated ball (3D sweep fixes)."""
+    src = '''
+camera("cam", z=3)
+mesh("slab", shape="box", width=1, height=0.1, depth=1)
+mesh("ball", shape="sphere", radius=0.05, y=0.1001, rx=45, rz=45).key("x", {0: -0.2, 1: 0.2}, ease="linear")
+shot("hero", camera="cam", fps=24, start=0, end=1)
+'''
+    reply = call({}, src)
+    assert reply["ok"], reply
+    assert not [f for f in reply["data"]["findings"] if f["kind"] == "passes_through"], reply["summary"]

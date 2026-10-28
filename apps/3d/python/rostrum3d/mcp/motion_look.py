@@ -13,7 +13,7 @@ from . import motion_found as M, motion_sim
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
 tools = Tools()
-OVERLAP_TEST = ("oriented boxes: each shape's own box turned and scaled with it (a clay: the box its pieces reach), so a hollow "
+OVERLAP_TEST = ("oriented boxes: each shape's own box turned and scaled with it (a ball: an upright box round it, however it rolls; a clay: the box its pieces reach), so a hollow "
                 "shape such as an open case counts as full")
 _ORDER = {"passes_through": 0, "jumps": 1, "leaves_frame": 2}
 _ASK = "ask with `all: true`, a bigger `limit`, or `items` for the ones you are tuning."
@@ -87,7 +87,7 @@ def look_motion(ctx, args):
     at least 0.25 s). Findings, facts only, no scores: two shapes passing through each other (both named, the frame span
     and how deep), sudden jumps (a step at least 1 cm and 4× bigger than the frames either side: a teleport or a snap),
     and an item partly or wholly outside the picture (frame spans; only when that changes: it leaves or comes in). Overlap test: each shape's own box turned and scaled
-    with it (oriented boxes; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
+    with it (oriented boxes; a ball: an upright box round it; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
     is not overlap. Hidden items are left out. Short by default: a line a moving item, identical findings one line,
     passing through first; `items` for just those, `full` for the speed per frame, `frames` for part of the shot.
     Simulated things: one set to Falls is measured where the shot's stored simulation has it (as the viewport shows it),

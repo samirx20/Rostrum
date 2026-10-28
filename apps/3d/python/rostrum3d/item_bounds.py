@@ -86,12 +86,17 @@ def solid(doc: dict, fr: Frames, id_: str, f: int, built: dict):
             return None
         lo, hi = [min(p[k] for p in pts) for k in range(3)], [max(p[k] for p in pts) for k in range(3)]
         return _corners(lo, hi), aim.IDENTITY[0]
-    box = _shape_box(fr.values(id_, f)) if kind == "mesh" else None
+    v = fr.values(id_, f) if kind == "mesh" else {}
+    box = _shape_box(v) if kind == "mesh" else None
     if box is None:
         box = built[id_] if id_ in built else built.setdefault(id_, _built(doc, id_))
     if not box:
         return None
     world = fr.world(id_, f)
+    if v.get("shape") == "sphere":     # a ball's box does not turn with it: a rolled ball's turned box reached ~3.5 cm
+        c = aim.point(world, [0.0, 0.0, 0.0])        # below it, so a ball at rest on a box "passed through" it (sweep fix)
+        r = v["radius"] * max(sum(row[k] ** 2 for row in world[0]) ** 0.5 for k in range(3))
+        return _corners([x - r for x in c], [x + r for x in c]), aim.IDENTITY[0]
     return [aim.point(world, c) for c in _corners(*box)], [[row[k] for row in world[0]] for k in range(3)]
 
 
