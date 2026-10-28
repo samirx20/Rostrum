@@ -541,22 +541,28 @@ void write_values(const UsdStageRefPtr& stage, State& s) {
   pi.CreateIdsAttr().Set(ids);
 
   if (s.sim.on()) {  // a stored fall: each simulated copy's place per frame; its size and the rest as laid out
+    // A copy waiting for its start in a stream is shrunk to nothing at its start point until it appears. The instance
+    // count stays the same every frame: a per-frame invisibleIds list made Cycles' instancer crash on the second frame.
     const Arrays still = arrays(s.laid, nullptr);
-    scl.Set(still.scales);
     s.animated = true;
     const int m = std::min<int>(int(n), s.sim.rows);
+    const bool waits = std::any_of(s.sim.appear.begin(), s.sim.appear.end(), [&](int f) { return f > s.start; });
+    if (!waits) scl.Set(still.scales);
     for (int f = s.start; f <= s.end; ++f) {
       VtVec3fArray p = still.positions;
       VtQuathArray q = still.orientations;
+      VtVec3fArray z = still.scales;
       for (int c = 0; c < m; ++c) {
         GfVec3f at;
         GfQuatf turn;
         s.sim.pose(c, f, s.start, &at, &turn);
         p[size_t(c)] = at;
         q[size_t(c)] = GfQuath(turn);
+        if (waits && s.sim.waiting(c, f)) z[size_t(c)] = GfVec3f(1e-4f);  // not 0: a singular matrix breaks renderers
       }
       pos.Set(p, UsdTimeCode(f));
       rot.Set(q, UsdTimeCode(f));
+      if (waits) scl.Set(z, UsdTimeCode(f));
     }
     return;
   }
@@ -596,7 +602,7 @@ void write_values(const UsdStageRefPtr& stage, State& s) {
   }
 }
 
-// The copies and which are hidden (invisibleIds: the seen test's, and a stored stream's waiting copies).
+// The copies and which are hidden (invisibleIds: the seen test's).
 void write(const UsdStageRefPtr& stage, State& s) {
   write_values(stage, s);
   write_shown(stage, s);
@@ -811,20 +817,11 @@ GfRange3d world_box(const UsdStageRefPtr& stage, const State& s, int frame) {
 void write_shown(const UsdStageRefPtr& stage, const State& s) {
   const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
   const size_t n = s.laid.size();
-  const auto hidden = [&](int f) {  // f < 0: the seen test's alone
-    VtInt64Array out;
-    for (size_t i = 0; i < n; ++i)
-      if ((i < s.shown.size() && !s.shown[i]) || (f >= 0 && s.sim.on() && s.sim.waiting(int(i), f))) out.push_back(int64_t(i));
-    return out;
-  };
+  VtInt64Array hidden;  // the seen test's; a stream's waiting copies are shrunk to nothing instead (write_values)
+  for (size_t i = 0; i < n; ++i)
+    if (i < s.shown.size() && !s.shown[i]) hidden.push_back(int64_t(i));
   if (UsdAttribute a = pi.GetInvisibleIdsAttr()) a.Clear();  // its default and every frame's
-  const bool waits = s.sim.on() && std::any_of(s.sim.appear.begin(), s.sim.appear.end(), [&](int f) { return f > s.start; });
-  if (!waits) {
-    if (const VtInt64Array h = hidden(-1); !h.empty()) pi.CreateInvisibleIdsAttr().Set(h);
-    return;
-  }
-  UsdAttribute a = pi.CreateInvisibleIdsAttr();
-  for (int f = s.start; f <= s.end; ++f) a.Set(hidden(f), UsdTimeCode(f));
+  if (!hidden.empty()) pi.CreateInvisibleIdsAttr().Set(hidden);
 }
 
 int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3d& point, int hint, int proto) {

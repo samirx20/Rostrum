@@ -146,8 +146,8 @@ int start_delay(const Params& p, int copy, double fps);
 bool streams(const Params& p);
 // The speed a copy leaves with, m/s in the copies item's own space (a pour; else zero).
 PXR_NS::GfVec3f start_velocity(const Params& p, int copy);
-// Writes invisibleIds: the copies the seen test left out (s.shown), and with a stored stream each copy until it appears
-// (one sample per frame).
+// Writes invisibleIds: the copies the seen test left out (s.shown). A stored stream's waiting copies are shrunk to
+// nothing in write_values instead (a per-frame invisibleIds crashed Cycles).
 void write_shown(const PXR_NS::UsdStageRefPtr& stage, const State& s);
 
 // The copy under a picked world point at `frame`: `hint` (Hydra's instance index) when it holds the point, else the

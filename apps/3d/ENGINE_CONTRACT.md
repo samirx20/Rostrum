@@ -363,8 +363,8 @@ that falls past everything (nothing under it).
 node may carry `"sim": {"file", "row", "rows", "of", "start", "end", "step": 1..3, "smooth": 1..100, "appear"?: [frame per row]}`: copy *c* < `rows`
 takes row `row + c` of each frame (frames outside `start..end` hold the ends; `step` holds each pose 2 or 3 frames from
 the shot's start, On 2s / On 3s; `smooth` keeps every nth pose and blends between, Simplify). The copies' sizes stay as
-laid out; effectors don't move simulated copies. (v1.29) With `appear`, copy *c* is hidden (the instancer's `invisibleIds`,
-one sample per frame, joined with the seen test's) before frame `appear[c]`, and framing (`copies_box`) and the pick leave it out then. (v1.25) The pick of a copy (`pick`'s `copy`) and the seen test use the copies as drawn: a
+laid out; effectors don't move simulated copies. (v1.29) With `appear`, copy *c* is hidden before frame `appear[c]` (scaled to 1e-4 at its
+start point, one `scales` sample per frame: the instance count never changes, which Cycles needs), and framing (`copies_box`) and the pick leave it out then. (v1.25) The pick of a copy (`pick`'s `copy`) and the seen test use the copies as drawn: a
 simulated copy where it fell at that frame (its `place` in the pick reply stays the laid-out one, what a gizmo starts from);
 a simulation's start poses stay the laid-out ones (with keyed copies at `start`).
 
@@ -426,7 +426,7 @@ header is an error naming `<id>.cloth.file`.
 - **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).
 - **v1.24** (Sam brief 25): request `simulate` (§ Simulation: rigid bodies with Jolt Physics 5.6.0, `bodies.bin`, loud failures with `item`, `copy`, `frame`, `fix`); a `copies` node's `sim` (a stored fall); `info` gives `jolt` and `sim`.
 - **v1.26** (Hem brief 23): material `blocks` (a MaterialX document: Storm through MaterialX, Cycles through its own nodes; § Materials › Blocks).
-- **v1.29** (Sam 3D gaps round 4): copies layout `pour` (`radius` = the mouth, `pourTime`, `pourSpeed`, `pourSpread`); a stream's copies appear only when they start to fall (`simulate` reply rows' `appear`, the `sim` node's `appear`, per-frame `invisibleIds`); `sim` 7.
+- **v1.29** (Sam 3D gaps round 4): copies layout `pour` (`radius` = the mouth, `pourTime`, `pourSpeed`, `pourSpread`); a stream's copies appear only when they start to fall (`simulate` reply rows' `appear`, the `sim` node's `appear`, waiting copies shrunk to nothing per frame); `sim` 7.
 - **v1.28** (Sam 3D gaps round 2): `simulate` body `wakeFrame` documented (falling bodies) and added for cloth (every point held in its first shape until then, then it falls from rest); copies `varyStart` (each copy's extra wait, from the seed); `sim` 5.
 - **v1.27** (Hem 3D leftovers): request `copies_box` (a copies item's world box at a frame, for framing); copies scattered on a clay; per-copy colour in Cycles (`primvars:rostrumTint`, the `-r4` Cycles patch, every material's `CopyTint` mix).
 - **v1.25** (Sam brief 26b): cloth (§ Simulation › Cloth): `simulate` body kind `cloth` (Jolt soft bodies: `weight`, `stiffness`, `pinned`, `friction`), `cloth_<item>.bin`, reply `cloth`; a `mesh` node's `cloth` (a stored drape, read per frame); `sim` 2.
