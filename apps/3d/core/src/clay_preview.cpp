@@ -30,6 +30,14 @@ bool preview_stroke(const Brush& b, float grain) {
   return b.radius / grain >= kPreviewFrom;
 }
 
+bool preview_parts() {
+  static const bool on = [] {
+    const char* v = std::getenv("ROSTRUM3D_CLAY_PARTS");
+    return !(v && std::strcmp(v, "0") == 0);
+  }();
+  return on;
+}
+
 namespace {
 
 // a fine grain's distance as the coarse copy holds it: halved on the band, "far" off it (as clay_coarse.cpp)
@@ -233,6 +241,7 @@ void Volume::refresh_coarse(const Volume& fine, const std::vector<Coord>& fineCh
   sort_unique(at);
   put_chunks(fine.grid_->tree(), grid_->tree(), at, true);
   dirty_.clear();
+  dirtyParts_.clear();
   changes_.clear();
   changesAll_ = false;
 }

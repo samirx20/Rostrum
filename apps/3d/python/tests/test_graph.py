@@ -93,7 +93,7 @@ def _defs(path: Path) -> dict:
 def _find(defs: dict, node: str, type_: str, inputs: dict):
     """The nodedef a node of this category, output type and inputs resolves to (as MaterialX picks it), else None."""
     for name, (cat, ins, outs) in defs.items():
-        if cat == node and type_ in outs.values() and all(ins.get(k) == t for k, t in inputs.items()):
+        if cat == node and (type_ in outs.values() or (type_ == "multioutput" and len(outs) > 1)) and all(ins.get(k) == t for k, t in inputs.items()):
             return name
     return None
 
@@ -118,9 +118,12 @@ def test_library_and_document_check_against_materialx(tmp_path):
     assert lib.read_text(encoding="utf-8") == M.blocks_library()      # run tools/make_blocks_mtlx.py after a change
     assert sty.read_text(encoding="utf-8") == M.stylized_library()
     std, ours, styl = _defs(STDLIB), _defs(lib), _defs(sty)
-    for ng in ET.parse(lib).getroot().iter("nodegraph"):                # our nodegraphs use only real stdlib nodes
+    coded = {i.get("nodedef") for i in ET.parse(lib).getroot().iter("implementation") if i.get("target") == "genglsl"}
+    assert all((lib.parent / i.get("file")).is_file() for i in ET.parse(lib).getroot().iter("implementation"))
+    usable = {**std, **{k: v for k, v in ours.items() if k in coded}}  # stdlib nodes, or ours with Storm's GLSL beside them
+    for ng in ET.parse(lib).getroot().iter("nodegraph"):                # our nodegraphs use only nodes Storm can draw
         _, iface, outs = ours[ng.get("nodedef")]
-        _check_nodes(ng, std, ng.get("name"), iface)
+        _check_nodes(ng, usable, ng.get("name"), iface)
         assert {o.get("name") for o in ng.findall("output")} == set(outs)
     d = _doc()
     _big(d)
@@ -167,3 +170,15 @@ def test_a_stylized_block_wired_into_style_is_on(tmp_path):
     data = {**d.data, "materials": [m]}
     props = next(x for x in C.describe(data, "hero", tmp_path)["materials"] if x["id"] == "ball")["props"]
     assert props["lines"] is True and props["halftone"] is False
+
+
+def test_a_stylized_setting_without_its_block_shows_one():
+    d = _doc()
+    _op(d, "graph.add", type="halftone")
+    _op(d, "graph.connect", **{"from": "halftone_1.style", "to": "surface.style"})
+    d.apply({"op": "material.set", "target": ["ball"], "args": {"lines": True}}, SAM)   # as a starting point sets it
+    g = graph.graph_of(d.item("ball"))
+    assert [b["type"] for b in g["blocks"]] == ["halftone", "lines"]
+    assert graph.style_chain(g) == ["halftone_1", "lines_1"] and graph.toggles(g) == {"halftone": True, "lines": True}
+    _op(d, "graph.remove", blocks=["lines_1"])                    # taking it out switches Lines off, for good
+    assert d.item("ball")["lines"] is False and graph.style_chain(graph.graph_of(d.item("ball"))) == ["halftone_1"]

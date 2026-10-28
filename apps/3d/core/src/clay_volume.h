@@ -93,8 +93,11 @@ class Volume {
   void record_into(ChunkRecord* rec);  // null = stop
   void restore(const ChunkRecord& rec);
 
-  std::set<BlockKey> take_dirty();  // and clears them
+  std::set<BlockKey> take_dirty();  // and clears them (the parts' too)
+  // 3d-leftovers: the changed blocks' parts (clay_mesh.h kPart; keys in parts), and clears them (the blocks' too)
+  std::set<BlockKey> take_dirty_parts();
   void mesh(const BlockKey& k, BlockMesh& out) const;
+  void mesh_part(const BlockKey& part, BlockMesh& out) const;  // one part (its key in parts) of block part / 2
   std::vector<BlockKey> all_blocks() const;  // every block that may hold surface
 
   // move p onto the surface along the field's gradient; false if no surface near
@@ -140,7 +143,7 @@ class Volume {
   openvdb::FloatGrid::Ptr grid_;
   openvdb::FloatGrid::Ptr mask_;  // 0..1, background 0; a chunk is a leaf or nothing (an all-0 leaf is removed)
   float voxel_;
-  std::set<BlockKey> dirty_;
+  std::set<BlockKey> dirty_, dirtyParts_;
   ChunkRecord live_;            // a live stroke's put-back
   ChunkRecord* record_ = nullptr;  // the undo record being filled, if any
   std::unique_ptr<detail::Buffers> bufs_;  // own step buffers (own_buffers), or null: the shared ones

@@ -18,6 +18,10 @@ namespace r3d::clay {
 constexpr int kBlock = 32;
 constexpr int kDense = kBlock + 2;
 constexpr int kWide = kBlock + 4;  // the same, one more voxel all round (origin blockMin - 2): smooth normals
+// 3d-leftovers: a block's part, one of its 8 octants (kPart^3 voxels; part bit 0 = +x half, 1 = +y, 2 = +z). Its
+// mesh is exactly the block mesh's triangles whose edges start in the octant (the same vertices bit for bit), so
+// parts and blocks join without cracks. A part's key counts in parts: part key P is block floor(P / 2), octant P & 1.
+constexpr int kPart = kBlock / 2;
 
 struct BlockKey {
   int x = 0, y = 0, z = 0;
@@ -43,9 +47,11 @@ struct BlockMesh {
 // across cells (no voxel-scale rings), and still the same in both blocks of a seam.
 // `mask`: the clay's mask on the same kDense^3 lattice as `dense` (null: no mask). With it, each vertex gets the
 // trilinear blend of its cell's 8 corner mask values in `out.mask` (the same in both blocks of a seam).
+// `part` 0..7: only that octant's share (only its samples need be filled: dense [16 o - 0, 16 o + 17] and wide
+// [16 o, 16 o + 19] per axis, o the octant's 0 / 1 there); -1: the whole block.
 // Clears `out` and fills it with the block's part of the surface (iso level 0).
 void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out,
-                const float* mask = nullptr);
+                const float* mask = nullptr, int part = -1);
 
 // Appends `b` to `whole` (indices offset; a mask on one side only gets 0 for the other's vertices).
 void append(BlockMesh& whole, const BlockMesh& b);

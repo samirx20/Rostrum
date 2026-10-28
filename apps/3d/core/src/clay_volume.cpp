@@ -217,11 +217,24 @@ void Volume::mark_dirty(const int lo[3], const int hi[3]) {
     for (int by = floor_div(lo[1] - 2, kBlock); by <= floor_div(hi[1] + 2, kBlock); ++by)
       for (int bx = floor_div(lo[0] - 2, kBlock); bx <= floor_div(hi[0] + 2, kBlock); ++bx)
         dirty_.insert(BlockKey{bx, by, bz});
+  // part q reads voxels [16q - 2, 16q + 17]
+  for (int bz = floor_div(lo[2] - 2, kPart); bz <= floor_div(hi[2] + 2, kPart); ++bz)
+    for (int by = floor_div(lo[1] - 2, kPart); by <= floor_div(hi[1] + 2, kPart); ++by)
+      for (int bx = floor_div(lo[0] - 2, kPart); bx <= floor_div(hi[0] + 2, kPart); ++bx)
+        dirtyParts_.insert(BlockKey{bx, by, bz});
 }
 
 std::set<BlockKey> Volume::take_dirty() {
   std::set<BlockKey> d;
   d.swap(dirty_);
+  dirtyParts_.clear();
+  return d;
+}
+
+std::set<BlockKey> Volume::take_dirty_parts() {
+  std::set<BlockKey> d;
+  d.swap(dirtyParts_);
+  dirty_.clear();
   return d;
 }
 

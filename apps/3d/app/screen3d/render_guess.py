@@ -20,6 +20,7 @@ from rostrum3d.runtime import find_exe
 
 FILE = "3d-render-speed.json"
 START_S = 6.0                                           # engine start, scene load, first-frame warm-up (reference laptop)
+WRITE_S = 1.0                                           # denoise, PNG + EXR written after the last sample (a rough figure)
 CURVE = [(8, 2.5), (32, 4.3), (128, 7.6), (512, 10.5)]  # full HD seconds a frame by samples (reference laptop)
 
 
@@ -74,3 +75,18 @@ def learn(s: dict, seconds: float):
 def words(seconds: float, measured: bool) -> str:
     """"about 40 s" (measured) or "about 40 s, a first guess"."""
     return f"about {human(max(1.0, seconds))}" + ("" if measured else ", a first guess")
+
+
+def left(first: tuple[float, float], last: tuple[float, float]) -> float | None:
+    """Seconds left of a frame from two of Cycles' step reports (share done, ms since the frame began): the rate between
+    them, so the frame's set-up before its first samples (scene sync, kernels: seconds on a big clay) doesn't count as
+    drawing; plus writing the files. None until 3 % more of the frame and most of a second lie between the two."""
+    (f0, ms0), (f1, ms1) = first, last
+    if f1 - f0 < 0.03 or ms1 - ms0 < 800:
+        return None
+    return (ms1 - ms0) / (f1 - f0) * (1 - min(f1, 1.0)) / 1000 + WRITE_S
+
+
+def words_left(seconds: float) -> str:
+    """"about 25 s left" (measured on the frame being drawn), "almost done" in its last seconds."""
+    return "almost done" if seconds < 2 else f"about {human(seconds)} left"

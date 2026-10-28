@@ -104,6 +104,13 @@ def drag(win, at, radius, n):
     return cpu
 
 
+def compact(r):
+    """One request's record, times from its move (ms), its engine numbers and Storm's counters."""
+    t0 = r.get("tMove", 0.0)
+    return {k: (round(v - t0, 2) if k.startswith("t") and isinstance(v, float) else v)
+            for k, v in r.items() if k not in ("gcDuring", "totalMs")}
+
+
 def total(r):
     return r["tSwap"] - r["tMove"] if "tSwap" in r and "tMove" in r else None
 
@@ -179,7 +186,8 @@ def run_grain(label, grain):
                 if first is not None:
                     firsts.append(first)
                 strokes.append({"moves": n, "requests": len(recs), "firstDabMs": first and round(first, 1),
-                                "guiCpuMsPerMove": round(cpu / n, 2), "hops": table(recs)})
+                                "guiCpuMsPerMove": round(cpu / n, 2), "hops": table(recs),
+                                "records": [compact(r) for r in recs]})      # every request, to compare first vs typical
                 for r in sorted(done, key=lambda r: r["tMove"] - r["tSwap"])[:3]:
                     r["gcDuring"] = [g for g in gc if r["tMove"] <= g["t"] <= r["tSwap"]]
                     slow.append(r)

@@ -132,6 +132,7 @@ struct Store::Impl {
   };
   std::unique_ptr<Live> live;
   std::map<BlockKey, BlockMesh> kept;  // a live stroke's meshes waiting for sculpt_publish (empty: take the prim down)
+  std::vector<BlockKey> hideNext;      // fine blocks under the preview, hidden by sculpt_publish (Blocks::hide)
   CacheWriter cache;
 
   // 3d-v4: the kept coarse copies brought up to date after a change, on a thread of their own (low priority, half the
@@ -236,8 +237,9 @@ struct Store::Impl {
   }
 
   // 3d-cl4: empty prims kept ready one ring out around the blocks with a surface, and (a clay that previews) the
-  // preview's coarse blocks over them and one ring of those, so a stroke that grows the clay into the next block, or a
-  // preview that shows a coarse block for the first time, fills a prim that is there instead of adding one: Storm
+  // preview's parts over those blocks and that ring (a part is one fine block's space: clay_preview.h), so a stroke
+  // that grows the clay into the next block, or a preview that shows a part for the first time, fills a prim that is
+  // there instead of adding one: Storm
   // rebuilds its draw batches for a prim added (part of 3d-v4's 30-75 ms start-of-stroke spikes). Each is what an
   // emptied block is (clay_usd.h): one triangle of no area, here at a vertex of the block beside it, so the clay's
   // bounds don't move and nothing draws (Storm, Cycles). Made where the stage changes anyway (a scene's publish, a
@@ -261,7 +263,8 @@ struct Store::Impl {
             const BlockKey n{k.x + dx, k.y + dy, k.z + dz};
             if (!e.blocks.count(n)) want.emplace(n, at);
             if (!coarse) continue;
-            const BlockKey c = preview_key({(k.x >> 1) + dx, (k.y >> 1) + dy, (k.z >> 1) + dz});  // floor(k / 2)
+            // the preview's part over that fine block (whole coarse blocks: the one over it, floor(n / 2))
+            const BlockKey c = preview_parts() ? preview_key(n) : preview_key({n.x >> 1, n.y >> 1, n.z >> 1});
             if (!e.blocks.count(c)) want.emplace(c, at);
           }
     }
@@ -289,10 +292,23 @@ struct Store::Impl {
                           bool preview) {
     std::vector<BlockMesh> m(keys.size());
     tbb::parallel_for(size_t(0), keys.size(), [&](size_t i) {
-      v.mesh(keys[i], m[i]);
+      if (preview && preview_parts()) v.mesh_part(keys[i], m[i]);  // keys in parts
+      else v.mesh(keys[i], m[i]);
       if (preview && !m[i].empty()) add_skirts(m[i], kSkirtGrains * v.voxel());
     });
     for (size_t i = 0; i < keys.size(); ++i) out[preview ? preview_key(keys[i]) : keys[i]] = std::move(m[i]);
+  }
+  template <class Keys>
+  void show(Entry& e, const Keys& keys, bool on = true) {
+    if (keys.empty()) return;
+    blocks.begin();
+    try {
+      for (const BlockKey& k : keys) blocks.hide(e.path, k, !on, e.blocks);
+    } catch (...) {
+      blocks.end();
+      throw;
+    }
+    blocks.end();
   }
   void write(Entry& e, const std::map<BlockKey, BlockMesh>& m) {
     if (m.empty()) return;
@@ -312,27 +328,31 @@ struct Store::Impl {
     mesh_blocks(*e.vol, keys, kept, false);
     return int(keys.size());
   }
-  // the preview's changed blocks, kept, and the 8 blocks of the clay under each taken down (once)
+  // the preview's changed parts, kept, and the fine block under each hidden (once). Hidden, not emptied
+  // (3d-leftovers): emptying changed their meshes, and Storm copied 250-430 buffer pieces on a stroke's first frame
+  // (13-44 ms of Storm, against ~6 a dab after); hiding moves none, and a block the stroke never changed needs no
+  // meshing at the end
   int mesh_preview(Live& l) {
-    const std::set<BlockKey> d = l.pv->take_dirty();
+    const bool parts = preview_parts();
+    const std::set<BlockKey> d = parts ? l.pv->take_dirty_parts() : l.pv->take_dirty();
     const std::vector<BlockKey> keys(d.begin(), d.end());
     mesh_blocks(*l.pv, keys, kept, true);
     for (const BlockKey& k : keys) {
       l.shown.insert(preview_key(k));
-      for (int i = 0; i < 8; ++i) {
-        const BlockKey f{2 * k.x + (i & 1), 2 * k.y + ((i >> 1) & 1), 2 * k.z + (i >> 2)};
-        if (l.hidden.insert(f).second) kept[f] = BlockMesh{};
+      for (int i = 0; i < (parts ? 1 : 8); ++i) {  // the fine block in the part's space, or the 8 under the block
+        const BlockKey f = parts ? k : BlockKey{2 * k.x + (i & 1), 2 * k.y + ((i >> 1) & 1), 2 * k.z + (i >> 2)};
+        if (l.hidden.insert(f).second) hideNext.push_back(f);
       }
     }
     return int(keys.size());
   }
-  // a stroke's end or cancel: the meshes not yet published, the clay's changed blocks and the ones taken down meshed
-  // again, the preview's prims taken down; written at once
+  // a stroke's end or cancel: the meshes not yet published, the clay's changed blocks meshed again and the hidden
+  // ones shown, the preview's prims taken down; written at once
   void settle(Entry& e, Live& l) {
     std::map<BlockKey, BlockMesh> out;
     out.swap(kept);
-    std::set<BlockKey> fine = e.vol->take_dirty();
-    fine.insert(l.hidden.begin(), l.hidden.end());
+    hideNext.clear();  // (in l.hidden: shown below, whether or not they were hidden yet)
+    const std::set<BlockKey> fine = e.vol->take_dirty();
     for (const BlockKey& k : l.shown) out[k] = BlockMesh{};
     const auto t0 = std::chrono::steady_clock::now();
     mesh_blocks(*e.vol, std::vector<BlockKey>(fine.begin(), fine.end()), out, false);
@@ -340,6 +360,7 @@ struct Store::Impl {
     last_mesh_ms = ms_since(t0);
     const auto t1 = std::chrono::steady_clock::now();
     write(e, out);
+    show(e, l.hidden);
     std::vector<std::pair<BlockKey, const BlockMesh*>> filled;
     for (const auto& kv : out) filled.emplace_back(kv.first, &kv.second);
     reserve_ring(e, filled);  // the blocks this stroke grew into get their ring before the next stroke
@@ -548,6 +569,7 @@ struct Store::Impl {
       Impl& s;
       ~Drop() {
         s.kept.clear();
+        s.hideNext.clear();
         s.live.reset();
       }
     } drop{*this};
@@ -809,12 +831,15 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
 
 void Store::sculpt_publish(SculptReply& r) {
   Impl& s = *p_;
-  if (s.kept.empty() || !s.live) return;
+  if ((s.kept.empty() && s.hideNext.empty()) || !s.live) return;
   const auto t0 = std::chrono::steady_clock::now();
   Entry& e = s.entry(s.live->item, "sculpt.item");
   std::map<BlockKey, BlockMesh> m;
   m.swap(s.kept);
   s.write(e, m);
+  std::vector<BlockKey> h;
+  h.swap(s.hideNext);
+  s.show(e, h, false);
   r.usdMs = ms_since(t0);
   r.ms += r.usdMs;
 }

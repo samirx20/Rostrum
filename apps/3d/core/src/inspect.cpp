@@ -110,10 +110,4 @@ JsObject inspect_usd(const std::string& file) {
                   {"truncated", JsValue(truncated)}};
 }
 
-void save_stage(const UsdStageRefPtr& stage, const std::string& file, bool flatten) {
-  TfErrorMark mark;
-  const bool ok = flatten ? stage->Export(file) : stage->GetRootLayer()->Export(file);
-  if (!ok || !mark.IsClean()) throw Error("save.file: could not write " + file);
-}
-
 }  // namespace r3d

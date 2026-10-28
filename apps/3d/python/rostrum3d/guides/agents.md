@@ -149,8 +149,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **A stylized material is judged in the stylized look.** After `material.set` with `lines`, `lightToColor` or `halftone`,
   look with `renderer: "stylized"` (Lines and Halftone are invisible in `fast` and `final`). Its bands follow the real lights:
   move or brighten a light to move the lit / shadow edges, or change `shadowBelow` / `litFrom`. For the finished pictures,
-  `render_still` / `render_video` with `renderer: "stylized"` (drawn at twice the size and smoothed down), or set the shot's
-  `renderQuality` to `stylized` so the person's Render button and render sheet use it too.
+  set the shot's `renderQuality` to `stylized`: `render_still` / `render_video` without `renderer` or `quality` then render
+  Stylized (drawn at twice the size and smoothed down), and so do the person's Render button and render sheet. Or pass
+  `renderer: "stylized"` for one render of any shot.
 - **Patterns and variation come from blocks.** A material's Blocks view is open to you as operations: `graph.add`
   (a Noise, Image, Ramp, Mix …), `graph.connect` (`from: "noise_1.value", to: "surface.roughness"`), `graph.set`,
   `graph.remove` (materials.md › For agents). A worn metal: Noise into a Ramp into Roughness; a printed label: an Image
@@ -164,7 +165,7 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   and render settings; `id`, `name`, `cameraId` optional). A camera may serve several shots; each shot is its own window of time.
 - **Move a shot's own camera.** `shot.take_view` (target the shot) puts its camera at `position`, looking at `lookAt` (both
   world), with `focalLength`: one step, inside a group or on a rig it stays there, an aimed camera aims at `lookAt`, a camera
-  with keys gets a key at `at` (seconds). `shot.frame` with `items` [ids] frames them: the camera keeps its direction and lens
+  with keys gets a key at `at` (seconds). `shot.frame` with `items` [ids] (shapes, clay, groups, copies, lights …) frames them: the camera keeps its direction and lens
   and moves so they sit in the middle and fill the picture with a 10 % margin (aimed at an item, it only goes nearer or
   farther). Check the result with a look at the shot.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the

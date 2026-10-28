@@ -299,6 +299,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
 
   auto& fb = framebuffer(w, h);
   const auto t0 = std::chrono::steady_clock::now();
+  double told_ms = 0;
   for (bool first = true;; first = false) {
     fb.bind_and_clear();
     e.Render(stage_->GetPseudoRoot(), params);
@@ -307,6 +308,12 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
     throw_usd_errors(mark, "render (" + renderer + ", frame " + std::to_string(frame) + ")");
     if (e.IsConverged()) break;
     const double waited = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    if (s.onStep && waited * 1000 >= told_ms + 250) {  // the share done so far, for the caller's time left
+      told_ms = waited * 1000;
+      const VtDictionary st = e.GetRenderStats();
+      const auto it = st.find("fractionDone");
+      if (it != st.end() && it->second.IsHolding<double>()) s.onStep(it->second.UncheckedGet<double>(), told_ms);
+    }
     if (waited > s.timeoutS)
       throw Error("render: " + renderer + " did not finish frame " + std::to_string(frame) + " within " +
                   std::to_string(int(s.timeoutS)) + " s (timeoutS); no file written");

@@ -113,6 +113,42 @@ GLuint RostrumTexture(std::string const &path)
     return tex;
 }
 
+GLuint RostrumSkyTexture(std::string const &path)
+{
+    static std::map<std::string, GLuint> cache;
+    auto it = cache.find(path);
+    if (it != cache.end()) return it->second;
+    GLuint tex = 0;
+    HioImageSharedPtr img = HioImage::OpenForReading(path);
+    if (img) {
+        HioImage::StorageSpec spec;
+        spec.width = img->GetWidth();
+        spec.height = img->GetHeight();
+        spec.format = img->GetFormat();
+        spec.flipped = false;                     // first row = the top of the picture = straight up
+        HioType type = HioGetHioType(spec.format);
+        int n = HioGetComponentCount(spec.format);
+        std::vector<unsigned char> px(size_t(spec.width) * spec.height * HioGetDataSizeOfFormat(spec.format));
+        spec.data = px.data();
+        if ((type == HioTypeFloat || type == HioTypeHalfFloat) && n >= 3 && n <= 4 && img->Read(spec)) {
+            glGenTextures(1, &tex);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, spec.width, spec.height, 0, n == 4 ? GL_RGBA : GL_RGB,
+                         type == HioTypeFloat ? GL_FLOAT : GL_HALF_FLOAT, px.data());
+            // no mip levels: the seam where atan wraps would pick the smallest one and draw a line down the sky
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+    }
+    if (!tex) fprintf(stderr, "Rostrum Stylized: cannot show the dome picture %s (a float image is needed); "
+                              "showing its average colour\n", path.c_str());
+    cache[path] = tex;
+    return tex;
+}
+
 void RostrumTarget::Resize(int width, int height, std::vector<GLenum> const &formats, bool withDepth)
 {
     if (fbo && w == width && h == height) return;

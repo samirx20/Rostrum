@@ -115,6 +115,10 @@ SdfLayerRefPtr converted_layer(const std::string& file) {
     throw Error("could not read " + file_name(file) + ": " + e.what());
   }
   if (!stage->GetDefaultPrim()) throw Error("could not read " + file_name(file) + ": it holds nothing to import");
+  VtDictionary data = stage->GetRootLayer()->GetCustomLayerData();  // what a plain save names its copy by (save_stage.cpp)
+  data["rostrum:source"] = VtValue(key + "|" + std::to_string(size) + "|" +
+                                   std::to_string(stamp.time_since_epoch().count()));
+  stage->GetRootLayer()->SetCustomLayerData(data);
   Cached c{size, stamp, stage->GetRootLayer()};
   cache()[key] = c;
   return c.layer;

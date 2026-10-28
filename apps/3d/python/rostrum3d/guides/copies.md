@@ -18,7 +18,8 @@ make the source inside. Several sources: each copy picks one of them (by the see
 | `surface` | `surface` = the item they stand on; `amountBy` count or density (per m²); `minSpacing`; `alongSurface`; `onTop` |
 
 `copies.scatter` is `copies.make` with layout surface. The copies item has its own place, turn and size like any item: move the
-copies item to move them all, and key it.
+copies item to move them all, and key it. Framing it (`shot.frame`, Frame the selection) frames all its copies as they stand
+at that moment: laid out, held, keyed or fallen.
 
 Vary them a little: `seed`, `varyMove` (metres), `varyTurn` (degrees round up), `varyScale` (0–1). The same seed gives the same copies,
 whatever else changes; change the seed to shuffle. Nothing about a vary is random between renders.
@@ -35,7 +36,8 @@ and a copy somebody put by hand stays where it is. Change anything with `copies.
 Copies are counted from 0 in the order the layout makes them. A person does the same by dragging a copy with the gizmo.
 
 `copies.key` {copy, prop (x y z rx ry rz), t, v, ease?} keys one copy: it moves between its keys like any keyed field, the rest
-of it stays as laid out. Turn into keys on a falling copies item keys every copy (`sim.to_keys`, the Simulate guide);
+of it stays as laid out. Turn into keys on a falling copies item keys every copy (`sim.to_keys`, the Simulate guide), with only
+the keys that matter: a copy at rest keeps two, a bouncing one a key at each bounce and a few per arc (within 1 mm / 0.1°);
 `copies.release` lets a keyed copy go back too. In the window, dragging a keyed copy with the gizmo keys it at the
 playhead's frame (the handles stand where the copy is then); a copy still simulating is moved where its fall starts.
 
@@ -63,7 +65,7 @@ Counts that look low after you moved the camera are right: look again after the 
 The change fades from the centre to the radius (`falloff` smooth or linear). The centre follows `near` every frame, so move that
 item (or key it) and the effect travels through the copies: a ball rolling past a row of grass bends it; a light sphere that
 brightens petals as it passes. Key the effector's `amount`, `radius` or `colour` for change over time.
-A colour effector needs the source's material to read per-copy colour; if the renderer can't show it, the reply says so.
+A colour effector shows in Final on a source with a material (laid over its base colour), and in Quick only on a source with no material; a block-view material and a copies item still simulating show no per-copy colour.
 
 ## Mistakes the checker names
 

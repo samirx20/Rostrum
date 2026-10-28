@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum3d import aim
+from rostrum3d import aim, item_bounds
 from rostrum3d import fields as F
 from rostrum3d.kind import KIND
 from rostrum_core import ids
@@ -60,7 +60,7 @@ def take_view_call(doc, cam, shot_id: str, fov: float, at: float) -> dict:
                      "focalLength": round(min(2000.0, max(1.0, focal)), 2), "at": round(at, 6)}}
 
 
-FRAMED = ("group", "rig", "mesh", "combine", "clay", "light", "camera")     # item_bounds.py measures these
+FRAMED = item_bounds.MEASURED                     # what shot.frame can measure
 
 
 def framed(doc, selection: list[str], camera: str) -> list[str]:

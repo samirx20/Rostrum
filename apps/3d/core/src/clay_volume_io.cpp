@@ -38,6 +38,41 @@ void Volume::mesh(const BlockKey& k, BlockMesh& out) const {
   mesh_block(dense.data(), wide.data(), k, voxel_, out, maskDense);
 }
 
+void Volume::mesh_part(const BlockKey& q, BlockMesh& out) const {
+  // as mesh(), reading only the octant's samples (clay_mesh.h): wide [16 o, 16 o + 19], dense [16 o, 16 o + 17]
+  const BlockKey k{floor_div(q.x, 2), floor_div(q.y, 2), floor_div(q.z, 2)};
+  const int part = (q.x & 1) | ((q.y & 1) << 1) | ((q.z & 1) << 2);
+  const int o[3] = {(q.x & 1) * kPart, (q.y & 1) * kPart, (q.z & 1) * kPart};
+  constexpr int nw = kPart + 4, nd = kPart + 2;
+  thread_local std::vector<float> wide(size_t(kWide) * kWide * kWide), dense(size_t(kDense) * kDense * kDense),
+      sub(size_t(nw) * nw * nw);
+  read_region(grid_->tree(), Coord(k.x * kBlock - 2 + o[0], k.y * kBlock - 2 + o[1], k.z * kBlock - 2 + o[2]), nw, nw,
+              nw, sub.data());
+  for (int z = 0; z < nw; ++z)
+    for (int y = 0; y < nw; ++y)
+      std::memcpy(&wide[o[0] + size_t(kWide) * ((o[1] + y) + size_t(kWide) * (o[2] + z))],
+                  &sub[size_t(nw) * (y + size_t(nw) * z)], nw * sizeof(float));
+  for (int z = 0; z < nd; ++z)
+    for (int y = 0; y < nd; ++y)
+      std::memcpy(&dense[o[0] + size_t(kDense) * ((o[1] + y) + size_t(kDense) * (o[2] + z))],
+                  &wide[o[0] + 1 + size_t(kWide) * ((o[1] + y + 1) + size_t(kWide) * (o[2] + z + 1))],
+                  nd * sizeof(float));
+  const float* maskDense = nullptr;
+  if (has_mask()) {
+    thread_local std::vector<float> m(size_t(kDense) * kDense * kDense), ms(size_t(nd) * nd * nd);
+    read_region(mask_->tree(), Coord(k.x * kBlock - 1 + o[0], k.y * kBlock - 1 + o[1], k.z * kBlock - 1 + o[2]), nd,
+                nd, nd, ms.data());
+    if (std::any_of(ms.begin(), ms.end(), [](float v) { return v != 0.0f; })) {
+      for (int z = 0; z < nd; ++z)
+        for (int y = 0; y < nd; ++y)
+          std::memcpy(&m[o[0] + size_t(kDense) * ((o[1] + y) + size_t(kDense) * (o[2] + z))],
+                      &ms[size_t(nd) * (y + size_t(nd) * z)], nd * sizeof(float));
+      maskDense = m.data();
+    }
+  }
+  mesh_block(dense.data(), wide.data(), k, voxel_, out, maskDense, part);
+}
+
 std::vector<BlockKey> Volume::all_blocks() const {
   std::set<BlockKey> s;
   for (auto it = grid_->tree().cbeginLeaf(); it; ++it) {
@@ -202,6 +237,7 @@ bool Volume::load(const std::string& path, std::string* error) {
     if (m) mask_ = m;
     else mask_->tree().clear();
     dirty_.clear();
+    dirtyParts_.clear();
     live_.clear();
     live_.on = false;
     changesAll_ = true;  // a coarse copy is made again

@@ -38,6 +38,10 @@ class Blocks {
   // Call between begin() and end().
   void set(const PXR_NS::SdfPath& clay, const BlockKey& key, const BlockMesh& m, std::set<BlockKey>& have);
   void remove_all(const PXR_NS::SdfPath& clay, std::set<BlockKey>& have);
+  // 3d-leftovers: block `key` taken off the screen (or back on), its surface kept: a live stroke's preview hides the
+  // fine blocks under it. Only `visibility` changes, so Storm moves none of its buffers (emptying them did: 250-430
+  // buffer copies on a stroke's first frame). A block not in `have` is skipped. Between begin() and end().
+  void hide(const PXR_NS::SdfPath& clay, const BlockKey& key, bool hidden, const std::set<BlockKey>& have);
   // 3d-cl4, a painted clay's unfolded surface (clay_surface.h): `primvars:st` (faceVarying, one per triangle corner)
   // on a block. set() takes it off a block it re-writes (the block changed: no st until the next unfold). get() reads
   // a block's surface as written (false: no prim, or an emptied one).

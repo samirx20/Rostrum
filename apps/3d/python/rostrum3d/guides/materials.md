@@ -52,6 +52,10 @@ Roughness, Metallic, Glow colour, Normal, Style.
   wiring one into Surface's **Style** switches it on, taking it out switches it off.
 - Each add, wire, move or change is one undo step. **‹ Back** or **Esc** goes back to the timeline; the blocks stay.
 - A block marked **Final only** (Bevel shading, Ambient occlusion) shows in the Final look and renders, not in Quick.
+- **Noise** draws the same pattern in Quick and Final: Quick runs Final's own noise. Detail takes whole layers.
+- **Brightness in Quick:** a material with blocks is drawn by a different part of the Quick view, which shows the
+  light of panels, spots, point lights and suns about 3 times dimmer on it than on the other materials (the sky's
+  light is the same). Final is right. Judge such a material's brightness under those lights in Final (Shift+F).
 
 ## For agents: the same, as operations
 
@@ -233,8 +237,9 @@ full shadow, in between in proportion.
   any material of the project has Lines or Halftone on. When the last one is turned off the view goes back to Quick and
   says so. Shift+F still flips Quick and Final.
 - A render with Quality **Stylized** uses the same renderer as the view, drawn at twice the size and smoothed down for
-  clean edges, so the render is the view you saw. Agents: `look_frame` / `render_still` / `render_video` with
-  `renderer: "stylized"`.
+  clean edges, so the render is the view you saw. Agents: `look_frame` with `renderer: "stylized"`;
+  `render_still` / `render_video` follow the shot's Quality when no `renderer` or `quality` is given (Stylized there renders
+  Stylized), and `renderer: "stylized"` renders it for any shot.
 
 ## What the fast view can't show
 
