@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC
 import RostrumCursors 1.0
 import "."
 import "Blocks.js" as Blocks
@@ -174,16 +175,18 @@ FocusScope {
     // the add list at a view point; the new block goes there (a dropped wire's new block: its left edge at the drop)
     property point addAt
     property string addFrom: ""
-    function openAdd(at, fromPort) {
+    // `upTo`: opening upward, the list's bottom stays above this y (the + Add block button's top; else the point)
+    function openAdd(at, fromPort, upTo) {
         addAt = toCanvas(at)
         addFrom = fromPort || ""
         addList.fromKind = addFrom ? kindOf(addFrom, "out") : ""
         addList.at = at
+        addList.upTo = upTo === undefined ? at.y : upTo
         addList.open()
     }
     function openAddAtCentre() {
         const c = toCanvas(Qt.point(width / 2, height / 2))
-        openAdd(Qt.point(Theme.pad, Theme.pad + addButton.height + 12), "")
+        openAdd(Qt.point(Theme.pad, Theme.pad + addButton.height + 12), "", Theme.pad)
         addAt = Qt.point(c.x - Blocks.WIDTH / 2, c.y - 40)
     }
 
@@ -330,7 +333,8 @@ FocusScope {
 
     BlockAddList {
         id: addList
-        parent: view
+        parent: QQC.Overlay.overlay         // the window's room, not the panel's: a short panel never squeezes it
+        from: view
         catalogue: view.catalogue
         converts: view.converts
         kindColours: view.kindColours
