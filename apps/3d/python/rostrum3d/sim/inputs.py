@@ -21,7 +21,7 @@ from rostrum_core.cache import cache_key
 
 from . import fields as SF
 
-SIM_VERSION = 3                                  # the core's `sim` in its reply; bump both together
+SIM_VERSION = 4                                  # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
