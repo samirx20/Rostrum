@@ -72,11 +72,14 @@ and framed before you add anything; change or delete any of them like any item (
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
 5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` are jobs: they return a job id at once;
-   `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
+   `inspect_job` with `wait_s` shows `frame n of m`. Draft a video with `quality: "fast"` first. `render_video` also makes a small
+   `<name>-share.mp4` beside the mp4, and `output_folder` (+ `file_name`) copies both where a brief asks for them (checked before rendering).
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
    Jobs run one heavy job at a time, the rest waiting in order: `inspect_job` without `job_id` lists them (running, waiting,
-   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled render leaves nothing on disk (a failed one keeps its `vNNN.partial` to look at).
+   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled `render_still` leaves nothing on disk. A stopped or failed shot render (`render_video`, the queue, the sheet)
+   keeps the frames it finished in its `vNNN.partial`; the same call again, with nothing rendered changed, continues from them and
+   its reply says "Continues from N finished frames".
    The person's Render page queue (render.queue.add / move / cancel) is the same kind of queue.
 
 6. **Hand it on.** `render_send_shot shot=<id> scene=<2D item>/<scene id>` puts the shot into a 2D scene as a 3D render layer
