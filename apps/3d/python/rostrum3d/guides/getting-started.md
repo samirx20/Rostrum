@@ -60,6 +60,11 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
 You work through the MCP tools on one document. Every call below is one change in the history, the same a person
 makes. Look after each step: `look_frame` with `quality: "fast"` takes about a second.
 
+**The usual way: the whole scene as one Python script, look, edit, re-run.** Keep the script in a .py file and run it with
+`run_script` `path`; after each look, edit that file and run it again (same name): it replaces what it made and keeps what a
+person moved by hand. Every step below has a script form (`clay(…, draw=[…])`, `.draw(…)`, `item.key(…)`; guide `script`).
+The steps here use single operations and pixel tools, the way to fix one thing you see in a look.
+
 ### 1. The body: an outline in metres
 
 `run_script` with `clay(id, draw=[…])`. The points are in the scene, in metres. To stand the character in Shot 1's

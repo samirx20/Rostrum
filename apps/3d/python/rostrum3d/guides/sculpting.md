@@ -171,6 +171,11 @@ How the points work:
   outline's points at the depth of the surface where it should join. `blend` is how softly it joins (left out: half
   how fat the shape is × Puff, at most 5 cm, as a ball's half radius: an arm's root swells into the body as one piece;
   0 = a hard crease, which a bent limb opens into a seam); `mode="carve"` cuts the shape out instead.
+- **A head on a body.** Two separate things (two clays, or a ball mesh on a body) only touch: a hard line where they meet,
+  however close they are. Make the head a piece **of the body's clay** and it grows out of it: `body.lump((0, 0.28, 0),
+  0.07, name="head", blend=…)`. `blend` is the width of the fillet in metres: about a fifth of the head's radius reads as
+  a chin over a short neck, half (the default) as a soft neck, the whole radius as one blob. For a longer neck, a capsule
+  piece between them (`to=`) with its own blend. To keep a hard line on purpose (a helmet), use a separate clay.
 - **Tiny.** An outline under 4 points, or thinner than 1.5 of the clay's grains, makes a lump the brush's size.
 - **A stroke's path.** `clay.stroke` `path` points are in the clay's own space; each dab lands where a ray from the
   point along `dir` meets the clay, so the points can float in front of it (e.g. z 0.3 with `dir` [0, 0, -1] in front of

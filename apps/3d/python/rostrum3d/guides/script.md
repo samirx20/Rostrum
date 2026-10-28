@@ -4,6 +4,18 @@ A script is Python that describes the scene. `run_script` runs it, checks the wh
 running it again changes only what the script now says differently and leaves what a person moved. The script never touches the
 engine or a USD file; the same fields work in `edit_document` (`mesh.set`, `light.add` …).
 
+## The way to work: one script, look, edit, re-run
+
+1. Write the **whole scene** as one script (`run_script` with `path` to a .py file you keep, or `source` + a `name`).
+2. Look (`look_frame`, `look_sheet`).
+3. Edit **that same script** (the whole text, with your change) and run it again under **the same name**. It replaces what
+   it made: changed values change, keys are rewritten, things you deleted from the script go (the reply lists them; `edit_undo`
+   brings them back). What a person changed by hand is kept and listed as held back.
+
+A re-run that leaves out most of what its last run made (2 or more things, more than half) is refused, naming them, so a
+one-line tweak sent under the script's name never wipes the scene. For a small change on its own, use a **new** name and
+`edit("ball", y=0.3)`; to really take things out, `remove("wall", "ball")`.
+
 ## The shape of a script
 
 ```python
@@ -80,8 +92,11 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
 - **The same id is the same thing next run.** The merge compares what the script made last time with what it makes now and with
   the document as it is. A value a person (or another script, or `edit_document`) changed since is kept, and `run_script` lists it as
   *held back* with who changed it. To make the script win, run again with `force: ["key.x"]` (those keys) or `force: true` (all).
-- Items and keys the script no longer makes are removed; things a person added themselves are left alone.
-- Give a script a stable `name` (`run_script`'s `name`, default `agent_script.py`) and re-run under it to merge. A different name is a different script.
+- Items and keys the script no longer makes are removed (listed in the reply); things a person added themselves are left alone.
+  Leaving out most of what it made is refused (see "The way to work").
+- Give a script a stable `name` (`run_script`'s `name`, default `agent_script.py`) and re-run under it to merge. A different name is a
+  different script: its own new things go beside the first script's; what it makes under an id already in the scene, it takes over.
+  A counted id (`mesh_1`) skips ids already in the scene.
 - Don't change an id's kind between runs (`mesh("a")` then `light("a")`): use a new id. If a person had edited the old item, the run is
   refused, naming the fields the new kind doesn't have; if nobody had, the item is rewritten in place as the new kind.
 
@@ -95,10 +110,11 @@ them like its own, in the same run (one undo step):
   `backdrop=True` keeps it a floor a click goes through; a wall is just another mesh, there is none by default). Fields you leave out go
   back to their defaults: `light("sky", kind="dome", intensity=0.4)` is a plain white dome, the sky picture is gone (the camera sees a
   flat grey). To change only the brightness, `edit("sky", intensity=0.4)` instead.
-- **`edit(id, **fields)`** changes only the fields given and returns a handle: `edit("ground_material", baseColor="#2b2f36")`,
-  `edit("ground").set(width=40)`. It works on anything directly in the scene (an item, material or shot), whoever made it.
-- **`remove(id)`** takes it out: `remove("shot_1_camera")` after `shot("shot_1", camera=cam)`; `remove("ground")` and
-  `remove("ground_material")` together.
+- **`edit(id, **fields)`** (or `item(id)`) is a handle on a thing by its id, changing only the fields given:
+  `edit("ground_material", baseColor="#2b2f36")`, `edit("ground").set(width=40)`, `item("cam").key("x", {0: -1, 3: 1})`. It works
+  on anything directly in the scene (an item, material or shot), whoever made it, and on anything made earlier in the same
+  script; asked twice, it is the same handle. Not yet on a thing inside another script's group: `edit_document` reaches that.
+- **`remove(id, …)`** takes things out: `remove("shot_1_camera")` after `shot("shot_1", camera=cam)`; `remove("ground", "ground_material")`.
 
 - **Your own lights replace the start lights.** The new scene's lights are `sky` (a dome), `key_light` and `rim_light` (panels).
   A script that makes **a dome** of its own (any id: `light("dusk", kind="dome", color="#334466")`) takes `sky` out; a script that
@@ -106,7 +122,8 @@ them like its own, in the same run (one undo step):
   your lighting is the only lighting, never added on top of the start's; a script with no lights keeps all three. To keep one,
   `edit` it instead of making a light (`edit("rim_light", intensity=10)`), or make a light again under its id.
 
-From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
+The same goes for anything another script or a person made: **made again under its id**, this script replaces it (never a
+second copy). From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
 usual (`force` lets the script win).
 
 ## Nesting
@@ -126,7 +143,9 @@ Materials and shots always go to the top level, even when made inside a `with`.
 ## Handle methods
 
 - `item.set(**fields)` changes fields after the item was made. Returns the handle.
-- `item.key(field, {seconds: value}, ease="smooth")` animates a number or colour field. A value can be `(value, "ease")` to
+- `item.key(field, {seconds: value}, ease="smooth")` animates a number or colour field (or `key.add`'s shape: a list of
+  `{"t": seconds, "v": value, "ease": …}`). The first `key()` of a field in a run replaces that field's keys, so keying a thing taken
+  with `edit()` never doubles its keys. A value can be `(value, "ease")` to
   give that one stretch its own ease. Colour fields take `"#rrggbb"` values. Call it again with another field to key more.
   Returns the handle, so `.key(...).key(...)` chains.
   Animatable: every number or colour field except a mesh's shape fields, a light's `spread`, and `aim`. A key's ease shapes the stretch
@@ -152,7 +171,8 @@ A script that fails changes nothing. The error names the script and line, then w
 - `… a.width only applies when shape is 'box' or shape is 'plane'. Set that too to use width.`
 - `… a.ry at 1 s: ease='bogus' is not one of the choices. Accepted: linear, hold, …`
 - `… "width" can't be animated on a camera; animatable: focalLength, …`
-- `… id "a" is used twice in the script (already mesh).`
+- `… id "a" is used twice in the script (already mesh).` (making it twice; `edit("a")` again is fine)
+- `script "s.py" would remove 6 of the 7 things its last run made (…)`: send the whole script, or `remove(…)` them on purpose.
 - `… cube is a mesh; only a group or an import holds items.`
 - After the script runs, the whole document is checked: `the merged document would break its check: s.camera: no camera "nope" (there are: …)`
   (a missing material, a shot camera that isn't a camera, a shot that ends before it starts, an aim at itself). Still nothing is merged.
@@ -162,7 +182,7 @@ In `edit_document`, a taken id is refused naming what holds it: `id "top" is alr
 ## What a script can't do (use `edit_document`)
 
 - Delete anything inside a group, or move anything by hand (`item.remove`, `item.arrange`; `remove(id)` takes out a thing directly in the scene), duplicate (`item.duplicate`), rename (`item.rename`), or stop an aim (`item.aim off`): a script only describes what should exist.
-- Change a key on something it didn't make, or change a single key's time, value or ease afterwards (`key.set`, `key.remove`, `key.clear`, `value.set`).
+- Change a single key's time, value or ease without rewriting that field's keys (`key.set`, `key.remove`, `key.clear`, `value.set`).
 - Shape a key's curve: `custom` ease points and `spring` stiffness / damping are key fields only `key.set` reaches (a script's `spring` / `custom` use the defaults).
 - Add a part to an import it didn't make, or anything to the document's own settings.
 - Use markers: shot and key times in a script are plain seconds.

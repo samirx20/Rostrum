@@ -2,6 +2,11 @@
 
 New here? `inspect_guide` `getting-started` first: a small clay character, from an empty project to a render, in five minutes.
 
+**The way to work: write the whole scene as one Python script, look, edit the script, re-run it under the same name.** A re-run
+replaces what the script made (values, keys, things you deleted from it) and keeps what a person changed by hand. Keep the
+script in a .py file (`run_script` `path`) so each edit is the whole scene. `edit_document` is for one-off fixes a script can't
+reach. Guide `script`: the API on one page.
+
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
 `{"ops": [{"op": "mesh.add", "args": {"id": "ball", "shape": "sphere", "radius": 0.1}},
@@ -21,8 +26,8 @@ and framed before you add anything. A script keeps all of it unless it replaces 
 1. **Know the shot.** `inspect_shot` gives the frame rate, the frame range, the picture size, the shot camera and every light.
    `inspect_model_file` shows what a file you want to import holds before you import it: USD, glTF / GLB, OBJ, FBX or Alembic; its
    unit, up axis, animation (frames, fps) and parts (their materials and sizes).
-2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
-   Each step ends with a look.
+2. **Build with one script** (`inspect_guide` `script`), grown in small steps: the room and the subject first, then the camera,
+   then light, then materials, then motion. Each step is an edit to the same script, re-run under its name, then a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
    Every look picture is saved in the project's `looks` folder (the reply gives its full path); it stays after the session.
    A look that takes longer than a moment (a `final` one, a busy machine) answers "Job … is running" with a `job_id`:
@@ -256,7 +261,8 @@ The time left is a number to use, not a reason to stop early.
   From the shot instead: `stroke.add` with `viewPoints` in a `look_frame` picture's px plus the camera fields from
   `look_at`'s `view`, one per item the path crosses, in one call list. Check with `inspect_paint_strokes` and
   `look_coverage`. Guide `painting`.
-- **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
+- **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add` with `t` seconds and `v`; the script's
+  `key()` also takes that shape: `[{"t": 0.8, "v": 0}]`). `inspect_animations`
   lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
   one "Turn"; Scale (sx, sy, sz) one "Scale"; any other field its own. Each has its stretches (the time between two
   neighbouring keys: `ids`, `start`, `length`, `ease`, `preset`, `from` / `to`). Ease a whole stretch with `anim.ease`

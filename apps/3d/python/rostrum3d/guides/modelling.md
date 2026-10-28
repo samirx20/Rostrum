@@ -56,7 +56,9 @@ size; thin fonts and fine logos take less.
 A **combine** item holds two or more solids (meshes, or other combines) as its children, in order. The engine draws only
 the result; the children are its inputs and are never drawn themselves.
 
-- **`union`** joins them into one shape (a handle welded to a body, a word sunk into a base).
+- **`union`** joins them into one shape (a handle welded to a body, a word sunk into a base). The join is a sharp edge.
+  For a soft, grown-together join (a head on a neck, a limb out of a body) build the shapes as pieces of one clay, whose
+  `blend` sets how wide the fillet is (guide `sculpting`, "A head on a body").
 - **`subtract`** cuts every later child out of the **first** one. The first is the base; the others are cutters. A charging
   port, a speaker grille, a slot, a recess for a button.
 - **`intersect`** keeps only the space all of them share (a rounded tablet from a box and a sphere).
