@@ -1,4 +1,5 @@
-"""Which project the Sound server works on: the person's last song at start-up, and switching while it runs.
+"""Which project the Sound server works on: at start-up the agent's own (rostrum_core/agent_start.py: --project, else the
+project this session last opened, else a fresh scratch project; never the person's by itself), and switching while it runs.
 
     run_open_project (what: recent) {}                         the person's recent songs (folder, item, name, last changed)
     run_open_project {folder, item?}                   close the open songs and open another project, as start-up does
@@ -13,7 +14,7 @@ import copy
 import dataclasses
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, agent_start, codes
 from rostrum_core.mcp import Reply, Tools, open_folder
 
 from .. import KIND
@@ -24,12 +25,10 @@ from . import edit_examples, range_target, script_twins
 from .app import NO_PROJECT, open_project
 
 
-def start_choice(folder: str | None, items: list[str] | None) -> tuple[str | None, list[str]]:
-    """What to open at start-up: --project / --item as given, else the person's last song (nothing when they have none)."""
-    if folder:
-        return folder, items or [last.default_item(folder, explicit=True)]
-    row = last.last_project()
-    return (row["folder"], items or [row["item"]]) if row else (None, [])
+def start_choice(folder: str | None, items: list[str] | None) -> agent_start.Start:
+    """What to open at start-up: --project / --item as given, else this agent session's own song, else a fresh scratch
+    project (agent_start.py); never the person's last song."""
+    return agent_start.choose("rostrum-sound", KIND.ext, folder, items, last.default_item, word="song")
 
 
 def with_no_project_sentence(runtime) -> None:
@@ -161,7 +160,7 @@ def with_script_print(runtime) -> None:
 def register(tools: Tools):
     @tools.tool("inspect_recent_projects", {})
     def inspect_recent_projects(ctx, args):
-        """The person's recent RostrumSound songs, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the first is what the server opens at start-up."""
+        """The person's recent RostrumSound songs, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the server never opens one by itself."""
         rows = [last.describe(r) for r in last.recent_rows()]
         now = ctx.app.folder
         listed = "; ".join(f'{r["name"]} ({r["folder"]}, item {r["item"]}, changed {r["changed"]})' for r in rows)

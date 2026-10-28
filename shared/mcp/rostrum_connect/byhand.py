@@ -9,9 +9,9 @@ from pathlib import Path
 
 import tomlkit
 
-from . import agents, servers
+from . import agents, profiles, servers
 
-APP_NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound"}
+APP_NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound", "3d": "Rostrum3D"}
 
 
 def _quote(arg: str) -> str:
@@ -63,8 +63,10 @@ def _remove_how(a: agents.Agent, app: str) -> str:
 def guide_markdown(agent_id: str) -> str:
     a = agents.get(agent_id)
     out = [f"# Connect Rostrum to {a.name}", "",
-           f"Rostrum2D and RostrumSound each have a small server ({', '.join(f'`{servers.APPS[x][0]}`' for x in servers.APPS)}) "
-           f"that lets {a.name} use them. Connecting means telling {a.name} how to start those servers.", "",
+           f"{', '.join(APP_NAMES[x] for x in servers.APPS)} each have a small server "
+           f"({', '.join(f'`{servers.APPS[x][0]}`' for x in servers.APPS)}) that lets {a.name} use them. Connecting means "
+           f"telling {a.name} how to start those servers. Each starts in a fresh scratch project made for the agent, "
+           f"never in your own work, until the agent opens one of your projects.", "",
            "## The easy way", "",
            f"In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to "
            f"{a.name} and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file "
@@ -79,6 +81,13 @@ def guide_markdown(agent_id: str) -> str:
             out += ["Terminal:", "", "```", h["command"], "```", ""]
         out += [f"File: `{h['file']}`", "", "```" + ("toml" if a.fmt == "toml" else "json"), h["snippet"], "```", ""]
         out += [f"{i}. {s}" for i, s in enumerate(h["steps"], 1)] + [""]
+    if profiles.LAUNCHERS and a.files_env:
+        out += ["## Agents started by a launcher (one folder per account)", "",
+                f"A launcher that runs {a.name} once per account ({', '.join(ln.name for ln in profiles.LAUNCHERS)}) gives "
+                f"every account its own settings folder, and {a.name} there reads only that folder's "
+                f"`{a.files_env[1]}`, not the file above. Add Rostrum to all of them at once:", "",
+                "```", f"python -m rostrum_connect add --agent {a.id} --everywhere --yes", "```", "",
+                "`python -m rostrum_connect profiles` lists the folders it found.", ""]
     out += ["## Check it works", "", a.check.format(name=a.name), "",
             "## Remove it", "", f"Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to {a.name}.", ""]
     out += [f"By hand, for {APP_NAMES[app]}: {_remove_how(a, app)}" + "" for app in servers.APPS]

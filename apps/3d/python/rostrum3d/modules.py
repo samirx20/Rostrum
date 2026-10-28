@@ -10,5 +10,5 @@ OPS = ModuleList("rostrum3d", [      # they register on REGISTRY
 ])
 
 TOOLS = ModuleList("rostrum3d.mcp", [      # each has a `tools`; the order is the tools' order
-    ".look", ".shots_look", ".material_look", ".paint_look", ".shape_look", ".render", ".facts", ".estimate", ".place", ".anims", ".motion_look", ".lipsync", ".send", ".assets_tools", ".simulate",
+    ".look", ".shots_look", ".material_look", ".paint_look", ".shape_look", ".render", ".facts", ".estimate", ".place", ".anims", ".motion_look", ".lipsync", ".send", ".assets_tools", ".simulate", ".project_tool",
 ])

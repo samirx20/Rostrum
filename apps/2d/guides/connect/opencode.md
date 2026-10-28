@@ -1,6 +1,6 @@
 # Connect Rostrum to opencode
 
-Rostrum2D and RostrumSound each have a small server (`rostrum-2d`, `rostrum-sound`) that lets opencode use them. Connecting means telling opencode how to start those servers.
+Rostrum2D, RostrumSound, Rostrum3D each have a small server (`rostrum-2d`, `rostrum-sound`, `rostrum-3d`) that lets opencode use them. Connecting means telling opencode how to start those servers. Each starts in a fresh scratch project made for the agent, never in your own work, until the agent opens one of your projects.
 
 ## The easy way
 
@@ -36,7 +36,7 @@ File: `C:\Users\<you>\.config\opencode\opencode.json`
 2. Paste the block above inside “mcp”. If “mcp” is already there, add only the “rostrum-2d” part, and keep your other servers.
 3. Save the file. (It may hold comments: keep them. Rostrum's button refuses such a file rather than lose them.)
 4. Start a new opencode session.
-5. Run `opencode mcp list`; both servers should be listed.
+5. Run `opencode mcp list`; all three servers should be listed.
 
 ### RostrumSound (`rostrum-sound`)
 
@@ -66,11 +66,41 @@ File: `C:\Users\<you>\.config\opencode\opencode.json`
 2. Paste the block above inside “mcp”. If “mcp” is already there, add only the “rostrum-sound” part, and keep your other servers.
 3. Save the file. (It may hold comments: keep them. Rostrum's button refuses such a file rather than lose them.)
 4. Start a new opencode session.
-5. Run `opencode mcp list`; both servers should be listed.
+5. Run `opencode mcp list`; all three servers should be listed.
+
+### Rostrum3D (`rostrum-3d`)
+
+File: `C:\Users\<you>\.config\opencode\opencode.json`
+
+```json
+{
+  "mcp": {
+    "rostrum-3d": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\<you>\\AppData\\Local\\Programs\\Rostrum\\runtime\\python\\python.exe",
+        "-m",
+        "rostrum3d.mcp"
+      ],
+      "environment": {
+        "ROSTRUM_ADDED_BY": "rostrum-connect"
+      },
+      "enabled": true,
+      "timeout": 30000
+    }
+  }
+}
+```
+
+1. Open C:\Users\<you>\.config\opencode\opencode.json (make the file if it isn't there).
+2. Paste the block above inside “mcp”. If “mcp” is already there, add only the “rostrum-3d” part, and keep your other servers.
+3. Save the file. (It may hold comments: keep them. Rostrum's button refuses such a file rather than lose them.)
+4. Start a new opencode session.
+5. Run `opencode mcp list`; all three servers should be listed.
 
 ## Check it works
 
-Run `opencode mcp list`; both servers should be listed.
+Run `opencode mcp list`; all three servers should be listed.
 
 ## Remove it
 
@@ -78,5 +108,6 @@ Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to op
 
 By hand, for Rostrum2D: open C:\Users\<you>\.config\opencode\opencode.json and delete the “rostrum-2d” block (keep everything else).
 By hand, for RostrumSound: open C:\Users\<you>\.config\opencode\opencode.json and delete the “rostrum-sound” block (keep everything else).
+By hand, for Rostrum3D: open C:\Users\<you>\.config\opencode\opencode.json and delete the “rostrum-3d” block (keep everything else).
 
 More about opencode and MCP servers: https://opencode.ai/docs/mcp-servers/

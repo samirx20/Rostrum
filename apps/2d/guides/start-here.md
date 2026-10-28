@@ -15,7 +15,9 @@ still unchecked. More in [Using your time](#using-your-time).
 
 ## Open or make a project
 
-The server starts on the person's last project. To work somewhere else, or to start a new piece:
+The server starts on your own project, never the person's: the one you last opened from this working folder (a resumed
+session gets it back), else a fresh scratch project made for you (in `~/.rostrum/projects/agent-scratch/`, with an empty
+document `main`). The first reply says which. To work on the person's project, somewhere else, or to start a new piece:
 
 - `run_open_project {"folder": "C:/Users/me/Videos/launch"}`: the folder is an absolute path. If it doesn't exist yet it
   is made (with any folders above it), with an empty document `main` in it; an existing project opens as it is.
