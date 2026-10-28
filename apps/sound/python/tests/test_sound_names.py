@@ -93,5 +93,5 @@ def test_the_fix_pass_asks_for_a_listen_names_the_time_and_counts_the_passes_lef
     clock.begin()
     t.now = 180
     said = session_clock.fix_pass(clock, 20.0)
-    assert "look_music" in said and "three weakest moments" in said and "12 min 00 s of your 15 min" in said and "about 4 more passes" in said
+    assert "look_music" in said and "each weak moment" in said and "12 min 00 s of your 15 min" in said and "about 4 more passes" in said
     assert "min" not in session_clock.fix_pass(session_clock.Clock(t))
