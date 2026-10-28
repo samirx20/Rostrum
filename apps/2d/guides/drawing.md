@@ -204,6 +204,11 @@ How it draws:
 - Ease the keys like any others (the curve view): ease in starts the pen slowly.
 - The in-between pictures are made the first time they're needed, those near the playhead first. Until a moment's picture is made, the canvas shows the whole drawing there; it fills in on its own, within a moment at the playhead. A change (a new stroke, an erase, a key) makes them again the same way, so the canvas always ends on what the export shows. An export always waits for every picture.
 
+Words written by hand: `paint.letters` paints words as brush strokes in the order a hand writes them (each letter's
+centre line from a single-stroke font, any brush, optionally along a curve and with an unsteady hand), so Drawn so far
+writes them on letter by letter. Its settings and how to judge them: [painted-backgrounds.md](painted-backgrounds.md)
+› Hand-lettered words.
+
 For an agent: the field is `drawnSoFar` (0–1) on the drawing layer or the painted element. Key it like any field: `key.add {target, prop: "drawnSoFar", t, v}`, or in a script `d.key("drawnSoFar", {0.5: 0, 2.5: 1}, ease="easeInOut")`. Then `look_frame` with `what: "sheet"` shows it painting on. To reveal part of a stroke by area rather than along its path, a keyed mask on the layer still works.
 
 ## 11. Play it, and more than one drawing layer
