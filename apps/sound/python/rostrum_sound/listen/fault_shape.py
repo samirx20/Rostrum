@@ -42,6 +42,7 @@ def shape(found: list[dict], doc) -> list[dict]:
         else:
             fid = k if whole else f"{k}:{mark}" if mark else f"{k}@{t:g}"
         what, _, fix = f["words"].partition("; ")
+        fix = fix[5:] if fix.startswith("fix: ") else fix          # the old words say "; fix: …" themselves
         when = None if whole else f"{t:.2f} s" + (f", marker '{mark}'" if mark else "")
         out.append(shared.fault(fid, what, fix or "see what", when))
     return out

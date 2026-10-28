@@ -20,6 +20,7 @@ from .dsp import fft_frequencies, stft
 from .dsp_events import _median
 
 STEM_GAP_DB = 20.0     # the drum tracks themselves: the gap's loudest 50 ms under this far below the 2 s before's: a hit is still there
+TAIL_S = 0.25          # a hit on the drop itself (the last one) rings this long into the gap: read the drum tracks after it
 GAP_DB = 14.0          # the drums' part in the gap under this far below the 2 s before: still heard
 DEFAULT_GAP_S = 1.5    # no return given ("drums back" / end): the gap read is this long
 RETURN_WITHIN_S = 16.0 # an entry this soon after a drop is its return
@@ -65,13 +66,13 @@ def stem_measure(drums, at, end) -> dict | None:
         return None
     seg = lambda a, b: total[max(0, int(a * sr)):max(0, int(b * sr))]
     lv = lambda x: 10 * np.log10(float(np.mean(x ** 2)) + 1e-20) if len(x) else None
-    pre, gap = lv(seg(at - BEFORE_S, at - 0.03)), lv(seg(at + 0.05, end - 0.05))
+    pre, gap = lv(seg(at - BEFORE_S, at - 0.03)), lv(seg(at + TAIL_S, end - 0.05))
     if pre is None or gap is None or pre < QUIET_DB:
         return None
     # a hit in the gap is heard by its loudest moment, not its average: the gap's loudest 50 ms against the 2 s before's
     n = max(1, int(0.05 * sr))
     peak = lambda x: max(lv(x[i:i + n]) for i in range(0, max(1, len(x) - n + 1), n))
-    return {"down_db": num(peak(seg(at - BEFORE_S, at - 0.03)) - peak(seg(at + 0.05, end - 0.05)), 1), "before_db": num(pre, 1)}
+    return {"down_db": num(peak(seg(at - BEFORE_S, at - 0.03)) - peak(seg(at + TAIL_S, end - 0.05)), 1), "before_db": num(pre, 1)}
 
 
 def return_of(moments, at) -> float | None:
@@ -97,7 +98,7 @@ def words(f) -> str:
     t, d = f["at_s"], f["measured"]
     span = (f"the {DEFAULT_GAP_S:g} s after it (no return given: pass end, or an entry / a \"drums back\" marker)"
             if d["gap_assumed"] else f"{t:g}–{d['to_s']:g} s")
-    what = ("the drum tracks' own sound (every frequency, kick included; their loudest moment)" if d.get("on") == "tracks" else
+    what = ("the drum tracks' own sound (every frequency, kick included, at its loudest moment)" if d.get("on") == "tracks" else
             "their part in the mix (hats, snare, cymbals: the percussive part over 4 kHz)")
     need = STEM_GAP_DB if d.get("on") == "tracks" else 18
     return (f"drums still heard in the drop at {t:.2f} s: {what} is only {d['down_db']:g} dB under the 2 s before in {span} "
