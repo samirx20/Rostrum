@@ -16,3 +16,11 @@ def test_no_number_until_this_scene_is_measured(monkeypatch):
     assert render_guess.guess({}, S, exe="x") == (0.0, False)
     assert render_guess.words(0.0) == "measuring the time"
     assert render_guess.left((0.10, 5000.0), (0.30, 9000.0)) == 14.0 + render_guess.WRITE_S   # the frame's own rate
+
+
+def test_a_kept_number_under_what_cycles_can_do_is_not_shown(monkeypatch):
+    tiny = {"load_ms": 0, "warmup_ms": 0, "fixed_ms": 5.0, "per_px_ms": 0.0, "samples": 128, "curve": [], "probe": {"size": [960, 540]}}
+    monkeypatch.setattr(estimate_job, "cached", lambda *a, **k: tiny)
+    assert render_guess.guess({}, S, exe="x") == (0.0, False)          # "about 1 s" for a Final that takes 6-46 s
+    monkeypatch.setattr(estimate_job, "cached", lambda *a, **k: {**tiny, "fixed_ms": 9000.0})
+    assert render_guess.guess({}, S, exe="x")[1] is True                # a real figure is still said

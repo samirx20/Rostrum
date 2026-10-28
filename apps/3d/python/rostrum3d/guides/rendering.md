@@ -93,6 +93,8 @@ was measured ("from a test frame just rendered on this computer", or "kept" when
 - **Another render on the graphics card** (another app, another window) makes everything slower. The row says so in
   amber when the test ran while the card was busy, and that test is not kept, so the next one measures a free card.
   The sheet never tests while one of this window's own renders is running; it waits for it.
+- **The Render button** says "measuring the time" until it has a measured number for this scene or Cycles' own progress gives one
+  ("about 25 s left"); it never shows a first guess, and a kept number under what Cycles can do (about a second) is not shown.
 - **Couldn't measure: …** means the test gave no answer in time (about two minutes: a very slow frame, or the
   engine stopped answering). The test is stopped and the row says why; change a setting or reopen the sheet to try again.
 
@@ -143,6 +145,10 @@ The sheet is built on the same pieces agents use: `render_estimate` (the same te
 `render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`,
 and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".
+
+`render_video` with `estimate_only` answers at once with the measured figures (also over `budget_min`); with `budget_min` alone, over it
+is an immediate error naming settings that fit. A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
+`look_motion`), and every reply ends with a time line that counts the passes the time left allows ([Working with an AI agent](agents.md), "Your time").
 
 Looking before you render: `look_frame` (one frame, with its clipped share and the text reading direction), `look_sheet` (one shot over
 time), `look_shots` (several shots, a row each) and `look_material` (one material on a ball, under the scene's lights).

@@ -17,7 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rostrum_core import Document
-from rostrum_core.mcp import App, Guides, run_stdio
+import anyio
+from mcp.server.stdio import stdio_server
+from rostrum_core.mcp import App, Guides
+from rostrum_core.mcp.server import Runtime, build_server
 from rostrum_core.storage import paths
 
 from rostrum3d import ops_mesh
@@ -26,6 +29,7 @@ from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
+from . import session_clock
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
@@ -69,12 +73,20 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
     return app
 
 
+async def _serve(app: App):
+    runtime = Runtime(app, app_tools())
+    session_clock.with_clock(runtime)                # last: every reply ends with the session's clock line
+    server = build_server(app, runtime=runtime)
+    async with stdio_server() as (read, write):
+        await server.run(read, write, server.create_initialization_options())
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="rostrum-3d", description="The rostrum-3d MCP server (stdio).")
     ap.add_argument("--project", required=True, help="The project folder.")
     ap.add_argument("--item", action="append", required=True, help="A document's item id (repeat for several).")
     a = ap.parse_args(argv)
-    run_stdio(make_app(a.project, a.item), app_tools())
+    anyio.run(_serve, make_app(a.project, a.item))
 
 
 if __name__ == "__main__":

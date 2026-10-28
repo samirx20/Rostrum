@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -214,8 +215,48 @@ def render_video(ctx, args):
     `<name>-share.mp4` beside it (about 8 Mbit/s at 1920×1080, scaled by the picture's size). A project render with a manifest; `exr` keeps the EXR frames too;
     `output_folder` (+ `file_name`) also copies the mp4 and its share copy there. A stopped or failed render keeps the frames it finished: the same call
     again (nothing rendered changed) continues from them and draws only the missing frames; the reply says "Continues from N finished frames". Always a
-    job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frame n of m'."""
-    return ctx.job(*video_job(ctx, args))
+    job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frame n of m'. With `budget_min` or `estimate_only` the reply waits
+    (up to 25 s) for the measured estimate: over the budget it is an error at once that names the settings that fit, and `estimate_only` returns the figures
+    (never a failed job), also when over the budget."""
+    gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
+    reply = ctx.job(*video_job(ctx, args, gate))
+    if gate is None or not gate.wait(ESTIMATE_WAIT_S):
+        return reply
+    if gate.error is not None:
+        raise gate.error
+    return gate.reply or reply
+
+
+ESTIMATE_WAIT_S = 25.0
+
+
+class Gate:
+    """What render_video's budget / estimate_only wait for: the job's estimate is decided (a refusal, the estimate_only figures, or
+    "go ahead") while the job itself goes on. Then the tool's reply is that answer at once, not a job to ask about later."""
+
+    def __init__(self):
+        self.error: RostrumError | None = None
+        self.reply: Reply | None = None
+        self._decided = threading.Event()
+
+    def decide(self, error: RostrumError | None = None, reply: Reply | None = None):
+        self.error, self.reply = error, reply
+        self._decided.set()
+
+    def decided(self) -> bool:
+        return self._decided.is_set()
+
+    def wait(self, seconds: float) -> bool:
+        return self._decided.wait(seconds)
+
+
+def next_steps(count: int, fps: float, item: str) -> str:
+    """What a finished video's reply says next: a concrete look-and-fix pass with the 3D look tools (the clock line after it
+    says how many such passes the time left allows). In the benchmark agents quit after the first video with most of their time unused."""
+    return (f"Next, a fix pass: look at it again, now with the look tools: look_sheet (all {count} frames at {fps:g} fps, the whole move), look_frame at its weakest "
+            "times (renderer cycles for the final look), look_at on a spot you doubt, look_motion for what moves; name its three weakest moments "
+            "(something cut off or hidden, a pose or move that reads stiff, a surface or light that looks flat, an empty stretch), fix each with "
+            f"run_script and {item} again with the same output name.")
 
 
 def _out_target(where: str, args: dict) -> Path | None:
@@ -312,7 +353,7 @@ def video(where: str, doc, info: dict, scene: dict, engine, size: tuple[int, int
     return done, [done / n for n in files], out or {}
 
 
-def video_job(ctx, args):
+def video_job(ctx, args, gate: Gate | None = None):
     """render_video's work as (label, job function, key), checked now (the shot, the range, ffmpeg, output_folder): render_send_shot renders through it."""
     doc, info = doc_and_shot(ctx, args)
     fps, s = info["fps"], render_settings(doc, info)
@@ -332,25 +373,38 @@ def video_job(ctx, args):
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
     cycles, exposure = _cycles(args, renderer, s), args.get("exposure", 0)
 
-    def job_fn(job):
+    def run(job):
         t_start = time.perf_counter()
         scene = ready_for_render(ctx.tool, doc.data, info["id"], ctx.app.folder, scene0)   # its simulation, computed first if needed
         key = video_key(scene0, info, f0, f1, renderer, (w, h), cycles, exposure, keep_exr, passes)
         kept = kept_count(ctx.app.folder, doc, info, key, f0, f1, keep_exr)
         todo, cont = count - kept, resume.continues_text(kept)
         budget_s = args["budget_min"] * 60 if "budget_min" in args else None
-        est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes, todo,
-                                  must=budget_s is not None or args.get("estimate_only", False))
-        note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
-        if budget_s is not None and est > budget_s:
-            fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at)
-            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{todo} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
-                               hint="Nothing was rendered.")
-        kept_words = f" {cont} (kept from a stopped or failed render of the same thing)." if cont else ""
-        if args.get("estimate_only"):
-            return Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
-                         f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.',
-                         {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est}, warnings=engine.take_notices())
+        try:
+            est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes, todo,
+                                          must=budget_s is not None or args.get("estimate_only", False))
+            note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
+            over = budget_s is not None and est > budget_s
+            fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at) if over else []
+            if over and not args.get("estimate_only"):
+                raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{todo} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
+                                   hint="Nothing was rendered.")
+            kept_words = f" {cont} (kept from a stopped or failed render of the same thing)." if cont else ""
+            if args.get("estimate_only"):                 # the figures, also over the budget (then with the settings that fit)
+                got = Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
+                            f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.'
+                            + (f" It {estimate.over_budget_text(est, budget_s, fits)}" if over else ""),
+                            {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est, "over_budget": over, "fits": fits},
+                            warnings=engine.take_notices())
+                if gate:
+                    gate.decide(reply=got)
+                return got
+        except RostrumError as e:                         # a refusal (over the budget, a failed probe): the tool answers with it at once
+            if gate:
+                gate.decide(error=e)
+            raise
+        if gate:
+            gate.decide()
         job.progress(kept, count, f"frame {kept} of {count}; {note}")
         done, paths, _ = video(ctx.tool, doc, info, scene0, engine, (w, h), renderer, cycles, f0, f1, ctx.app.folder, exposure, keep_exr, passes,
                                progress=lambda i, n: job.progress(i, n, f"frame {i} of {n}; {note}"), stopped=job.cancel_requested.is_set,
@@ -359,11 +413,22 @@ def video_job(ctx, args):
         took = time.perf_counter() - t_start
         return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {paths[0].name} (share copy {paths[1].name}), in {took:.0f} s '
                      f'({took / max(todo, 1):.2f} s a frame drawn; {note}).{kept_words}'
-                     + (f" Copied to {copies[0]} and {copies[1].name}." if copies else ""),
+                     + (f" Copied to {copies[0]} and {copies[1].name}." if copies else "")
+                     + " " + next_steps(count, fps, "render_video")
+                     # FALL_NOTE HOOK (lead: wire member A's fall_note(...) here as one more `+ " " + fall_note(...)` line)
+                     ,
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
                       **({"copies": [str(c) for c in copies]} if copies else {})},
                      [*paths, *copies], warnings=engine.take_notices())
+
+    def job_fn(job):
+        try:
+            return run(job)
+        except BaseException as e:               # a failure before the estimate was decided: the tool answers with it at once too
+            if gate and not gate.decided():
+                gate.decide(error=e if isinstance(e, RostrumError) else RostrumError(codes.RENDER_FAILED, ctx.tool, info["id"], f"failed: {e}"))
+            raise
 
     return (f'render_video {info["id"]} f{f0}-{f1}', job_fn, f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
 
