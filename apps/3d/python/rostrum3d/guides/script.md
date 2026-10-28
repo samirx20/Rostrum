@@ -57,7 +57,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
   (`lightsOnly` is ids separated by spaces; `turn` and `texture` are for a dome).
 - **camera** `focalLength sensorWidth dof fStop focusDistance focusItem near far` (`focusItem`: an item id kept sharp as it moves).
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
-- **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
+- **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm sheen sheenRoughness sheenTint coatTint coatIor brushDirection`; `material(id, start="fabric", baseColor=…)` begins from a starting point (guide `materials`). A pattern (checks, stripes, weave) goes on as a block: `graph.add` + `graph.connect` (guide `materials`).
 - **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
 - **copies** `layout count columns spacingX spacingY spacingZ radius faceOut surface amountBy density minSpacing alongSurface onlySeen seed varyMove varyTurn varyScale varyStart` (guide `copies`); **effector** `kind near radius falloff amount axis colour`.
 - **import** `file prim material`; **part** `path material visible`.
@@ -90,13 +90,21 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
 A new document already holds `shot_1` (with `shot_1_camera`), `ground` (with `ground_material`) and `sky`. A script changes
 them like its own, in the same run (one undo step):
 
-- **Make it again under the same id** to replace it: `light("sky", kind="dome", intensity=0.4)`,
-  `shot("shot_1", camera=cam, end=6, width=1280, height=720)`. Fields you leave out go back to their defaults (no sky picture
-  above, as `texture` was not given).
+- **Make it again under the same id** to replace it: `shot("shot_1", camera=cam, end=6, width=1280, height=720)`,
+  `mesh("ground", shape="plane", width=60, depth=60, material=floor, backdrop=True)` (a new floor: the ground you made takes the old one's place;
+  `backdrop=True` keeps it a floor a click goes through; a wall is just another mesh, there is none by default). Fields you leave out go
+  back to their defaults: `light("sky", kind="dome", intensity=0.4)` is a plain white dome, the sky picture is gone (the camera sees a
+  flat grey). To change only the brightness, `edit("sky", intensity=0.4)` instead.
 - **`edit(id, **fields)`** changes only the fields given and returns a handle: `edit("ground_material", baseColor="#2b2f36")`,
   `edit("ground").set(width=40)`. It works on anything directly in the scene (an item, material or shot), whoever made it.
 - **`remove(id)`** takes it out: `remove("shot_1_camera")` after `shot("shot_1", camera=cam)`; `remove("ground")` and
   `remove("ground_material")` together.
+
+- **Your own lights replace the start lights.** The new scene's lights are `sky` (a dome), `key_light` and `rim_light` (panels).
+  A script that makes **a dome** of its own (any id: `light("dusk", kind="dome", color="#334466")`) takes `sky` out; a script that
+  makes **any other light** of its own (rect, disk, strip, sphere, spot, distant, any id) takes `key_light` and `rim_light` out. So
+  your lighting is the only lighting, never added on top of the start's; a script with no lights keeps all three. To keep one,
+  `edit` it instead of making a light (`edit("rim_light", intensity=10)`), or make a light again under its id.
 
 From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
 usual (`force` lets the script win).

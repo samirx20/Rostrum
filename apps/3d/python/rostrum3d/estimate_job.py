@@ -20,6 +20,12 @@ sample curve: "curve": [[FEW, a frame's time at FEW over its time at the job's s
 log(samples), from the real-size frames when both were drawn, else the quarter's. `mcp/estimate.scale()` turns that
 into the job's time for any size, samples and frame count without a new probe.
 
+A real render draws a different frame each time, and the engine has to bring the scene to it first (a cloth or a fall's
+stored shape sent in again, animation, the light and geometry rebuilt): a probe that draws one frame at several sizes never
+pays that. So one more small frame is drawn at the NEXT frame and its time over the same-samples frame it knew is
+"change_ms", added to every frame by `mcp/estimate.scale()` (round 3 of the 3D gaps: a many-polygon cloth drape was
+estimated at 2.2 s a frame and took 3.65 s). After a real render, `estimate_learn` keeps how far off the guess was.
+
 The measurement is cached (rostrum_core.cache) by the scene, the engine build and what changes the picture's cost other
 than size, samples and frames (renderer, noise clean-up, the shot's shape), so changing the scene re-measures and
 changing only those three re-scales at once. The probe has a wall-time budget, kept by the caller's wait (see measure):
@@ -46,7 +52,7 @@ from . import gpu_busy
 from .engine import Engine
 from .runtime import VERSION as LIBS
 
-KIND, VERSION = "3d-estimate", "probe@5"
+KIND, VERSION = "3d-estimate", "probe@6"
 BUDGET_S = 90.0
 FEW = 8                                                  # samples of the cheap frames (the sample curve)
 FULL_CAP_S = 9.0                                         # the real-size frame at the job's samples, when expected under this
@@ -136,7 +142,7 @@ def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
     t0 = time.perf_counter()
     engine.ensure_scene(scene)
     load_ms = (time.perf_counter() - t0) * 1000
-    one = lambda wh, png, n=S: _frame_ms(engine, info, {**s, "samples": n}, frame, wh, png)  # noqa: E731
+    one = lambda wh, png, n=S, at=frame: _frame_ms(engine, info, {**s, "samples": n}, at, wh, png)  # noqa: E731
     with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
         tmp = Path(tmp)
         first = one(_size(s, 16), tmp / "a.png")                          # warm-up: kernels, first sync
@@ -147,6 +153,11 @@ def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
         if few and not direct:                                            # its error counts four times: a median
             q_few += [one(smaller(4), tmp / "d.png", few), one(smaller(6), tmp / "e.png", few)]
         full_ms = one(full, tmp / "f.png", S if direct else few)
+        change_ms = 0.0                                                   # a frame the engine has not drawn yet: the scene moves on first
+        if s["end"] > s["start"]:
+            other = frame + 1 if frame < s["end"] else frame - 1
+            same = q_few[0] if q_few else warm_q                           # the same samples at about the same size, on the frame it knows
+            change_ms = max(0.0, one(smaller(8), tmp / "g.png", few or S, other) - same)
     q_few = sorted(q_few)[len(q_few) // 2] if q_few else None
     pq, pf = qw * qh, full[0] * full[1]
     full_s, curve = full_ms, []
@@ -158,7 +169,7 @@ def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
     per_px = max(0.0, (full_s - warm_q) / (pf - pq)) if pf > pq else 0.0       # ms a pixel at the job's samples
     fixed = warm_q - per_px * pq                         # ms a frame whatever its size (may be < 0, see the docstring)
     return {"frame": frame, "samples": S, "curve": curve, "load_ms": round(load_ms, 1),
-            "warmup_ms": round(first, 1), "fixed_ms": round(fixed, 2), "per_px_ms": per_px,
+            "warmup_ms": round(first, 1), "change_ms": round(change_ms, 1), "fixed_ms": round(fixed, 2), "per_px_ms": per_px,
             "probe": {"size": [qw, qh], "ms": [round(first, 1), round(warm_q, 1)], "few_ms": round(q_few or 0, 1)},
             "full": {"size": list(full), "samples": S if direct else few, "ms": round(full_ms, 1), "at_job_samples_ms": round(full_s, 1)},
             "probe_s": round(time.perf_counter() - t0, 1), "measured_at": time.strftime("%Y-%m-%dT%H:%M:%S")}

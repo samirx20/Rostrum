@@ -102,7 +102,7 @@ def classify(frames: list[int], pace: list[float], seen: list[str], fps: float, 
     moving = [frames[i + 1] for i, d in enumerate(pace) if d >= MOVE_M]
     if not moving:
         return {"moving": None, "movingFrames": 0, "onScreen": 0, "offScreen": 0, "enters": None, "lands": None,
-                "where": None, "startsAtRest": True, "drop": None}
+                "where": None, "startsAtRest": True, "drop": None, "underway": False}
     at = {f: s for f, s in zip(frames, seen)}
     shown = lambda f: at[f] in ("in", "part")  # noqa: E731
     first = max(frames.index(moving[0]) - 1, 0)       # it leaves where it was one frame earlier
@@ -111,13 +111,15 @@ def classify(frames: list[int], pace: list[float], seen: list[str], fps: float, 
     while end + 1 < len(frames) and low[end] - low[end + 1] >= MOVE_M / 2:
         end += 1
     drop = frames[first:end + 1] if end > first else [moving[0]]
+    # already moving at speed on the first step (a fall from rest starts slowly and speeds up): the shot opens mid-fall
+    underway = first == 0 and len(pace) > 1 and pace[0] >= 0.7 * max(pace[1:4])
     on = [f for f in drop if shown(f)]
     off = [f for f in drop if not shown(f)]
     sides = [at[f] for f in off]
     return {"moving": [moving[0], moving[-1]], "movingFrames": len(moving), "drop": [drop[0], drop[-1]],
             "onScreen": len(on), "offScreen": len(off), "enters": on[0] if on else None, "lands": drop[-1],
             "where": max(set(sides), key=sides.count) if sides else None, "startsAtRest": False,
-            "seconds": round(len(on) / fps, 2), "drop_m": round(low[first] - low[end], 3)}
+            "underway": underway, "seconds": round(len(on) / fps, 2), "drop_m": round(low[first] - low[end], 3)}
 
 
 def line(id_: str, kind: str, facts: dict, fps: float) -> tuple[str, bool]:
@@ -182,14 +184,18 @@ def views(data: dict, info: dict, folder=None) -> list[dict]:
     return out
 
 
-def fall_note(data: dict, shot_id: str, folder=None) -> str:
-    """For a render or export reply: one line per falling thing or cloth whose fall the shot camera does not show well
-    (all of it outside the picture, most of it above, under MIN_ON on screen, or already at rest); "" when every fall
-    is seen, or nothing is simulated / stored."""
+def fall_note(data: dict, shot_id: str, folder=None, frames: tuple[int, int] | None = None) -> str:
+    """For a render, export or look reply: one line per falling thing or cloth whose fall the shot camera does not show
+    well (all of it outside the picture, most of it above, under MIN_ON on screen, or already at rest), and what the
+    cut `frames` (first, last; default the whole shot) shows of it (cut_note: it opens mid-drop or after the landing,
+    the shot opens with a thing already falling, a still stretch at the end). "" when every fall is seen, or nothing
+    is simulated / stored."""
     from ..compile import shot_info
+    from .cut_note import cut_lines
     try:
         info = shot_info(data, shot_id)
         rows = views(data, info, folder)
     except (ValueError, OSError):
         return ""
-    return " ".join(r["line"] for r in rows if r["fix"])
+    f0, f1 = frames or (info["start"], info["end"])
+    return " ".join([r["line"] for r in rows if r["fix"]] + cut_lines(rows, f0, f1, info["start"], info["fps"]))

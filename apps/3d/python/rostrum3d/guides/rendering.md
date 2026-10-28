@@ -147,7 +147,11 @@ and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`,
 [Working with an AI agent](agents.md), "Render settings and the time estimate".
 
 `render_video` with `estimate_only` answers at once with the measured figures (also over `budget_min`); with `budget_min` alone, over it
-is an immediate error naming settings that fit. A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
+is an immediate error naming settings that fit. The estimate counts what a changing scene costs each frame (a cloth or a fall's new shape sent in, animation: one extra small frame at the
+next frame is timed by the probe), and learns from your own renders: when the last full render of a shot took 10 % or more over its
+estimate, the next estimate of that shot (same project, same session) is raised by that much (never lowered) and its reply says
+"raised ×1.6". It is still a guide, not a promise: leave margin under a tight `budget_min`, and a many-polygon cloth or a busy card
+runs over. A finished video's reply asks for a look-and-fix pass (`look_sheet`, `look_frame`,
 `look_motion`), and every reply ends with a time line that counts the passes the time left allows ([Working with an AI agent](agents.md), "Your time").
 
 Looking before you render: `look_frame` (one frame, with its clipped share and the text reading direction), `look_sheet` (one shot over

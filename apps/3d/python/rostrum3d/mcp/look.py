@@ -9,10 +9,11 @@ from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
+from rostrum3d.sim.fall_view import fall_note
 
 from . import draw, onion_look, paint_canvas, picture_facts, step_look, text_facts
 from .shape_look import length
-from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
+from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, look_renderer, seconds, size_of
 
 tools = Tools()
 LOOK_SAMPLES = 64                         # Cycles samples for a look (denoised); render_still has its own
@@ -41,10 +42,11 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
 @tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
 def look_frame(ctx, args):
     """One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you
-    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). stylized = the
+    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized); neither on a shot
+    whose Quality is Stylized = stylized. stylized = the
     stylized look: the only one that draws materials' Lines and Halftone (Light to colour shows in final too). through = a light's
     id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped
-    (blown out), which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known, and
+    (blown out; stylized: pure white, its picked colours are shown as they are), which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known, and
     for every text in the picture which way it reads from this camera (left to right, mirrored, upside down, seen from behind or
     edge-on, its angle to the horizontal; data `text`).
     onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc
@@ -52,7 +54,7 @@ def look_frame(ctx, args):
     "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step`
     names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed."""
     doc, info = doc_and_shot(ctx, args)
-    frame, renderer = frame_of(ctx, info, args), renderer_of(args)
+    frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args)
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
     if args.get("through"):
@@ -109,7 +111,7 @@ def _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene):
                                            "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
 def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over the shot (or a range) in one image, each tile labelled with its frame and time. Drawn fast
-    (Storm) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail."""
+    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix."""
     doc, info = doc_and_shot(ctx, args)
     fps, first, last = info["fps"], info["start"], info["end"]
     f0 = first + round(args.get("start", 0.0) * fps)
@@ -119,7 +121,7 @@ def look_sheet(ctx, args):
     check_frame(ctx, info, f0), check_frame(ctx, info, f1)
     count = args.get("count", 6)
     frames = sorted({round(f0 + (f1 - f0) * i / (count - 1)) for i in range(count)})
-    renderer, tile_w = renderer_of(args), args.get("width", 480)
+    renderer, tile_w = look_renderer(args, doc, [info]), args.get("width", 480)
     w, h = size_of(info, {"width": tile_w})
     cols = args.get("cols", min(3, len(frames)))
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
@@ -137,7 +139,8 @@ def look_sheet(ctx, args):
             sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for p, f in zip(pngs, frames)], tile_w, cols, dest)
         return Reply(f'Contact sheet of {info["id"]}: {len(frames)} frames, {frames[0]}–{frames[-1]} ({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), '
                      f'{renderer}, {sw}×{sh}.', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
-                                                 "cols": cols, "camera": info["camera"]}, [dest], [dest], engine.take_notices())
+                                                 "cols": cols, "camera": info["camera"]}, [dest], [dest],
+                     [*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])])
 
     return ctx.long(f'look_sheet {info["id"]}', job_fn)
 

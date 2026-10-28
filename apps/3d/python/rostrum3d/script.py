@@ -39,7 +39,7 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import aim, build, clay_detail, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
+from . import aim, build, clay_detail, start_lights, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -110,7 +110,7 @@ class Item:
         """Make it part of the shot's simulation (only things directly in the scene): "falls", "still", "cloth" (a shape
         only) or "off", with Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", fallStart=1.5 (seconds into the shot it holds still
         until, then falls), simShape="box";
-        cloth: clothWeight=, stiffness=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
+        cloth: clothWeight=, stiffness=, clothAir=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
         script. Cloth with over=<item> (made earlier, or already in the scene) also places the sheet over it: centred,
         a little above its top, level, and a plane too small to drape it made big enough to reach the floor."""
         over = values.pop("over", None)
@@ -363,6 +363,8 @@ class Build:
             for n in self.root[lst]:
                 if n["id"] not in self.owned and _start_owned(doc, n["id"], lst):
                     self.owned[n["id"]] = lst
+        for id_ in start_lights.replaced(doc, self.root["items"], lambda i, lst: _start_owned(doc, i, lst)):     # its own lights replace the start's
+            self.owned.setdefault(id_, "items")
         if not self.owned:
             return
         base = doc.script_bases.setdefault(name, KIND.blank())
