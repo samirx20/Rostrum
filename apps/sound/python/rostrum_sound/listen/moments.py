@@ -24,7 +24,9 @@ BLUR_BEFORE_S = 1.0        # a stop is blurred when an onset this close before i
 BLUR_SHARE = 0.7
 STOP_DROP_DB = 8.0         # after a stop the level should fall at least this far within 0.3–1.0 s
 DROP_LATE_X, DROP_MIN_S = 1.5, 0.35   # drums "out" early: the last strong onset more than 1.5 beats' gap (≥ 0.35 s) before
-CLIMAX_LATE_S, CLIMAX_EARLY_S = 0.75, 0.5
+CLIMAX_LATE_S, CLIMAX_EARLY_S = 3.0, 0.5   # an orchestra blooms 1–2 s after a tutti downbeat: only over 3 s is late
+HOLD_S = 3                 # a climax holds while each 1 s after it is at least as loud as the 3 s before; under 3 s it is cut short
+CEILING_NEAR_DB, CEILING_DBFS = 1.5, -3.0  # the build's peak within 1.5 dB of a file peak at -3 dBFS or more: at the ceiling
 LIFT_LU = 2.0              # a lift: the 3 s after it at least this much louder than the 3 s before
 KINDS = ("hit", "stop", "drop", "climax", "lift", "entry", "voice")
 
@@ -57,6 +59,8 @@ def _hit(wav, m, sr, at, kind):
     weak = s["times_typical"] < WEAK_ENTRY_X if kind == "entry" else s["times_typical"] < WEAK_X or s["rank"] > WEAK_RANK
     weak = weak and not ((s["jump_lu"] or 0) >= STEP_LU and s["times_typical"] >= STEP_X)
     out = [{"kind": f"weak_{kind}", "at_s": at, "measured": {"onset_s": s["at_s"], **{k: v for k, v in s.items() if k != "at_s"}}}] if weak else []
+    if kind in ("hit", "climax") and not weak and at_ceiling(s):     # a weak one's fixes lead with headroom already
+        out.append({"kind": "build_at_ceiling", "at_s": at, "measured": {k: s[k] for k in ("build_peak_db", "file_peak_db", "headroom_db")}})
     if kind == "stop":
         c = attack.curves(wav)
         env, t, pk = c["env"], c["t"], c["pk"]
@@ -72,11 +76,16 @@ def _hit(wav, m, sr, at, kind):
     return out
 
 
+def at_ceiling(s) -> bool:
+    """The build into the moment already peaks at the file's ceiling (attack.strike's numbers): it cannot be louder."""
+    return s["file_peak_db"] >= CEILING_DBFS and s["headroom_db"] < CEILING_NEAR_DB
+
+
 def strengths(wav, moments) -> list[dict]:
-    """Every timed asked moment (hit, stop, entry) with how it strikes (attack.strike; None: nothing starts there), so a
-    reply can show the weakest even when none is a fault."""
+    """Every timed asked moment (hit, stop, entry, climax) with how it strikes (attack.strike; None: nothing starts
+    there), so a reply can show the weakest even when none is a fault."""
     return [{"at": float(mo["at"]), "kind": mo.get("kind", "hit"), "strike": attack.strike(wav, float(mo["at"]))}
-            for mo in moments if mo.get("kind", "hit") in ("hit", "stop", "entry")]
+            for mo in moments if mo.get("kind", "hit") in ("hit", "stop", "entry", "climax")]
 
 
 def _drop(m, sr, ev, at):
@@ -102,15 +111,24 @@ def _lift(y, sr, at):
     return [{"kind": "flat_lift", "at_s": at, "measured": {"rise_lu": num(rise, 1)}}] if rise < LIFT_LU else []
 
 
-def _climax(y, sr, at):
-    """Where the loudest 0.4 s lands against `at` (the 0.4 s window that starts nearest it is the climax's)."""
+def _climax(wav, m, sr, y, at):
+    """A climax: its downbeat's attack (as a hit: weak, or the build already at the ceiling), whether it holds (the 3 s
+    after against the 3 s before) and where the loudest 0.4 s lands (a bloom up to 3 s after the downbeat is normal)."""
+    from .bs1770 import integrated
     from .loudness import loudest
+    out = [f for f in _hit(wav, m, sr, at, "climax") if not f["kind"].startswith("no_")]
+    cut = lambda s0, s1: integrated(y[max(0, int((at + s0) * sr)):max(1, int((at + s1) * sr))], sr)
+    build = cut(-3.5, -0.5)
+    held = next((s for s in range(HOLD_S) if cut(s, s + 1) < build), HOLD_S)
+    if held < HOLD_S and build > -70:
+        out.append({"kind": "short_climax", "at_s": at, "measured": {"held_s": held, "build_lufs": num(build, 1),
+                    "then_lu": num(cut(held, held + 1) - build, 1)}})
     lo = loudest(y, sr)["momentary_0_4s"]
     off = lo["from_s"] - at
     if off > CLIMAX_LATE_S or off < -CLIMAX_EARLY_S:
-        return [{"kind": "late_climax" if off > 0 else "early_climax", "at_s": at,
-                 "measured": {"loudest_from_s": lo["from_s"], "off_s": num(off, 2), "loudest_lufs": lo["lufs"]}}]
-    return []
+        out.append({"kind": "late_climax" if off > 0 else "early_climax", "at_s": at,
+                    "measured": {"loudest_from_s": lo["from_s"], "off_s": num(off, 2), "loudest_lufs": lo["lufs"]}})
+    return out
 
 
 def _voice(y, sr, at, end):
@@ -136,7 +154,7 @@ def check(wav, moments) -> list[dict]:
         elif kind == "drop":
             out += _drop(m, sr, ev, at)
         elif kind == "climax":
-            out += _climax(y, sr, at)
+            out += _climax(wav, m, sr, y, at)
         elif kind == "voice" and mo.get("end") is not None:
             out += _voice(y, sr, at, float(mo["end"]))
     return sorted(out, key=lambda f: f["at_s"])

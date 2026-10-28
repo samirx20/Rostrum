@@ -13,7 +13,7 @@ from .core import load, mono, num
 from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
-from .moments import check as moment_faults
+from .moments import at_ceiling, check as moment_faults
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -70,7 +70,8 @@ def _correlation(y):
 
 def _squashed(y, sr, limiter) -> list[dict]:
     """From the render's limiter result: the deepest moment, if it was held down SQUASH_DB or more, and how far the
-    10 s before it sat under it (a quiet build is what makes reaching the loudness target squash the one loud moment)."""
+    10 s before it sat under it (a short loud moment cannot carry the loudness target, so the build does and the
+    limiter holds the moment down)."""
     from .bs1770 import integrated
     w = (limiter or {}).get("worst") or []
     if not w or (w[0].get("reduced_db") or 0) < SQUASH_DB:
@@ -97,9 +98,17 @@ def heard(d) -> str:
     return ", ".join(bits)
 
 
+def headroom_fix(d) -> str:
+    return (f"make headroom: the build already peaks at {d['build_peak_db']:.1f} dBFS, {d['headroom_db']:.1f} dB under the "
+            "file's loudest peak, so the hit cannot be louder; keep the build's peaks 4–6 dB under the ceiling (its velocities "
+            "or volumes, not the hit's) and let the hit ring or hold 3–5 s so it carries the loudness target "
+            "(edit_loudness lift_quiet narrows the range)")
+
+
 def weak_fixes(t, d) -> list[str]:
-    """The changes that answer what measured short, the biggest shortfall first (at most three)."""
-    out = []
+    """The changes that answer what measured short, the biggest shortfall first (at most three); headroom first when
+    the build already sits at the ceiling (nothing else can make the hit louder)."""
+    out = [headroom_fix(d)] if d.get("headroom_db") is not None and at_ceiling(d) else []
     if d["bright_x"] < BRIGHT_X:
         out.append("add a short loud part with a fast bright attack on it (crash, snare, a high piano or brass stab)")
     if d.get("jump_lu") is not None and d["jump_lu"] < JUMP_LU:
@@ -107,8 +116,7 @@ def weak_fixes(t, d) -> list[str]:
     if d.get("times_bed") is not None and d["times_bed"] < BED_X:
         out.append("shorten the bed's notes into it and strike nothing on the beat before")
     if len(out) < 3:
-        out.append("put more instruments on it and lower the limiter's squash (edit_loudness lift_quiet raises the build; "
-                   "if look_sound names it squashed, turn its parts down)")
+        out.append("put more instruments on it, spread across registers (low, middle, high)")
     return out[:3]
 
 
@@ -129,10 +137,19 @@ def _words(f) -> str:
     if k == "early_drop":
         return (f"drums drop early at {t:.2f} s: the last beat is at {d['last_beat_s']:g} s, {d['early_s']:g} s before "
                 f"(the beats are {d['beat_gap_s']:g} s apart); play up to the drop: a last hit or fill ending on the time")
+    if k == "build_at_ceiling":
+        return (f"the build into {t:.2f} s already reaches the ceiling: its peak in the 3 s before is {d['build_peak_db']:g} dBFS, "
+                f"{d['headroom_db']:g} dB under the file's loudest ({d['file_peak_db']:g}); keep the build's peaks 4–6 dB under "
+                "and let the moment ring or hold 3–5 s so it carries the loudness target")
+    if k == "short_climax":
+        return (f"climax at {t:.2f} s is cut short: it stays over the build ({d['build_lufs']:g} LUFS in the 3 s before) "
+                f"for {d['held_s']:g} s, then falls {d['then_lu']:+g} LU; let it "
+                "hold 3–5 s (held chords, ringing low notes, a cymbal swell) and settle over several seconds: a held climax "
+                "carries the loudness target, so the build can start low")
     if k in ("late_climax", "early_climax"):
         side = "after" if k == "late_climax" else "before"
-        fix = ("put the weight on the downbeat: accents and attacks on it, shorter or quieter sustains after, slow-attack "
-               "sounds (strings, pads) started a little early" if side == "after" else
+        fix = ("the music keeps growing well past the downbeat: hold the last bars before it a little lower and put the "
+               "strongest attack on the downbeat; a bloom after it is normal, keep it" if side == "after" else
                "the build peaks too soon: hold its last bars back so the climax is the top")
         return f"loudest moment {abs(d['off_s']):g} s {side} the climax at {t:.2f} s (loudest 0.4 s from {d['loudest_from_s']:g} s); {fix}"
     if k == "flat_lift":
@@ -146,14 +163,15 @@ def _words(f) -> str:
                 "one flat tone; give it movement: change the chord or bass note every few bars, a moving inner line, "
                 "or let the sound open (filter, swells, a second texture)")
     if k == "near_mono":
-        return (f"near-mono mix: left/right correlation {d['correlation']:g} (wide mixes 0.4–0.8); pan the mono parts apart "
-                "(`width` does nothing to a mono recording), use stereo instruments or a stereo reverb")
+        return (f"near-mono mix: left/right correlation {d['correlation']:g} (wide mixes 0.4–0.8); give a mono source its own "
+                "left and right: a `chorus` effect with spread 1, a `tremolo` with stereo above 0 (1 = auto-pan) or a stereo "
+                "reverb; pan the mono parts apart; `width` cannot widen a mono recording")
     if k == "squashed_hit":
         b = f" the 10 s before sit {d['build_under_lu']:g} LU under it, so" if d.get("build_under_lu") is not None else ""
         by = f" ({', '.join(d['drivers'])})" if d.get("drivers") else ""
-        return (f"hit at {t:.2f} s squashed {d['reduced_db']:g} dB by the master limiter:{b} reaching the loudness target "
-                f"holds the hit down; raise the build (edit_loudness lift_quiet, or the quiet parts' volumes) or lower "
-                f"the hit's parts{by} by about {max(1.0, d['reduced_db'] - 2):.0f} dB")
+        return (f"hit at {t:.2f} s squashed {d['reduced_db']:g} dB by the master limiter{by}:{b} the build carries the "
+                "loudness target; let the hit ring or hold 3–6 s (a held chord, ringing low notes, a cymbal) and keep the "
+                "build's peaks 4–6 dB under the ceiling (edit_loudness lift_quiet narrows the range: not the fix here)")
     return k
 
 

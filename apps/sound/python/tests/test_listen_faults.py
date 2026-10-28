@@ -81,3 +81,11 @@ def test_low_boom_hit_is_weak_and_the_render_lines_say_why(tmp_path):
     assert moments == [{"at": 10.0, "kind": "hit"}]
     out = lines(str(tmp_path / "boom.wav"), moments)
     assert out[0].startswith("10.0") and "weak hit" in out[0] and "bright attack" in out[0] and "fast bright attack" in out[0], out
+
+
+def test_weak_hit_with_the_build_at_the_ceiling_leads_with_headroom(tmp_path):
+    """Sound-gaps 2: the build already peaked at the limiter's ceiling, and "raise the build" flattened the piece.
+    The fix list starts with headroom (the build's peaks 4–6 dB under), measured from the 3 s before."""
+    r = check(_piece(tmp_path / "flat.wav", hit_amp=0.2), [{"at": 10.0, "kind": "hit"}], whole=False)
+    f = next(f for f in r["faults"] if f["kind"] == "weak_hit")
+    assert f["measured"]["headroom_db"] < 1.5 and "fix: make headroom" in f["words"] and "raise the build" not in r["words"]

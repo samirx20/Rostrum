@@ -23,6 +23,7 @@ BRIGHT_HZ = 2000.0         # the crack of an attack: snare, crash, a hard piano 
 NEAR_S = 0.08              # the moment's own onset: the strongest within this of the asked time
 BED_S = 2.0                # "the bed around it": the onsets of the 2 s before
 JUMP_BEFORE_S = 1.5        # loudness jump: the 0.4 s from the hit against the 1.5 s before it
+BUILD_S = 3.0              # headroom: the build's peak in the 3 s before against the file's loudest peak
 
 
 def _flux(S, keep):
@@ -59,7 +60,8 @@ def strike(wav, at, near=NEAR_S) -> dict | None:
     """How the moment at `at` strikes: None when no onset starts within `near`, else {at_s, times_typical (against the
     piece's typical onset), rank (1 = the strongest in the file), onsets, times_bed (against the typical onset of the
     2 s before), bright_x (its 2 kHz-up rise against the bright part of the piece's typical onset), jump_lu (the 0.4 s from it
-    against the 1.5 s before)}."""
+    against the 1.5 s before), build_peak_db (the highest sample of the 3 s before, dBFS), file_peak_db (the file's),
+    headroom_db (how far the build's peak sits under the file's: near 0 = the build already reaches the ceiling)}."""
     c = curves(wav)
     env, t, pk, typ = c["env"], c["t"], c["pk"], c["typ"]
     mine = [p for p in pk if abs(t[p] - at) <= near]
@@ -74,4 +76,14 @@ def strike(wav, at, near=NEAR_S) -> dict | None:
     hit_lu, bed_lu = cut(t[p], t[p] + 0.4), cut(t[p] - JUMP_BEFORE_S, t[p] - 0.05)
     return {"at_s": num(t[p], 2), "times_typical": num(h / typ, 1), "rank": int((env[pk] > h).sum()) + 1, "onsets": len(pk),
             "times_bed": num(h / bed_typ, 1) if bed_typ > 0 else None, "bright_x": num(_near_max(c["bright"], p) / c["btyp"], 1),
-            "jump_lu": num(hit_lu - bed_lu, 1) if bed_lu > -70 else None}
+            "jump_lu": num(hit_lu - bed_lu, 1) if bed_lu > -70 else None, **_headroom(y, sr, float(t[p]))}
+
+
+def _peak_db(seg) -> float:
+    return 20 * float(np.log10(float(np.max(np.abs(seg))) + 1e-12)) if seg.size else -120.0
+
+
+def _headroom(y, sr, at) -> dict:
+    build = _peak_db(y[max(0, int((at - BUILD_S) * sr)):max(1, int((at - 0.05) * sr))])
+    top = _peak_db(y)
+    return {"build_peak_db": num(build, 1), "file_peak_db": num(top, 1), "headroom_db": num(top - build, 1)}
