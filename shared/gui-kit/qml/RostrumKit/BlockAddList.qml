@@ -6,8 +6,11 @@ import "Blocks.js" as Blocks
 // The block view's add list: a search line on top, the block types under it (by group while nothing is typed, best
 // match first while typing: label, then group and the type's `words`). Up / Down + Enter or a click picks one
 // (chosen(type)); Esc closes. `fromKind`: it opened from a wire dropped on nothing, so only the types that wire can
-// feed are listed. The app places it (BlockView.openAdd) and sizes nothing: it fits its rows, up to 340 px (less
-// where its parent is shorter), always ending on a whole row so the last one is never cut in half.
+// feed are listed. The app places it (BlockView.openAdd) and sizes nothing. It lives on the window's overlay (BlockView
+// sets the parent), so a short panel never squeezes it: it opens under `at`, and when its whole list doesn't fit
+// there and there is more room above, it opens upward, its bottom just above `upTo` (the opener's top). It fits its
+// rows in that room, always ending on a whole row so the last one is never cut in half. `at` / `upTo` are in `from`'s
+// coordinates, measured again while it is open (a panel still settling moves the opener).
 SmallPopup {
     id: pop
     property var catalogue: []
@@ -16,11 +19,25 @@ SmallPopup {
     property var kindColours: ({})
     property var rows: []                   // [{heading}] or catalogue entries, in list order
     property int current: -1                // the row Enter picks (never a heading)
-    property point at                       // where it opens (its top-left), in its parent; it stays inside the parent
+    property point at                       // where it opens (its top-left), in `from`
+    property real upTo: 0                   // opening upward, its bottom stays above this y, in `from`
+    property Item from: null                // the item `at` and `upTo` are in (null: the parent)
+    property real atX: 0                    // `at` and `upTo` in the parent, measured by measure()
+    property real atY: 0
+    property real upY: 0
     readonly property int headingHeight: 24
-    // the list's height: as many whole rows (from the top) as fit in 340 px and in the parent
+    readonly property real rowsHeight: {    // the whole list
+        let h = 0
+        for (const r of rows) h += r.heading ? headingHeight : Theme.popupRow
+        return h
+    }
+    readonly property real chrome: 2 * padding + Theme.button + 4
+    readonly property real below: (parent ? parent.height : 340) - 8 - atY - chrome
+    readonly property real above: upY - 4 - 8 - chrome
+    readonly property bool upward: rowsHeight > below && above > below
+    // the list's height: as many whole rows (from the top) as fit in the room it opened into
     readonly property real listHeight: {
-        const room = Math.min(340, (parent ? parent.height : 340) - 16 - 2 * padding - Theme.button - 4)
+        const room = upward ? above : below
         let h = 0
         for (const r of rows) {
             const next = h + (r.heading ? headingHeight : Theme.popupRow)
@@ -57,12 +74,24 @@ SmallPopup {
             if (!rows[i].heading) { current = i; list.positionViewAtIndex(i, ListView.Contain); return }
     }
     function pick() { const r = rows[current]; if (r && !r.heading) { close(); chosen(r.type) } }
-    onAboutToShow: {
-        search.input.text = ""; refilter(); settle()
-        x = Math.max(8, Math.min(at.x, parent.width - width - 8))
-        y = Math.max(8, Math.min(at.y, parent.height - implicitHeight - 8))
+    function measure() {                    // true when the opener moved since the last time
+        const src = from || parent
+        if (!src || !parent) return false
+        const p = src.mapToItem(parent, at.x, at.y), u = src.mapToItem(parent, at.x, upTo)
+        if (p.x === atX && p.y === atY && u.y === upY) return false
+        atX = p.x; atY = p.y; upY = u.y
+        return true
     }
+    function place() {
+        x = Math.max(8, Math.min(atX, parent.width - width - 8))
+        y = upward ? Math.max(8, upY - 4 - implicitHeight)
+                   : Math.max(8, Math.min(atY, parent.height - implicitHeight - 8))
+    }
+    onAboutToShow: { search.input.text = ""; refilter(); measure(); settle(); place() }
     onOpened: search.input.forceActiveFocus()
+    // the opener may still move (its panel settling): follow it, but only then (typing changes the list's height and
+    // must not move the search line under the keyboard)
+    Timer { interval: 100; repeat: true; running: pop.visible; onTriggered: if (pop.measure()) { pop.settle(); pop.place() } }
 
     Column {
         objectName: "blockAddList"

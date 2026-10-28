@@ -1,5 +1,5 @@
 diff --git a/src/hydra/geometry.h b/src/hydra/geometry.h
-index 5ac38e6..f9b10e0 100644
+index 5ac38e6da..f9b10e02c 100644
 --- a/src/hydra/geometry.h
 +++ b/src/hydra/geometry.h
 @@ -8,6 +8,7 @@
@@ -20,7 +20,7 @@ index 5ac38e6..f9b10e0 100644
  
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/geometry.inl b/src/hydra/geometry.inl
-index 9c1f3e4..dcad380 100644
+index 9c1f3e454..dcad3809d 100644
 --- a/src/hydra/geometry.inl
 +++ b/src/hydra/geometry.inl
 @@ -111,8 +111,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
@@ -102,7 +102,7 @@ index 9c1f3e4..dcad380 100644
    // based on it (e.g. check whether an attribute is actually needed)
    bool rebuild = false;
 diff --git a/src/hydra/instancer.cpp b/src/hydra/instancer.cpp
-index ad0772e..2fe6f6b 100644
+index ad0772ede..629f78da0 100644
 --- a/src/hydra/instancer.cpp
 +++ b/src/hydra/instancer.cpp
 @@ -58,6 +58,9 @@ void HdCyclesInstancer::SyncPrimvars()
@@ -115,7 +115,45 @@ index ad0772e..2fe6f6b 100644
  
    /* Accept different array types for quaternions. */
    if (HdPrimvarSchema pv = primvars.GetPrimvar(HdInstancerTokens->instanceRotations)) {
-@@ -169,4 +172,32 @@ VtMatrix4dArray HdCyclesInstancer::ComputeInstanceTransforms(const SdfPath &prot
+@@ -109,30 +112,33 @@ VtMatrix4dArray HdCyclesInstancer::ComputeInstanceTransforms(const SdfPath &prot
+   VtMatrix4dArray transforms;
+   transforms.reserve(instanceIndices.size());
+ 
++  /* Rostrum: USD's row-vector order, as Hydra's other instancers do: each copy's own transform, then scale,
++   * rotate, translate, then the instancer's transform (Cycles multiplied the other way round, so a turned or scaled
++   * copy was also moved: tumbled falling copies were drawn far from their place). */
+   for (const int index : instanceIndices) {
+     GfMatrix4d transform = instanceTransform;
+ 
+     if (index < _translate.size()) {
+       GfMatrix4d translateMat(1);
+       translateMat.SetTranslate(_translate[index]);
+-      transform *= translateMat;
++      transform = translateMat * transform;
+     }
+ 
+     if (index < _rotate.size()) {
+       GfMatrix4d rotateMat(1);
+       const GfVec4f &quat = _rotate[index];
+       rotateMat.SetRotate(GfQuatd(quat[0], quat[1], quat[2], quat[3]));
+-      transform *= rotateMat;
++      transform = rotateMat * transform;
+     }
+ 
+     if (index < _scale.size()) {
+       GfMatrix4d scaleMat(1);
+       scaleMat.SetScale(_scale[index]);
+-      transform *= scaleMat;
++      transform = scaleMat * transform;
+     }
+ 
+     if (index < _instanceTransform.size()) {
+-      transform *= _instanceTransform[index];
++      transform = _instanceTransform[index] * transform;
+     }
+ 
+     transforms.push_back(transform);
+@@ -169,4 +175,32 @@ VtMatrix4dArray HdCyclesInstancer::ComputeInstanceTransforms(const SdfPath &prot
    return transforms;
  }
  
@@ -149,7 +187,7 @@ index ad0772e..2fe6f6b 100644
 +
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/instancer.h b/src/hydra/instancer.h
-index 844ca77..6da25ba 100644
+index 844ca77f1..6da25ba3a 100644
 --- a/src/hydra/instancer.h
 +++ b/src/hydra/instancer.h
 @@ -25,6 +25,9 @@ class HdCyclesInstancer final : public PXR_NS::HdInstancer {
@@ -171,7 +209,7 @@ index 844ca77..6da25ba 100644
  
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
-index 1457e775..39b31f7a 100644
+index 1457e7752..39b31f7aa 100644
 --- a/src/hydra/light.cpp
 +++ b/src/hydra/light.cpp
 @@ -31,6 +31,7 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
@@ -259,7 +297,7 @@ index 1457e775..39b31f7a 100644
    Shader *const shader = lock.scene->create_node<Shader>();
    array<Node *> used_shaders;
 diff --git a/src/hydra/render_delegate.cpp b/src/hydra/render_delegate.cpp
-index 3cda4a57..6dc3b946 100644
+index 3cda4a573..6dc3b9465 100644
 --- a/src/hydra/render_delegate.cpp
 +++ b/src/hydra/render_delegate.cpp
 @@ -18,6 +18,7 @@
@@ -356,7 +394,7 @@ index 3cda4a57..6dc3b946 100644
      return VtValue(TfToken(Device::string_from_type(session->params.device.type)));
    }
 diff --git a/src/hydra/render_delegate.h b/src/hydra/render_delegate.h
-index f6148481..3b984866 100644
+index f61484811..3b9848669 100644
 --- a/src/hydra/render_delegate.h
 +++ b/src/hydra/render_delegate.h
 @@ -14,7 +14,7 @@ HDCYCLES_NAMESPACE_OPEN_SCOPE
@@ -369,7 +407,7 @@ index f6148481..3b984866 100644
      ((threads, "cycles:threads")) \
      ((timeLimit, "cycles:time_limit")) \
 diff --git a/src/hydra/session.cpp b/src/hydra/session.cpp
-index ae1ede13..979ae5c8 100644
+index ae1ede13b..979ae5c84 100644
 --- a/src/hydra/session.cpp
 +++ b/src/hydra/session.cpp
 @@ -24,6 +24,16 @@ const std::unordered_map<TfToken, PassType, TfToken::HashFunctor> kAovToPass = {
@@ -446,7 +484,7 @@ index ae1ede13..979ae5c8 100644
  {
    for (HdRenderPassAovBinding &aovBinding : _aovBindings) {
 diff --git a/src/hydra/session.h b/src/hydra/session.h
-index 4c4e8ff6..368489cf 100644
+index 4c4e8ff66..368489cf6 100644
 --- a/src/hydra/session.h
 +++ b/src/hydra/session.h
 @@ -10,6 +10,12 @@

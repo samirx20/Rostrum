@@ -1,8 +1,8 @@
 @echo off
 REM Cycles' Hydra plug-in with our patch (cycles-rostrum.patch: H22's lights - a dome the camera doesn't see, panel
-REM spread, light linking; 3D-11b's object motion blur - transforms sampled over the shutter; 3D-15's light passes and rostrum:castShadows), built into install-r3\.
+REM spread, light linking; 3D-11b's object motion blur - transforms sampled over the shutter; 3D-15's light passes and rostrum:castShadows; 3D leftovers' per-copy colour), built into install-r4\.
 REM Run through the lock:
-REM   pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "<team>: cycles r3 build" build cmd.exe /c <worktree>\apps\3d\libs\build_cycles.bat
+REM   pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "<team>: cycles r4 build" build cmd.exe /c <worktree>\apps\3d\libs\build_cycles.bat
 REM Then: python -I apps\3d\libs\lay_out.py   (lays out the new library folder, VERSION in lay_out.py)
 REM The GPU kernels don't change with the patch (it touches src\hydra only), so they are not rebuilt: they are copied
 REM from the laid-out library folder (KERNELS below, or set ROSTRUM3D_KERNELS). Needs what proofs\3d-product\build.bat
@@ -26,15 +26,15 @@ if errorlevel 1 (
 )
 REM the build folder; ROSTRUM3D_CYCLES_BUILD may name an earlier one (e.g. build-r2) so only the changed files compile
 set BUILD=%ROSTRUM3D_CYCLES_BUILD%
-if "%BUILD%"=="" set BUILD=%SRC%\build-r3
-cmake -S "%SRC%" -B "%BUILD%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="%SRC%\install-r3" ^
+if "%BUILD%"=="" set BUILD=%SRC%\build-r4
+cmake -S "%SRC%" -B "%BUILD%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="%SRC%\install-r4" ^
   -DCUDA_TOOLKIT_ROOT_DIR="%CUDA%" -DWITH_CYCLES_CUDA_BINARIES=OFF ^
   -DWITH_CYCLES_DEVICE_OPTIX=ON -DOPTIX_ROOT_DIR="%OPTIX%" ^
   -DWITH_CYCLES_DEVICE_HIP=OFF -DWITH_CYCLES_DEVICE_ONEAPI=OFF ^
   -DWITH_CYCLES_OSL=OFF -DWITH_CYCLES_ALEMBIC=OFF -DWITH_CYCLES_OPENVDB=OFF -DWITH_CYCLES_NANOVDB=OFF ^
   -DWITH_CYCLES_USD=ON -DWITH_CYCLES_HYDRA_RENDER_DELEGATE=ON -DWITH_STRICT_BUILD_OPTIONS=ON || exit /b 1
 cmake --build "%BUILD%" -j 4 --target install || exit /b 1
-if not exist "%SRC%\install-r3\lib" mkdir "%SRC%\install-r3\lib"
-copy /y "%KERNELS%\*.zst" "%SRC%\install-r3\lib\" >nul || (echo could not copy the GPU kernels from %KERNELS% & exit /b 1)
-if not exist "%SRC%\install-r3\hydra\hdCycles.dll" (echo the build made no hydra\hdCycles.dll & exit /b 1)
-echo built %SRC%\install-r3
+if not exist "%SRC%\install-r4\lib" mkdir "%SRC%\install-r4\lib"
+copy /y "%KERNELS%\*.zst" "%SRC%\install-r4\lib\" >nul || (echo could not copy the GPU kernels from %KERNELS% & exit /b 1)
+if not exist "%SRC%\install-r4\hydra\hdCycles.dll" (echo the build made no hydra\hdCycles.dll & exit /b 1)
+echo built %SRC%\install-r4

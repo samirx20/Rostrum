@@ -14,7 +14,7 @@ from rostrum3d import KIND, compile as C, graph, graph_mtlx
 
 SAM = Who.person()
 APP = Path(__file__).resolve().parents[2]
-STDLIB = Path.home() / ".rostrum/libs/3d/5.2.2-cycles-a456b76-r3/runtime/usd/lib/usd/usdMtlx/resources/libraries/stdlib/stdlib_defs.mtlx"
+STDLIB = Path.home() / ".rostrum/libs/3d/5.2.2-cycles-a456b76-r4/runtime/usd/lib/usd/usdMtlx/resources/libraries/stdlib/stdlib_defs.mtlx"
 
 
 def _doc():
