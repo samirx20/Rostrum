@@ -24,7 +24,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, tool_groups
+from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, small_toolset, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -100,7 +100,8 @@ def app_tools():
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:
     docs = documents if documents is not None else (open_documents(project, items or []) if project else {})
-    instructions = INSTRUCTIONS if docs else f"{INSTRUCTIONS} {project_tool.NO_PROJECT}"
+    lead = small_toolset.INSTRUCTIONS if small_toolset.wanted() else INSTRUCTIONS
+    instructions = lead if docs else f"{lead} {small_toolset.NO_PROJECT if small_toolset.wanted() else project_tool.NO_PROJECT}"
     return App("rostrum-2d", docs, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES),
                folder=project, script_help=SCRIPT_HELP, script_look=script_look.after_run)
 
@@ -117,6 +118,8 @@ def make_runtime(app: App) -> Runtime:
     inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
     clock = session_clock.with_clock(runtime)        # every reply ends with the session's clock line
     export_beats.with_beats(runtime, clock)          # the exports take the brief's beats; the clock keeps them
+    if small_toolset.wanted():                       # ROSTRUM2D_TOOLSET=small: the four-tool server (same engine)
+        small_toolset.apply(runtime, clock)
     return runtime
 
 
