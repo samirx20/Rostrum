@@ -29,6 +29,7 @@ class Agent:
     detect_paths: tuple = ()        # folders whose presence means the app is installed
     files_env: tuple | None = None  # (environment variable, file name): that folder replaces the default
     candidates: tuple = ()          # other places the file can live; the first that exists wins over `files`
+    fallback: str | None = None     # used instead of `files` only when the folder of `files` does not exist
     project_file: str | None = None
     cli_add: tuple | None = None
     cli_remove: tuple | None = None
@@ -96,8 +97,9 @@ AGENTS = (
                 "(Unsure which file your Windsurf reads? Use its “Open MCP config file” button.)"),
     # Gemini CLI is not listed: Google stopped it for personal accounts on 2026-06-18 and sends people to Antigravity.
     Agent("antigravity", "Antigravity", "https://codelabs.developers.google.com/google-workspace-mcp-antigravity", ("agy",),
-          _same("~/.gemini/antigravity/mcp_config.json"), "json", ("mcpServers",), "std",
-          detect_paths=("~/.gemini/antigravity",), know_by_module=True,
+          _same("~/.gemini/config/mcp_config.json"), "json", ("mcpServers",), "std",   # the file the app reads
+          fallback="~/.gemini/antigravity/mcp_config.json",                            # older setups without config/
+          detect_paths=("~/.gemini/config", "~/.gemini/antigravity"), know_by_module=True,
           restart="In Antigravity open the “…” menu of the Agent panel → MCP Servers → Manage MCP Servers and press Refresh "
                   "(or start a new `agy` session).",
           check="In the Agent panel's “…” menu choose MCP Servers → Manage MCP Servers (or type /mcp in `agy`); "
@@ -144,6 +146,8 @@ def user_file(a: Agent, generic: bool = False) -> Path:
     if folder:
         return Path(folder) / a.files_env[1]
     primary = expand(a.files[plat()])
+    if a.fallback and not primary.parent.exists():
+        primary = expand(a.fallback)
     return next((p for p in map(expand, a.candidates) if p.exists()), primary)
 
 
