@@ -40,19 +40,19 @@ def test_walk_plants_feet_while_the_body_travels_and_everything_is_plain_keys():
     assert len(keys_of(d.item("eyes"), "show")) >= 4
 
 
-def test_ui_blocks_make_one_counting_text_and_a_clipped_screen():
+def test_ui_blocks_make_one_counting_text_and_a_column_screen():
     d = Document.new(KIND)
     src = '''
 comp("c", duration=3)
 scr = device("phone", kind="phone")
 with scr:
-    rows = list_rows([("Ana", "owes you", "$42.00"), "Ben"], y=200, w=scr.w)
+    rows = list_rows([("Ana", "owes you", "$42.00"), "Ben"])
     total = counter("total", 0, 186.4, at=1, duration=1.5, decimals=2, prefix="$")
 '''
     d.run_script("ui.py", run_source(src, "ui.py"))
     total = d.item("total")
     assert total["counter"] and total["countPrefix"] == "$" and [k["v"] for k in keys_of(total, "count")] == [0, 186.4]
-    assert d.item("phone_screen")["clip"] and d.item("list_r1_title")["body"] == "Ben"
+    assert d.item("phone_screen")["layout"] == "column" and d.item("list_r1_title")["body"] == "Ben"
 
 
 def test_an_arm_keyed_on_its_upper_bone_alone_bends_at_rest_and_follows_the_swing_and_takes_the_body_colour():

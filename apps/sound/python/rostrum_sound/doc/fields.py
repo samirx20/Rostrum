@@ -37,6 +37,9 @@ FIELDS = {
                      valid_when={"all": [{"not": IS("length", None)}, IS("ringOut", False)]},
                      help="The song's last tenth of a second fades out, so notes still ringing at its Length stop softly "
                           "instead of with a click. Off: the sound stops dead at the Length."),
+        N("gridStart", 0, 600, "Time", "s", imp="deep", default=0, label="Bar 1 starts",
+          help="The file time (seconds) where bar 1 / beat 0 begins; left out = 0. Music before it is a pickup, written "
+               "in seconds. Moves the whole beat grid without changing the tempo (script: downbeat(bar(21), at=36.0))."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         Param.choice("beatUnit", [2, 4, 8, 16], group="Time", importance="secondary", label="Beat unit",
                      help="What one beat of the time signature is (its bottom number): 4 quarters, 8 eighths (6/8)."),

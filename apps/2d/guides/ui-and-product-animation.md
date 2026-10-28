@@ -1,55 +1,50 @@
 # UI and product animation
 
-How to build screens, cards, devices and product shots from boxes, images, masks, glass and depth, and the script calls that make a whole screen of plain layers fast. Read `start-here` first.
+How to build screens, cards, devices and product shots from boxes, images, masks, glass and depth, and the script calls that make a whole screen of plain layers fast. Read `start-here` first, and `lay-out-a-screen` for placing things with rows, columns and grids instead of x / y.
 Fragments show how a tool is called; the numbers are placeholders.
 
 ## Layout
 
-A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchorX` / `anchorY` 0–1 across its box;
-0 = left / top). A group is the container: its children are placed from the group's own top-left (0, 0).
+A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchor="top-left"`, `"left"`, `"center"` …
+or `anchorX` / `anchorY` 0–1 across its box); with no `x`, `y` it sits at the parent's centre. A group's children are
+placed from the group's own top-left (0, 0).
 
-**Auto layout.** Give a group `layout="row"`, `"column"` or `"grid"` and it places its layers itself, again on every
-frame, so a layer that grows (its `w` / `h` keyed) pushes the others along:
+**Lay screens out with boxes, not x / y.** `row`, `column`, `grid` and `stack` (guide `lay-out-a-screen`) are groups
+with a layout: they place and size what is made inside them, with padding, gap, align and justify as on a web page,
+again on every frame, so a layer that grows (its `w` / `h` keyed) pushes the others along:
 
 ```python
-with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", gap=18, padding=0, hugWidth=False, hugHeight=True):
+with column("list", x=240, y=180, w=600, gap=18, padding=0):
     for i in range(4):
-        with group(f"card{i}", w=600, h=116, clip=True) as card:
+        with group(f"card{i}", w="fill", h=116, clip=True) as card:
             ...                                    # the card's own layers, placed by hand inside it
     card.key("h", {0.6: 116, 1.5: 372})            # this card opens; the ones under it slide down
 ```
 
-| Setting | What it does |
-|---|---|
-| `gap`, `padding` | space between layers (16 px at first), and inside the group's edge (10 px at first, as in a design tool; files made before this keep 0) |
-| `justify` | along the line: `start`, `center`, `end`, `between` (row / column) |
-| `align` | across the line (or in a grid cell): `start`, `center`, `end`, `stretch` (fills it) |
-| `wrap`, `rowGap` | a new line when the next layer doesn't fit (row / column), and the space between lines |
-| `columns` | grid: equal columns `gap` apart, rows `rowGap` apart, each as tall as its tallest layer |
-| `hugWidth`, `hugHeight` | the group's size follows what is inside it. On by default (as in a design tool): turning auto layout on makes the box grow with its text; turn one off to keep a fixed width or height. Files made before this keep their own size (they are set off) |
-| `hugPin` | on (the default): a hugging group grows right and down from its top-left, as a design tool's frame (the left edge of a row, the top of a column; across a row by `align`) |
-| a layer's `layoutGrow` | takes this share of the room left along the line (shapes, images, groups) |
-| a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
+In the settings panel (and as fields: `layout`, `gap`, `padding`, `paddingX` / `paddingY`, `justify`, `align`, `wrap`,
+`columns`, `columnsTemplate`, `rowGap`, `sizeW` / `sizeH` fixed, fit, fill or percent, `hugPin`) it is the group's
+Auto layout section; a layer in it has `layoutGrow`, `layoutShrink`, `alignSelf`, `margin`, `colSpan`, `shiftX` /
+`shiftY` and `layoutApart` (set apart: placed by its own `x`, `y`, a badge on a card). `hugPin` (on at first): a group
+that fits its content grows right and down from its top-left, as a design tool's frame.
 
 **A group's own background.** `background=True` draws a colour box behind the group's layers, as big as the group:
 `bgColor` (a dark slate at first), `bgRadius` (corners; half the height or more is a pill), and an optional outline (`bgStroke`,
 `bgStrokeColor`, `bgStrokeWidth`). With auto layout and hugging on, the box hugs the layers with the `padding` all
-round, so a lower-third is one group: a name with a pill around it that grows with the name. In the settings panel
-it is the group's Background section. A hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the panel), so a
-longer name pushes the pill's right end only. Move the anchor off the middle (`anchorX=1` grows leftward) or turn `hugPin`
-off and it grows around its anchor instead. In a script, give the group its anchor (`anchorX=0` as below puts the left
-edge at `x`); with the middle anchor the edge is where the group's own `w` × `h` box puts it. Files made before this keep their old look (`hugPin` off) until you turn it on.
+round, so a lower-third is one group: a name with a pill around it that grows with the name (`bg=`, `radius=` on a
+`row` or `column` set them). In the settings panel
+it is the group's Background section. On the canvas a hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the
+panel), so a longer name pushes the pill's right end only; turn it off and it grows around its anchor. A script's box
+grows around its anchor (`hugPin=True` to pin it): `anchor="left"` as below keeps the left edge at `x`, `"right"` grows
+leftward, `"center"` both ways. Files made before this keep their old look (`hugPin` off) until you turn it on.
 
 ```python
-with group("lower_third", x=120, y=900, anchorX=0, anchorY=0.5, layout="row", padding=18, hugWidth=True,
-           hugHeight=True, background=True, bgColor="#1d4ed8", bgRadius=999):
+with row("lower_third", x=120, y=900, anchor="left", padding=18, bg="#1d4ed8", radius=999):
     text("name", body="Ada Lovelace", size=44)
 ```
 
 Layout uses each layer's own box (`w` × `h`) before scale and turn: animate `scale` for a pop that doesn't push the
-others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Text boxes are
-estimated from size and letters, so a row of texts may sit a little off; put text inside a fixed-size group. While
-laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
+others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Texts are
+measured by the engine that draws them and wrap at the width the layout gives them. While laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
 (each placed layer's x, y and size at a time) and `look_frame` (`what: "sheet"`).
 
 `clip=True` on a group hides children outside its box (a scrolling list, a window). The box is a plain rectangle: for
@@ -91,32 +86,66 @@ orders by where each is seen (one that fades or scales in from 0 counts where it
 
 These script calls make a device and the usual parts of a screen as **plain groups of shapes and texts**, with ids made
 from the block's id (`trips_r0_title`, `pay_label`), so each part is moved, keyed, restyled or taken apart afterwards
-like anything you made by hand. Every colour and size is a parameter; the defaults are only a neutral start. Each is
-placed by its top-left `x`, `y` in the parent's px (the screen's, inside `with scr:`).
+like anything you made by hand. Every colour and size is a parameter; the defaults are only a neutral start (drawn
+for a 390 px wide screen and scaled to the screen they are made in).
+
+**Placed by the box they are made in.** Each block is itself a small layout box, so it stretches with its parent:
+
+- `device()` sizes itself to the picture: a phone fills 82 % of the picture's height (keeping its 430 : 900 shape), a
+  laptop or browser 74 % (never wider than 86 % of the width), centred. `fit=0.6` is another share of the height;
+  `anchor="left"` / `"right"` puts it against that side of a title-safe area `margin` px in (8 % of the width at
+  first), leaving the other side for words.
+- Its screen is a **column** filling the screen: blocks made in it go one under the other, full width. Put the
+  content between the bars in its own padded `column(padding=20, gap=14)` (guide `lay-out-a-screen`). The screen has
+  no colour unless `screen="#ffffff"`; the blocks' starting colours follow the screen (light or dark). What runs past the screen
+  shows, so it is seen; `overflow="hidden"` cuts it at the screen's rounded edge.
+- `tab_bar` sits at the bottom of the column: a spacer it makes before itself takes the room left.
+- Made outside any box, a block needs `x=` and `y=` (its top-left). Inside one, `x` / `y` need `apart=True`.
 
 | Call | Makes |
 |---|---|
-| `scr = device(id, kind="phone" \| "laptop" \| "browser", x=, y=, w=, h=, body=, screen=, url=)` | the device from shapes, centred on (x, y), and returns its **screen**: a clipped group (rounded by a mask) whose px start at the screen's top-left. `scr.w`, `scr.h` are its size. `layer(id)` is the whole device (move, scale or tilt that). |
-| `status_bar(w=, y=0, time="9:41", color=)` | the time on the left, signal, Wi-Fi and battery on the right |
-| `nav_bar(title, w=, y=, back=, action=)` | a big title, an optional back label and action word |
-| `tab_bar(labels, w=, parent_h=scr.h, active=0, accent=)` | tabs across the bottom, each an icon square and a label |
-| `rows = list_rows(rows, x=, y=, w=, row_h=84, avatar=True)` | one group per row (`<id>_r0` …): avatar with an initial, title, detail line, value on the right, divider. A row is a string, `(title, detail)` or `(title, detail, value)`. Returns the row groups, top first. |
-| `card(id, x=, y=, w=, h=, title=, detail=, value=, fill=, color=, muted=, radius=28, shadow=True)` | a rounded card with text at its top-left and a big value at its bottom-left; `color` is the title and value text (dark ink by default), `muted` the detail line: pass light ones when `fill` is dark or strongly coloured; make more of its layers inside `with` it |
-| `button(label, x=, y=, w=, h=, fill=, outline=False)` | a pill with its label centred (`<id>_bg`, `<id>_label`) |
-| `toggle(id, x=, y=, on=False)` | a switch: `<id>_track` and `<id>_knob`; flip it by keying the knob's `x` and the track's `fill` |
-| `bars = bars(values, x=, y=, w=, h=, labels=, top=)` | a bar chart standing on its bottom edge (each bar anchored there: a key on `scaleY` from 0 grows it upward). Returns the bars, left first. |
+| `scr = device(id, kind="phone" \| "laptop" \| "browser", fit=, anchor="center" \| "left" \| "right", margin=, x=, y=, w=, h=, body=, screen=, overflow=, url=, **column words)` | the device from shapes and returns its **screen**: a column filling the screen (`padding=`, `gap=`, `justify=` change it). `scr.w`, `scr.h` are its size. `layer(id)` is the whole device (move, scale or tilt that). Given `x`, `y`, `w`, `h` win over `fit` / `anchor`. |
+| `status_bar(time="9:41", color=, h=)` | the time on the left, signal, Wi-Fi and battery on the right |
+| `nav_bar(title, back=, action=, h=)` | a big title, an optional back label and action word, all inside its own height |
+| `tab_bar(labels, active=0, accent=)` | tabs across the screen's bottom, each an icon square and a label |
+| `rows = list_rows(rows, row_h=, avatar=True)` | one group per row (`<id>_r0` …): avatar with an initial, title, detail line, value on the right, divider. A row is a string, `(title, detail)` or `(title, detail, value)`. Returns the row groups, top first. |
+| `card(id, h=, title=, detail=, value=, fill=, color=, muted=, radius=, shadow=True)` | a rounded card (`<id>_bg`) with text at its top and a big value at its bottom (h left out, it fits them); `color` is the title and value text (dark ink by default), `muted` the detail line: pass light ones when `fill` is dark or strongly coloured; make more of its layers inside `with layer("<id>_body")` (a padded column) |
+| `button(label, h=, fill=, outline=False)` | a pill with its label centred (`<id>_bg`, `<id>_label`) |
+| `toggle(id, on=False, label=, detail=)` | a switch: `<id>_track` and `<id>_knob`; with `label` it is a settings row (words left, the switch `<id>_switch` right). Flip it by keying the knob's `x` (from `h/2` to `w - h/2`) and the track's `fill` |
+| `bars = bars(values, h=, labels=, top=)` | a bar chart standing on its floor (each bar's origin bottom-center: a key on `scaleY` from 0 grows it upward), labels under the bars inside its height. Returns the bars, left first. |
 | `counter(id, start, to, at=, duration=, decimals=, prefix=, suffix=, separator=, **text fields)` | one text that counts (below) |
+| `pointer(id="cursor", kind="arrow" \| "touch")`, `tap(pointer, target, at=)` | a cursor and taps with it (below) |
+
+Every call takes `w=` (px, `"50%"`, `"fill"`), and `x`, `y` outside a box or with `apart=True`.
 
 ```python
-scr = device("phone", kind="phone", x=640, y=540)
+scr = device("phone", anchor="right", screen="#ffffff")   # right of the picture: the left side holds a headline
 with scr:
-    status_bar(w=scr.w); nav_bar("Trips", w=scr.w, y=54, action="Edit")
-    card("hero", x=24, y=170, w=scr.w - 48, h=200, title="Lisbon dinner", detail="4 people", value="$168.00")
-    rows = list_rows([("Ana", "owes you", "$42.00"), ("Ben", "owes you", "$42.00")], y=390, w=scr.w)
-    tab_bar(["Home", "Trips", "Friends", "You"], w=scr.w, parent_h=scr.h, active=1)
-for i, r in enumerate(rows):                          # stagger the rows in: they are ordinary groups
-    r.key("opacity", {1.0 + i * 0.06: 0, 1.4 + i * 0.06: 1}).key("y", {1.0 + i * 0.06: r.y + 30, 1.4 + i * 0.06: r.y})
+    status_bar(); nav_bar("Trips", action="Edit")
+    with column("feed", padding=20, gap=14):
+        hero = card("hero", title="Lisbon dinner", detail="4 people", value="$168.00")
+        rows = list_rows([("Ana", "owes you", "$42.00"), ("Ben", "owes you", "$42.00")])
+    tab_bar(["Home", "Trips", "Friends", "You"], active=1)
+for i, r in enumerate(rows):                          # stagger the rows in: shiftY slides without pushing the others
+    r.key("opacity", {1.0 + i * 0.06: 0, 1.4 + i * 0.06: 1}).key("shiftY", {1.0 + i * 0.06: 30, 1.4 + i * 0.06: 0})
 ```
+
+A second screen of the same device (a detail page the first one opens into) is a column the size of the screen set
+apart inside it, `with column("detail", apart=True, x=0, y=0, w=scr.w, h=scr.h):`; its blocks go from its own top.
+
+### A pointer and taps
+
+`cur = pointer()` makes a cursor in the group it is called in (inside the screen, so it moves with the device; there it
+is set apart, over the screen's layers and taking no room): an arrow drawn from a path (`<id>_arrow`) with a soft shadow, or `kind="touch"`, a
+round see-through fingertip (`<id>_dot`). Its `x`, `y` is its **tip**, and it scales around the tip.
+
+`tap(cur, target, at=2.0)` glides the tip from where it was (over `move=0.7` s, `ease="easeInOut"`) onto the target,
+landing at `at`, then presses: the pointer and the target scale down and back (`press=0.95`, `False` for none) and a
+ring spreads under the tip (`ripple=False` for none). The tip lands **beside the target's words**, never on them: on a
+button its right part, on a card its lower right; `spot=(0.3, 0.8)` picks the spot yourself as a share of the target's
+box. The tip aims at where the target **is at `at`** (a button that slides up with a sheet is tapped where it has
+arrived; key its move before the tap). Make the pointer and the target in the same screen. Each tap moves the pointer to the top of its group, so it draws over everything. Fade it in and out yourself
+(`cur.key("opacity", ...)`) inside the screen.
 
 ## Counting numbers
 
@@ -149,12 +178,29 @@ Techniques to check against, not a style:
 
 ## Into the screen: the camera on a device
 
-The frame (FRAME.md) is a camera over the comp, so the shot can travel into a device and back like a product film:
-`f = frame()`; `f.fit(["phone"], at=0.5)` frames the whole device; `f.fit(["hero_value"], at=3, pad=0.25,
-ease="easeInOut")` pushes in on a number as it counts; `f.fit(["phone"], at=5)` pulls back out; `f.cut(at=7,
-to="items", items=["rows"])` jumps to a new framing on a beat. Push in on the thing that changes (a count, a toggle, a
-chart growing) while it changes, and pull out before the next action happens elsewhere. A slight `tiltY` on the device
-group as it enters, settling to 0, makes the screen a physical object; keep it flat while the viewer reads.
+The frame (FRAME.md) is a camera over the comp, so the shot can travel into a device and back like a product film.
+`frame().fit(ids, at=, pad=, ease=)` frames layers by id wherever they are: a block inside the device's screen
+(`"hero"`, `"pay"`, `"rows_r2"`) is framed where it shows, so you never work out a rectangle by hand. `pad` is a share
+of the picture left around them (0.06 = 6 %).
+
+### Framing a device
+
+Frame the device **whole** or frame **one part of it**; the in-between, a framing that cuts 10–30 % off the phone's top
+or bottom, reads as a mistake. Whole: `f.fit(["phone"], at=0, pad=0.06)` (the device with a margin on its long side);
+with words beside it, `device(…, anchor="left")` and leave the frame home. A move between two whole framings (the
+device alone, then a wider shot with its headline) is calm; key them with `ease="easeInOut"`.
+
+### A push-in past the edge on purpose
+
+To show one part close, push **deep**, so the part fills the picture and the device's edges are clearly far outside
+it, left and right as well as top and bottom (a push that shows the device's body at the sides of the frame reads as
+dark bars, a broken frame; one that slices a label at the edge reads as a mistake: frame the label whole or leave it
+out): `f.fit(["hero"], at=3, pad=0.04, ease="easeInOut")` frames the card; `f.fit(["hero_value"], at=3.6, pad=0.2)`
+goes onto its number as it counts; `f.fit(["phone"], at=5, pad=0.06, ease="easeInOut")` pulls back out whole.
+`keep=["pay"]` keeps a second part in the frame with the first (a card and the button that changes it). `f.cut(at=7,
+to="items", items=["rows"])` jumps to a new framing on a beat. Push in on the thing that changes (a count, a toggle,
+a chart growing) while it changes, and pull out before the next action happens elsewhere. A slight `tiltY` on the
+device group as it enters, settling to 0, makes the screen a physical object; keep it flat while the viewer reads.
 
 ## Boxes, images, video
 
@@ -220,7 +266,7 @@ Effects are a layer's look, in order (`effect.add`, or `item.effect(type, id, ..
 | `rough` | Moves the layer's pixels by smooth noise, so every edge wobbles as if drawn or cut by hand: `amount` (px an edge moves at most), `size` (px, how wide one bump is), `detail` (1–8: finer wobble on top), `boil` (a new wobble every that many frames; 0 = still), `seed`. Works on any layer, a group (all its layers warp together), text and pictures. |
 
 ```python
-card = shape("glass", shape="rect", w=520, h=320, radius=32, x=960, y=540, fill="#ffffff")
+card = shape("glass", shape="rect", w=520, h=320, radius=32, fill="#ffffff")      # no x / y: centred
 card.effect("backdrop", id="frost", radius=40, fillAmount=0.2, saturate=1.4)
 card.effect("shadow", id="lift", dy=30, radius=60, strength=0.4)
 ```
@@ -244,7 +290,7 @@ A card with a front and a back is two groups in one, each turned edge-on in turn
 back never shows mirrored. At 90° a face is edge-on and invisible, so the swap at that moment can't be seen:
 
 ```python
-with group("card", x=960, y=540):
+with group("card"):                                    # centred, each face too
     with group("front") as front:
         shape("front_bg", w=360, h=480, radius=24, fill="#f4efe6")
         ...                                            # the front's layers
@@ -270,5 +316,5 @@ sheet over the flip (`look_frame` with `what: "sheet"`).
 - Animate toward the final layout you already placed: look at the last frame first, then key the way into it.
 - Use `value.set` when a person says "make it bigger": a still field changes, an animated one gets a key at `at`.
 - `look_review` names, with times, the room faults a viewer sees first in a product piece: a title running past or within 2.5 % of the frame edge (`text_edge` / `text_margin`: "runs 14 px past the right edge"), a title whose box nearly touches the layer stacked right above or below it for 1.5 s or more (`crowded`: a wordmark against its logo, a tagline against the wordmark), a small layer (a cursor, a badge) that sits in a screen most of the time but shows outside it (`outside`: "cursor shows outside phone 17–17.5 s"), and a shape parked as a dot for seconds before it grows (`speck`: a wipe circle left showing from 0 s).
-- **A cursor** belongs to the screen it taps: move it in while it is still see-through and fade it out inside the screen, so it never floats beside the device.
+- **A cursor** belongs to the screen it taps: make it with `pointer()` inside the screen, move it in while it is still see-through and fade it out inside the screen, so it never floats beside the device.
 - **A circle wipe** (an end card covering the screen): give it opacity 0 or size 0 until its start, and start it where it cannot be mistaken for content: a circle in the bars' own colour growing out of a chart reads as the bars melting into a blob.

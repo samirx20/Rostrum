@@ -68,6 +68,9 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if "loop" in node["props"]:         # an older document's on/off switch reaches the engine as a mode
         node["props"]["loop"] = looping.mode_of(node["props"]["loop"])
     anim = {**_anim(item, until), **(baked or {}).get(item["id"], {})}
+    if "boxWidth" in anim:      # a layout's wrap width: a still field for the engine, so the widest it takes
+        widths = [k["v"] for k in anim.pop("boxWidth") if k["v"] > 0]
+        node["props"]["boxWidth"] = max(widths) if widths else node["props"].get("boxWidth", 0)
     anim = fill_paint.engine_anim(item, anim)      # a gradient fill goes as its effect (below)
     if anim:
         node["anim"] = anim

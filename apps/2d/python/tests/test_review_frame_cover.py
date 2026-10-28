@@ -1,5 +1,5 @@
 """look_review names what the round-3 blind judges faulted: a near-empty frame mid-film, look-alike opening shots, an end
-card held for a third of the film, a text crossed by a layer in front, a character hidden behind a desk or on a bare set;
+card held for a third of the film, a character hidden behind a desk or on a bare set;
 and stays quiet on the same scenes made the other way."""
 from rostrum_core import Document
 
@@ -47,15 +47,6 @@ def test_end_card_held():
     assert len(rows) == 1 and rows[0]["start"] == 5 and "50 %" in rows[0]["text"] and '"logo"' in rows[0]["text"]
     drift = 'g = shape("logo", x=100, y=90, w=120, h=60, fill="#ffffff", start=5)\ng.key("x", {5: 100, 10: 250})'
     assert review_frame.end_hold(_sampled(moving + drift)) == []
-
-
-def test_text_crossed_by_a_layer_in_front():
-    title = 'text("title", body="Shaped", size=40, x=160, y=90)\n'
-    pole = 'shape("pole", x=160, y=90, w=16, h=180, fill="#444444")\n'
-    rows = review_cover.crossed(_sampled(title + pole))
-    assert len(rows) == 1 and rows[0]["ids"] == ["title", "pole"] and (rows[0]["start"], rows[0]["end"]) == (0, 10)
-    assert review_cover.crossed(_sampled(pole + title)) == []                                      # behind it
-    assert review_cover.crossed(_sampled(title + pole.replace(")\n", ", opacity=0)\n"))) == []    # fully clear
 
 
 RIG = '''

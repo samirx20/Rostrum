@@ -9,10 +9,9 @@ from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
-from rostrum3d.faults import note as fault_words, shot_faults
 from rostrum3d.sim.fall_view import fall_note
 
-from . import draw, onion_look, paint_canvas, picture_facts, step_look, text_facts
+from . import draw, onion_look, paint_canvas, picture_facts, shot_faults, step_look, text_facts
 from .shape_look import length
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, look_renderer, seconds, size_of
 
@@ -53,7 +52,7 @@ def look_frame(ctx, args):
     onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc
     or a spacing; a quick look only (not final), drawn by the live view, so no studio light or outline. highlight = "steps:arm" or
     "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step`
-    names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. At this frame it also names, only when one exists, a part separated from the figure it was joined to, a thing floating above what is under it (cm), a subject cut by the frame edge (which edge); data `faults`."""
+    names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args)
@@ -81,12 +80,11 @@ def look_frame(ctx, args):
             words, text = text_facts.sentence(text_facts.seen_texts(doc, info, frame, w / h))
             said, facts = said + words, {**facts, **text}
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
-        if not args.get("through"):                    # parts apart, floating, cut by the frame edge at this frame
-            faults = shot_faults(doc.data, info["id"], ctx.app.folder, at=frame)
-            said, facts = said + fault_words(faults), {**facts, "faults": faults}
+        found = None if args.get("through") else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder)   # a light's view is not the shot's picture
         return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
-                      **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts}, [dest], [dest], engine.take_notices())
+                      **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts},
+                     [dest], [dest], engine.take_notices(), faults=found)
 
     return ctx.long(f'look_frame {info["id"]} f{frame}', job_fn)
 
@@ -115,7 +113,7 @@ def _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene):
                                            "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
 def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over the shot (or a range) in one image, each tile labelled with its frame and time. Drawn fast
-    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix. Also, only when one exists, names faults a client would see (worst first, a few at most, from the document on about ten frames, nothing extra rendered): a part that separates from the figure it was joined to, a thing that floats above what is under it while holding its height (cm), a main subject cut by the frame edge or leaving the frame (which edge, from when), as warnings."""
+    (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. When the shot simulates a fall or cloth, the reply also says in plain words when the range opens mid-drop or after the landing and when the last stretch doesn't move, with the fix. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground, a part come apart from its figure, a subject leaving the picture, no floor in the picture)."""
     doc, info = doc_and_shot(ctx, args)
     fps, first, last = info["fps"], info["start"], info["end"]
     f0 = first + round(args.get("start", 0.0) * fps)
@@ -141,11 +139,11 @@ def look_sheet(ctx, args):
                 pngs.append(png)
                 job.progress(i + 1, len(frames))
             sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for p, f in zip(pngs, frames)], tile_w, cols, dest)
+            found = shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder)       # the tiles are still on disk here
         return Reply(f'Contact sheet of {info["id"]}: {len(frames)} frames, {frames[0]}–{frames[-1]} ({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), '
                      f'{renderer}, {sw}×{sh}.', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
                                                  "cols": cols, "camera": info["camera"]}, [dest], [dest],
-                     [*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))]),
-                      *shot_faults(doc.data, info["id"], ctx.app.folder, (f0, f1))])
+                     [*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])], faults=found)
 
     return ctx.long(f'look_sheet {info["id"]}', job_fn)
 

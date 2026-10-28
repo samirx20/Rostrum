@@ -229,6 +229,11 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
     }
 }
 
+/// A text's own box style and inner markup as a text layer writes them (scene/layout_cmd.rs lays texts out with them).
+pub(crate) fn text_content(it: &Item) -> R<(String, String)> {
+    content(it, Look::default())
+}
+
 fn boxed(style: &str, inner: &str, full: bool) -> String {
     let size = if full { "width:100%;height:100%;" } else { "" };
     format!("<div style=\"position:absolute;left:0;top:0;{size}{style}\">{inner}</div>")

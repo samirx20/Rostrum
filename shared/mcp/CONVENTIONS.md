@@ -80,6 +80,7 @@ Every reply has the same shape:
 - `data`: small structured facts. Time results always carry both `time` (seconds) and `frame`.
 - `files`: absolute paths of anything written. Look pictures go to the project's `looks/` folder (`rostrum_core.mcp.files.look_folder`), so they travel with it; with no project open, to the look cache.
 - Pictures also come back as MCP image content, so the agent sees them at once.
+- **Faults first.** A reply that checked the work (`run_script` with look, `look_*`, `render_*`) carries `faults` ([{id, what, when, fix}]) and `done`, and its summary opens with `NOT DONE: n faults. [id] what (when); fix: …` or `DONE: checked, no open faults.` before anything else. A render to a final file refuses open faults (the file is kept as `<name>.NOT-DONE.<ext>`) unless the call explains each one: `keep: {fault_id: "why"}` (`rostrum_core/mcp/faults.py`).
 - **Edits** add `changed`: the history entry id, the operation ids, and any **new** check failures this change caused. A change that breaks something says so in its own reply.
 - `warnings` also name, on every reply about a document, any plugin that document uses and this Rostrum doesn't have ("This file uses the plugin \"hiremylens.wiggle-tools\" 1.2.0, which isn't installed …"). Its parts (names with a `prefix:`) are kept untouched; don't try to edit or remove them to make the warning go away (OPERATIONS.md § 11).
 
@@ -142,6 +143,7 @@ Renders, simulations, AI models and big analyses go through the **one jobs queue
 ```
 
 - `inspect_job { "job_id": "job_7f3a", "wait_s": 20 }` waits up to `wait_s` (at most 25) and returns the result, or how far it has got (`"frames 120 of 240"`).
+- Every `look_*` and `render_*` tool takes `"wait"`: `true` (about 50 s) or a number of seconds (up to 600). When the tool answers with a job it waits for it in the same call and answers with the finished reply and its files; past the wait the reply says the job is still running, with its `job_id`; a failed job is an error. The server adds it (`rostrum_core/mcp/job_wait.py`), so no app writes its own. A wait over ~60 s suits `shared/mcp/call.py` (no time limit), not every MCP client.
 - Jobs live in the project service, not in the MCP server, so they survive a server restart. A job that was cut off says so; it is never just "unknown".
 - Asking for the same work again joins the running job instead of starting a second one.
 - The CLI (`rostrum-2d render …`) waits and prints progress instead of returning a job id.

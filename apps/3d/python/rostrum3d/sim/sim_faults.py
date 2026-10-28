@@ -1,12 +1,14 @@
 """faults.py for simulated things the shape boxes don't follow: a cloth's points and each copy of a falling copies item,
 where the shot's stored result has them, against the shot camera's picture at the sampled frames. A cloth cut by the
 frame edge; copies that end on or past the edge at the last frame looked at (a copy's centre within COPY_EDGE of it: half of it is cut).
+Entries of the shot's fault list (cut_edge:<id>), replacing mcp/shot_faults' box-based entry of the same id.
 
-    lines = sim_faults(doc.data, info, folder, [0, 10, 20], at=None)   # [(weight, line)]
+    found = sim_faults(doc.data, info, folder, [0, 10, 20], at=None)   # [fault]
 """
 from __future__ import annotations
 
 from rostrum_core.cache import CACHE
+from rostrum_core.mcp import faults as F
 
 from .. import aim
 from ..motion_track import Camera
@@ -25,8 +27,8 @@ def _where(data: dict, info: dict, folder):
     return CACHE.get(KIND, key) if key else None
 
 
-def sim_faults(data: dict, info: dict, folder, fs: list[int], at: int | None = None) -> list[tuple[float, str]]:
-    from ..faults import _when, edges
+def sim_faults(data: dict, info: dict, folder, fs: list[int], at: int | None = None) -> list[dict]:
+    from ..faults import edges, when
     things = [b for b in bodies(data) if value(b, "simulate") in ("cloth", "falls")]
     if not things or (where := _where(data, info, folder)) is None:
         return []
@@ -43,9 +45,9 @@ def sim_faults(data: dict, info: dict, folder, fs: list[int], at: int | None = N
             cut = [f for f, s in seen.items() if s[0] == "part"]
             if cut:
                 sides = sorted({e for f in cut for e in seen[f][1]}) or ["edge"]
-                out.append((1 + len(cut) / len(seen), f"Cloth {id_} is cut by the frame edge ({'/'.join(sides)}) from "
-                            f"{_when(info, cut[0])} ({len(cut)} of {len(seen)} looks). Frame the whole drape: move the "
-                            "camera back or widen the lens (shot.frame on it after the simulation)."))
+                out.append(F.fault(f"cut_edge:{id_}", f"cloth {id_} is cut by the {'/'.join(sides)} edge of the picture "
+                                   f"({len(cut)} of {len(seen)} looks)", "frame the whole drape: move the camera back or widen "
+                                   "the lens (shot.frame on it after the simulation); if the cut is meant, keep it", when(info, cut[0])))
         elif item["type"] == "copies":
             out += _copies(data, info, where, fr, cams, id_, check)
     return out
@@ -66,8 +68,8 @@ def _cloth(data, info, where, fr, id_, check) -> dict[int, list]:
     return out
 
 
-def _copies(data, info, where, fr, cams, id_, check) -> list[tuple[float, str]]:
-    from ..faults import _when
+def _copies(data, info, where, fr, cams, id_, check) -> list[dict]:
+    from ..faults import when
     from .fall_view import _paths
     p = _paths(data, info, None, where, fr).get(id_)
     if not p or p.get("kind") != "copies":
@@ -89,7 +91,7 @@ def _copies(data, info, where, fr, cams, id_, check) -> list[tuple[float, str]]:
         if hit:
             side = max(hit, key=hit.get)
             n = sum(hit.values())
-            out.append((1 + n / max(len(p["tracks"]), 1), f"{n} cop{'y' if n == 1 else 'ies'} of {id_} on or past the frame "
-                        f"edge ({'/'.join(sorted(hit))}, most at the {side}) at {_when(info, f)}: cut by the picture. Aim the pour "
-                        "or the camera so they land well inside the picture."))
+            out.append(F.fault(f"cut_edge:{id_}", f"{n} cop{'y' if n == 1 else 'ies'} of {id_} land on or past the "
+                               f"{'/'.join(sorted(hit))} edge of the picture (most at the {side})", "aim the pour or the camera so "
+                               "they land well inside the picture; if the cut is meant, keep it", when(info, f)))
     return out

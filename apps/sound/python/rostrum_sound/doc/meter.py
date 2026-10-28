@@ -91,7 +91,10 @@ def off_bar(root: dict, change: dict) -> str | None:
 
 
 def seg_at(root: dict, beat: float) -> Seg:
-    return next(s for s in reversed(segments(root)) if s.start <= beat + 1e-9)
+    """The time signature playing at `beat`; before bar 1 (a pickup, song field gridStart) the first one reaches back,
+    as the tempo map does, so a pickup's beats count as negative bars instead of failing."""
+    segs = segments(root)
+    return next((s for s in reversed(segs) if s.start <= beat + 1e-9), segs[0])
 
 
 def per_bar_at(root: dict, beat: float) -> int:

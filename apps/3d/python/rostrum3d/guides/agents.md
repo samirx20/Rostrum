@@ -7,6 +7,8 @@ replaces what the script made (values, keys, things you deleted from it) and kee
 script in a .py file (`run_script` `path`) so each edit is the whole scene. `edit_document` is for one-off fixes a script can't
 reach. Guide `script`: the API on one page.
 
+**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_sheet`, `look_shots`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground, a part come apart from its figure (`separated:arm`: shapes joined or grouped and touching at the start, apart later), a moving subject leaving the picture (`leaves_frame:cube`), no floor anywhere in the picture (`no_floor:<shot>`), and a cloth or falling copies on the frame's edge where the stored simulation has them. `look_motion` names the same faults from the document alone. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
+
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
 `{"ops": [{"op": "mesh.add", "args": {"id": "ball", "shape": "sphere", "radius": 0.1}},
@@ -43,7 +45,6 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      or edge-on; a text behind the camera or outside the picture is not listed. Fix a text that reads wrong by turning it
      (`ry` 180 turns its back to the camera) or moving the camera, then look again.
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
-   - **Faults a client would see** (a judge caps a piece at 6 for one): `look_frame`, `look_sheet`, `look_motion` and `render_video` add a short line, worst first, only when one exists, measured from the document on about ten frames (no extra render): "Part arm separates from body at 1.1 s: a 4 cm gap" (shapes sunk into each other or grouped and touching at the start, apart later), "buddy floats 2 cm above ground at 0.0 s, holding that height" (a thing or a touching figure that holds its height 1 cm to 15 cm above what is under it; a thing waiting for its drop is not counted), "cube is cut by the frame edge (bottom) from 4.4 s" / "cube leaves the frame (bottom) at 0.7 s" (moving, simulated or fair-sized things, cloth, and falling copies that end on the edge; never floors, walls, skies or backdrops). Fix each before you export again; data `faults`.
    - `look_motion` — the motion in numbers, every frame, read from the document (no picture, no renderer): per moving item
      its path (world metres and px on the picture), peak speed and stops; then what to fix: two shapes passing through each
      other (both named, the frames, how deep), sudden jumps (a snap or teleport between two frames), an item partly or

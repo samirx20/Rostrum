@@ -1,4 +1,5 @@
-"""Which project the Sound server works on: the person's last song at start-up, and switching while it runs.
+"""Which project the Sound server works on: at start-up the agent's own (rostrum_core/agent_start.py: --project, else the
+project this session last opened, else a fresh scratch project; never the person's by itself), and switching while it runs.
 
     run_open_project (what: recent) {}                         the person's recent songs (folder, item, name, last changed)
     run_open_project {folder, item?}                   close the open songs and open another project, as start-up does
@@ -13,23 +14,21 @@ import copy
 import dataclasses
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, agent_start, codes
 from rostrum_core.mcp import Reply, Tools, open_folder
 
 from .. import KIND
 from .. import lastproject as last
 from .. import note_ranges, script_scope
 from ..diagnose import FIXES
-from . import edit_examples, range_target
+from . import edit_examples, range_target, script_twins
 from .app import NO_PROJECT, open_project
 
 
-def start_choice(folder: str | None, items: list[str] | None) -> tuple[str | None, list[str]]:
-    """What to open at start-up: --project / --item as given, else the person's last song (nothing when they have none)."""
-    if folder:
-        return folder, items or [last.default_item(folder, explicit=True)]
-    row = last.last_project()
-    return (row["folder"], items or [row["item"]]) if row else (None, [])
+def start_choice(folder: str | None, items: list[str] | None) -> agent_start.Start:
+    """What to open at start-up: --project / --item as given, else this agent session's own song, else a fresh scratch
+    project (agent_start.py); never the person's last song."""
+    return agent_start.choose("rostrum-sound", KIND.ext, folder, items, last.default_item, word="song")
 
 
 def with_no_project_sentence(runtime) -> None:
@@ -108,7 +107,7 @@ EDIT_DOCUMENT = (
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
     "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter. "
     "Complete calls (the whole arguments), each tried on a real song:\n" + edit_examples.as_text())
-RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name adds a second copy. "
+RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name that makes the same tracks is refused (it would double every note), a new name with new track ids adds parts beside them. "
               "Example: {\"name\": \"cue\", \"source\": \"tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))\"}. "
               "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces. Effect settings are plain numbers "
               "(compressor threshold in dB, attack and release in seconds); every effect's and the master's settings: inspect_engine. "
@@ -142,7 +141,8 @@ def with_script_print(runtime) -> None:
     old = runtime.tools.get("run_script")
 
     def run_script(ctx, args):
-        script_scope.forget_printed()
+        script_twins.refuse_second_copy(ctx.document(args.get("item")), args)
+        script_scope.forget_printed()         # after the check: its dry run printed too
         try:
             out = old.fn(ctx, args)
             if args.get("path") and not args.get("name"):        # the name came from the file: say so, a new file adds a copy
@@ -160,7 +160,7 @@ def with_script_print(runtime) -> None:
 def register(tools: Tools):
     @tools.tool("inspect_recent_projects", {})
     def inspect_recent_projects(ctx, args):
-        """The person's recent RostrumSound songs, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the first is what the server opens at start-up."""
+        """The person's recent RostrumSound songs, newest first: folder, item, name and when the file last changed. Pick one for run_open_project; the server never opens one by itself."""
         rows = [last.describe(r) for r in last.recent_rows()]
         now = ctx.app.folder
         listed = "; ".join(f'{r["name"]} ({r["folder"]}, item {r["item"]}, changed {r["changed"]})' for r in rows)

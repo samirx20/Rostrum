@@ -21,6 +21,7 @@ def fake_home(tmp_path, monkeypatch):
     monkeypatch.setenv("ROSTRUM_CONNECT_NO_CLI", "1")
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    monkeypatch.delenv("GEMINI_HOME", raising=False)
     return tmp_path / "home"
 
 
@@ -82,3 +83,27 @@ def test_antigravity_knows_a_hand_made_entry_and_keeps_other_servers(fake_home):
     assert remove("antigravity", "2d").ok
     assert json.loads(f.read_text("utf-8")) == {"mcpServers": {"other": other}}
     assert json.loads(original)["mcpServers"]["other"] == other
+
+
+def test_launcher_accounts_get_the_servers_and_keep_their_own(fake_home):
+    """Agent Hub runs each account with its own settings folder (Claude: CLAUDE_CONFIG_DIR; Antigravity: GEMINI_HOME), and the
+    agent there reads only that folder's file: the canary's 'no tools in any child thread'. Add reaches them all."""
+    import hashlib
+    from rostrum_connect import connect, profiles
+    state = fake_home / ".t3" / "userdata"
+    seat, key = fake_home / "seats" / "s1", hashlib.sha256(b"antigravity_x").hexdigest()
+    gem = state / "providers" / "antigravity" / key
+    _put(state / "settings.json", json.dumps({"providerInstances": {
+        "claudeAgent_a": {"driver": "claudeAgent", "displayName": "A", "config": {"homePath": str(seat)}},
+        "claudeAgent_gone": {"driver": "claudeAgent", "deleted": True, "config": {"homePath": str(fake_home / "gone")}},
+        "antigravity_x": {"driver": "antigravity", "displayName": "X"}}}))
+    own = _put(seat / ".claude.json", json.dumps({"userID": "u", "mcpServers": {"mine": {"command": "m"}}}))
+    gem.mkdir(parents=True)
+    assert {p.file for p in profiles.found()} == {seat / ".claude.json", gem / "config" / "mcp_config.json"}
+    for aid in ("claude-code", "antigravity"):
+        assert connect.everywhere(connect.add, aid, "3d").ok
+    assert status("claude-code", "3d", seat / ".claude.json").ours and status("claude-code", "3d").ours
+    assert status("antigravity", "3d", gem / "config" / "mcp_config.json").ours
+    assert json.loads((seat / ".claude.json").read_text("utf-8"))["userID"] == "u"
+    connect.everywhere(connect.remove, "claude-code", "3d")
+    assert json.loads((seat / ".claude.json").read_text("utf-8")) == json.loads(own)      # the account keeps its own servers

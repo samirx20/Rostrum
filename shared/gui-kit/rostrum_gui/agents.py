@@ -18,7 +18,7 @@ except ImportError:                       # the install and a checkout both hold
     import rostrum_connect
 from rostrum_connect import byhand, connect
 
-NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound"}
+NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound", "3d": "Rostrum3D"}
 
 
 class Agents(QObject):
@@ -99,11 +99,11 @@ class Agents(QObject):
 
     @Slot(str)
     def add(self, agent_id: str):
-        self._run(agent_id, connect.add)
+        self._run(agent_id, lambda a, app: connect.everywhere(connect.add, a, app))     # launcher accounts too
 
     @Slot(str)
     def remove(self, agent_id: str):
-        self._run(agent_id, connect.remove)
+        self._run(agent_id, lambda a, app: connect.everywhere(connect.remove, a, app))
 
     @Slot(str)
     def copy(self, text: str):

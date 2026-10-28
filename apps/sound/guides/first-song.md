@@ -2,6 +2,8 @@
 
 For a person using the RostrumSound app. This page takes you from an empty song to something you can hear and export.
 
+**An agent starts with a script, not with these screens:** write the whole piece as one Python script, run it with `run_script` (`look: true`: it renders and listens, one name for the song), read the listening check in the reply, edit the script and run it again under the same name (`inspect_guide 'start-here'`, `'script'`). What a script made shows on every screen below, and a person's touch-ups to it are kept.
+
 ## The screen in one look
 
 - **Top bar** (also the window's title bar: drag any empty part of it to move the window, double-click to maximise; the

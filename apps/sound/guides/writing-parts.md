@@ -163,7 +163,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 
 ## From a script
 
-`run_script` builds tracks and notes in Python. Re-running a script merges: notes a person moved by hand stay where
+The whole piece is one script (`start-here`, `script`): `run_script` builds tracks and notes in Python, and you fix the piece by editing the script and running it again under the same name. Re-running a script merges: notes a person moved by hand stay where
 they were put and are listed as held back. Helpers write plain values you can edit afterwards, e.g. seeded
 `humanize(seed, timing, velocity)` for small timing and velocity variation (see `script`). The operation for
 notes already written is `note.humanize`, with note ids as its targets (not the track):
@@ -172,7 +172,7 @@ notes only; the same seed on the same notes gives the same result every time). I
 
 ## Operations on notes already written
 
-These edit notes that exist (a person's, or an earlier script's); to write a new part, use the script helpers (`writing-music-tools`). Every one runs
+These are touch-ups on notes that exist (a person's, or one note of the script's, which the next run then keeps as held back); to write or change a part, edit the script and use its helpers (`writing-music-tools`). Every one runs
 through `edit_document` (`ops`, a list of `{op, target, args}`; whole calls to copy are in `start-here`). Name the notes by id, or with a range
 target `{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}`: every note of that track starting from bar 1 up to (not including) bar 9; the
 same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpose", "target": [{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}], "args": {"semitones": 7}}]}`.

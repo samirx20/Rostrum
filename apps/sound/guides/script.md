@@ -1,15 +1,42 @@
 # The Sound script API (run_script)
 
-A script describes the whole song; `run_script` merges it into the document. Run the same script again after a
-change and only what the script changed moves: anything a person changed by hand is kept and listed as held back,
-saying who got there first ("already changed by agent:mcp (\"Run map.py\")"; pass `force` with the ids to take over).
-**The script's `name` decides replace or add:** the same name replaces and merges what that script made; a new name adds
-a second copy beside it (the reply warns). Keep one script name per song, and to change what an earlier script made, run
-under its name; a check that fails because two scripts made the same things names the earlier script. A script error names the script and line; an unknown track method lists what a track
-can do, an unknown name lists the script's names. **A run that fails changes nothing** (no half-made track is left): fix
-the line it names and run again. A run that merged says so, even when a note ends before it starts (a warning naming
-the note, see "Before the render"). Times can name the song's markers (`"#drop"`,
-made with `marker.add`) and the project's without the script restating them.
+**The whole piece is one script, under one name.** Write it, run it with `run_script` and `look: true` (it renders and listens), read the listening
+check in the reply (loudness, the weakest asked moments with their fixes, faults such as "leading silence", "tempo far from
+the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
+touch-ups.
+
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; `render_mix` refuses open faults unless `keep: {id: why}` explains them.
+
+- **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
+  script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
+  changes in place. **A new name that makes the same tracks is refused** (`song_v2` re-making `song`'s tracks would double every note; the
+  error names the script to run under, and nothing changes); a new name with new track ids adds parts beside it.
+- **Held back.** Anything a person (or an `edit_document` call) changed by hand is kept and listed as held back, saying who
+  got there first ("already changed by agent:mcp"); pass `force` with the ids to take over. So keep each setting in one place:
+  the script, until the last touch-up. A track's `volume`, `pan`, `output`, a master target and every effect setting
+  are script arguments too (`track(..., volume=0.8)`, `master(loudness=-16, maxLimit=4)`).
+- **A run that fails changes nothing** (no half-made track is left): the error names the script and the line; an unknown track
+  method lists what a track can do, an unknown name lists the script's names. A run that merged says so, even when a note ends
+  before it starts (a warning naming the note, see "Before the render"). Times can name the song's markers (`"#drop"`,
+  made with `marker.add`) and the project's without the script restating them.
+
+**A script's shape** (a technique; every name is below):
+
+```python
+tempo(96); key("F major"); length(bar(17))                 # 1. the song's map: tempo (changes), meter, key, length
+marker("lift", at=bar(9)); section("verse", bar(1), bar(9))  #    sync points as markers, sections as named spans
+CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}              # 2. the music as data: bar -> chord, a dict you edit
+def comping(first, last, vel): ...                         #    a section is a function: call it where it plays
+for b in range(1, 17, 2): ...                              #    loops over bars write what repeats
+keys.humanize(seed=2); keys.dynamics([(0, 0.5), ("#lift", 1.0)])   # 3. one pass for how it is played
+keys.effect("reverb", space="hall", mix=0.3)               # 4. the mix block last: effects, levels, buses
+master(loudness=-16, truePeak=-1)                          #    and the master target
+```
+
+**Landing on a time.** `downbeat(bar(n), at=T)` puts bar n at T seconds (music before bar 1 is a pickup, so a sync point
+lands on a bar line without a silent start); `land(bar(n), at=T, ramp_from=bar(m))` glides the tempo so bar n lands at T.
+Both are under "Landing on a time" below, with the tempo formula and the marker form (`marker("hit", at=31.5)`, `at="#hit"`).
+Render with `expect` (`{"kind": "tempo", "bpm": N}`) to be told when the tempo drifts from the brief's.
 
 **The call.** `run_script` takes `source` (the Python text, required), `name` (the script's name, default `agent_script.py`),
 `item` (the song, when more than one is open), `force` and `detail`. There is no `script` or `code` argument.
@@ -47,7 +74,7 @@ so `length(bar(9))` is an 8-bar song: for N bars write `length(bar(N+1))`. The r
 the length worked out ("Song: 96 bpm, 4/4; 8 bars long (ends where bar 9 starts, 20.0 s)"), as does `inspect_item`
 on the song.
 
-Check what you wrote before rendering: `look_arrangement` draws every track's notes and hits with the bars, sections
+Check what you wrote when the render's check names something: `look_arrangement` draws every track's notes and hits with the bars, sections
 and markers, and says which tracks start on each marker.
 
 ## Effects and the master: every setting, with its unit
@@ -152,13 +179,45 @@ A song stops at its `length`. What a clean end needs, with what exists today:
 
 ## Landing on a time: through the tempo, or in seconds
 
-A sync time (a lift at 20.0 s, a hit at 31.5 s) is a beat when the tempo says so. Beat `n` (from 0) of a song at `bpm` is at
-`60 * n / bpm` seconds, so the tempo that puts beat `n` on `T` seconds is `bpm = 60 * n / T`: 42 beats at 38.0 s needs 66.3158 bpm
-(write the tempo as a number with decimals: `tempo(66.3158)`). Check it with `look_music` (`what: "events"`, `expect: [38.0]`, a tolerance
-of 0.05 s): the reply says how far off each onset is. Or leave the tempo and write the moment in seconds: `at=38.0` is a time
-in seconds, `at=beat(36.83)` is a beat, so a hit or a chord can sit off the grid while the rest stays on it. A marker does both:
-`marker("hit", at=31.5)` then `at="#hit"` for every part that must land on it (`"#hit-0.2"` is a little before it).
-`beat()` takes fractions of a beat (`beat(36.83)`); `bar(n)` is where bar `n` starts.
+A sync time (a lift at 20.0 s, a stop at 36.0 s) can be met three ways, and none needs the song's tempo bent (132 bpm
+asked stays 132; a tempo nudged to 133.3 to make a bar line fall right is heard and marked down). Pick by what lands there.
+
+**1. An off-grid moment: write it in seconds.** `at=36.0` is a time in seconds, `at=bar(21)` is a bar, so a hit, a stop or
+a chord can sit exactly on the picture while the music around it stays on its grid. A marker names it once:
+`marker("stop", at=36.0)`, then `at="#stop"` for every part that lands there (`"#stop-0.2"` is a little before it). Best for
+one accent; the bars around it don't move.
+
+**2. Move the whole grid: `downbeat(time, at)` and a pickup.** Bar `n` at a steady `bpm` starts `60 * beats_before / bpm`
+seconds after bar 1, so to put bar 21 of a 4/4 song at 132 bpm on 37.0 s, bar 1 starts at `37.0 - 60 * 80 / 132 = 0.636 s`.
+`downbeat(bar(21), at=37.0)` does that sum on the tempo map written so far (tempo changes and ramps included) and stores
+it as the song's `gridStart` (the time bar 1 begins; 0 when not set): the tempo, the bars and the click all keep their
+values. The time before bar 1 is a pickup (an anacrusis), not silence: write it in seconds with `seconds_of`, which turns
+a beat before bar 1 into its file time: `t.note("G4", at=seconds_of(bar(1) - beats(1)), dur=beats(1))` is the beat
+leading into bar 1 (`bar(1) - beats(1)` itself is refused: beat times on the grid start at bar 1). Over 0.25 s of pickup
+the reply reminds you to fill it. When bar 1 would have to start before 0 s, the refusal names the bars that do fit
+("bar 20 lands at 36 s with a 1.45 s pickup") and the `land` call below.
+
+**3. Push into the moment: `land(time, at, ramp_from)`.** The tempo glides from `ramp_from` up (or down) to a peak halfway
+and back, so `time` lands exactly at `at` and the tempo held before `ramp_from` plays on after it, unchanged. Over `n`
+beats at `a` bpm the music takes `60 * n / a` seconds; a glide out to `p` and back takes `60 * n * ln(p/a) / (p - a)`, and
+`land` solves `p`. It moves the time by about half the peak change: bar 21 at 132 bpm is at 36.36 s, so landing it
+on 36.0 s (0.36 s early) over bars 15-21 (24 beats, 10.9 s) needs about 3.3 % on average, a peak near 7 %: the reply
+says "tempo 132 -> 141.2 -> 132 bpm over bar 15 - bar 21". Past 8 % it is refused and names a ramp long enough. Best
+where the music can lean in (a build, a run-up); write `tempo(...)` and the other tempo changes first, then `land`.
+
+Order: `downbeat` and `land` work on the tempo map written so far, so write the tempo, the tempo changes and the time
+signature first. Each landing is checked again when the script ends: a tempo change written after it that moves the
+landed bar is refused, naming it. Check the result with `look_music` (`what: "events"`, `expect: [37.0]`, a tolerance
+of 0.05 s): the reply says how far off each onset is. `beat()` takes fractions of a beat (`beat(36.83)`); `bar(n)` is
+where bar `n` starts.
+
+```python
+tempo(132); beats_per_bar(4)
+downbeat(bar(21), at=37.0)                                   # bar 1 starts at 0.636 s; the tempo stays 132
+pno = track("keys", builtIn="piano")
+pno.note("D4", at=seconds_of(bar(1) - beats(1)), dur=beats(1))   # the pickup into bar 1
+pno.chord(["D3", "A3", "F4"], at=bar(21), dur=beats(4))          # on 37.0 s
+```
 
 ## A loop that leads back into its start
 
@@ -261,7 +320,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 - **What follows a tempo change:** things written in beats stay on their beat (they move in seconds); things in
   seconds stay at their moment (their beat moves). Markers follow the same rule: a marker at `bar(5)` stays on bar 5,
   a marker at `12.0` stays at 12 s. Write in beats what belongs to the music, in seconds what belongs to the picture.
-- **Moving a section:** `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
+- **Moving a section** (a one-off; in a script, change the section's times): `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
   (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, voice
   lines, tempo and key changes, other sections, automation points) in one undo step. A note, hit, clip or line
   nudged up to a 1/32 note before the section's line counts as inside (one that close to its end belongs to the
@@ -332,5 +391,5 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (a note outside a sampled instrument's range fails the render and names the range).
 - Ids: tracks are named by you; notes get ids from their track and start time (`strings.n1500`), so editing one note
   never renumbers the others.
-- To change one value after the script, prefer `edit_document` (`track.set`, `note.set` …): the history shows it as
-  your edit, and the next script run keeps it.
+- To change one value for good, change it in the script. `edit_document` (`track.set`, `note.set` …) is for a one-off touch-up:
+  the history shows it as your edit, and the next script run keeps it, listed as held back.

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, sheet
+from rostrum_core.mcp.faults import fault
 from rostrum_core.mcp.files import look_path
 
 from . import edge_cut, look_empty, render, review
@@ -77,7 +78,8 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             pixels = look_empty.scan_pngs(tiny, every, duration)
         rows = review.ranked(pixels + cuts + faults, duration)
         return Reply("", {"times": times, "sheet": str(dest), "width": w, "height": h, "comp": comp["id"],
-                          "faults": [{k: r[k] for k in ("kind", "start", "end", "text") if k in r} | ({"id": r["id"]} if "id" in r else {}) for r in rows]},
+                          "faults": [{k: r[k] for k in ("kind", "start", "end", "text", "id", "ids") if k in r} for r in rows],
+                          "info": [r["text"] for r in review.info(faults)]},
                      [dest], [dest], scene.get("warnings", []) + notes + more)
 
     got = ctx.long(f'run_script look {comp["id"]}', job_fn)
@@ -91,10 +93,13 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     said = (f'\nLook at {comp["id"]}: contact sheet of {len(times)} moments ({", ".join(f"{t:g}" for t in times)} s), {seen["width"]}×{seen["height"]}. '
             + (f"Weakest moments, most visible first ({len(rows)}):\n" + "\n".join(map(_line, rows[:FAULTS]))
                + (f"\n({len(rows) - FAULTS} more in data.look.faults.)" if len(rows) > FAULTS else "")
-               + "\nFix in the script and re-run it under the same name with look." if rows else
-               "No weak moment found (blank, held, cut-off, faint leftovers, stray specks, crowded lock-ups). Judge the sheet for the rest."))
+               + "\nLayout faults (a device cut, a text crossed or cut by its screen's edge, a pointer on a label, a tiny end card) come first and name the fix. "
+                 "Fix in the script and re-run it under the same name with look." if rows else
+               "No weak moment found (blank, held, cut-off, faint leftovers, stray specks, crowded lock-ups, texts crossed, cut by a screen's edge or on texts, "
+               "a pointer on a label, a device cut by the edge, a tiny end card). Judge the sheet for the rest."))
     reply.summary += said
     reply.data["look"] = seen
     reply.files += got.files
     reply.images += got.images
+    reply.faults = [fault(f'{r["kind"]}:{r["id"]}' if r.get("id") else r["kind"], r["text"], "change it in the script and re-run under the same name", f'{r["start"]:g} s' if "start" in r else None) for r in rows]   # faults first (shared faults.py)
     return reply

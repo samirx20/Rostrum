@@ -30,7 +30,9 @@ def _order(f) -> float:
     k, d = f["kind"], f["measured"]
     if k.startswith("no_"):
         return -1.0
-    if k.startswith("weak_"):
+    if k in ("leading_silence", "off_tempo"):
+        return 0.0                  # the whole piece is heard bent from its first second: right after a missing moment
+    if k.startswith("weak_") or (k == "soft_stop" and d.get("weak")):
         return d["times_typical"]
     return 50.0 if k in ("held_tone", "near_mono", "dull_top") else 10.0
 
@@ -42,14 +44,14 @@ def _line(f) -> str:
     return f"{f['words'][:1].upper()}{f['words'][1:]}."
 
 
-def lines(wav, moments) -> list[str]:
+def lines(wav, moments, limiter=None, peaky=None, found=None) -> list[str]:
     """Up to three lines, the weakest first: the faults found (asked moments before the whole piece's), then, when there
     are fewer, the asked hits that pass with their numbers (the margin left)."""
-    found = sorted(fault_check(wav, moments)["faults"], key=_order)
+    found = sorted(fault_check(wav, moments, limiter, peaky=peaky)["faults"] if found is None else found, key=_order)
     out = [_line(f) for f in found[:LINES]]
     if len(out) < LINES and moments:
         faulted = {round(f["at_s"], 2) for f in found}
-        ok = [s for s in strengths(wav, moments) if s["strike"] and round(s["at"], 2) not in faulted]
+        ok = [s for s in strengths(wav, [m for m in moments if m.get("kind") != "tempo"]) if s["strike"] and round(s["at"], 2) not in faulted]
         for s in sorted(ok, key=lambda s: s["strike"]["times_typical"])[:LINES - len(out)]:
             d = s["strike"]
             out.append(f"{s['at']:.2f} s {s['kind']} comes across: {d['times_typical']:.1f}x a normal note (rank {d['rank']}), "
@@ -57,12 +59,13 @@ def lines(wav, moments) -> list[str]:
     return out
 
 
-def words(wav, moments) -> str:
-    """The render reply's lines: a head, then the weakest moments numbered, one per line."""
+def words(wav, moments, limiter=None, peaky=None, found=None) -> str:
+    """The render reply's lines: a head, then the weakest moments numbered, one per line (`limiter`: listen.limiter's
+    result for the render, so a stop the limiter flattens names the track to tame; `peaky`: that track when unknown)."""
     if moments:
-        head, found = f"Weakest moments ({len(moments)} asked):", lines(wav, moments)
+        head, found = f"Weakest moments ({len(moments)} asked):", lines(wav, moments, limiter, peaky, found)
     else:
         head = ("No asked moments to check: pass `expect` ([{\"at\": 31.5, \"kind\": \"hit\"}]) or name markers hit / stop / "
                 "drums out / drums back / climax / lift.")
-        found = lines(wav, [])
+        found = lines(wav, [], limiter, peaky, found)
     return head + "".join(f"\n{i}. {s}" for i, s in enumerate(found, 1))

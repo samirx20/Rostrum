@@ -10,10 +10,13 @@ from pathlib import Path
 
 MARKER = {"ROSTRUM_ADDED_BY": "rostrum-connect"}     # how we recognise the entries we added
 ROOT = Path(__file__).resolve().parents[3]           # install root, or the repo checkout
-APPS = {
-    "2d": ("rostrum-2d", "rostrum2d.mcp", "rostrum2d", ("shared/core", "apps/2d/python", "shared/mcp")),
+APPS = {      # every server starts with no options: the agent's own project from this session, else a fresh scratch one
+    "2d": ("rostrum-2d", "rostrum2d.mcp", "rostrum2d",
+           ("shared/core", "apps/2d/python", "shared/painting-kit", "shared/mcp")),
     "sound": ("rostrum-sound", "rostrum_sound.mcp.server", "rostrum_sound",
               ("shared/core", "apps/sound/python", "shared/mcp")),
+    "3d": ("rostrum-3d", "rostrum3d.mcp", "rostrum3d",
+           ("shared/core", "apps/3d/python", "shared/painting-kit", "shared/mcp")),
 }
 
 
@@ -57,7 +60,7 @@ GENERIC_ROOT = r"C:\Users\<you>\AppData\Local\Programs\Rostrum"     # the shippe
 def entry(app: str, project: str | None = None, generic: bool = False) -> Server:
     """How to start `app`'s server on this computer; `generic`: in a standard install (for the shipped guides)."""
     if app not in APPS:
-        raise ValueError(f"No Rostrum app called “{app}”. Choose 2d or sound.")
+        raise ValueError(f"No Rostrum app called “{app}”. Choose {', '.join(APPS)}.")
     name, module, package, folders = APPS[app]
     env = dict(MARKER)
     installed = GENERIC_ROOT + r"\runtime\python\python.exe" if generic else _installed_python()

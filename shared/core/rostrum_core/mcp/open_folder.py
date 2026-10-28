@@ -2,7 +2,7 @@
 (with its folders above it), open, and say plainly what was made. Checks come first, so a refused call makes nothing.
 
 Each app passes its own pieces: `docs_in(folder)` (its documents there, newest first), `default_item(folder, explicit)`
-and `open_project(app, folder, items)`; the folder opened is remembered for this working folder
+and `open_project(app, folder, items)`; the folder opened is remembered for this agent session
 (agent_last.py), so a resumed agent session's new server reopens it. `word` is what a person calls one document ("document", "song").
 """
 from __future__ import annotations
