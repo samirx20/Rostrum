@@ -9,9 +9,9 @@ from rostrum2d.evaluate import value_at
 from .geometry import aabb, drawn_box
 from .review_sample import Sampled, runs
 
-SPARSE_BELOW = 0.10       # anything but the background covering under this share of the frame is near-empty ...
+SPARSE_BELOW = 0.05       # anything but the background covering under this share of the frame is near-empty ...
 SPARSE_SPAN = (0.15, 0.85)  # ... between these shares of the film (an opening or closing card may start or end bare)
-SPARSE_S = 1.0            # ... for this long or longer
+SPARSE_S = 2.0            # ... for this long or longer
 OPEN_S = 10.0             # the opening: shots starting in the first this many seconds ...
 OPEN_SHOTS = 3            # ... the first this many of them
 SHOT_S = 1.0              # a shot lasts at least this long (a fast move is not a string of cuts)
