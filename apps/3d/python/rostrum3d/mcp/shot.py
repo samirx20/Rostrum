@@ -9,19 +9,21 @@ from rostrum3d.render_fields import settings
 RENDERERS = ("storm", "cycles", "stylized")
 QUALITY = {"fast": "storm", "final": "cycles"}
 LOOK_WIDTH = 960
+WIDTH_WORDS = "The picture's width in px (a sheet: each frame's). Default 960; sheet 480, shots and exposure 320, material 256, paint 1200."
+WIDTH = {"width": {"type": "integer", "minimum": 64, "maximum": 4096, "description": WIDTH_WORDS}}     # one meaning in every look
 
 ITEM_SHOT = {
-    "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
-    "shot": {"type": "string", "description": "The shot's id. Default: the first one."},
+    "item": {"type": "string", "description": "The document's item id; optional with one document open."},
+    "shot": {"type": "string", "description": "The shot's id. Default: the first."},
 }
 TIME = {
-    "frame": {"type": "integer", "minimum": 0, "description": "A frame number of the shot (the shot's own numbering: its start frame is the first)."},
-    "at": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (instead of frame)."},
+    "frame": {"type": "integer", "minimum": 0, "description": "A frame of the shot (its own numbering)."},
+    "at": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start (instead of frame)."},
 }
 LOOK = {
-    "quality": {"enum": list(QUALITY), "description": "fast = Storm (about a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look."},
-    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials)."},
-    "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": LOOK_WIDTH, "description": "Picture width in px; the height follows the shot's shape."},
+    "quality": {"enum": list(QUALITY), "description": "fast = Storm (quick), final = Cycles (as export). Default fast; a Stylized shot: stylized; material: final if needed."},
+    "renderer": {"enum": list(RENDERERS), "description": "Overrides quality by name; stylized draws Lines and Halftone (guide materials)."},
+    **WIDTH,
 }
 
 
@@ -64,6 +66,25 @@ def check_frame(ctx, info: dict, frame: int):
 
 def seconds(info: dict, frame: int) -> float:
     return (frame - info["start"]) / info["fps"]
+
+
+COUNT = {"count": {"type": "integer", "minimum": 1, "maximum": 24, "description": "How many frames (sheet 2–24, default 6; shots 1–8 a row, 4) or angles (material 4–8, 6)."}}
+
+
+def count_of(ctx, args: dict, default: int, least: int, most: int) -> int:
+    """The call's `count` (shared by sheet, shots and material, each with its own bounds), else `default`."""
+    n = args.get("count", default)
+    if not least <= n <= most:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"count {n}", f"must be {least}–{most} here", hint=f"Ask for {least}–{most}.")
+    return n
+
+
+def width_of(ctx, args: dict, default: int, most: int = 4096) -> int:
+    """The call's `width` (one meaning in every look: the picture's width in px), else `default`; at most `most`."""
+    w = args.get("width", default)
+    if w > most:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"width {w}", f"is more than {most} px for this look", hint=f"Ask for at most {most}.")
+    return w
 
 
 def size_of(info: dict, args: dict, default_width: int | None = None) -> tuple[int, int]:

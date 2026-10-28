@@ -24,8 +24,7 @@ CELLS = 96
 COLOURS = [(255, 214, 0), (0, 229, 255), (255, 64, 160), (120, 255, 90), (255, 140, 0)]
 CHECKS = 16                     # picks (~6 ms each) that test whether another item hides the outlined region
 
-HIGHLIGHT = {"highlight": {"type": "string", "description": 'Outline what clay steps made: "steps:arm" or "steps:arm,foot" (step names or '
-                                                           'ids, as look_at\'s `step` gives them). Each in its own colour, tinted, 2 px edge.'}}
+HIGHLIGHT = {"highlight": {"type": "string", "description": 'Outline what clay steps made: "steps:arm" or "steps:arm,foot" (names or ids).'}}
 
 
 def _dabs(folder):

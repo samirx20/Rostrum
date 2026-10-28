@@ -73,33 +73,15 @@ def grouped(found: list[dict]) -> list[dict]:
 
 @tools.tool("look_motion", {"properties": {**ITEM_SHOT,
     "frames": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 2, "maxItems": 2,
-               "description": "[first, last] frame to measure (the shot's own numbering). Default: the whole shot."},
-    "items": {"type": "array", "items": {"type": "string"}, "description": "Only these items (all of them listed, no limit); "
-              "passing through is still checked against every shape in the shot."},
-    "full": {"type": "boolean", "description": "Adds each item's speed per frame (m/s, and px/s on the picture), its jumps and "
-                                               "its moving stretches to the data. Default false: a line per moving item."},
-    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": LIMIT, "description": "Without `items`: how many "
-              "moving items and finding lines to list (default 20); the reply says how many more there are."},
-    "all": {"type": "boolean", "description": "Every moving item and every finding line, no cap."}}})
+               "description": "[first, last] frame to measure. Default: the whole shot."},
+    "items": {"type": "array", "items": {"type": "string"}, "description": "Only these items (still checked against every shape)."},
+    "full": {"type": "boolean", "description": "Add each item's speed per frame, jumps and moving stretches to the data."},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": LIMIT, "description": "How many items and findings to list (default 20)."},
+    "all": {"type": "boolean", "description": "Every item and finding, no cap."}}})
 def look_motion(ctx, args):
-    """What moves in a shot and how, measured on every frame from the document's evaluated animation (keys, stepped timing,
-    aims, sticks, follows, poses, mirrored copies, exactly as the scene compiler resolves them); nothing is rendered. Per
-    moving item: when it moves, its path (its pivot's world place, first → last, length in metres, and where it is seen on
-    the shot camera's picture in px), its peak speed and the frame of it, and its stops (still stretches between moves,
-    at least 0.25 s). Findings, facts only, no scores: two shapes passing through each other (both named, the frame span
-    and how deep), sudden jumps (a step at least 1 cm and 4× bigger than the frames either side: a teleport or a snap),
-    and an item partly or wholly outside the picture (frame spans; only when that changes: it leaves or comes in). Overlap test: each shape's own box turned and scaled
-    with it (oriented boxes; a ball: an upright box round it; a clay: the box its pieces reach), so a hollow shape counts as full; touching (under 0.5 mm)
-    is not overlap. Hidden items are left out. Short by default: a line a moving item, identical findings one line,
-    passing through first; `items` for just those, `full` for the speed per frame, `frames` for part of the shot.
-    Simulated things: one set to Falls is measured where the shot's stored simulation has it (as the viewport shows it),
-    and checked for passing through like any shape; when the simulation is out of date (the older result is measured)
-    or not computed (they are where their keys put them) the reply says so first and gives no all-clear: run_simulation,
-    wait with inspect_job, then look again. A cloth's folds and each copy of a falling copies item are not measured here
-    (named under not measured). For every falling thing and cloth of the stored result (copies and cloth included) an
-    "On screen" line says over which frames it drops (until it first lands) and how far, how many of those frames the
-    shot camera's picture shows it in and how many it drops outside (above, below, beside), when it enters and lands, or that it starts already at rest (a copies item: judged copy by copy, how many fall, over which frames they start, the median drop and time seen), with the fix
-    when the fall isn't seen well (sim.start_in_view, fallStart); data `fallsOnScreen`. Fails with the reason on an unknown item, fewer than two frames, or nothing moving."""
+    """What moves in a shot, measured every frame from the document (no rendering): per moving item its path, peak speed
+    and stops; then faults: shapes passing through each other, sudden jumps, an item leaving the picture, and for falls
+    and cloth whether the drop is on screen. Short by default; `items`, `frames`, `full`. Guide 'agents' (The loop)."""
     doc, info = doc_and_shot(ctx, args)
     frames = _range(ctx, info, args)
     sim = motion_sim.moves(doc.data, info, ctx.app.folder)

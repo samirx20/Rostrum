@@ -91,7 +91,7 @@ the sheet centred above that item, a little over its top, level; a plane too sma
 height would hang down each side) is made square and big enough to reach the floor and gather there.
 Set the target to `still` too. `run_simulation` then says what each cloth ends on (`cloth sheet: … ends on box`) and **warns**
 when a cloth starts over nothing it can land on, or slides off what it started over. Read the warning and look with
-`look_sheet` before rendering.
+`look_frame what "sheet"` before rendering.
 
 Cloth plays back from the stored result like a falling thing (Timing and Simplify apply too), but it never becomes keys: its
 folds stay a simulation (`sim.to_keys` leaves it as it is; on a shot whose only simulated thing is cloth it fails saying
@@ -102,9 +102,9 @@ was at the first frame and the cloth moves inside it. Cloths don't touch each ot
 
 The `run_simulation` tool computes the whole shot as a job (`inspect_job` shows frame n of m; a dozen things take a second or two)
 and stores it. It reports how many fell, how many came to rest and how many end inside the camera's picture. Then
-`look_sheet` shows the motion. `sim.run` does the same as an operation (in a script's batch of operations).
+`look_frame what "sheet"` shows the motion. `sim.run` does the same as an operation (in a script's batch of operations).
 
-**What a video shows of the fall.** `render_video` (a re-export, `estimate_only` and `render_send_shot` too), `look_sheet`, `look_motion` and
+**What a video shows of the fall.** `render_video` (a re-export, `estimate_only` and `render_send_shot` too), `look_frame what "sheet"`, `look_motion` and
 `run_simulation` judge the frames they cover, not only the whole shot, and say in plain words, with the fix: *the cut opens mid-drop* or
 *after the thing landed* (a `start` later than the fall's start: start the cut at or before it), *a thing is already moving at the first
 frame* (the shot opens mid-fall: give it a moment with `fallStart`, or start it higher), and *everything settles at 0.4 s, the last 7 s
@@ -112,7 +112,7 @@ don't move* (shorten the cut, slow the fall, or key the camera or other things).
 holds it; judge a refine cut again after changing its range.
 
 Nothing is computed again on its own. Change something it depends on (move the bowl, change a mass, a key on a falling thing)
-and `inspect_simulation` says **out of date**: the viewport keeps showing the old result, and any render (`render_still`,
+and `run_simulation what "status"` says **out of date**: the viewport keeps showing the old result, and any render (`render_still`,
 `render_video`, the Render button, the queue) computes it again first. A render never uses an out-of-date result. In the
 window, the result a render computed becomes the shot's stored one (the row says Stored, the viewport shows that fall; one
 undo step, "Simulate … (for the render)"). Put the change back and the earlier result is used again without computing.

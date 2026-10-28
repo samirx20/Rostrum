@@ -78,18 +78,12 @@ def _words(item, m, thin_spots, thin) -> str:
 
 
 @tools.tool("look_shape", {"required": ["target"], "properties": {
-    "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
-    "target": {"type": "string", "description": "The id of the clay or mesh to measure."},
+    "item": {"type": "string", "description": "The document's item id; optional with one document open."},
+    "target": {"type": "string", "description": "The mesh's or clay's id."},
     "cells": {"type": "integer", "minimum": 24, "maximum": 128, "default": CELLS,
-              "description": "A clay: how finely it is sampled along its longest side (more: finer outlines and thin spots, slower)."}}})
+              "description": "A clay's sampling along its longest side (more: finer, slower)."}}})
 def look_shape(ctx, args):
-    """An item's FORM, not a lit picture: its outlines from the front (+Z, its left on the picture's right), the side (from its left,
-    +X: its front faces left) and the top (its front down), on one scale with a scale bar and lines at each tenth of its height;
-    plus its measures in numbers, in its own space (metres, before the item's scale): height, width, depth, the width and depth at
-    10 %, 20 % … 90 % of its height (and in how many parts it is cut there: two legs = 2), the widest, the left-right difference
-    (the front outline against its mirror across its own X = 0, where it is off) and, on a clay, thin spots (where its middle is
-    thinner than ~4 grains: a fragile neck, a wrist that will break up). A clay is measured from its rest shape (the pose isn't
-    measured); a mesh from its built mesh. Use it to check proportions and symmetry in numbers after building, before lighting."""
+    """An item's form: outlines and measures (height, widths, symmetry, thin spots)."""
     doc = ctx.document(args.get("item"))
     item = doc.item(args["target"]) if doc.has(args["target"]) else None
     if item is None or item.get("type") not in ("clay", "mesh", "combine"):

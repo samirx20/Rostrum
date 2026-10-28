@@ -9,7 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from ..ops_import import EXTENSIONS, unit_name
 from . import draw, picture_facts
-from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, look_renderer, seconds, size_of
+from .shot import ITEM_SHOT, LOOK, TIME, WIDTH, doc_and_shot, frame_of, look_renderer, seconds, size_of, width_of
 
 tools = Tools()
 tools.renamed("inspect_usd_file", "inspect_model_file")      # it reads every format an import reads now (brief 29)
@@ -27,13 +27,10 @@ def _frames(r: dict) -> str:
 
 
 @tools.tool("inspect_model_file", {"required": ["file"], "properties": {
-    "file": {"type": "string", "description": "A 3D file an import reads: USD (.usd .usda .usdc .usdz), glTF (.gltf .glb), OBJ, FBX or "
-                                              "Alembic (.abc); absolute, or relative to the project folder."},
-    "detail": {"enum": ["short", "full"], "default": "short", "description": "full adds every prim the engine listed (at most 2000)."}}})
+    "file": {"type": "string", "description": "A USD, glTF, OBJ, FBX or Alembic file; absolute or project-relative."},
+    "detail": {"enum": ["short", "full"], "default": "short", "description": "full adds every prim (up to 2000)."}}})
 def inspect_model_file(ctx, args):
-    """What a 3D file holds, without importing it: its format, its unit (and whether the file states one), up axis, animation
-    (frames and fps), and its parts (path, type, material, size in the file's units). Use it before import.add to pick the parts
-    you will give other materials or hide; import.add itself scales a file in another unit to metres and lists its meshes as parts."""
+    """What a 3D file holds without importing it: format, unit, up axis, animation and parts (path, material, size)."""
     path = Path(args["file"])
     if not path.is_absolute() and ctx.app.folder:
         path = Path(ctx.app.folder) / path
@@ -71,8 +68,7 @@ def _walk(items: list[dict]):
 
 @tools.tool("inspect_shot", {"properties": ITEM_SHOT})
 def inspect_shot(ctx, args):
-    """A shot's facts: frame rate, first and last frame, length in seconds, picture size, the shot camera, every camera in the scene with
-    its lens, and how many items and lights it holds. Reads the document; draws nothing."""
+    """A shot's facts: frame rate, frame range, length, picture size, cameras, item and light counts. Draws nothing."""
     doc, info = doc_and_shot(ctx, args)
     scene = draw.scene_of(doc, info["id"])
     items = list(_walk(scene["items"]))
@@ -127,15 +123,12 @@ def measure(png: Path) -> dict:
                           "scale": "0 black – 255 white, display values"}, "cells": cells}
 
 
-@tools.tool("inspect_exposure", {"properties": {**ITEM_SHOT, **TIME, "quality": {"enum": list(QUALITY), "default": "fast", "description": "fast = Storm at 320 px (about a second), final = Cycles at 320 px, 32 samples, denoised (what export will look like, slower)."},
-                                                 "renderer": LOOK["renderer"], "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 320, "description": "Width of the measured picture in px."}}})
+@tools.tool("inspect_exposure", {"properties": {**ITEM_SHOT, **TIME, "quality": LOOK["quality"], "renderer": LOOK["renderer"], **WIDTH}})
 def inspect_exposure(ctx, args):
-    """How bright a shot's frame is, in numbers: the share of pixels blown out (any channel ≥ 254) and crushed to black (all ≤ 2), the mean,
-    1st and 99th percentile brightness, and which part of a 3×3 grid is brightest and darkest, with the item at the brightest spot. Draws a small
-    picture through the shot camera and looks at it; use it before a final render to catch a blown-out or too-dark shot. Nothing is changed."""
+    """Brightness in numbers: blown out, crushed, percentiles, the brightest and darkest ninth."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
-    w, h = size_of(info, args, 320)
+    w, h = size_of(info, {"width": width_of(ctx, args, 320, 1280)})
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
 
     def job_fn(job):

@@ -13,7 +13,7 @@ from rostrum3d.compile import shot_info
 
 from . import draw, shot_faults
 from .look import _settings
-from .shot import LOOK, look_renderer, seconds, size_of
+from .shot import COUNT, ITEM_SHOT, LOOK, WIDTH, count_of, look_renderer, seconds, size_of, width_of
 
 tools = Tools()
 
@@ -53,16 +53,13 @@ def stack(rows: list[Path], dest: Path) -> tuple[int, int]:
 
 
 @tools.tool("look_shots", {"properties": {
-    "shots": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "Shot ids or names (as the Shots list shows them), in the order of the rows. Default: every shot of the document."},
-    "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
-    "count": {"type": "integer", "minimum": 1, "maximum": 8, "default": 4, "description": "Frames in each row, evenly spaced from the shot's first to last frame (a shot with fewer frames gives every row that many)."},
-    "tile_width": {"type": "integer", "minimum": 64, "maximum": 640, "default": 320, "description": "Width of each tile in px; a tile's height follows its shot's own shape."},
+    "shots": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "Shot ids or names, one row each in this order. Default: every shot."},
+    "item": ITEM_SHOT["item"],
+    **COUNT,
+    **WIDTH,
     "quality": LOOK["quality"], "renderer": LOOK["renderer"]}})
 def look_shots(ctx, args):
-    """One contact sheet for several shots, ONE ROW PER SHOT: `count` frames spread over that shot, each tile labelled with the shot's
-    name, the frame and its time. Each shot is drawn through its own camera by the same render path as export (Storm for quality fast,
-    Cycles for final; renderer picks by name; neither, when every shot's Quality is Stylized: stylized). Use it to compare shots side by side, check a cut's two ends or a whole sequence's
-    framing, before look_frame on one of them. An unknown shot fails, listing the document's shots. Replies open NOT DONE: with each fault (id, when, fix) or DONE: (too dark or blown out, a subject cut by the frame, something floating above or sinking into the ground)."""
+    """One row per shot (`shots`): compare a cut or a sequence."""
     doc = ctx.document(args.get("item"))
     ids = chosen(ctx, doc, args.get("shots"))
     infos = [dict(shot_info(doc.data, i)) for i in ids]
@@ -71,8 +68,9 @@ def look_shots(ctx, args):
         if not i.get("camera"):
             raise RostrumError(codes.NOT_FOUND, ctx.tool, f'shot "{i["id"]}"', "has no camera, so there is nothing to look through",
                                hint="Add a camera item and set it as the shot's camera.")
-    count = min([args.get("count", 4)] + [len(frames_of(i, args.get("count", 4))) for i in infos])
-    renderer, tile_w, engine = look_renderer(args, doc, infos), args.get("tile_width", 320), draw.engine_of(ctx)
+    asked = count_of(ctx, args, 4, 1, 8)
+    count = min([asked] + [len(frames_of(i, asked)) for i in infos])
+    renderer, tile_w, engine = look_renderer(args, doc, infos), width_of(ctx, args, 320, 640), draw.engine_of(ctx)
     dest = look_path(f'{doc.item_id or "doc"}_shots_{renderer}', project=doc.folder)
 
     def job_fn(job):

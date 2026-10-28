@@ -18,15 +18,14 @@ from rostrum3d import paint_view
 from rostrum3d.paint_fields import CHANNELS
 
 from . import draw, paint_canvas as PC, paint_spots as PS
-from .shot import ITEM_SHOT, TIME, doc_and_shot, frame_of, seconds, size_of
+from .shot import ITEM_SHOT, TIME, WIDTH, doc_and_shot, frame_of, seconds, size_of, width_of
 
 tools = Tools()
 TARGET = {"target": {"type": "string", "description": "The mesh's or clay's id."}}
-PIC = {"width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "Width of the shot's picture in px (the height follows the shot). Default 960."}}
-ZOOM = {"zoom": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4, "description": "[x0, y0, x1, y1] box in canvas px. Default: the whole canvas."},
-        "grid": {"type": "integer", "minimum": 0, "description": "Grid spacing in canvas px, labelled. 0 = no grid. Default: chosen to fit."},
-        "sampling": {"enum": list(see.SAMPLINGS), "default": "auto", "description": "How a zoom enlarges: pixels (sharp squares, to place strokes), "
-                                                                                     "smooth (to judge edges); auto = pixels with a grid."}}
+PIC = WIDTH
+ZOOM = {"zoom": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4, "description": "[x0, y0, x1, y1] box in canvas px. Default: all."},
+        "grid": {"type": "integer", "minimum": 0, "description": "Labelled grid spacing in canvas px; 0 = none. Default: fits."},
+        "sampling": {"enum": list(see.SAMPLINGS), "default": "auto", "description": "A zoom's enlarging: pixels (to place strokes), smooth (edges), auto."}}
 
 
 def _texels(ctx, doc, info, frame, w, h, scene):
@@ -40,14 +39,11 @@ def _bad(ctx, what, e):
 
 @tools.tool("look_paint", {"required": ["target"], "properties": {
     **ITEM_SHOT, **TARGET, **ZOOM,
-    "layer": {"type": "string", "description": "Show only this paint layer (its id)."},
-    "channel": {"enum": list(CHANNELS), "description": "Show only the layers painting this channel (colour, roughness, height = Relief, metal, glow)."},
-    "size": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1200, "description": "Picture width in px."}}})
+    "layer": {"type": "string", "description": "Only this paint layer (its id)."},
+    "channel": {"enum": list(CHANNELS), "description": "Only the layers painting this channel (height = Relief)."},
+    **WIDTH}})
 def look_paint(ctx, args):
-    """A mesh's or clay's paint canvas as a picture: the flat paint picture (paintSize square) the renderer lays on its
-    unfolded surface, every layer together, one `layer` or one `channel`; transparent (unpainted) shows as a checkerboard.
-    `zoom` a box and `grid` labels canvas pixels, the coordinates of stroke.add's `points`. A clay's anchored strokes and
-    strokes From the view are shown laid, as the render gets them. Where a canvas spot is on the shot: look_where."""
+    """An item's paint canvas (`layer`, `channel`, `zoom`, `grid`)."""
     doc, info = doc_and_shot(ctx, args)
     item = PC.paintable(ctx, doc, args["target"])
     if args.get("layer") and args["layer"] not in [p["id"] for p in item.get("paints", [])]:
@@ -60,10 +56,10 @@ def look_paint(ctx, args):
         px = PC.picture(held, size, args.get("layer"), args.get("channel"))
         what = f'layer {args["layer"]}' if args.get("layer") else f'{CHANNELS[args["channel"]][0]} layers' if args.get("channel") else "all layers"
         try:
-            pic = see.view(px, args.get("zoom"), args.get("grid"), args.get("size", 1200), label=f'{item["id"]} - {what} - {size} x {size} canvas px',
+            pic = see.view(px, args.get("zoom"), args.get("grid"), width_of(ctx, args, 1200), label=f'{item["id"]} - {what} - {size} x {size} canvas px',
                            sampling=args.get("sampling", "auto"))
         except ValueError as e:
-            _bad(ctx, '"zoom", "size" or "sampling"', e)
+            _bad(ctx, '"zoom", "width" or "sampling"', e)
         dest = look_path(f'{doc.item_id or "doc"}_{item["id"]}_paint', project=doc.folder)
         pic.save(dest)
         layers = [{"id": p["id"], "name": p.get("name"), "channel": p.get("channel", "colour"), "visible": p.get("visible", True),
@@ -120,16 +116,8 @@ def _rows_view(ctx, doc, scene, item, layer) -> list[dict]:
 @tools.tool("inspect_paint_strokes", {"required": ["target"], "properties": {
     **ITEM_SHOT, "target": {"type": "string", "description": "A mesh's or clay's id (every layer), or one paint layer's id."}}})
 def inspect_paint_strokes(ctx, args):
-    """Where each stroke of a mesh or clay (or of one paint layer) landed and how far off, one plain line each:
-    "stroke s3 (From the view, layer paint_1): landed on case and lid, at most 1.2 screen px outside the line". A stroke on the surface
-    (canvas `points`, or a clay's `anchors` laid as the render lays them) is measured on the canvas: how far its paint's
-    centre sits from its path, in canvas px (landed = within a tenth of the brush, at least 2 px). A stroke From the view is
-    measured by where its paint shows through its own camera (every pixel of the item whose canvas spot it painted, so
-    paint that also shows somewhere else counts): how far outside the line you drew it shows (screen px; offPx the
-    worst, offMedianPx), in how many separate pieces (pieces; wantPieces: the line's own on that item) and how much of
-    the line it covers (covered, 0..1). It says "landed" only when none shows more than max(3 px, a quarter of the brush)
-    outside the line, at most 2 more pieces than the line has, covering at least 80 % of it; otherwise what went wrong:
-    "painted in 30 pieces, up to 49 screen px outside the line on lid". Each row has the canvas px box and uv box."""
+    """Where each stroke of a mesh or clay (or one paint layer) landed and how many px off, one plain line each. Guide
+    'painting'."""
     doc, info = doc_and_shot(ctx, args)
     tid = args["target"]
     owner = next((i for i in doc.items() if i.get("type") in PC.PAINTABLE and any(p["id"] == tid for p in i.get("paints", []))), None)
@@ -151,10 +139,7 @@ def inspect_paint_strokes(ctx, args):
 
 @tools.tool("look_coverage", {"properties": {**ITEM_SHOT, **TIME, **PIC}})
 def look_coverage(ctx, args):
-    """How much of each paintable mesh and clay the shot's camera sees is painted, at a frame: "lid: 62 % painted
-    (41 000 of 66 000 px seen)", a spot counting as painted where any shown layer's paint is at least half opaque (as the screen's count), and a picture of the frame with what is seen but unpainted hatched
-    orange (the screen's coverage tint). Paint where the hatch is: look_at there gives the uv. An item seen without
-    surface coordinates (a mesh never unfolded) can't be painted until mesh.unfold."""
+    """What the shot sees painted; bare is hatched orange."""
     doc, info = doc_and_shot(ctx, args)
     frame = frame_of(ctx, info, args)
     w, h = size_of(info, args)
@@ -190,13 +175,10 @@ def look_coverage(ctx, args):
 
 @tools.tool("look_where", {"required": ["target"], "properties": {
     **ITEM_SHOT, **TIME, **TARGET, **PIC,
-    "px": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "[x, y] canvas px of the item's paint picture."},
-    "uv": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "[u, v] on the item's unfolded surface (instead of px)."}}})
+    "px": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "[x, y] in the item's paint-canvas px."},
+    "uv": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "[u, v] on its unfolded surface (instead of px)."}}})
 def look_where(ctx, args):
-    """The reverse of look_at: where a spot of a mesh's or clay's paint canvas (`px` canvas pixels, or `uv`) is on the
-    shot's picture at a frame and in the world. Seen: its pixel in a `width` picture, the world point (metres), the
-    distance and the surface direction there. Not seen (behind something, facing away or out of frame): says so, with the
-    nearest pixel where the item is seen and how far that is on the canvas."""
+    """Where a canvas spot (`px` or `uv`) lands on the picture."""
     doc, info = doc_and_shot(ctx, args)
     item = PC.paintable(ctx, doc, args["target"])
     size = PC.size_of(item)

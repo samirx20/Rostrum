@@ -71,7 +71,7 @@ class Clock:
         else:
             parts.append("the picture was looked at since your last edit")
         if self.exported and not self.export_looked:
-            parts.append("the last video has not been looked at (look_sheet, look_frame, look_motion)")
+            parts.append("the last video has not been looked at (look_frame what \"sheet\", look_motion)")
         left = self.left()
         if left is not None:
             parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to look and refine)" if left > 60 else "")

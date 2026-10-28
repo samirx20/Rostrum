@@ -33,7 +33,7 @@ def after_run(ctx, doc, look, reply: Reply) -> Reply:
     try:
         return _looked(ctx, doc, look, reply)
     except RostrumError as e:
-        reply.summary += f"\nLook FAILED, no picture or faults: {e.line()} The script itself was merged; look_frame or look_sheet to look."
+        reply.summary += f"\nLook FAILED, no picture or faults: {e.line()} The script itself was merged; look_frame (what \"frame\" or \"sheet\") to look."
         reply.data["look"] = {"failed": e.line()}
         return reply
 

@@ -122,13 +122,13 @@ def sheet_text(total: float, frames: int, per_frame: float) -> str:
 
 
 OVERRIDES = {
-    "frame": {"type": "integer", "minimum": 0, "description": "Estimate a still of this shot frame instead of the shot's frames."},
-    "quality": {"enum": [*QUALITIES, "stylized", "custom"], "description": "Instead of the shot's own: draft 32 samples, good 128, final 512 (Cycles); stylized = the stylized renderer (lines, halftone, light to colour), 2× supersampled."},
-    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Instead of the shot's own (sets quality custom)."},
-    "denoise": {"type": "boolean", "description": "Noise clean-up, instead of the shot's own (sets quality custom)."},
-    "size": {"enum": list(SIZES), "description": "Instead of the shot's own: full, half or double the shot's frame size."},
-    "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (with end: a range instead of the shot's own)."},
-    "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot; the frame at this time is the last one."},
+    "frame": {"type": "integer", "minimum": 0, "description": "A still of this frame instead of the shot."},
+    "quality": {"enum": [*QUALITIES, "stylized", "custom"], "description": "Instead of the shot's own: draft 32, good 128, final 512 samples, or stylized."},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Instead of the shot's own (quality custom)."},
+    "denoise": {"type": "boolean", "description": "Noise clean-up instead of the shot's own (quality custom)."},
+    "size": {"enum": list(SIZES), "description": "Full, half or double the shot's frame size."},
+    "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start (a range with end)."},
+    "end": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start: the last frame."},
 }
 TO_FIELD = {"quality": "renderQuality", "samples": "renderSamples", "denoise": "renderDenoise", "size": "renderSize",
             "start": "renderStart", "end": "renderEnd"}
@@ -151,18 +151,9 @@ def settings_of(shot: dict, info: dict, args: dict) -> dict:
                                                 "all_shots": {"type": "boolean", "default": False, "description": "Every shot of the document, each with its own settings, and a total."},
                                                 "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend: over it, the reply names one-setting changes that fit."}}})
 def render_estimate(ctx, args):
-    """How long a render will take, measured on this machine, without starting it: for a shot (its stored render settings:
-    quality, size, frames; any of them overridden here), a still (`frame`), or all shots. The first call for a scene renders a
-    probe (the middle frame at a quarter of the pixels, and once at the real size with few samples, through the same engine
-    path as the real render) and keeps it, so
-    asking again, or changing only samples, size or frames, answers at once; any change to the scene measures again.
-    The per-frame time includes the scene changing from frame to frame (a cloth or fall's stored shape, animation: one extra small frame is timed at the next frame), and is raised when the last full render of the same shot in this project took 10 %+ over its estimate (the reply says "raised ×N").
-    Returns seconds a frame, the total, how it was measured, its slowest part, the probe picture, and settings that fit
-    `budget_min`. A probe over its 90 s budget stops and says the job is at least that slow. When another job is using the
-    graphics card the reply says so (`gpu_busy`): the figure was measured under that load, so it is slower than a render on a free
-    card (ask again when it is free before lowering quality), and a probe taken then is not kept. A cloth costs little to
-    render (an 18k-triangle drape: about 0.6 s a frame more at 1280×720, 16 samples); samples, size and the lights cost the time.
-    Always a job: ask with inspect_job (wait_s up to 25)."""
+    """How long a render will take on this machine, measured on a kept probe, without rendering: a shot, a still (`frame`)
+    or `all_shots`; with `budget_min` it names settings that fit. A job. Guide 'agents' (Render settings and the time
+    estimate)."""
     doc, info = doc_and_shot(ctx, args)
     shots = [s["id"] for s in doc.data.get("shots", [])] if args.get("all_shots") else [info["id"]]
     eng = draw.engine_of(ctx)

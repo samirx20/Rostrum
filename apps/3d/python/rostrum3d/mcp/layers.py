@@ -8,10 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum3d.render_fields import PASSES, passes as shot_passes
 
 PASSES_ARG = {"type": "array", "items": {"enum": list(PASSES)}, "uniqueItems": True,
-              "description": "Layers of the EXR beside the picture (Beauty, always): light, reflections (with either, rest = glass, "
-                             "glow and sky, so light + reflections + rest = the picture before noise clean-up), shadow (0 lit .. 1 in "
-                             "shadow; renders each frame twice), masks (one per item, named by its id), depth (metres from the camera), "
-                             "normal (surface direction). Cycles only. Default: the shot's own Passes (Beauty + Masks); [] = Beauty alone."}
+              "description": "EXR layers beside Beauty (Cycles only; guide rendering). Default: the shot's Passes; [] = Beauty alone."}
 ADDS_UP = "R G B (the beauty, before noise clean-up; exactly with it off) = light + reflections + rest"
 MEANING = {"beauty": "the picture: scene-linear Rec.709, alpha = coverage", "light": "light on matte surfaces (diffuse, direct + bounced)",
            "reflections": "reflections and highlights (glossy)", "rest": "everything else: glass, glow, sky, haze",
