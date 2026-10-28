@@ -8,6 +8,11 @@ change) or at seconds (it stays at that moment, so its beat moves). Not on a mar
 map to be placed, so a change on one would place itself. The engine gets the same map as segments (`contract`),
 so the screen, ids, checks and the render all read one map.
 
+Beat 0 (bar 1) starts at the document's `gridStart` seconds (absent = 0, so an older song is unchanged). Music before it
+is a pickup: written in seconds (or as a marker time), the map reaching back from beat 0 at the first tempo, so
+`beat_at` gives a negative beat there and `seconds_at` of a negative beat its file time. A tempo change in seconds stays
+at that moment of the file; one on a beat moves with the grid. Times on the beat grid stay ≥ 0 in the document.
+
 A ramp is exact, not stepped: with the tempo rising k bpm per beat from `bpm0`, a beat lasts 60/bpm seconds, so
 seconds = 60/k·ln(bpm/bpm0) and back, beat = bpm0/k·(e^(k·seconds/60) − 1) (`engine/src/contract/time.rs` agrees).
 """
@@ -22,6 +27,11 @@ _MAPS: dict = {}          # the tempo data's own values -> (segments, their star
 
 def start_bpm(root: dict) -> float:
     return float(root.get("tempo", 120))
+
+
+def grid_start(root: dict) -> float:
+    """The file time where beat 0 / bar 1 begins (`gridStart`; absent = 0)."""
+    return float(root.get("gridStart", 0) or 0)
 
 
 def _slope(seg) -> float:
@@ -51,10 +61,10 @@ def key(root: dict):
     """The tempo data as plain values (the song's tempo, each change's at / bpm / ramp): a map is made once per tempo
     data and found again by these values, never by the tree's identity, so an edit, an undo, a preview or a plan's
     in-place work tree can never read a stale map (a song's few changes: ~1 µs to read)."""
-    cs = root.get("tempos")
+    cs, g = root.get("tempos"), root.get("gridStart", 0) or 0
     if not cs:
-        return root.get("tempo", 120)
-    return (root.get("tempo", 120), *((("b", at.get("beat")) if isinstance(at := c.get("at"), dict) else at,
+        return root.get("tempo", 120) if not g else (root.get("tempo", 120), g)
+    return (root.get("tempo", 120), g, *((("b", at.get("beat")) if isinstance(at := c.get("at"), dict) else at,
                                        c.get("bpm"), bool(c.get("ramp"))) for c in cs))
 
 
@@ -77,14 +87,15 @@ def _made(root: dict):
 
 
 def segments(root: dict) -> tuple[tuple[float, float, float, float, float], ...]:
-    """(start beat, bpm, start seconds, bpm at its end, end beat) per stretch, the first at beat 0, the last
+    """(start beat, bpm, start seconds, bpm at its end, end beat) per stretch, the first at beat 0 (at `gridStart`
+    seconds), the last
     ending at infinity. A held stretch ends at its own bpm. A change in seconds is placed after every change before
     it (the earliest still unplaced goes next), so mixed forms agree. Made once per tempo data (`key`)."""
     return _map(root)[0]
 
 
 def _segments(root: dict) -> tuple:
-    open_ = [0.0, start_bpm(root), 0.0, False]           # the last placed stretch: beat, bpm, seconds, ramps
+    open_ = [0.0, start_bpm(root), grid_start(root), False]   # the last placed stretch: beat, bpm, seconds, ramps
     done = []
     todo = [c for c in root.get("tempos", []) if "at" in c and "bpm" in c]
     while todo:
@@ -120,13 +131,13 @@ def _by_sec(m, sec: float):
 
 def seconds_at(root: dict, beat: float) -> float:
     if not root.get("tempos"):                 # one tempo all song (the usual song): the one stretch, no map to find
-        return beat * 60.0 / float(root.get("tempo", 120))
+        return grid_start(root) + beat * 60.0 / float(root.get("tempo", 120))
     return _sec_in(_by_beat(_map(root), beat), beat)
 
 
 def beat_at(root: dict, sec: float) -> float:
     if not root.get("tempos"):
-        return sec * float(root.get("tempo", 120)) / 60.0
+        return (sec - grid_start(root)) * float(root.get("tempo", 120)) / 60.0
     return _beat_in_seg(_by_sec(_map(root), sec), sec)
 
 
@@ -147,18 +158,23 @@ def ramps(root: dict) -> bool:
 
 def contract(root: dict):
     """The engine's `tempo`: a number while the tempo never changes, else the segments, a ramping one with
-    `"ramp": true` (it glides to the next segment's bpm: ENGINE_CONTRACT.md)."""
-    segs = segments(root)
-    if len(segs) == 1:
+    `"ramp": true` (it glides to the next segment's bpm: ENGINE_CONTRACT.md). With a `gridStart`, always the segments,
+    the first carrying `"seconds"`: the file time beat 0 starts at."""
+    segs, g = segments(root), grid_start(root)
+    if len(segs) == 1 and not g:
         return segs[0][1]
-    return [{"beat": round(s[0], 6), "bpm": s[1], **({"ramp": True} if _slope(s) else {})} for s in segs]
+    out = [{"beat": round(s[0], 6), "bpm": s[1], **({"ramp": True} if _slope(s) else {})} for s in segs]
+    if g:
+        out[0]["seconds"] = g
+    return out
 
 
 def beats(root: dict, end: float) -> list[float]:
-    """The time of every beat from 0 to `end` seconds (the ruler and the grid draw these)."""
+    """The time of every beat from 0 to `end` seconds (the ruler and the grid draw these), a pickup's beats before
+    `gridStart` included."""
     out = []
-    for seg in segments(root):
-        k = int(-(-seg[0] // 1))           # the first whole beat in this stretch
+    for i, seg in enumerate(segments(root)):
+        k = int(-(-(beat_at(root, 0.0) if i == 0 else seg[0]) // 1))     # the first whole beat in this stretch
         while k < seg[4] - 1e-9:
             t = _sec_in(seg, k)
             if t > end + 1e-9:

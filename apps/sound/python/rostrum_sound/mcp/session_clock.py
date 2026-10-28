@@ -72,11 +72,13 @@ class Clock:
         return " · ".join(parts)
 
 
+AGAIN = "and render_mix again to the same name"     # run_script's render says its own way round (script_render.py)
+
+
 def fix_pass(clock: Clock | None, render_s: float | None = None) -> str:
     """What a finished render's reply asks next: a concrete fix pass, and the time left for it."""
     said = ("Next, a fix pass: change the script for each weak moment above (look_music and look_sound show more: a chord "
-            "that blurs into the next, a held sound that stays flat, a stretch too loud or quiet for its place) and render_mix "
-            "again to the same name.")
+            "that blurs into the next, a held sound that stays flat, a stretch too loud or quiet for its place) " + AGAIN + ".")
     left = clock.left() if clock else None
     if left is None:
         return said

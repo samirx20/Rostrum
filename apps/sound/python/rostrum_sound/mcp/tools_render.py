@@ -15,7 +15,7 @@ from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
 from ..listen import weakest
-from . import session_clock, tools_fit
+from . import session_clock, stop_limiter, tools_fit
 from .moments_arg import EXPECT, parse as parse_expect
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -112,10 +112,10 @@ def asked_moments(doc, expect) -> list[dict]:
     return weakest.from_markers(markers.all(doc.data))
 
 
-def weakest_words(wav, moments) -> tuple[str, list[str]]:
+def weakest_words(wav, moments, limiter=None, peaky=None) -> tuple[str, list[str]]:
     """The reply's weakest-moments lines; a file the ears cannot read is said, not hidden (the render itself stands)."""
     try:
-        said = weakest.words(wav, moments)
+        said = weakest.words(wav, moments, limiter, peaky)
     except RostrumError as e:
         return f"The listening check could not read the mix: {e}", []
     return said, [ln.split(". ", 1)[1] for ln in said.splitlines()[1:]]
@@ -149,7 +149,7 @@ def register(tools: Tools):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, Rhodes, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them.
         A first render often lands 1 to 3 dB under the master's loudness target (-16 LUFS): gentle limiting holds the mix to `maxLimit` (2 dB) instead of squashing it. The reply says so and edit_loudness {"apply": "best"} (or keep_balance) reaches the target in one measured call; do not leave it quiet. This file is for checking and delivery: 2D's render_video does not use it, it renders the song's current document itself (cached while the song is unchanged), so a video's sound always follows the song, not the last render_mix.
-        Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. The file is exactly the song's length when it has one (trim never cuts below it; a ring-out running past it is faded out inside it: `ring_past_length` true lets it run on). `folder` also copies the mix there under `name`. The finished reply lists the three weakest moments of the mastered mix against the asked moments (`expect`, else the song's markers named hit / stop / drums out / drums back / climax / lift), one line each with the time, what is weak, the measured numbers and the first fix (data.weakest; the same check as look_sound / look_music faults: a hit's attack against a normal note and the bed before it), then asks for a fix pass and says the time and passes left. Returns a job."""
+        Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. The file is exactly the song's length when it has one (trim never cuts below it; a ring-out running past it is faded out inside it: `ring_past_length` true lets it run on). `folder` also copies the mix there under `name`. The finished reply lists the three weakest moments of the mastered mix against the asked moments (`expect`, else the song's markers named hit / stop / drums out / drums back / climax / lift), one line each with the time, what is weak, the measured numbers and the first fix (data.weakest; the same check as look_sound / look_music faults: a hit's attack against a normal note and the bed before it), then asks for a fix pass and says the time and passes left. Returns a job. The quickest loop is run_script with `look` (true, or these same arguments): the whole piece as one script, rendered and checked in one call; edit the script and run it again."""
         doc = ctx.document(args.get("item"))
         args = presets.expand(args, args.get("preset"))             # a wrong preset answers now
         item = doc.item_id
@@ -198,7 +198,7 @@ def register(tools: Tools):
             weak = []
             if not partial:
                 job.progress(note="listening")
-                heard, weak = weakest_words(r["file"], moments)
+                heard, weak = weakest_words(r["file"], moments, *stop_limiter.read(ctx, doc, r, moments))
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
             return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),

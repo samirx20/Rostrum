@@ -1,7 +1,8 @@
 # Listening without ears: the look tools
 
 You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. Render first
-(`render_mix`, then `inspect_job` until it is done); every look tool reads the last render unless you pass `wav`.
+(`render_mix`, then `inspect_job` until it is done; or `run_script` with `look`, which writes, renders and checks in
+one call); every look tool reads the last render unless you pass `wav`.
 Two read the document instead and need no render: `look_arrangement`, and `look_music` (`what: "harmony"`) on a song
 with notes written.
 
@@ -12,7 +13,7 @@ with notes written.
 | The render landed under the loudness target: what exactly do I change? | `edit_loudness` (a job; it re-renders offline to search) | the exact edits, ready for `edit_document`: `keep_balance` (the `maxLimit` that reaches the target, no track moves), `tame_peaks` (a gentle compressor on the most peaked track, threshold and makeup measured: the target inside the master's `maxLimit`, balance kept) and `trim_track` (the smallest cut of the most peaked track that reaches it inside the master's `maxLimit`), and when it needs over ~3 dB of limiting `lift_quiet` (the quiet passages ridden up on the master's volume lane, measured); `{"apply": "best"}` makes the one it names best |
 | Is one track buried or too loud? | `look_sound` (`what: "levels"`) | each stem's LUFS, dB under the loudest / the mix, and the track's volume in dB (move a track N dB: volume + N); flags (a float stem over 0 dBFS is held, not clipped) |
 | Do sounds land on time (a hit on a cut, a footstep on a frame)? | `look_music` (`what: "events"`) with `expect` | each expected time's nearest onset and offset in ms; pass within `tolerance`; with `by_stem`, which stem hits each time |
-| Does each moment come across, not just land? What would a listener complain about? | `look_music` (`what: "events"`) or `look_sound` (`what: "loudness"`) with `expect` moments: `{"at": 31.5, "kind": "hit"}` (kinds `hit`, `stop`, `drop`, `climax`, `lift`, `entry`, `voice` with `end`) | `faults`, each with its time, the measured number and what to change (see *Faults* below). `look_sound` loudness also names the whole-piece faults every time, with or without `expect` |
+| Does each moment come across, not just land? What would a listener complain about? | `look_music` (`what: "events"`) or `look_sound` (`what: "loudness"`) with `expect` moments: `{"at": 31.5, "kind": "hit"}` (kinds `hit`, `stop`, `drop`, `climax`, `lift`, `entry`, `voice` with `end`), and the brief's tempo as `{"kind": "tempo", "bpm": 132}` (no `at`) | `faults`, each with its time, the measured number and what to change (see *Faults* below). `look_sound` loudness also names the whole-piece faults every time, with or without `expect` |
 | Is there hum, a whistle, or masking? | `look_sound` (`what: "spectrum"`) (with `marks`) | `hum_lines` are the steady lines that are unwanted (flat level, on two or more multiples of 50 or 60 Hz together; a lone held note, even a very low one, is a tone, not hum); `tones` lists every steady line with its note name, so a held note shows as a note, not hum; marks show where events should be |
 | Does it lean left or right, or fall apart in mono? | `look_sound` (`what: "stereo"`) | balance per section, correlation, mono warnings |
 | Is there boom where the picture has none, or mud? | `look_sound` (`what: "low_end"`) | each track's and the mix's share under 150 Hz, under 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy) |
@@ -38,7 +39,9 @@ drone meant as a drone may stay, but say why in your report.
 |---|---|---|
 | weak hit / stop / entry at 31.50 s | the hit's attack in the finished, limited file (the rise over ~21 ms, every frequency counted alike, as the ear hears a strike) against the piece's typical onset ("1.0x a normal note", rank among all onsets); under 2.5x or not in the top 3 (drums coming back: under 2x). Beside it: its **bright attack** (2 kHz up), its strength against the notes of the 2 s before, and its loudness jump over the 1.5 s before | the fix follows the short number: bright attack low → a short loud part with a fast bright attack on it (crash, snare, a high piano or brass stab; a low boom alone reads as a normal note); jump small → silence or duck the bed 0.3–0.5 s before; the notes before strike as hard → shorter bed notes into it, nothing on the beat before; more instruments across registers. When the build already peaks at the ceiling (its highest sample in the 3 s before within 1.5 dB of the file's, at -3 dBFS or more) the list starts with **headroom**: nothing else can make the hit louder |
 | no hit at … | nothing starts within 80 ms | put the notes on the time; `by_stem` names the nearest part |
-| blurred stop | an onset in the second before at 70 % of the stop's strength or more, or the level falling under 8 dB in the second after | rest the band on the beat before; end held notes, ride and pedal at the stop; short notes on the hit |
+| stop lands soft | a `stop` whose attack is not clearly the band's strongest arrival (under 2.5x a normal note or not in the top 3; an onset in the second before at 70 % of its strength or more), or whose next second is not clearly quieter (the level falls under 8 dB); on a render, how far the master limiter pulls around it | rest the band on the beat before, put its strongest accent on the stop, end held notes, ride and pedal at once, short notes on the stop itself. When the limiter pulls 3 dB or more there, the fix **leads with taming the peaks**: a compressor on the track driving the limiter (named; `edit_loudness {"apply": "tame_peaks", "track": …}`) or lower velocity on ride and cymbals, and only then a higher `maxLimit` (a ride forcing 8.7 dB of limiting left a jazz stop at 1.2x) |
+| silent start (whole piece) | the first 20 ms over -45 dBFS comes later than 0.25 s | start the music at once. To land a beat on a sync time, play a pickup before bar 1 with `downbeat(bar(1), at=<seconds>)` or place the sync moment in seconds; never leave silence to push the music later |
+| tempo far from the brief's (`{"kind": "tempo", "bpm": …}`) | the song's start tempo and the tempo it holds for most of its length (a short `land` glide or a pickup does not count) against the asked tempo; off by more than 0.5 % | keep the asked tempo and land the sync moment another way: `downbeat(bar(n), at=<seconds>)` (a pickup before bar 1), `land(bar(n), at=<seconds>, ramp_from=bar(m))` (a short tempo glide that arrives on time), or the moment in seconds. A bent tempo is heard as rushed or dragging |
 | drums drop early | the last beat before a `drop` more than 1.5 beat-gaps (and 0.35 s) before it | a last hit or fill ending on the time |
 | weak climax | the climax's downbeat read as a hit (the same numbers and fixes) | as a weak hit |
 | build at the ceiling (hit, climax) | the build's highest sample in the 3 s before within 1.5 dB of the file's loudest, which is at -3 dBFS or more: the limiter's ceiling is already used, so the moment cannot be louder | keep the build's peaks 4–6 dB under the ceiling (its velocities or volumes, not the moment's) and let the moment ring or hold 3–5 s, so it carries the loudness target |
@@ -57,7 +60,15 @@ drone meant as a drone may stay, but say why in your report.
 `render_mix` runs the same check on every finished mix: its reply lists the three weakest moments against the asked
 ones (`expect`, or the song's markers named hit, stop, drums out, drums back, climax or lift), one line each with the
 time, the measured numbers and the first fix (`data.weakest`). Name the moments as markers once and every render is
-checked. A line that says "comes across" is a margin, not a fault.
+checked. A line that says "comes across" is a margin, not a fault. A missing moment comes first, then a silent start or
+a bent tempo (heard from the first second), then the weakest moments, then the other whole-piece faults.
+
+The quickest loop is one call: write the whole piece as one script and run it with `look` (`true`, or render_mix's
+arguments: `{"look": {"name": "cue", "expect": [{"at": 31.5, "kind": "stop"}, {"kind": "tempo", "bpm": 132}]}}`).
+The script merges, the mix renders and the reply is the script's line followed by render_mix's whole listening summary
+(loudness, the weakest moments with their fixes, the files; `data.render`). Edit the script and run it again under the
+same `name` with `look` until the list is clean. A failing script renders nothing; a render over 150 s answers its
+job id for `inspect_job`.
 
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a
 recording sounds like the object on screen. Say so in your report; a person decides those by listening.

@@ -11,6 +11,7 @@ from . import expression as EX
 from . import names, script_ops
 from .builder_music import MusicMap
 from .builder_parts import Clip, Inserts, checked
+from .builder_routing import Bus, Routing
 from .doc import blank
 from .doc import fields as FD
 from .doc import ids, markers
@@ -21,7 +22,7 @@ from .doc.registry import MASTER_ID
 INSTRUMENT_KEYS = tuple(FD.INSTRUMENT_FIELD)
 
 
-class Track(Inserts):
+class Track(Routing, Inserts):
     LANES = tuple(names.TRACK_LANES)
 
     def __init__(self, song, id_, fields):
@@ -140,7 +141,7 @@ class Track(Inserts):
             cid = c.id or ids.clip(self.id, c.fields["at"], root, taken, where)
             taken.add(cid)
             clips.append({"id": cid, "type": "clip", **c.fields, "effects": c.insert_items(cid, taken)["effects"]})
-        return {**out, "clips": clips, **self.insert_items(self.id, taken)}
+        return {**out, "clips": clips, **self.insert_items(self.id, taken), **self.routing_items(taken)}
 
 
 class Master(Inserts):
@@ -163,6 +164,7 @@ class Song(MusicMap):
         self.root = {k: v for k, v in blank().items() if k not in ("tracks", "markers", "master")}
         self.tracks: list[Track] = []
         self.markers: list[dict] = []
+        self.buses: list[Bus] = []
         self.known: list[dict] = []        # the document's own markers (marker.add): read, never made, by the script
         self.master = Master()
 
@@ -175,6 +177,12 @@ class Song(MusicMap):
         fields = names.read_sound(fields)          # "kit:classic" -> classic, an old kit name renamed, a wrong name refused with the close ones
         self.tracks.append(Track(self, id, fields))
         return self.tracks[-1]
+
+    def bus(self, id, **fields) -> Bus:
+        if any(b.id == id for b in self.buses):
+            raise RostrumError(codes.BAD_ARGUMENT, "script", f'bus "{id}"', "is made twice")
+        self.buses.append(Bus(id, fields))
+        return self.buses[-1]
 
     def marker(self, name, at, id=None):
         self.markers.append({"id": id or ids.marker(name), "type": "marker",
@@ -192,9 +200,9 @@ class Song(MusicMap):
         taken |= {i["id"] for k in ("tempos", "meters", "keys", "sections") for i in self.root.get(k, [])}
         holders = [*self.tracks, self.master, *(c for t in self.tracks for c in t.clips)]
         taken |= {e[0] for h in holders for e in getattr(h, "notes", []) + getattr(h, "hits", []) + h.effects if e[0]}
-        taken |= {c.id for t in self.tracks for c in t.clips if c.id}
+        taken |= {c.id for t in self.tracks for c in t.clips if c.id} | {b.id for b in self.buses}
         tracks = [t.item(root, taken) for t in self.tracks]
         master = {"id": MASTER_ID, "type": "master", **self.master.fields,
                   **self.master.insert_items(MASTER_ID, taken)}
-        return {"id": "root", "type": "doc", **self.root, "tracks": tracks, "markers": self.markers,
+        return {"id": "root", "type": "doc", **self.root, "tracks": tracks, "buses": [b.item(taken) for b in self.buses], "markers": self.markers,
                 "master": [master]}
