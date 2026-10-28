@@ -239,8 +239,8 @@ tool). By hand, twelve buds dropping into a bowl:
 - **Their settings:** the settings panel gains a **Simulation** group: Mass from size (as solid plastic) or Mass, Bounce,
   Friction, Starts (Moving, or Asleep until hit) and Shape (Exact, Box, Sphere); on a Cloth: Weight, Stiffness, Pinned edge
   and Friction. Simulate › Off takes an item out again.
-- **See it fall:** with things that Fall or are Cloth selected, the settings panel's **Start in view** raises each one into
-  the shot camera's picture, its top near the picture's top edge (its ▾: **From the top**, the share of the picture's height),
+- **See it fall:** with things that Fall or are Cloth selected, the settings panel's **Start in view** (or right-click › Simulate ›
+  **Start in view**) raises each one into the shot camera's picture, its top a tenth of the picture's height below its top edge,
   so the drop happens on screen. One undo step. Falls from (on a falling thing or a cloth) holds it there until that second.
 - **Compute it:** a **Simulation** row appears under the timeline's rows: "Not computed" and **Simulate**. Click it: the bar
   fills left to right as frames are computed (you can scrub meanwhile), then reads "Stored · 120 frames". Scrubbing and
