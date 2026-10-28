@@ -22,12 +22,12 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import export_beats, inspect_keys, project_tool, session_clock, tool_groups
+from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
-                "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame (one frame; what \"sheet\" a contact sheet, \"world\" the whole canvas with the frame's path, \"in_frame\" what is in or out of the frame) and look_motion. "
+                "Read inspect_guide 'start-here', write the whole film as one run_script with look (a contact sheet and the film's weakest moments come back in the same reply), edit and re-run it under the same name; for detail, look_frame (one frame; what \"sheet\" a contact sheet, \"world\" the whole canvas with the frame's path, \"in_frame\" what is in or out of the frame) and look_motion. "
                 "Paint on any shape, text, picture or path, or on a drawing, with paint.stroke (its paint stays inside the outline and "
                 "moves with it; one call list = one undo step), fill a closed area with paint.fill {at, color, gap} (paint layers, shared by "
                 "all of a layer's drawings: paint.add, paint.set, paint.move, paint.duplicate, paint.remove; saved brushes: run_brush) and check with look_drawing "
@@ -38,7 +38,12 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "The server opens the project you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
 
 
-SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
+SCRIPT_HELP = ("The 2D script layer. Write the whole film as one script (scenes as functions of a start time, shared timing "
+               "constants, loops, your own def helpers), run it with look, edit, re-run under the same name; the small tools are "
+               "for quick changes (guide the-film-as-one-script). item.sample(field, lambda t: …, start=, end=) keys a field "
+               "from your own Python, one key per frame (or a list of values); scramble(id, body, start=, end=) cycles characters "
+               "into words; beats() gives the scene's music beats in seconds (the music is made in RostrumSound). "
+               "comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
                "path / group(id, **fields), made inside `with group(...):` to go in it (their x, y are then in the group's "
                "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
                "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=); "
@@ -87,7 +92,7 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
     docs = documents if documents is not None else (open_documents(project, items or []) if project else {})
     instructions = INSTRUCTIONS if docs else f"{INSTRUCTIONS} {project_tool.NO_PROJECT}"
     return App("rostrum-2d", docs, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES),
-               folder=project, script_help=SCRIPT_HELP)
+               folder=project, script_help=SCRIPT_HELP, script_look=script_look.after_run)
 
 
 def make_runtime(app: App) -> Runtime:
@@ -98,6 +103,7 @@ def make_runtime(app: App) -> Runtime:
     library.use_project(app.folder)                  # the project's own tip and paper pictures are brush choices
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
+    export_wait.with_wait(runtime)                  # render_video / render_export wait for their job in the same call (wait_s)
     inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
     clock = session_clock.with_clock(runtime)        # every reply ends with the session's clock line
     export_beats.with_beats(runtime, clock)          # the exports take the brief's beats; the clock keeps them

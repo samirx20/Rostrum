@@ -17,6 +17,10 @@ A sum without `=` is worked out once; with `=` it stays live.
   It does the same `expr.set`, as one change you can undo. A driven field shows its formula in place of the box; press the × beside it to take it off.
   (A plain sum such as `3*4`, `12+8`, `20/4` or `(2+3)*4` needs no `=`: the box works it out and keeps the answer.)
 
+- **Keys from your own Python** (a script only): `dot.sample("y", lambda t: 540 + 60 * math.sin(t * 3), start=2, end=8)`
+  writes one plain key per frame instead of a formula (a list of values works too: one per frame from `start`). Use it
+  when the maths is more than a formula (a loop, a table, your own spring); the keys stay draggable by hand.
+
 A bind is only an expression written for you (`logo.x + 12`); the settings panel shows it as one. `expr.clear {prop}` takes
 either off. The field's own value and keys are **ignored while an expression is on it** (they come back when it is
 cleared); the settings panel says "overrides its keys".
