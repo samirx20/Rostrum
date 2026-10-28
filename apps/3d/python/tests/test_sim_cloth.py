@@ -19,7 +19,7 @@ SAM = Who.person()
 SRC = '''
 cam = camera("cam", z=4, y=0.5)
 shot("drape", camera=cam, fps=10, start=0, end=2)
-mesh("plinth", shape="box", width=0.4, height=0.4, depth=0.4, y=0.2).simulate("still")
+mesh("plinth", shape="box", width=0.4, height=0.4, depth=0.4).simulate("still")
 sheet = mesh("sheet", shape="plane", width=0.8, depth=0.8, y=0.5).simulate("cloth", stiffness=0.2, pinned="back")
 sheet.key("x", {0: 0.0, 0.2: 0.3})
 '''

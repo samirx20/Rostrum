@@ -16,7 +16,7 @@ from screen3d import gizmo_live as live  # noqa: E402
 from screen3d.bridge3d import Bridge3D  # noqa: E402
 
 SRC = '''
-box = mesh("box", shape="box", x=0.4, y=0.5, z=-0.2, rx=20, ry=35, sx=1.5, sy=0.5, px=0.1, py=-0.2, pz=0.3)
+box = mesh("box", shape="box", x=0.4, y_world=0.5, z=-0.2, rx=20, ry=35, sx=1.5, sy=0.5, px=0.1, py=-0.2, pz=0.3)
 ball = mesh("ball", shape="sphere", x=1, aim="item", aimItem="box")
 cam = camera("cam", z=3, y=0.6)
 shot("s", camera=cam, fps=10, start=0, end=20)

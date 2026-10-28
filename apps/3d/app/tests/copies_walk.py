@@ -45,8 +45,8 @@ import main as app3d  # noqa: E402
 
 SIZE, BUDGET_MS = (1646, 900), 16.0
 BUD, PEBBLE = (-0.55, 0.04, 0.3), (0.9, 0.012, 0.3)
-EXTRA = (f'bud = mesh("bud", shape="sphere", radius=0.045, x={BUD[0]}, y={BUD[1]}, z={BUD[2]}, material=clay)\n'
-         f'mesh("pebble", shape="sphere", radius=0.012, x={PEBBLE[0]}, y={PEBBLE[1]}, z={PEBBLE[2]}, material=alu)\n')
+EXTRA = (f'bud = mesh("bud", shape="sphere", radius=0.045, x={BUD[0]}, y_world={BUD[1]}, z={BUD[2]}, material=clay)\n'
+         f'mesh("pebble", shape="sphere", radius=0.012, x={PEBBLE[0]}, y_world={PEBBLE[1]}, z={PEBBLE[2]}, material=alu)\n')
 SPACING = 0.09                  # metres between buds (typed into Space X)
 NUMBERS: dict = {}
 

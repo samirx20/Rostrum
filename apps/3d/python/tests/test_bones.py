@@ -7,7 +7,7 @@ from rostrum3d.compile import describe
 
 SAM = Who.person()
 SRC = '''
-strap = mesh("strap", shape="capsule", radius=0.05, height=1.2, y=0.6)
+strap = mesh("strap", shape="capsule", radius=0.05, height=1.2)   # on the ground: its middle at 0.6
 cam = camera("cam", z=3, y=0.6)
 shot("s", camera=cam, fps=2, start=0, end=1.5)
 '''

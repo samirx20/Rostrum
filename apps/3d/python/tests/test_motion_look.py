@@ -10,8 +10,8 @@ AGENT = Who.agent("tester")
 SRC = '''
 camera("cam", z=3)
 mesh("case", shape="box", width=0.2, height=0.1, depth=0.1)
-mesh("bud", shape="sphere", radius=0.03, y=0.02).key("x", {0: -0.6, 1: 0.6}, ease="linear")
-mesh("puck", shape="box", width=0.1, height=0.1, depth=0.1, y=-0.5).key("x", {0: 0, 0.5: 0, 0.54: 2}, ease="linear")
+mesh("bud", shape="sphere", radius=0.03, y_world=0.02).key("x", {0: -0.6, 1: 0.6}, ease="linear")
+mesh("puck", shape="box", width=0.1, height=0.1, depth=0.1, y_world=-0.5).key("x", {0: 0, 0.5: 0, 0.54: 2}, ease="linear")
 shot("hero", camera="cam", fps=24, start=0, end=1)
 '''
 
@@ -55,7 +55,7 @@ FALL = '''
 camera("cam", z=4, y=0.5)
 shot("drop", camera="cam", fps=10, start=0, end=11)
 mesh("bowl", shape="box", width=1, height=0.1, depth=1).simulate("still")
-mesh("bud", shape="sphere", radius=0.05, y=1).simulate("falls")
+mesh("bud", shape="sphere", radius=0.05, y_world=1).simulate("falls")
 '''
 
 
@@ -100,7 +100,7 @@ def test_a_rolled_ball_resting_on_a_box_does_not_pass_through_it():
     src = '''
 camera("cam", z=3)
 mesh("slab", shape="box", width=1, height=0.1, depth=1)
-mesh("ball", shape="sphere", radius=0.05, y=0.1001, rx=45, rz=45).key("x", {0: -0.2, 1: 0.2}, ease="linear")
+mesh("ball", shape="sphere", radius=0.05, y_world=0.1501, rx=45, rz=45).key("x", {0: -0.2, 1: 0.2}, ease="linear")
 shot("hero", camera="cam", fps=24, start=0, end=1)
 '''
     reply = call({}, src)

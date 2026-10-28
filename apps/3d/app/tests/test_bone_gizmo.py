@@ -19,7 +19,7 @@ from screen3d.bridge3d import Bridge3D  # noqa: E402
 from screen3d.gizmo_drag import item_drag  # noqa: E402
 
 SRC = '''
-strap = mesh("strap", shape="capsule", radius=0.05, height=1.2, y=0.6)
+strap = mesh("strap", shape="capsule", radius=0.05, height=1.2)
 cam = camera("cam", z=3, y=0.6)
 shot("s", camera=cam, fps=10, start=0, end=20)
 '''

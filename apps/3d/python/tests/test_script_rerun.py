@@ -40,7 +40,7 @@ def test_a_one_line_tweak_under_the_same_name_is_refused_not_a_wipe():
     d = _doc()
     with pytest.raises(RostrumError, match='would remove 4 of the 5 things.*"wall"'):
         run(d, 'edit("ball", y=0.3)')
-    assert d.item("wall") and d.item("ball")["y"] == 0.1                  # nothing changed
+    assert d.item("wall") and d.item("ball")["y"] == 0.2                  # nothing changed (base 0.1 up: middle 0.2)
     run(d, SRC.replace('mesh("wall", shape="box", width=2, height=1, depth=0.05, z=-0.5)\n', ""))   # one left out: removed
     assert all(i["id"] != "wall" for i in d.data["items"])
 
@@ -59,7 +59,7 @@ def test_a_rerun_after_undo_lands_instead_of_holding_everything_back():
     d.apply({"op": "mesh.set", "target": ["wall"], "args": {"x": 0.4}}, SAM)
     d.script_bases.pop("scene.py")                                        # an undo or a failed run left no record
     report = run(d, SRC.replace("y=0.1, material", "y=0.25, material"))
-    assert not report.held and d.item("ball")["y"] == 0.25 and d.item("wall")["x"] == 0.4
+    assert not report.held and d.item("ball")["y"] == 0.35 and d.item("wall")["x"] == 0.4
     assert len([i for i in d.data["items"] if i["id"] == "ball"]) == 1
     run(d, 'mesh(shape="box")', "extra.py")
     report = run(d, 'mesh(shape="box")', "more.py")                       # a counted id skips what is there
@@ -72,6 +72,6 @@ def test_replacing_the_start_lights_and_removing_its_camera_holds_nothing_back()
     from rostrum3d.start_scene import SOURCE as START
     d = Document.new(KIND)
     d.run_script("start.py", run_source(START, "start.py"))          # as the server starts a new scene
-    report = run(d, 'light("key", kind="rect", width=0.6, height=0.6, intensity=40, x=-1.4, y=0.45, z=0.5)\n'
+    report = run(d, 'light("key", kind="rect", width=0.6, height=0.6, intensity=40, x=-1.4, y=0.45, z=0.5, replace_start_lights=True)\n'
                     'cam = camera("cam", focalLength=50)\nshot("shot_1", camera=cam, end=10)\nremove("shot_1_camera")')
     assert not report.held, report.held

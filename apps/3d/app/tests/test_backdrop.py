@@ -21,7 +21,7 @@ from screen3d.viewport import Viewport  # noqa: E402
 def bridge():
     QGuiApplication.instance() or QGuiApplication([])
     doc = Document.new(KIND)
-    doc.run_script("start.py", run_source(SOURCE + 'mesh("ball", shape="sphere", radius=0.1, y=0.1)\n', "start.py"))
+    doc.run_script("start.py", run_source(SOURCE + 'mesh("ball", shape="sphere", radius=0.1)\n', "start.py"))
     b = Bridge3D(doc, viewport=None)
     yield b
     b.close()

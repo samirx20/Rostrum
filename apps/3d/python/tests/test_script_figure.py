@@ -104,3 +104,29 @@ def test_bend_from_the_script_keys_that_joint_at_every_time():
             run_source(src + 'c.lump((0, 0.2, 0), 0.01)\n', "f.py")
         finally:
             ops_pose.use_grid(None)
+
+
+def _posed(lines: str):
+    ops_pose.use_grid(lambda doc, id_, cells: _figure_grid(cells))
+    try:
+        return run_source(SHAPE + 'shot("s", camera=camera("cam", z=1), start=0, end=2)\n' + lines, "f.py")
+    finally:
+        ops_pose.use_grid(None)
+
+
+def test_pose_at_a_time_moves_several_parts_and_names_the_picture_sides_through_the_camera():
+    # the camera at +z looks at the figure's face: its right hand (.R, the −x side) is on the picture's left
+    tree = _posed('c.pose(0, **{"picture-left hand": {"up": 0.04}, "left hand": {"up": 0.03}})'
+                  '.pose(0.5, **{"picture-left hand": {"up": 0.05, "out": 0.02}})\n')
+    bones = {b["joint"]: b for b, _ in skin.bones_of(_items(tree)["buddy"])}
+    assert sorted({k["t"] for k in bones["arm.R"]["keys"]}) == [0.0, 0.5]
+    assert sorted({k["t"] for k in bones["arm.L"]["keys"]}) == [0.0]          # not named at 0.5: keeps its pose
+    assert tree.notes == []
+    with pytest.raises(Exception, match='no part "left paw".*hand.R|no part "left paw".*arm.R'):
+        _posed('c.pose(0, **{"left paw": (0, 0.2, 0)})\n')
+
+
+def test_a_pose_target_out_of_reach_or_past_the_middle_is_a_note_not_an_error():
+    tree = _posed('c.pose(1, **{"right hand": (0.3, 0.5, 0)})\n')
+    assert any("from the shoulder, its reach is" in n and "stops short" in n for n in tree.notes), tree.notes
+    assert any("left side, past its middle; did you mean hand.L / picture-right hand?" in n for n in tree.notes), tree.notes

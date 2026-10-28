@@ -16,12 +16,12 @@ scene from the document each time you look. One `edit_document` call is one undo
 
 A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`, `backdrop=True`: a
 right-click on it in the window is a right-click on empty space), the sky `sky` (a dome light
-showing the photographed Studio sky, `texture="sky:studio"`), two lights aimed at the middle (`key_light`: a 0.45 m `rect`,
-`normalize` on, intensity 16, on the camera's left 1.1 m up, casting the floor shadow; `rim_light`: a 1 m `strip` on end behind on
-the right, no shadows, for an edge; the sky at `exposure` −1 is the fill) and the shot `shot_1` ("Shot 1") through the camera
-`shot_1_camera`, 55 cm up and 1.6 m back looking 15° down at the middle of the ground (no horizon in the picture: the Studio sky lights the scene but a camera turned up is what shows it),
+showing the photographed Studio sky, `texture="sky:studio"`), two lights aimed at the middle (`key_light`: a 0.3 m `rect`,
+`normalize` on, intensity 16, on the camera's left 1.6 m up, casting a contact shadow close under what stands there; `rim_light`: a 1 m `strip` on end behind on
+the right, no shadows, for an edge; the sky at `exposure` −1.5 is the fill) and the shot `shot_1` ("Shot 1") through the camera
+`shot_1_camera`, 55 cm up and 1.6 m back looking 15° down at the middle of the ground (no horizon in the picture; the Studio sky lights and reflects but the camera never sees it: past the ground a low camera sees the shot's plain `background`, the far floor's tone),
 framed for things a hand to an arm tall. So the first look is lit
-and framed before you add anything. A script keeps all of it unless it replaces it: `edit("sky", intensity=0.4)` / `edit("ground_material", baseColor=…)` change one field; a dome of your own (any id) replaces the sky; any other light of your own (any id) replaces `key_light` and `rim_light`; `remove("ground")` + `remove("ground_material")` or a mesh made again as `ground` replaces the floor (guide `script`, "Changing the new scene's own things").
+and framed before you add anything. A script keeps all of it unless it replaces it: `edit("sky", intensity=0.4)` / `edit("ground_material", baseColor=…)` change one field; a dome of your own (any id) replaces the sky; a light of your own ADDS to `key_light` and `rim_light` (`replace_start_lights=True` takes them out, and the reply names them); made again, a thing keeps the fields you did not give (`shot("shot_1", end=3)` keeps its camera); `remove("ground")` + `remove("ground_material")` or a mesh made again as `ground` replaces the floor (guide `script`, "Changing the new scene's own things").
 
 ## The loop
 
@@ -298,9 +298,10 @@ The time left is a number to use, not a reason to stop early.
   (`followPose`): an eye on a turning head. Parts placed on a clay get it already (`place_on`, `edit_place_on`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_sheet` shows whether the rider stays put after it is let go.
-- **Posing a clay.** Any clay bends: `pose.find_joints` finds its joints from its shape (body, chest, arm.L,
-  forearm.L, foot.R …), `pose.hold` keeps spots still, `pose.drag(part="hand.R", to=[x, y, z], at=t)` bends the chain
-  back to the body and keys the Turn of every joint that moved, `pose.rest` takes the pose off, `pose.move_joint`
+- **Posing a clay.** In the script: `buddy.pose(0, **{"picture-right hand": {"up": 0.1}}).pose(0.4, …)`, one pose
+  per call, the joints found for you (guide `posing`). As operations: `pose.find_joints` finds its joints from its
+  shape (body, chest, arm.L, forearm.L, foot.R …), `pose.hold` keeps spots still, `pose.drag(part="hand.R", to=[x,
+  y, z], at=t)` bends the chain back to the body and keys the Turn of every joint that moved, `pose.rest` takes the pose off, `pose.move_joint`
   places a joint by hand. Guide `posing` has the details (names, holds, keys, sculpting while posed).
 - **Bones.** `bone.chain` (target: one mesh; `points`: two or more `[x, y, z]`, root first, world positions at time 0,
   or the mesh's own space with `space: "mesh"`) lays len(points) − 1 bones, each from one point to the next, nested

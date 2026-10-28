@@ -25,8 +25,8 @@ from its shape. Not separate meshes in groups (they drift apart and need moving 
 c = clay("buddy", radius=0.07)                         # a ball standing on the ground: its middle at (0, 0.07, 0)
 c.lump((0, 0.195, 0), 0.055, name="head")             # every position: x, HEIGHT ABOVE THE GROUND, z
 c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")   # held a little out; Mirror makes the other side
-c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})       # degrees about the clay's X, Y, Z from rest, at each time
-c.pose("hand.L", {2: (0.15, 0.27, 0.05)}, holds=["foot.L", "foot.R", "body"])   # or drag a part's end (pose.drag)
+c.pose(0, **{"picture-right hand": {"up": 0.1}}).pose(0.4, **{"picture-right hand": {"up": 0.12, "out": 0.04}})  # a wave
+c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})       # or one joint by degrees about the clay's X, Y, Z from rest
 mesh("eye", shape="sphere", radius=0.01, x=0.02, y=0.21, z=0.05, attach_to=c)   # rides the head's bone
 ```
 
@@ -36,9 +36,33 @@ the ground, z). A piece reaching below the ground lifts the whole figure (and wh
 `at=` (or `y=`) the clay's origin is there instead, and its pieces are measured from that point.
 
 Pose after the last piece (the first `bend` / `pose` finds the joints; a piece added after fails). Names: `body`,
-`chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side; a wrong name fails
-listing the ones found. `holds` takes joint names: holding `"body"` keeps the whole trunk upright (the head still
+`chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side; in words `"right
+hand"`, or `"picture-left hand"` (the one on the picture's left); a wrong name fails listing the ones found. `holds` takes joint names: holding `"body"` keeps the whole trunk upright (the head still
 turns), holding the feet keeps them planted. Guide `posing`.
+
+## Ground first, place by relation, frame by subject
+
+**Changed: `y` is now height above the ground.** A mesh, import, group or combine made directly in the scene stands
+on the ground: its `y` is the height of its **base** (its lowest point at rest, as turned and scaled) above the
+ground's top, so no `y=h/2` by hand; `y=0.3` lifts its base 30 cm; y keys mean the same. `y_world=` puts its own
+origin (a shape's middle, an import's base) at that world height instead: the rare floating thing. A group stands on
+the ground as a whole; what is inside a group keeps the group's space. Falling things too: `y` = how high their base
+starts. Lights, cameras, the ground itself and `attach_to` parts are as before.
+
+```python
+table = mesh("table", shape="box", width=1, height=0.05, depth=0.6, y=0.7)  # its base 70 cm up
+mug = mesh("mug", shape="cylinder", radius=0.04, height=0.1).place_on(table)      # on its top, over its middle
+mesh("jar", shape="cylinder", radius=0.05, height=0.14).place_on(mug, beside="right", gap=0.03)
+row([mesh("a", shape="sphere", radius=0.05), mesh("b", shape="box", width=0.1, height=0.1, depth=0.1)], gap=0.05)
+cam = camera("cam", focalLength=50).take_view((0, 1.2, 2.2), table)   # stand here, aim at that
+shot("hero", camera=cam, end=4, frame=mug, at=(1/3, 0.5), fill=0.5)   # the mug's middle on the left third
+item("hero").key("frame", {0: {"fill": 0.3}, 4: {"fill": 0.6}})       # a push-in: ordinary x y z keys on cam
+```
+
+Sides are the world's (left = −X, right = +X, front = +Z towards the start camera, back = −Z), by the things' real boxes,
+turned or in groups. `frame=` keeps the camera's direction and lens (an aimed camera keeps the turn it has and stops
+aiming) and moves it: `at` = where the subject's middle lands (fractions from the picture's left and top), `fill` = its
+share of the picture's height.
 
 ## The shape of a script
 
@@ -59,7 +83,11 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 |---|---|
 | `group(id, **fields)` | a group; items made inside `with group(...):` go in it |
 | `mesh(id, shape=, **fields)` | `box sphere cylinder cone capsule plane disc torus`, or the outlines `text svg path2d` |
-| `item.place_on(other)` | stand a mesh on top of another (same group, both unturned): base on its top, over its middle |
+| `item.place_on(other, gap=)` | its base on the other's top, over its middle (by real boxes: turned, in groups) |
+| `item.place_on(other, beside="left"\|"right"\|"front"\|"back", gap=)` / `place_on(in_front_of=other)` | next to it on that world side, lined up with its middle, its base level with its base, `gap` metres between |
+| `row([a, b, c], gap=0.1, centre=True, axis="x", at=)` | side by side in that order, the row's middle on 0 (or `at`), all on the ground |
+| `cam.take_view(pos, look_at)` | the camera stands at `pos` and aims at `look_at` (a point or an item) |
+| `shot(id, camera=, frame=item_or_list, at=(x, y), fill=)` / `shot.key("frame", {t: {"fill": …}})` | frame the subject: its middle at `at` (picture fractions from left / top), its height `fill` of the picture; keyed = a push-in |
 | `item.place_on(clay or mesh, at=(x, y, z), normal=)` | stand a mesh on that surface at a world point (`normal` left out: straight out from its upright middle line); on a clay with Mirror on, off its middle (farther than its own half size), it also gets its mirrored copy `<id>_mirrored`, which follows it; on a clay it also follows the clay's pose (`follow=<clay>`, `followPose=True`). From a pixel of a look instead: the tool `edit_place_on` |
 | `light(id, kind=, **fields)` | `rect disk strip sphere spot distant dome` |
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
@@ -76,7 +104,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `clay.shape(shape, at, radius, to=, mode=, …)` | the same piece with its shape named, as the `clay.shape` operation: `"sphere"` or `"capsule"` (needs `to`) |
 | `clay.stroke(path=, dir=, brush=, size=, strength=, symmetry=, accumulate=, name=)` | a brush stroke: each dab where a ray from a `path` point along `dir` meets the clay |
 | `clay.bend(joint, {seconds: (x, y, z)}, ease=)` | turn a clay's joint by those degrees about the clay's own X, Y, Z (from rest) at each time; finds its joints the first time |
-| `clay.pose(part, {seconds: (x, y, z)}, holds=[…], ease=)` | `pose.drag` at each time: the part's end (`"hand.R"`) goes to that world point |
+| `clay.pose(seconds, **{part: target, …}, holds=[…], ease=)` | one pose at that time (chain calls for motion): each part's end goes to its target, a world point `(x, y, z)` or `{"up": m, "out": m, "forward": m}` from where it is at rest (the figure's own directions); parts `"hand.R"`, `"right hand"`, `"picture-left hand"` (as the shot's camera sees it); out of reach / far side of the body: a note in the reply. The older `clay.pose(part, {seconds: target})` still works |
 | any item: `attach_to=<item>` | it moves and turns with that item (`follow`); on a clay it bends with the bone nearest it (`followPose`) |
 | `material(id, **fields)` | a material (lists at the top level, not in a group) |
 | `shot(id, camera=, fps=, start=, end=, width=, height=, background=)` | a shot |
@@ -143,11 +171,15 @@ them like its own, in the same run (one undo step):
   script; asked twice, it is the same handle. Not yet on a thing inside another script's group: `edit_document` reaches that.
 - **`remove(id, …)`** takes things out: `remove("shot_1_camera")` after `shot("shot_1", camera=cam)`; `remove("ground", "ground_material")`.
 
-- **Your own lights replace the start lights.** The new scene's lights are `sky` (a dome), `key_light` and `rim_light` (panels).
-  A script that makes **a dome** of its own (any id: `light("dusk", kind="dome", color="#334466")`) takes `sky` out; a script that
-  makes **any other light** of its own (rect, disk, strip, sphere, spot, distant, any id) takes `key_light` and `rim_light` out. So
-  your lighting is the only lighting, never added on top of the start's; a script with no lights keeps all three. To keep one,
-  `edit` it instead of making a light (`edit("rim_light", intensity=10)`), or make a light again under its id.
+- **Your own lights add to the start lights.** The new scene's lights are `sky` (a dome), `key_light` and `rim_light` (panels).
+  A light of your own keeps them; `light(..., replace_start_lights=True)` takes `key_light` and `rim_light` out (the reply
+  names what it removed). A **dome** of your own always takes `sky` out (one sky). **Changed:** before, any light of your own
+  took the key and rim out silently.
+- **Brightness in stops:** `light("key", kind="rect", …, brightness=0).aim(subject)`: 0 lights the subject as the start key
+  lights its own, +1 twice that, −1 half; it sets `intensity` (Same brightness at any size, scaled by the distance squared)
+  and `exposure` (= the stops). The distance is to what it aims at, or `at_distance=` metres. A dome: exposure −1 + stops.
+- **Made again, a thing keeps what you didn't say:** `shot("shot_1", end=3)` keeps its camera; `light("key_light",
+  intensity=8)` keeps its place and aim. A shot with no camera is refused when the script runs, naming the fix.
 
 The same goes for anything another script or a person made: **made again under its id**, this script replaces it (never a
 second copy). From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as

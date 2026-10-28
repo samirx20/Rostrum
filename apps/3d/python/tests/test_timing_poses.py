@@ -7,7 +7,7 @@ from rostrum3d.compile import describe
 
 SAM = Who.person()
 SRC = '''
-bud = mesh("bud", shape="sphere", radius=0.1)
+bud = mesh("bud", shape="sphere", radius=0.1, y_world=0)
 bud.key("y", {0: 0, 1: 1}, ease="linear")
 cam = camera("cam", z=3)
 cam.key("x", {0: 0, 1: 1}, ease="linear")

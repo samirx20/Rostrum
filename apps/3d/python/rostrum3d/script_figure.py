@@ -7,7 +7,7 @@ on the ground when no height was given, and posed from the script with keys over
   there too; a height given: kept); `to=` makes the start a capsule from `at` to `to`. Without at / y / draw / spin, the clay is built where the script's numbers put it,
   and when the script ends it moves up or down so its lowest point (at rest, every joined piece) is on the ground's
   top, everything attached to it moving with it: a figure never floats, and no part is left behind.
-- `buddy.pose("hand.R", {t: (x, y, z), …}, holds=)`: pose.drag at each time (world points); `buddy.bend("head",
+- `buddy.pose(t, **{"hand.R": target, …})`: script_pose.py (names: pose_names.py); `buddy.bend("head",
   {t: (x, y, z) degrees, …})`: turn a joint about the clay's own X / Y / Z (as it faces +Z, at rest) by that much from
   its rest. The joints are found once, from the clay's shape, with the engine (pose.find_joints' finder), the first
   time the clay is posed; so pose after the last lump.
@@ -18,10 +18,7 @@ import copy
 
 from rostrum_core.keys import key_id
 
-from . import aim, build, clay_steps, ops_pose, pose_ik, pose_joints as PJ
-from .kind import KIND
-from .resolve import Frames
-from rostrum_core.tree import walk
+from . import aim, build, clay_steps, ops_pose, pose_ik, pose_joints as PJ, script_ground
 
 CELLS = 48
 LISTS = ("items", "materials", "shots")
@@ -55,55 +52,8 @@ def start(values: dict) -> tuple[dict, dict | None, bool]:
     return values, first, grounded
 
 
-# --- resting on the ground
-def _low_points(step: dict) -> list[tuple[list[float], float]]:
-    """(a point in the clay's own space, how far the surface reaches below it) for one joined piece."""
-    if step.get("hidden") or step.get("step") != "piece" or step.get("mode", "add") != "add":
-        return []
-    shape, r = step.get("shape"), float(step.get("radius", 0.0))
-    if shape == "sphere":
-        return [(step["at"], r)]
-    if shape == "capsule":
-        return [(step["at"], r), (step["to"], r)]
-    p = step.get("plane")
-    if not p:
-        return []
-    o, u, v = p[:3], p[3:6], p[6:9]
-    if shape == "outline":
-        return [([o[i] + a * u[i] + b * v[i] for i in range(3)], 0.0) for a, b in step["outline"]]
-    if shape == "spin":                             # a ring of radius r at height h along v: its lowest side
-        side = max(0.0, 1.0 - v[1] * v[1]) ** 0.5
-        return [([o[i] + h * v[i] for i in range(3)], r * side) for r, h in step["profile"]]
-    return []
-
-
-def ground_top(b) -> float:
-    for tree in (b.root, b.doc.data if b.doc is not None else {}):
-        g = next((n for n in tree.get("items", []) if n.get("id") == "ground"), None)
-        if g is not None:
-            return float(g.get("y", 0.0))
-    return 0.0
-
-
-def rest_on_ground(b, node: dict):
-    """Put the clay's lowest point (at rest, time 0) on the ground's top: it moves up or down, and so does everything
-    attached to it (follow=<it>: attach_to=, place_on(it, at=)), so the parts stay where they were put on it."""
-    if any(k.get("prop") == "y" for k in node.get("keys", [])) or node.get("rx") or node.get("rz"):
-        return
-    m = Frames(b.root, range(0, 1), 1.0).world(node["id"], 0)
-    scale = abs(aim.det(m[0])) ** (1 / 3)
-    low = [aim.point(m, p)[1] - reach * scale for st in node.get("steps", []) for p, reach in _low_points(st)]
-    if not low:
-        return
-    dy = ground_top(b) - min(low)
-    for n in [node, *(n for n in walk(b.root, KIND.lists) if n.get("follow") == node["id"])]:
-        n["y"] = round(float(n.get("y", 0.0)) + dy, 6) + 0.0
-
-
-def settle(b, node: dict):
-    """When the script ends: rest a clay made without a height on the ground."""
-    if b.figures.get(node["id"], {}).get("ground"):
-        rest_on_ground(b, node)
+# --- resting on the ground: the one ground rule (script_ground.py)
+ground_top, rest_on_ground, settle = script_ground.ground_top, script_ground.rest_on_ground, script_ground.settle_clay
 
 
 # --- joints
@@ -166,19 +116,6 @@ def _times(owner: str, keys) -> list:
     if not isinstance(keys, dict) or not keys:
         raise ValueError(f"{owner}: keys are {{seconds: value}}, e.g. {{0: …, 1.5: …}}")
     return sorted((float(t), v) for t, v in keys.items())
-
-
-def pose(b, node: dict, part: str, keys, holds=None, ease: str = "smooth"):
-    """pose.drag at each time: the grabbed part's end goes to the world point given for that time."""
-    for t, to in _times(f"{node['id']}.pose", keys):
-        r = _rig(b, node, t)
-        g = _part(r, f"{node['id']}.pose", part)
-        f = round(t * 1000)
-        local = aim.point(aim.invert(Frames(b.root, range(f, f + 1), 1000.0).world(node["id"], f)),
-                          [float(c) for c in to])
-        held = r.held(holds if holds is not None else node.get("holds") or [])
-        out = pose_ik.solve_rig(r, g, [0.0, r.length[g], 0.0], local, held)
-        _put(node, out["turns"], t, ease)
 
 
 def bend(b, node: dict, joint: str, keys, ease: str = "smooth"):

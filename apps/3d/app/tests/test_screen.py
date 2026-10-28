@@ -18,7 +18,7 @@ from screen3d.render_job import CANCELLED  # noqa: E402
 SRC = '''
 cam = camera("cam", z=3)
 cam.key("x", {0: 0, 1: 1})
-mesh("box", shape="box", y=0.5)
+mesh("box", shape="box")
 shot("s", camera=cam, fps=10, start=0, end=2)
 '''
 

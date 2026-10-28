@@ -8,9 +8,9 @@ from rostrum3d.compile import _Frames
 SAM = Who.person()
 FPS = 24
 SRC = '''
-lid = mesh("lid", shape="box", width=0.6, height=0.05, depth=0.4, y=0.5, pz=-0.2, z=-0.2)
+lid = mesh("lid", shape="box", width=0.6, height=0.05, depth=0.4, y_world=0.5, pz=-0.2, z=-0.2)
 lid.key("rx", {0.5: 0, 2.0: -100}, ease="linear")
-bud = mesh("bud", shape="sphere", radius=0.05, y=0.575)
+bud = mesh("bud", shape="sphere", radius=0.05, y_world=0.575)
 floor = mesh("floor", shape="plane", width=4, depth=4)
 cam = camera("cam", z=3)
 shot("s", camera=cam, fps=24, start=0, end=3)

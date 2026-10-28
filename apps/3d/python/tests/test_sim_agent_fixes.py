@@ -15,7 +15,7 @@ from rostrum3d.start_scene import SOURCE as START
 SCENE = '''
 cam = camera("cam", z=3, y=1)
 shot("s", camera=cam, fps=24, start=0, end=2)
-box = mesh("box", shape="box", width=0.4, height=0.5, depth=0.4, x=1, y=0.25).simulate("still")
+box = mesh("box", shape="box", width=0.4, height=0.5, depth=0.4, x=1).simulate("still")
 sheet = mesh("sheet", shape="plane", width=0.3, depth=0.3, x=-2, y=2).simulate("cloth", over=box)
 mesh("ball", shape="sphere", radius=0.1, y=1).simulate("falls", fallStart=1.0)
 mesh("cube", shape="box", width=0.1, height=0.1, depth=0.1, x=2, y=1).simulate("falls")
@@ -54,7 +54,7 @@ def test_fall_start_reaches_the_core_and_a_script_replaces_the_new_scene():
     report = n.run_script("mine.py", run_source(src, "mine.py", n))
     assert not report.held
     things = {i["id"]: i for lst in ("items", "materials", "shots") for i in n.data[lst]}
-    assert things["sky"]["intensity"] == 0.3 and not things["sky"].get("texture")
+    assert things["sky"]["intensity"] == 0.3 and things["sky"].get("texture")   # made again: keeps what it didn't say
     assert things["shot_1"]["camera"] == "cam" and things["ground_material"]["baseColor"] == "#223344"
     assert "shot_1_camera" not in things
     again = n.run_script("mine.py", run_source(src.replace("0.3", "0.5"), "mine.py", n))    # a re-run edits it again

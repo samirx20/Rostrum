@@ -18,7 +18,7 @@ Only things directly in the scene can fall or stay still, not something inside a
 A spill or a pour, written as one script you re-run and look at (the fields are in the guide *copies*):
 
 ```python
-mesh("table", shape="box", width=1.0, height=0.04, depth=0.6, y=0.38).simulate("still")
+mesh("table", shape="box", width=1.0, height=0.04, depth=0.6, y=0.36).simulate("still")   # its base 36 cm up
 red = material("red", start="glossy plastic", baseColor="#c8321e")
 cream = material("cream", start="glossy plastic", baseColor="#efe6d2")
 # a few sources, same shape, different materials: each copy picks one by the seed (colour variety)
