@@ -14,6 +14,7 @@ The pointer is moved to the top of its group at each tap, so it draws over what 
 from __future__ import annotations
 
 from . import pathdata, ui_layout as U
+from .script_layout import in_layout
 
 SPOTS = ((0.84, 0.6), (0.84, 0.8), (0.64, 0.84), (0.93, 0.5), (0.16, 0.84), (0.5, 1.1))
 ARROW = [(0, 0), (0, 0.84), (0.21, 0.64), (0.35, 0.96), (0.47, 0.91), (0.33, 0.6), (0.6, 0.6)]   # tip at (0, 0), 1 tall
@@ -31,14 +32,15 @@ def for_script(build) -> dict:
         u = pw / U.BASE_W
         s = float(size or (34 if kind == "arrow" else 44) * u)
         x, y = float(pw * 0.78 if x is None else x), float(ph * 0.82 if y is None else y)
+        over = {"apart": True} if in_layout(build) else {}       # over a container's layers, taking no room
         if kind == "arrow":
-            g = L("group", id, x=x, y=y, w=s * 0.6, h=s, anchorX=0, anchorY=0)
+            g = L("group", id, x=x, y=y, w=s * 0.6, h=s, anchorX=0, anchorY=0, **over)
             with g:
                 d = "M " + " L ".join(f"{px * s:.2f} {py * s:.2f}" for px, py in ARROW) + " Z"
                 part = L("path", f"{id}_arrow", d=pathdata.check(d, id), x=0, y=0, w=s * 0.6, h=s * 0.96, anchorX=0, anchorY=0, fill=color, stroke=True, strokeColor=outline,
                          strokeWidth=max(s * 0.06, 1.5))
         else:
-            g = L("group", id, x=x, y=y, w=s, h=s)
+            g = L("group", id, x=x, y=y, w=s, h=s, **over)
             with g:
                 part = L("shape", f"{id}_dot", shape="ellipse", x=s / 2, y=s / 2, w=s, h=s, fill=color, fillOpacity=0.55,
                          stroke=True, strokeColor=outline, strokeWidth=max(s * 0.04, 1.5))
@@ -83,15 +85,19 @@ def for_script(build) -> dict:
         pointer.key("x", {t0: (p["x"], ease), at: tx}).key("y", {t0: (p["y"], ease), at: ty})
         pointer.key("scale", {at: 1, at + 0.08: 0.86, at + 0.26: 1}, ease="easeOut")
         if press:
-            bx, by, bw, bh = U.own_box(target.node, at)
-            target.pivot(bx + bw / 2, by + bh / 2, at=at)
+            if target.node.get("layoutApart") or U.chain(build.root, target.id)[-2].get("layout", "none") == "none":
+                bx, by, bw, bh = U.own_box(target.node, at)
+                target.pivot(bx + bw / 2, by + bh / 2, at=at)
+            else:                           # a container places it by its slot: the pivot is only its anchor
+                target.set(anchorX=0.5, anchorY=0.5)
             target.key("scale", {at: 1, at + 0.08: press, at + 0.3: 1}, ease="easeOut")
         holder = U.chain(build.root, p["parent"])[-1]["layers"]
         holder.remove(pointer.node)
         if ripple:
             s = p["size"] * 1.6
             r = build.add("shape", f"{pointer.id}_ripple{p['taps']}", {"shape": "ellipse", "x": tx, "y": ty, "w": s, "h": s,
-                          "fill": ripple_color or p["outline"], "fillOpacity": 0.22, "start": at, "end": at + 0.6}, holder)
+                          "fill": ripple_color or p["outline"], "fillOpacity": 0.22, "start": at, "end": at + 0.6,
+                          **({"layoutApart": True} if pointer.node.get("layoutApart") else {})}, holder)
             r.key("scale", {at: 0.2, at + 0.5: 1.4}, ease="easeOut").key("opacity", {at: 1, at + 0.5: 0}, ease="easeOut")
         holder.append(pointer.node)
         p.update(x=tx, y=ty, t=at + 0.26, taps=p["taps"] + 1)

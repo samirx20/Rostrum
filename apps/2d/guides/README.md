@@ -24,6 +24,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [type-and-kinetic-text.md](type-and-kinetic-text.md): setting type and making it move.
 - [shape-and-path-animation.md](shape-and-path-animation.md): vector shapes, point editing, combining, drawing-on.
 - [text-on-a-path.md](text-on-a-path.md): text along a path (also a people page above).
+- [lay-out-a-screen.md](lay-out-a-screen.md): arranging things with rows, columns, grids and stacks (padding, gap, align) instead of x / y.
 - [ui-and-product-animation.md](ui-and-product-animation.md): screens, cards, devices and product shots from boxes, masks, glass and depth.
 - [easing-and-overlap.md](easing-and-overlap.md): how a key's ease shapes motion, and overlapping actions.
 - [curve-editor.md](curve-editor.md): the curve editor (also a people page above).

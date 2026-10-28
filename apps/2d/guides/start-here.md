@@ -180,6 +180,10 @@ Things that surprise people the first time:
   fifth of the way through the stretch, overshoots most at about 30 %, and has settled by the last key. To land *on* a
   marker, put that first arrival there: `{"#beat-0.15": 0, "#beat+0.65": 1}` with `ease="spring"` (a 0.8 s stretch),
   then check with `look_motion` (overshoot) and `look_frame` at the marker.
+- **Arrange things with boxes, not x / y sums:** `with column(padding=24, gap=16):`, `row`, `grid(columns=3)`,
+  `stack` place and size what is made inside them, with `align`, `justify`, `grow=1`, sizes in px, `"50%"`, `"fill"`
+  or `"fit"`, and texts that wrap where the box ends (guide `lay-out-a-screen`). Inside a box `x=` / `y=` fail unless
+  `apart=True`. Keep raw `x`, `y` for motion and art: a moving shape, a painted world, a camera path.
 - **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0). Give the group `w`, `h` and place the
   children in it (`w / 2`, `h / 2` is its middle); a group made without a size is fitted to what is inside it when the
   `with` block ends, and its layers keep their place on screen.
@@ -286,6 +290,7 @@ Edits are all or nothing, so nothing changed.
 |---|---|
 | `the-film-as-one-script` | you build a whole film: one script, scenes as functions of a start time, shared timing, loops, your own helpers, `look` on each run |
 | `type-and-kinetic-text` | you set type: fonts, variable axes, OpenType features, per-letter animation, gradient letters, scrambling characters into words, building a title in steps |
+| `lay-out-a-screen` | you arrange anything on screen (a title lock-up, a row of cards, a phone screen, a dashboard): `row`, `column`, `grid`, `stack` with padding, gap and align, `origin=`, Tailwind words (`tw=`) |
 | `ui-and-product-animation` | you build screens and product shots: devices and screen blocks in one call (`device`, `list_rows`, `card`, `bars` …), counting numbers (`counter`), boxes, masks, frosted glass, shadows, tilt and depth |
 | `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |

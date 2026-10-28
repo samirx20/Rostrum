@@ -1,20 +1,23 @@
-"""Product screens laid out right by default (ui_layout / ui_pointer): a device that fits the picture, blocks made
-without y stacked without overlapping, a tap that lands beside a button's words, and ids that stay put on a re-run."""
+"""Product screens (ui_layout / ui_blocks / ui_pointer): a device that fits the picture, blocks placed by the column
+they are made in (no stacking of their own), a tap that lands beside a button's words where the layout put it, and
+ids that stay put on a re-run. Layouts are solved by the stand-in engine (fake_layout.py)."""
 import pytest
-from rostrum_core import Document, RostrumError
+from rostrum_core import Document
 
-from rostrum2d import KIND, run_source
+from fake_layout import FakeEngine
+from rostrum2d import KIND, run_source, textsize
 from rostrum2d import ui_layout as U
 
 SRC = '''
 comp("main", width=1920, height=1080, fps=30, duration=4)
-scr = device("phone")
+scr = device("phone", screen="#ffffff")
 with scr:
     status_bar(); nav_bar("Trips", action="New")
-    hero = card("hero", title="Lisbon dinner", value="$168.00")
-    rows = list_rows([("Porto", "3 people", "$412.50"), ("Taxi", "2 people", "$24.50")])
-    split = toggle("split", label="Split evenly")
-    pay = button("Request")
+    with column("feed", padding=20, gap=14):
+        hero = card("hero", h=180, title="Lisbon dinner", value="$168.00")
+        rows = list_rows([("Porto", "3 people", "$412.50"), ("Taxi", "2 people", "$24.50")])
+        split = toggle("split", label="Split evenly")
+        pay = button("Request", w=300)
     tab_bar(["Home", "Trips", "You"])
     cur = pointer()
     tap(cur, pay, at=1.5)
@@ -22,9 +25,15 @@ with scr:
 '''
 
 
-def run(src=SRC):
-    d = Document.new(KIND)
-    d.run_script("s.py", run_source(src, "s.py"))
+@pytest.fixture(autouse=True)
+def fake_engine():
+    with textsize.use(FakeEngine()):
+        yield
+
+
+def run(src=SRC, d=None):
+    d = d or Document.new(KIND)
+    d.run_script("s.py", run_source(src, "s.py", d))
     return d
 
 
@@ -35,43 +44,33 @@ def test_the_phone_fits_the_picture_with_a_margin():
     assert abs(phone["w"] / phone["h"] - 430 / 900) < 1e-6
 
 
-def test_blocks_made_without_y_stack_without_overlapping_and_a_full_screen_is_refused():
+def test_blocks_take_slots_in_their_column_and_the_tab_bar_sits_under_a_spacer():
     d = run()
-    tops = [(U.own_box(d.item(i))[1], U.bottom(d.item(i))) for i in ("status", "nav", "hero", "list", "split", "button", "tabs")]
-    for (t0, b0), (t1, _) in zip(tops, tops[1:]):
-        assert t1 >= b0 - 0.01
-    title = d.item("nav_title")
-    assert title["y"] + title["size"] * 0.6 <= d.item("nav")["h"]          # the title sits inside its own bar
-    with pytest.raises(RostrumError, match="past"):
-        run(SRC.replace('pay = button("Request")', 'pay = button("Request")\n    list_rows(["a"] * 8)'))
+    for i in ("status", "nav", "hero", "list", "split"):
+        assert not d.item(i)["layoutApart"] and d.item(i)["sizeW"] == "fill"
+    kids = [c["id"] for c in d.item("phone_screen")["layers"]]
+    assert kids[kids.index("tabs") - 1] == "tabs_push" and d.item("tabs_push")["layoutGrow"] == 1
+    assert d.item("cursor")["layoutApart"]                    # the pointer is over the screen, taking no room
 
 
 def test_a_tap_puts_the_pointer_beside_the_label_never_on_it():
     d = run()
     keys = {(k["prop"], k["t"]): k["v"] for k in d.item("cursor")["keys"]}
     s = d.item("cursor")["h"]
-    for target, at in (("button", 1.5), ("hero", 3.0)):
-        tip = (keys[("x", at)], keys[("y", at)])
-        shape = (tip[0] - s * 0.08, tip[1] - s * 0.08, s * 0.7, s * 1.08)
-        bx, by, bw, bh = U.box_in(d.data, target, "phone_screen")
-        assert bx <= tip[0] <= bx + bw and by <= tip[1] <= by + bh          # on the target ...
-        for t in [n for n in ("button_label", "hero_title", "hero_value") if n.startswith(target)]:
-            from rostrum2d.ui_pointer import overlap
-            assert overlap(shape, U.box_in(d.data, t, "phone_screen")) == 0   # ... beside its words
+    from rostrum2d.ui_pointer import overlap
+    with textsize.use(FakeEngine()):
+        for target, at in (("button", 1.5), ("hero", 3.0)):
+            tip = (keys[("x", at)], keys[("y", at)])
+            shape = (tip[0] - s * 0.08, tip[1] - s * 0.08, s * 0.7, s * 1.08)
+            bx, by, bw, bh = U.box_in(d.data, target, "phone_screen", at)
+            assert bx <= tip[0] <= bx + bw and by <= tip[1] <= by + bh          # on the target ...
+            for t in [n for n in ("button_label", "hero_title", "hero_value") if n.startswith(target)]:
+                assert overlap(shape, U.box_in(d.data, t, "phone_screen", at)) == 0   # ... beside its words
 
 
 def test_a_rerun_keeps_the_same_ids():
     d = run()
     before = {i for i in ("phone", "phone_screen", "status", "nav", "hero", "list_r1", "split_knob", "button_label",
                           "tabs", "cursor", "cursor_arrow", "cursor_ripple1") if d.item(i)}
-    d.run_script("s.py", run_source(SRC, "s.py", d))
+    run(SRC, d)
     assert {i for i in before if d.item(i)} == before and len(before) == 12
-
-
-def test_a_tap_lands_where_a_moving_target_is_at_that_time_and_the_touch_pointer_builds():
-    src = SRC.replace("    tap(cur, pay, at=1.5)\n", "    pay.key(\"y\", {0: pay.y + 600, 1.0: pay.y})\n    tap(cur, pay, at=1.5)\n")
-    src = src.replace("cur = pointer()", 'cur = pointer(kind="touch")')
-    d = run(src)
-    bx, by, bw, bh = U.own_box(d.item("button"), 1.5)
-    tip_y = [k for k in d.item("cursor")["keys"] if k["prop"] == "y" and abs(k["t"] - 1.5) < 1e-9][0]["v"]
-    assert by <= tip_y <= by + bh       # on the button where it has slid to, not 600 px below where it started

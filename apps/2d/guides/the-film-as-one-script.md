@@ -76,9 +76,9 @@ def rise(item, at, by=40, dur=0.6):
 Raw coordinates are where a film written as one script goes wrong: a rectangle worked out by hand for the frame, a
 card's `y` that overlaps the bar above it once a size changes. Let the calls do it:
 
-- A product screen: `device("phone")` sizes and centres itself to the picture (`fit=`, `anchor="left"`), and the
-  blocks made inside its screen without `y` stack under each other (`.bottom` is where one ends). Guide
-  `ui-and-product-animation`, "Building blocks".
+- A product screen: `device("phone")` sizes and centres itself to the picture (`fit=`, `anchor="left"`); its screen
+  is a column, so blocks made in it go one under the other. Any arrangement of cards, rows and titles: `row`,
+  `column`, `grid`, `stack` with padding and gap (guide `lay-out-a-screen`).
 - The camera: `frame().fit(["phone"], at=…, pad=0.06)` frames the device whole, `frame().fit(["hero"], at=…,
   pad=0.04)` pushes deep onto one part of it by id. Frame a device whole or one part of it, never most of it with the
   top or bottom nibbled off ("Framing a device" in the same guide).
