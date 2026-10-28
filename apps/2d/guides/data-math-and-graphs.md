@@ -61,6 +61,45 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 - **Ticks:** `nice_ticks` stays inside the range; `extend=True` reaches past it so an axis ends on a round number
   (0 … 150 for data up to 128). `tick_label` gives each tick only the decimals its step needs.
 
+## Typeset equations (fractions, sums, roots)
+
+`math_text` typesets LaTeX-style maths into **ordinary path layers**: one path per symbol and per rule (a fraction bar and
+a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on.
+
+```python
+comp("eq", width=1920, height=1080, fps=30, duration=5, background="#0c0d12")
+eq = math_text("fourier", r"f(x)=\frac{4}{\pi}\sum_{k=1}^{\infty}\frac{\sin((2k-1)x)}{2k-1}",
+               x=240, y=380, size=110, color="#f4f1ea")      # x, y: the formula's top-left; size: font size in px
+
+for i, part in enumerate(eq.parts):                           # reveal left to right
+    part.key("opacity", {0.3 + i * 0.05: 0, 0.5 + i * 0.05: 1})
+for part in eq.find("bar") + eq.find("sum"):                  # colour a kind of symbol
+    part.set(fill="#ffb547")
+for part in eq.span(6, 8):                                    # a term (parts 6 to 8 here: the 4 over pi), by its numbers
+    part.key("fill", {3.0: "#f4f1ea", 3.4: "#5ec8ff"})
+
+w = math_text("write", r"E=mc^2", x=240, y=800, size=140, fill="none", stroke=True, strokeColor="#f4f1ea", strokeWidth=3)
+for i, part in enumerate(w.parts):                            # write-on: each symbol's outline draws, one after another
+    part.key("trimEnd", {1.0 + i * 0.3: 0, 1.6 + i * 0.3: 1})
+```
+
+- **Input:** what LaTeX maths takes: `\frac{a}{b}`, `\sqrt{x}`, `\sqrt[3]{x}`, `\sum_{k=1}^{n}`, `\int`, `\pi \alpha \theta …`,
+  `x^2`, `x_i`, `\pm \times \cdot \infty \leq \geq`, `\sin \cos \log`, `\left( … \right)`, `\mathrm{…}`. No `$` needed. A mistake
+  (an open brace, a command it doesn't know) stops the script with the formula and what to fix.
+- **Addressing a part:** every path has the id `<id>_<n>_<symbol>`, n counting from 1 in reading order (`fourier_5_equal`,
+  `fourier_10_sum`, `fourier_15_bar`). From the returned group: `.parts` (all, in order), `.find("x")` (every x, "equal",
+  "bar", "pi", "2" …), `.span(a, b)` (parts a to b, one term). Print the ids with `[p.id for p in eq.parts]`, or
+  look at the layers list, to find the numbers of the term you want.
+- **Reveal term by term:** key `opacity` 0 → 1 per part or per term (a term's parts get the same times, a short stagger
+  per part reads as writing). **Highlight:** key `fill` on a term's parts; or `scale` 1 → 1.15 → 1 for a pop.
+- **Write on:** give the paths `fill="none", stroke=True` and key `trimEnd` 0 → 1 per symbol; then key `fill` on and the
+  stroke off (`strokeWidth` → 0) to let the letters fill in.
+- **Move or morph:** each part is a path: key `x`, `y` to slide a term (the rest stays), or move the whole group. To turn one
+  equation into another, fade matching symbols (same `find` name) and slide them to their new places.
+- **Place it:** the group's box is the formula's size, so `eq.w`, `eq.h` give it; to centre on the comp,
+  `x=(1920 - w) / 2` needs w first: make it once at x=0, read `eq.w`, and set `eq.x = 960` (the group's anchor is its centre).
+- Outside a script the operation `math.add` (`tex`, `x`, `y`, `size`, `color`, `id`) makes the same group.
+
 ## Morphing one function into another
 
 Key `d` with two curves. The engine pairs points one to one, so sample both with the **same `n` and the same `smooth`**:

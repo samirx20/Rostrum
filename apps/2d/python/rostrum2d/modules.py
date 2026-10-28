@@ -27,6 +27,7 @@ OPS = ModuleList("rostrum2d", [
     ".text_styles",   # style.define, style.use, style.detach, style.remove: named text styles
     ".ops_font",   # font.replace: one font for another across the document
     ".ops_counter",   # text.counter: a text whose number counts
+    ".ops_math",   # math.add: a typeset formula as path layers (mathtype.py)
 ])
 
 TOOLS = ModuleList("rostrum2d.mcp", [      # the agent server's tool modules, each with a `tools`; the order is the tools' order
