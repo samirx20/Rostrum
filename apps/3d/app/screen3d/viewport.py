@@ -106,6 +106,8 @@ class Viewport(QObject):
         self._r.picked.connect(self._on_picked)
         self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
+        self._rebuilding = False
+        self._r.rebuilding.connect(self._on_rebuilding)
         bridge.docChanged.connect(self._on_doc)
         bridge.shotChanged.connect(self._on_shot)
         bridge.frameChanged.connect(self._on_frame)
@@ -170,10 +172,16 @@ class Viewport(QObject):
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
     # the free view shows the frame Make this the shot would take (while the pointer rests on it)
     previewShot = Property(bool, lambda s: s._preview and s.cam.mode != "shot", notify=settingsChanged)
+    # a changed clay is being built again (frames.ViewRenderer.rebuilding): "Updating the clay…" shows meanwhile
+    rebuilding = Property(bool, lambda s: s._rebuilding, notify=settingsChanged)
     onionSkin = Property(QObject, lambda s: s.onion, constant=True)
     clay = Property(QObject, lambda s: s.clay_tool, constant=True)        # QML: viewport.clay (clay_tool_qt.py)
     bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)
     pose = Property(QObject, lambda s: s.pose_tool, constant=True)        # QML: viewport.pose (pose_qt.py)
+
+    def _on_rebuilding(self, on: bool):
+        self._rebuilding = on
+        self.settingsChanged.emit()
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):

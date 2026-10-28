@@ -180,6 +180,22 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.outlineChanged.emit()
 
     @Slot()
+    def undo(self):
+        self._stepping()
+        super().undo()
+
+    @Slot()
+    def redo(self):
+        self._stepping()
+        super().redo()
+
+    def _stepping(self):
+        """An undo / redo that rebuilds a clay holds the view for up to ~1.5 s: the viewport says so (frames.py)."""
+        v = getattr(self, "viewport", None)
+        if v is not None:
+            v._r.stepping = True
+
+    @Slot()
     def renderStill(self):
         self.render.start()
 
