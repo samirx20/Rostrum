@@ -15,6 +15,9 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
+from . import lead_in, stop_soft, tempo_fit
+
+NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -124,6 +127,8 @@ def weak_fixes(t, d) -> list[str]:
 
 def _words(f) -> str:
     k, t, d = f["kind"], f["at_s"], f["measured"]
+    if k in NEW_WORDS:
+        return NEW_WORDS[k](f)
     what = k.split("_", 1)[-1]
     if k.startswith("weak_"):
         return f"weak {what} at {t:.2f} s: {heard(d)}; fix: {'; '.join(weak_fixes(t, d))}"
@@ -191,7 +196,7 @@ def _words(f) -> str:
 @remembered
 def _whole(wav) -> list[dict]:
     y, sr = load(wav)
-    out = [{"kind": "held_tone", "at_s": s["from_s"], "measured": {k: v for k, v in s.items() if k != "from_s"}}
+    out = lead_in.faults(y, sr) + [{"kind": "held_tone", "at_s": s["from_s"], "measured": {k: v for k, v in s.items() if k != "from_s"}}
            for s in held_spans(y, sr)]
     corr = _correlation(y)
     if corr is not None and corr > MONO_CORR:
@@ -202,15 +207,20 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True) -> dict:
-    """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS), and with `whole` the
-    whole-piece ones (a held tone, a near-mono mix, a hit the limiter squashed: `limiter` = listen.limiter's result)."""
-    found = moment_faults(wav, moments) if moments else []
+def check(wav, moments=None, limiter=None, whole=True, peaky=None) -> dict:
+    """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
+    is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
+    the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
+    drivers are unknown."""
+    timed = [m for m in moments or [] if m.get("kind") != "tempo"]
+    found = moment_faults(wav, timed) if timed else []
+    found = stop_soft.merge(found, limiter, peaky) + [f for m in moments or [] if m.get("kind") == "tempo" for f in tempo_fit.faults(m)]
     if whole:
         found += _whole(wav)
         if limiter:
             y, sr = load(wav)
-            found += _squashed(y, sr, limiter)
+            stops = [f["at_s"] for f in found if f["kind"] == "soft_stop"]     # a soft stop already names the limiter there
+            found += [f for f in _squashed(y, sr, limiter) if all(abs(f["at_s"] - s) > 1.0 for s in stops)]
     found = sorted(found, key=lambda f: f["at_s"])
     for f in found:
         f["words"] = _words(f)
