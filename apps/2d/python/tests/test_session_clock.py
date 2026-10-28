@@ -71,3 +71,16 @@ def test_after_an_export_the_line_names_the_looks_not_done_yet():
     clock.noted("look_frame", {}, Reply("x", {"time": 1.0}))
     clock.noted("look_motion", {}, Reply("x", {}))
     assert "not looked at yet" not in clock.line() and "the export has not been looked at" in clock.line()
+
+
+def test_after_an_export_the_clock_counts_the_passes_left():
+    # The fair benchmark's agents stopped after ~5 of 15 min; the clock turns the time left into passes of look, fix, export.
+    from rostrum_core.mcp import Reply
+    now = [0.0]
+    clock = Clock(lambda: now[0], budget_min=15)
+    clock.begin()
+    now[0] = 300.0
+    clock.noted("render_video", {}, Reply("Rendered", {"video": "a.mp4", "seconds": 30.0, "quiet_stretches": []}))
+    assert "about 3 more passes of look, fix and export" in clock.line()      # 600 s left / (30 + 150) s
+    now[0] = 800.0
+    assert "more pass" not in clock.line()
