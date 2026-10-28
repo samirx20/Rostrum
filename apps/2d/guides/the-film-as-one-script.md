@@ -14,6 +14,7 @@ guides; the fragments here show the shape of a technique, not a piece to copy.
    `look: true` brings back, in the same reply, one contact sheet (3 tiles across) of 6 moments spread over the film
    (2.5 … 27.5 s on a 30 s film) and the film's weakest moments, most visible first (up to 8 lines in the summary, all
    of them in `data.look.faults`, each with its kind, start, end and words; the same checks as `look_review`).
+   The reply opens `NOT DONE:` with each weak moment (id, when, fix), or `DONE:` when there are none.
    `look: [2, 7.5, 12, 18]` picks the moments (up to 12). It adds a few seconds to the call. If the stills fail, the
    merge still stands and the summary says "Look FAILED"; look again with `look_frame`. Beats of the brief are not
    checked here: `look_review` with `beats`, or the export's reply, checks them.
