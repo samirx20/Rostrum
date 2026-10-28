@@ -180,22 +180,6 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.outlineChanged.emit()
 
     @Slot()
-    def undo(self):
-        self._stepping()
-        super().undo()
-
-    @Slot()
-    def redo(self):
-        self._stepping()
-        super().redo()
-
-    def _stepping(self):
-        """An undo / redo that rebuilds a clay holds the view for up to ~1.5 s: the viewport says so (frames.py)."""
-        v = getattr(self, "viewport", None)
-        if v is not None:
-            v._r.stepping = True
-
-    @Slot()
     def renderStill(self):
         self.render.start()
 
@@ -209,6 +193,9 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     # ---- inside -----------------------------------------------------------------------------------------------
     def _on_doc(self, event):
         self._previewed = None                 # a real change ends any hover preview (the viewport redraws on docChanged)
+        c, v = getattr(event, "change", None), getattr(self, "viewport", None)
+        if v is not None and c is not None and (c.undoes or c.redoes):
+            v._r.stepping = True               # an undo / redo rebuilding a clay holds the view ~1.5 s: said (frames.py)
         try:                                   # a shot edit may change its length, rate or camera
             self._info = shot_info(self.doc.data, self.shot_id)
         except ValueError as e:
