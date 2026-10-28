@@ -79,7 +79,9 @@ SCRIPT_HELP = ("The 2D script layer. Write the whole film as one script (scenes 
                "walk(legs=[a, b], arms=, body=, start=, end=, step=, stride=), idle(chest, head=, arms=, legs=) (legs: weight "
                "shifts foot to foot), follow(bone), "
                "blink(eyes, open=, closed=) write plain keys. Screens (guide ui-and-product-animation): device(id, kind=\"phone\"|"
-               "\"laptop\"|\"browser\") returns its screen group; status_bar, nav_bar, tab_bar, list_rows, card, button, toggle, bars; "
+               "\"laptop\"|\"browser\", fit=share of the picture's height, anchor=) sizes and centres itself and returns its screen group; "
+               "status_bar, nav_bar, tab_bar, list_rows, card, button, toggle, bars made without y stack under the one before "
+               "(block.bottom); pointer() and tap(pointer, target, at=) land the tip beside a button's words with a press; "
                "counter(id, start, to, at=, duration=, decimals=, prefix=) is one text that counts (never stack texts).")
 
 
