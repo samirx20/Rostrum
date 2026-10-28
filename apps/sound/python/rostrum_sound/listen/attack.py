@@ -6,7 +6,8 @@ reads. The old mel check (40 ms frames, most bands under 1 kHz) called a low tim
 while listeners and the blind benchmark's analyser heard 1.0x (sound-gaps brief 2). So this measures the rise per
 frequency in dB over ~21 ms frames, every Hz counted alike (so the bright attack weighs as the ear weighs it), and
 gives the hit against the piece's typical onset, against the onsets of the 2 s before it, its bright part (2 kHz up)
-alone and the loudness jump from the bed into the hit."""
+alone, the loudness jump from the bed into the hit and the hit's contrast with the 2 s before (its 0.4 s level and
+its peak against the bed's level and typical 0.1 s peak: what makes a hit jump out of a quiet bed)."""
 from __future__ import annotations
 
 import numpy as np
@@ -61,7 +62,9 @@ def strike(wav, at, near=NEAR_S) -> dict | None:
     piece's typical onset), rank (1 = the strongest in the file), onsets, times_bed (against the typical onset of the
     2 s before), bright_x (its 2 kHz-up rise against the bright part of the piece's typical onset), jump_lu (the 0.4 s from it
     against the 1.5 s before), build_peak_db (the highest sample of the 3 s before, dBFS), file_peak_db (the file's),
-    headroom_db (how far the build's peak sits under the file's: near 0 = the build already reaches the ceiling)}."""
+    headroom_db (how far the build's peak sits under the file's: near 0 = the build already reaches the ceiling),
+    over_before_db (the 0.4 s from it against the 2 s before, mean square), peak_over_bed_db (its peak against the
+    median 0.1 s peak of the 2 s before)}."""
     c = curves(wav)
     env, t, pk, typ = c["env"], c["t"], c["pk"], c["typ"]
     mine = [p for p in pk if abs(t[p] - at) <= near]
@@ -76,7 +79,8 @@ def strike(wav, at, near=NEAR_S) -> dict | None:
     hit_lu, bed_lu = cut(t[p], t[p] + 0.4), cut(t[p] - JUMP_BEFORE_S, t[p] - 0.05)
     return {"at_s": num(t[p], 2), "times_typical": num(h / typ, 1), "rank": int((env[pk] > h).sum()) + 1, "onsets": len(pk),
             "times_bed": num(h / bed_typ, 1) if bed_typ > 0 else None, "bright_x": num(_near_max(c["bright"], p) / c["btyp"], 1),
-            "jump_lu": num(hit_lu - bed_lu, 1) if bed_lu > -70 else None, **_headroom(y, sr, float(t[p]))}
+            "jump_lu": num(hit_lu - bed_lu, 1) if bed_lu > -70 else None, **_headroom(y, sr, float(t[p])),
+            **_contrast(mono(y), sr, float(t[p]))}
 
 
 def _peak_db(seg) -> float:
@@ -87,3 +91,12 @@ def _headroom(y, sr, at) -> dict:
     build = _peak_db(y[max(0, int((at - BUILD_S) * sr)):max(1, int((at - 0.05) * sr))])
     top = _peak_db(y)
     return {"build_peak_db": num(build, 1), "file_peak_db": num(top, 1), "headroom_db": num(top - build, 1)}
+
+
+def _contrast(m, sr, at) -> dict:
+    """The hit against the BED_S before: its 0.4 s level and its peak against the bed's typical 0.1 s peak."""
+    seg = lambda s0, s1: m[max(0, int(s0 * sr)):max(1, int(s1 * sr))].astype(np.float64)
+    ms = lambda x: 10 * np.log10(float(np.mean(x ** 2)) + 1e-12) if x.size else -120.0
+    bed_peaks = [_peak_db(seg(a, a + 0.1)) for a in np.arange(at - BED_S, at - 0.05, 0.1)]
+    return {"over_before_db": num(ms(seg(at, at + 0.4)) - ms(seg(at - BED_S, at - 0.05)), 1),
+            "peak_over_bed_db": num(_peak_db(seg(at, at + 0.4)) - float(np.median(bed_peaks)), 1) if bed_peaks else None}

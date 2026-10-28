@@ -135,7 +135,7 @@ as hard as it must. Either way the fix is at the source: turn the loud parts dow
 
 ## Checking (agents)
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; `render_mix` refuses open faults unless `keep: {id: why}` explains them. The mix's own faults: `loudness` (more than 0.5 LU off the target), `duck:<track>` (a duck under a voice dipping under 3 dB), `marker_onset:<marker>` (a marker named hit / stop / drop ... with nothing starting within 30 ms), `rings_past_end` (sound above -50 dBFS after the song's end).
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, with a reason that quotes the measured number. The mix's own faults: `loudness` (more than 0.5 LU off the target), `duck:<track>` (a duck under a voice dipping under 3 dB), `marker_onset:<marker>` (a marker named hit / stop / drop ... with nothing starting within 30 ms), `true_peak` (over the master's ceiling), `clipped` (samples cut flat), `rings_past_end` (after the ring `ring_past_length` allows, sound above -50 dBFS after the song's end).
 
 1. `render_mix` (stems on). Its reply already has integrated LUFS, true peak and each track's level.
 2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments, room for speech (under a voice: +6 dB or more).

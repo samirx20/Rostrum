@@ -173,7 +173,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                              "formats": {"type": "array", "items": {"enum": ["png", "exr"]}, "minItems": 1, "uniqueItems": True,
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
-    """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. Checked first:
+    """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. Checked first (as look_frame):
     the reply opens NOT DONE: with each fault or DONE:, and a file with open faults is kept as <name>.NOT-DONE unless
     `keep` explains each. A job: inspect_job shows progress. Guide 'rendering'."""
     doc, info = doc_and_shot(ctx, args)

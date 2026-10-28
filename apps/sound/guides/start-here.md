@@ -12,8 +12,9 @@ effects), sections, markers and a master. You build it from ONE Python script an
 3. **Read the faults.** The reply opens `NOT DONE:` (each fault with its id, its time and a fix) or `DONE:`.
 4. **Fix the script, not the song**, and run it again **under the same name**. A removed track, note or marker disappears;
    nothing is copied. A new name that makes the same tracks is refused (it would double every note).
-5. Repeat until the reply says `DONE:`, then deliver with `render_mix` (`name`, `folder`, `format`). A fault you leave on
-   purpose needs a reason: `keep: {"fault_id": "why"}`.
+5. Repeat until the reply says `DONE:`, then deliver with `render_mix` (`name`, `folder`, `format`). A delivery is refused
+   while a fault is open, unless `keep: {"fault_id": "why"}` explains it; a fault on the moment the brief asked for is kept
+   only after a render that tried the fix, with the measured number in the reason.
 
 ## Bars first
 
@@ -25,6 +26,8 @@ effects), sections, markers and a master. You build it from ONE Python script an
   `at="#hit"`, `"#hit+0.5"` (half a second after). Checks find them by name (`expect: ["#hit"]`).
 - **A moment fixed to a picture** (a cut at 12.4 s): land a bar on it without bending the music,
   `downbeat(bar(5), at=12.4)`, or glide the tempo into it, `land(bar(9), at=31.5, ramp_from=bar(5))`. Then keep writing in bars.
+- **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
+  rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).
 
 ## A tiny example (a technique, not a piece)
 

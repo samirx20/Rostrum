@@ -43,7 +43,8 @@ INSTRUCTIONS = ("rostrum-3d makes 3D shots: meshes, sculpted clay, imports, ligh
                 "scratch project made for you, never the person's work (the first reply says which); the person's scenes open only when you ask: "
                 "run_open_project lists them (what \"recent\") and switches.")
 SCRIPT_HELP = ("In Rostrum3D: the whole scene as ONE script, re-run whole under the same name; edit(id) reaches anything "
-               "in the scene. Guide 'script'.")
+               "in the scene. A character is ONE clay (it stands on the ground; positions are heights above it): c.lump(...) "
+               "pieces, then c.bend / c.pose keys its joints. Guide 'script'.")
 
 
 @dataclass

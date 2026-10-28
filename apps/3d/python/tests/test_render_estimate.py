@@ -107,6 +107,8 @@ def test_samples_follow_the_measured_curve_and_size_rescales():
     neg = dict(m, fixed_ms=-500.0, probe={"size": [960, 540]})                       # a line below 0 under the quarter size
     tiny = scale(neg, settings({"renderQuality": "good"}, dict(INFO, width=480, height=270)), 1, mp4=False)
     assert tiny["seconds_per_frame"] == pytest.approx((-500 + 960 * 540 * 0.001) / 4 / 1000, abs=1e-3)
+    big = scale(dict(m, probe={"size": [960, 540]}), settings({"renderQuality": "good"}, INFO), 1, mp4=False)
+    assert big["seconds_per_frame"] == pytest.approx(base, abs=1e-3)               # above the quarter: the line, fixed part once
 
 
 def test_fewer_samples_never_longer_and_fits_follow_the_measurement():

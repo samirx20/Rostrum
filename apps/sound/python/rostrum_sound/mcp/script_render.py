@@ -23,7 +23,7 @@ from . import session_clock
 WAIT_S = 150.0
 AGAIN = "and run_script again with the edited source, the same name and look"
 SCHEMA = {"anyOf": [{"type": "boolean"}, {"type": "object"}],
-          "description": "Render and listen: true, or render_mix's arguments."}
+          "description": "Render and listen: true, or render_mix's arguments; with `folder` a delivery (refused with open faults unless `keep`)."}
 LEAD = "The loop: one script for the whole piece, run with `look`; fix the script and run it again under the same name until DONE:. "
 
 

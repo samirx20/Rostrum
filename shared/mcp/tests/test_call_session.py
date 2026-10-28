@@ -20,6 +20,7 @@ SERVER = textwrap.dedent('''
     from rostrum_core.mcp import Reply, Tools, run_stdio
     tools = Tools()
     tools.add("render_slow", lambda ctx, a: Reply("queued", ctx.jobs.submit("slow", lambda job: (time.sleep(1.5), Reply("made", {}, ["C:/out/slow.mp4"]))[1]).state()), {}, "A slow render.")
+    tools.add("render_long", lambda ctx, a: Reply("queued", ctx.jobs.submit("long", lambda job: (time.sleep(5), Reply("made", {"frames": 2400}, ["C:/out/long.mp4"]))[1]).state()), {}, "A long export.")
     run_stdio(toy_server.make_app(), toy_server.toy_tools.merged_with(tools))
 ''')
 
@@ -70,3 +71,18 @@ def test_a_dead_session_is_said_and_replaced_and_stop_ends_it(call):
     assert rc == 1 and "NOT run: 2. look_summary" in out, out
     rc, out = run("::", "stop")
     assert rc == 0 and "ended" in out and not list(folder.glob("*.json")), out
+
+
+def test_a_job_outlives_its_session_and_its_result_is_read_from_the_next(call):
+    """Showreel, 2026-10-28: an export died at frame 562 of 2400 when its session ended. Ending a session with a job
+    running keeps its server until the job ends; the next session reads the job's result."""
+    run, folder = call
+    rc, out = run("::", "render_long")
+    assert rc == 0, out
+    job = re.search(r'"job_id": "(job_\w+)"', out).group(1)
+    old = _record(folder)["pid"]
+    rc, out = run("::", "stop")
+    assert rc == 0 and "1 running job(s)" in out and not list(folder.glob("*.json")), out
+    rc, out = run("::", "inspect_job", json.dumps({"job_id": job, "wait_s": 20}))   # a fresh session (and server)
+    assert _record(folder)["pid"] != old
+    assert rc == 0 and '"status": "done"' in out and "long.mp4" in out and '"frames": 2400' in out, out

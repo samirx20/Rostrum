@@ -6,12 +6,13 @@ from __future__ import annotations
 
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp import faults as F
 from rostrum_core.motion.report import LIMIT, capped, examples, stem
 
 from ..motion_track import Track
 from ..sim import fall_view
 from ..sim.cut_note import cut_lines
-from . import motion_found as M, motion_sim
+from . import motion_found as M, motion_sim, shot_faults
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
 tools = Tools()
@@ -81,7 +82,8 @@ def grouped(found: list[dict]) -> list[dict]:
 def look_motion(ctx, args):
     """What moves in a shot, measured every frame from the document (no rendering): per moving item its path, peak speed
     and stops; then faults: shapes passing through each other, sudden jumps, an item leaving the picture, and for falls
-    and cloth whether the drop is on screen. Short by default; `items`, `frames`, `full`. Guide 'agents' (The loop)."""
+    and cloth whether the drop is on screen. Short by default; `items`, `frames`, `full`. Without `items` it opens NOT DONE: (the shot's faults read
+    from the document) or DONE:. Guide 'agents' (The loop)."""
     doc, info = doc_and_shot(ctx, args)
     frames = _range(ctx, info, args)
     sim = motion_sim.moves(doc.data, info, ctx.app.folder)
@@ -94,11 +96,12 @@ def look_motion(ctx, args):
     turning = {i for i in every if any(x["solid"] != rows[i][0]["solid"] for x in rows[i])}
     moving = {i for i in every if known[i]["moves"]} | turning
     falls = [r for r in fall_view.views(doc.data, info, ctx.app.folder) if not args.get("items") or r["item"] in ids] if sim else []
+    faults = None if args.get("items") else shot_faults.check(doc.data, info, shot_faults.sample(info), {}, ctx.app.folder)
     if not moving & set(ids) and not any(r.get("moving") for r in falls):   # copies falling in a simulation count as motion
         unseen = f' ({"; ".join(sim["skip"].values())})' if sim and sim["skip"] else ""
         raise RostrumError(codes.NOT_FOUND, ctx.tool, f"frames {frames[0]}–{frames[-1]}", ("nothing measured moves in them" if sim else "nothing moves in them") +
                            (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else "") +
-                           "".join(f" {r['line']}" for r in falls),
+                           "".join(f" {r['line']}" for r in falls) + (f" {F.headline(faults)}" if faults else ""),
                            hint="Check the keys with inspect_animations, or measure other frames.")
     found = [*M.passing_through(rows, moving, info), *M.jump_findings(facts, info),
              *[x for i in ids for x in M.leaving(i, rows[i], info)]]
@@ -128,11 +131,12 @@ def look_motion(ctx, args):
         lines.append("Not measured for overlap or the picture (no shape known here): " + "; ".join(track.skipped.values()) + ".")
     lines += [g["text"] for g in groups] or [
         "No findings in what was measured, but the simulation is not up to date (see above): this is not an all-clear."
-        if warn else "No findings: nothing passes through anything, jumps, or leaves the picture."]
+        if warn else "No findings: nothing passes through anything, jumps, or leaves the picture." if not faults else
+        "No overlap, jump or leaving finding (see the faults at the top)."]
     keep = ("id", "moves", "frames", "path", "moving", "peak", "stops") + (("jumps", "speed_m_s", "screen_speed_px_s") if args.get("full") else ())
     data = {"shot": info["id"], "frames": [frames[0], frames[-1]], "fps": info["fps"], "renderer": None, "overlap_test": "oriented boxes",
             "items": [{k: f[k] for k in keep if k in f} for f in facts if f["moves"] or args.get("full")], "findings": groups,
             "not_measured": track.skipped, "simulation": sim["state"] if sim else None,
             "fallsOnScreen": [{k: r[k] for k in ("item", "kind", "moving", "drop", "movingFrames", "onScreen", "offScreen", "enters", "lands",
                                                   "where", "startsAtRest", "fix")} for r in falls]}
-    return Reply("\n".join([head, *lines, *notes]), data)
+    return Reply("\n".join([head, *lines, *notes]), data, faults=faults)

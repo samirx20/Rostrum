@@ -26,7 +26,7 @@ from . import script_render, tool_text
 GUIDES = Path(__file__).resolve().parents[3] / "guides"         # apps/sound/guides
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. Read inspect_guide 'start-here' first: write the whole piece as ONE "
                 "script in bars, run it with run_script and look: true, read the faults, fix the script and run it again under the same "
-                "name. The server starts on your own scratch song, never the person's (run_open_project lists theirs).")
+                "name. Make an asked moment read with moment(name, at). A delivery is refused while a fault is open unless keep explains it. The server starts on your own scratch song, never the person's (run_open_project lists theirs).")
 
 
 NO_PROJECT = "No project is open. Open one in RostrumSound, or call run_open_project with a folder."

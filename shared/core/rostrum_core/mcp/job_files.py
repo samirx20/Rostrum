@@ -5,8 +5,11 @@ by hand to stop a stuck render, 2026-10-25).
     <ROSTRUM_DATA or ~/.rostrum>/jobs/<job id>.json    {job_id, label, status, progress, pid: the owner's process, ...}
     <...>/jobs/<job id>.stop                            asked by another program; the owner stops the job within a second
 
-The file goes when the job ends. A file whose owner process is gone (a server ended or killed) is a leftover: read as
-"ended with its program", and removed. Nothing here is a lock: no job waits on another program's file.
+When the job ends its file keeps the end (status, reason, and a finished job's summary, data and files) for a day, so a
+job started in a session that has since ended can be read from the next one (the showreel lost an export at frame 562
+of 2400 when its session ended, 2026-10-28). A waiting or running job's file whose owner process is gone (a server
+ended or killed) is a leftover: read as "ended with its program", and removed. Nothing here is a lock: no job waits on
+another program's file.
 """
 from __future__ import annotations
 
@@ -18,6 +21,8 @@ from pathlib import Path
 
 from ..scratch import running
 
+KEEP_S = 24 * 3600                               # an ended job's file stays this long
+ENDED = ("done", "failed", "cancelled")
 POLL_S = 1.0                                     # how often a running job's owner looks for a stop asked from outside
 _writing = threading.Lock()
 
@@ -33,7 +38,10 @@ def write(state: dict) -> None:
         try:
             d.mkdir(parents=True, exist_ok=True)
             tmp = d / f"{state['job_id']}.{os.getpid()}.tmp"
-            tmp.write_text(json.dumps({**state, "pid": os.getpid(), "updated": time.time()}), encoding="utf-8")
+            mine = {"pid": os.getpid(), "updated": time.time()}
+            if os.environ.get("ROSTRUM_CALL_SESSION"):    # call.py's session: it stays until its jobs have ended
+                mine["session"] = os.environ["ROSTRUM_CALL_SESSION"]
+            tmp.write_text(json.dumps({**state, **mine}, default=str), encoding="utf-8")
             for _ in range(40):                  # Windows: a reader holding the file for a moment refuses the swap
                 try:
                     tmp.replace(d / f"{state['job_id']}.json")
@@ -42,6 +50,19 @@ def write(state: dict) -> None:
                     time.sleep(0.025)
         except OSError:
             pass                                 # seeing a job from outside is a help; the job itself never fails for it
+
+
+def ended(state: dict) -> None:
+    """The job's end, kept for KEEP_S (older ended files are cleared on the way); a stop asked for it is dropped."""
+    write(state)
+    try:
+        (folder() / f"{state['job_id']}.stop").unlink(missing_ok=True)
+        old = time.time() - KEEP_S
+        for p in folder().glob("*.json"):
+            if p.stat().st_mtime < old:
+                p.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def remove(job_id: str) -> None:
@@ -53,7 +74,8 @@ def remove(job_id: str) -> None:
 
 
 def read(job_id: str) -> dict | None:
-    """Another program's job, or None. Its owner gone: reported ended (status "failed") and its files removed."""
+    """A job's file, or None. A waiting or running one whose owner is gone: reported ended (status "failed") and its
+    files removed. An ended one reads as it ended (its program may be gone)."""
     for _ in range(40):
         try:
             state = json.loads((folder() / f"{job_id}.json").read_text(encoding="utf-8"))
@@ -64,7 +86,7 @@ def read(job_id: str) -> dict | None:
             return None
     else:
         return None
-    if not running(int(state.get("pid", 0))):
+    if state.get("status") not in ENDED and not running(int(state.get("pid", 0))):
         remove(job_id)
         return {**state, "status": "failed", "reason": f"its program (process {state.get('pid')}) ended before the job did"}
     return state

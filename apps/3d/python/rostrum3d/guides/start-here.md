@@ -25,8 +25,9 @@ A new scene is not empty: a wide `ground` (a plane at y = 0), the `sky` (the Stu
 to an arm tall. Units are metres, degrees and seconds; y is up; the camera stands on +z looking towards −z.
 
 - **Ground.** Things stand on the ground (y = 0). A mesh's `y` is its middle, so write its height from its own size,
-  never a guessed number: a ball `y=r` with `radius=r`, a box `y=h / 2` with `height=h`. A clay drawn with its lowest
-  point at y = 0 already stands. A thing on another made earlier in the same group: `.place_on(other)`; on a clay's
+  never a guessed number: a ball `y=r` with `radius=r`, a box `y=h / 2` with `height=h`. A clay with no `at` / `y` stands on
+  the ground by itself, and its pieces' positions are heights above it. A character is ONE clay (`c.lump(...)` pieces),
+  posed by its joints: `c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})` or `c.pose("hand.L", {2: point})` (guide `script`). A thing on another made earlier in the same group: `.place_on(other)`; on a clay's
   surface at a world point: `.place_on(clay, at=(x, y, z))`. The faults name anything floating or sunk.
 - **Frame.** Frame the camera by its subject, not by numbers you guess: `edit_document` with `shot.frame`
   (`items`: the subject's ids) moves the camera so they fill the picture with a margin, keeping its direction;

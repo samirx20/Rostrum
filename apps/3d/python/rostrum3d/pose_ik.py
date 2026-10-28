@@ -169,11 +169,14 @@ class Rig:
         return out
 
     def held(self, holds) -> set[int]:
-        """Bone indices from hold names / ids, or from rest spots ([x, y, z]: the bone under it at rest)."""
+        """Bone indices from hold names / ids, or from rest spots ([x, y, z]: the bone under it at rest). Holding a
+        body bone (body, chest, neck) holds all of them: the trunk stays upright, the head still turns."""
         out = set()
         for h in holds or ():
             out.add(self.bone_at(h, rest=True) if isinstance(h, (list, tuple)) else self.find(h))
         out.discard(-1)
+        if any(self.trunk[n] and self.joint[n] != "head" for n in out):    # a held body keeps the whole trunk upright
+            out |= {n for n, j in enumerate(self.joint) if self.trunk[n] and j != "head"}
         return out
 
     def frozen(self, held: set[int]) -> set[int]:
