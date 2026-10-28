@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import threading
 
+import shiboken6
+
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 WIDTH = 960                      # the texel picture's width for coverage (the shot's shape)
@@ -57,6 +59,15 @@ class Coverage(QObject):
         self.v._on_doc()                         # the plain scene again (tint off), or measured and tinted (on)
         self.later()
 
+    def _say(self, result):
+        """Hand a measurement to the window thread, from the coverage or engine thread. A window closed meanwhile (its
+        Qt object deleted) has no one left to tell: that answer is dropped, not raised in a stray thread."""
+        try:
+            self.measured.emit(result)
+        except RuntimeError:
+            if shiboken6.isValid(self):          # deleted is the only failure dropped
+                raise
+
     def later(self, *_):
         if self.p._on:
             self._timer.start()
@@ -91,9 +102,9 @@ class Coverage(QObject):
                 percent, tinted = coverage.for_screen(done, data, req, None, tint)
                 pic = texels.cached(paint_scene.geometry_scene(done), req)
                 seen = {i for i in pic.items if pic.of(i).any()}
-                self.measured.emit((scene, percent, tinted if tint else None, seen))
+                self._say((scene, percent, tinted if tint else None, seen))
             except Exception as e:  # noqa: BLE001  said on the status line, never a silent miss
-                self.measured.emit((scene, str(e), None, set()))
+                self._say((scene, str(e), None, set()))
 
         def job(eng):
             """(the engine's worker) only what needs the engine: the scene, its waiting paint, the texel picture."""
@@ -107,7 +118,7 @@ class Coverage(QObject):
                 texels.cached(paint_scene.geometry_scene(done), req, eng.texels_reply)
                 threading.Thread(target=work, args=(done,), daemon=True, name="coverage").start()
             except Exception as e:  # noqa: BLE001
-                self.measured.emit((scene, str(e), None, set()))
+                self._say((scene, str(e), None, set()))
         self.v._r.call(job)
 
     def _on_measured(self, answer):
