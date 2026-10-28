@@ -732,6 +732,11 @@ pub struct RuntimeShaderFilter {
     pub images: Vec<(String, u32)>,
 }
 
+/// Uniforms the painter gives every shader primitive (Rostrum patch): `box`, the element's box (x, y, w, h), and `view`,
+/// the visible frame in the same space (x, y, w, h: the viewport mapped back into the element's own px). A program
+/// that doesn't declare one is not an error.
+pub const PAINTER_UNIFORMS: &[&str] = &["box", "view"];
+
 /// Errors from shader programs the backend could not compile or feed, collected during a paint so the
 /// caller can fail the frame naming them (Rostrum patch, round 5: never draw on without an effect).
 /// Rostrum patch (E4): one list per thread, the thread that paints: two paints at once (tests run in parallel, a second

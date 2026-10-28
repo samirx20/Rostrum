@@ -238,7 +238,7 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
         // The root clip rectangle is the viewport (in screen coordinates, with the
         // initial offset already subtracted). Elements outside of this are culled, and
         // scrollports narrow this rectangle further for their descendants.
-        let viewport_clip_rect = crate::runs::viewport().unwrap_or(Rect::new(0.0, 0.0, self.width as f64, self.height as f64));
+        let viewport_clip_rect = self.viewport_rect();
 
         self.render_element(
             scene,
@@ -284,6 +284,12 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
     }
 
     /// The element's 3D transform at this painter's scale (`element_3d`).
+    /// The viewport in screen coordinates (the initial offset already subtracted): the frame, or the part of the
+    /// endless canvas a world picture shows (`runs::set_viewport`).
+    fn viewport_rect(&self) -> Rect {
+        crate::runs::viewport().unwrap_or(Rect::new(0.0, 0.0, self.width as f64, self.height as f64))
+    }
+
     fn element_3d(&self, node: &blitz_dom::Node, placement: Affine) -> Option<[f64; 16]> {
         element_3d(node, placement, self.scale)
     }
@@ -543,14 +549,21 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                 // Save it so that the mask can be drawn untransformed by scroll offsets.
                 let unscrolled_transform = cx.transform;
 
-                // An SVG filter by url(#id) (Rostrum proof patch); else the CSS filter functions.
+                // An SVG filter by url(#id) (Rostrum proof patch); else the CSS filter functions. Its shaders also get
+                // the visible frame in the element's own px (`view`: the viewport through the inverse of its placement;
+                // a box around it under a turn): a warp reads inside it, so what runs off the frame never shows a gap.
+                let view = if screen_transform.determinant().abs() > 1e-12 {
+                    screen_transform.inverse().transform_rect_bbox(self.viewport_rect())
+                } else {
+                    Rect::new(-1e7, -1e7, 1e7, 1e7) // flattened to nothing: no frame to keep inside
+                };
                 let filter = crate::filters::url_filter_id(node)
-                    .and_then(|id| crate::svg_filter::svg_filter(self.dom, &id, cx.frame.border_box_path().bounding_box(), self.scale))
+                    .and_then(|id| crate::svg_filter::svg_filter(self.dom, &id, cx.frame.border_box_path().bounding_box(), view, self.scale))
                     .or_else(|| convert_filters(&effects.filter.0))
                     .map(Arc::new);
                 // Rostrum patch (round 5): `backdrop-filter: url(#id)` (glass that refracts what is behind it) as an SVG filter too.
                 let backdrop_filter = crate::filters::url_ref_id(node, "backdrop-filter")
-                    .and_then(|id| crate::svg_filter::svg_filter(self.dom, &id, cx.frame.border_box_path().bounding_box(), self.scale))
+                    .and_then(|id| crate::svg_filter::svg_filter(self.dom, &id, cx.frame.border_box_path().bounding_box(), view, self.scale))
                     .or_else(|| convert_filters(&effects.backdrop_filter.0))
                     .map(Arc::new);
 
