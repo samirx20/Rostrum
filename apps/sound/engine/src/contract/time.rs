@@ -8,6 +8,8 @@ use serde_json::{json, Value};
 /// Tempo segments, sorted by beat, the first at beat 0; constant tempo inside a segment, or (`"ramp": true`) a
 /// glide to the next segment's bpm, even per beat: with k bpm per beat a beat lasts 60/bpm, so seconds =
 /// 60/k·ln(bpm/bpm0) and beat = bpm0/k·(e^(k·seconds/60) − 1), exact (Python's `doc/tempo.py` agrees).
+/// Beat 0 starts at the first segment's `"seconds"` (the song's gridStart; absent = 0): a time before it is a pickup,
+/// read back from beat 0 at the first tempo.
 pub struct Tempo {
     /// (start beat, bpm, start seconds, bpm per beat)
     segs: Vec<(f64, f64, f64, f64)>,
@@ -17,6 +19,7 @@ pub struct Tempo {
 
 impl Tempo {
     pub fn read(v: Option<&Value>, at: &str) -> Result<(Tempo, Value), Error> {
+        let mut start = 0.0;
         let raw: Vec<(f64, f64, bool)> = match v {
             None => vec![(0.0, 120.0, false)],
             Some(v) if v.is_number() => vec![(0.0, number(v, at, 10.0, 400.0)?, false)],
@@ -28,6 +31,9 @@ impl Tempo {
                 let mut o = super::read::Obj::new(&s, p)?;
                 let beat = o.num("beat", 0.0, 1e6, None)?;
                 let bpm = o.num("bpm", 10.0, 400.0, None)?;
+                if i == 0 {
+                    start = o.num("seconds", 0.0, 86400.0, Some(0.0))?;
+                }
                 o.done()?;
                 Ok((beat, bpm, ramp))
             }).collect::<Result<_, Error>>()?,
@@ -44,11 +50,14 @@ impl Tempo {
         }
         let mut segs: Vec<(f64, f64, f64, f64)> = vec![];
         for (i, &(beat, bpm, ramp)) in raw.iter().enumerate() {
-            let secs = segs.last().map_or(0.0, |&s| Self::secs_in(s, beat));
+            let secs = segs.last().map_or(start, |&s| Self::secs_in(s, beat));
             let k = if ramp { (raw[i + 1].1 - bpm) / (raw[i + 1].0 - beat) } else { 0.0 };
             segs.push((beat, bpm, secs, k));
         }
-        let resolved = json!(raw.iter().map(|&(b, t, r)| if r { json!({ "beat": b, "bpm": t, "ramp": true }) } else { json!({ "beat": b, "bpm": t }) }).collect::<Vec<_>>());
+        let mut resolved = json!(raw.iter().map(|&(b, t, r)| if r { json!({ "beat": b, "bpm": t, "ramp": true }) } else { json!({ "beat": b, "bpm": t }) }).collect::<Vec<_>>());
+        if start != 0.0 {
+            resolved[0]["seconds"] = json!(start);
+        }
         Ok((Tempo { segs, meter: Default::default() }, resolved))
     }
 
@@ -90,5 +99,26 @@ impl Tempo {
             None => self.seconds(beats),
             Some(start) => self.seconds(self.beat(start) + beats) - start,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Tempo;
+    use serde_json::json;
+
+    #[test]
+    fn grid_start_moves_beat_zero_and_keeps_ramps_exact() {
+        let (t, resolved) = Tempo::read(Some(&json!([{"beat": 0, "bpm": 120, "seconds": 1.5}, {"beat": 8, "bpm": 120, "ramp": true}, {"beat": 16, "bpm": 140}])), "tempo").unwrap();
+        assert_eq!(resolved[0]["seconds"], json!(1.5));
+        assert!((t.seconds(0.0) - 1.5).abs() < 1e-12);
+        assert!((t.seconds(8.0) - 5.5).abs() < 1e-12);
+        assert!((t.seconds(-2.0) - 0.5).abs() < 1e-12, "a pickup beat reads back at the first tempo");
+        for b in [-1.0, 3.0, 11.5, 20.0] {
+            assert!((t.beat(t.seconds(b)) - b).abs() < 1e-9, "beat {b} round-trips");
+        }
+        let (old, _) = Tempo::read(Some(&json!([{"beat": 0, "bpm": 120}])), "tempo").unwrap();
+        assert_eq!(old.seconds(4.0), 2.0, "no seconds: beat 0 at 0 s as before");
+        assert!(Tempo::read(Some(&json!([{"beat": 0, "bpm": 120}, {"beat": 4, "bpm": 90, "seconds": 3}])), "tempo").is_err(), "only the first segment carries seconds");
     }
 }

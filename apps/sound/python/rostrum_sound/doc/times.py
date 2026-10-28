@@ -39,6 +39,9 @@ def problem(value, length=False, tied=False) -> str | None:
             return (f'uses "{other}": a {"length" if length else "time"} in beats is {{"{key}": n}} '
                     f'({"a time takes singular" if not length else "a length takes plural"} "{key}")')
         n = value.get(key)
+        if not length and set(value) == {key} and isinstance(n, (int, float)) and not isinstance(n, bool) and n < 0:
+            return ("is before bar 1 (a negative beat): a pickup before the song's gridStart is written in seconds "
+                    "(a script: at=seconds_of(bar(1) - beats(1)))")
         if set(value) != {key} or isinstance(n, bool) or not isinstance(n, (int, float)) or n < 0:
             return f'must be {{"{key}": n}} with n ≥ 0'
         return None

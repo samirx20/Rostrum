@@ -50,7 +50,7 @@ def _refuse(a, op, b):
     shown = f"{_show(a)} {op} {_show(b)}"
     if op in ("<", "<=", ">", ">="):
         why = "a time compares with a time and a length with a length (a bare number is seconds)"
-        accepted = ["bar(5) < beat(20)", "beats(2) <= beats(4)", "t[\"beat\"] < 20 (the beat number itself)"]
+        accepted = ["bar(5) < beat(20)", "beats(2) <= beats(4)", "t[\"beat\"] < 20 (the beat number itself)", "seconds_of(bar(5)) < 38.0 (its time in seconds)"]
     elif isinstance(a, str) or isinstance(b, str):
         why = "a marker plus a length is `marker + beats(n)`; anything else added to a marker text is not a time"
         accepted = ['"#drop" + beats(1) (a beat after the marker)', '"#drop+0.5" (seconds after a marker)']
