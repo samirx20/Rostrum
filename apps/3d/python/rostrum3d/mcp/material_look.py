@@ -87,8 +87,7 @@ def look_material(ctx, args):
     (glass / transmission, metal, clear coat, Final-only settings): then Final is picked for you, and the reply says which renderer drew it
     and why (ask quality fast to force Storm). Use it to judge a material's look, how its highlight travels, before putting it on a shot.
     A material with blocks (graph.add / graph.connect) is drawn with them, and the reply lists its blocks and wires (`blocks`:
-    graph.describe's blocks and wires); in Storm such a material shows the light of panels, spots, point lights and suns
-    about 3 times dimmer than Final does (the sky's light is the same), so judge its brightness with quality final. An unknown material fails, listing the document's materials; a scene with no light fails
+    graph.describe's blocks and wires), as bright in Storm as in Final. An unknown material fails, listing the document's materials; a scene with no light fails
     (the ball would be black)."""
     doc, info = doc_and_shot(ctx, args)
     mat = find(ctx, doc, args["material"])

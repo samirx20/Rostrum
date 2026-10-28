@@ -30,10 +30,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "5.2.2-cycles-a456b76-r3"   # r3 (3D-15): Cycles' Hydra plug-in with cycles-rostrum.patch (lights, object motion blur, light passes)
+VERSION = "5.2.2-cycles-a456b76-r4"   # r4 (3D libs): + per-copy colour in Cycles' Hydra plug-in; MaterialX lamp falloff (usd-overlay)
 BUNDLE_TAG, BUNDLE_COMMIT, CYCLES_COMMIT = "v5.2.2", "60d6e96", "a456b76"
-CYCLES_INSTALL = "install-r3"         # made by build_cycles.bat (the proof's unpatched build is install\)
+CYCLES_INSTALL = "install-r4"         # made by build_cycles.bat (the proof's unpatched build is install\)
 CYCLES_PATCH = "cycles-rostrum.patch"
+# Files of ours laid over the bundle's USD resources, same relative paths under runtime\ (PATCHES.md): MaterialX's
+# lamp shaders with Storm's and Cycles' falloff. Text files read at run time, so USD itself is not rebuilt.
+USD_OVERLAY = Path(__file__).resolve().parent / "usd-overlay"
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION
 DEFAULT_BUNDLE = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
@@ -116,6 +119,12 @@ def plan(bundle: Path, cycles: Path, dest: Path, openvdb: Path = DEFAULT_OPENVDB
     # ...and in ..\plugin\usd: Storm (hdStorm), the image readers (hioOiio, hioOpenEXR, hioAvif), the preview
     # surface's shader definitions (usdShaders) and sdrGlslfx. Without them Storm is "not installed".
     jobs += walk(need(bundle / "usd" / "plugin" / "usd"), rt / "usd" / "plugin" / "usd", SKIP_DIRS, SKIP_SUFFIX)
+    overlay = list(walk(USD_OVERLAY, rt))
+    replaced = {d for _, d in overlay}
+    missing = replaced - {d for _, d in jobs}
+    if missing:   # an overlay file must replace one of the bundle's, never add a stray one
+        raise Missing(f"the bundle has no file the overlay replaces: {sorted(missing)[0]}")
+    jobs = [j for j in jobs if j[1] not in replaced] + overlay
     # Cycles looks for lib\ (GPU kernels) and source\ next to hydra\ (its plugInfo resource path is "../../" from Root).
     # The standalone cycles.exe, examples, python, usd headers and the copies of dlls in install\ stay out.
     cy = rt / "hydra" / "cycles"
@@ -217,6 +226,7 @@ def main() -> int:
         "version": VERSION,
         "bundle": {"source": "Blender lib-windows_x64", "tag": BUNDLE_TAG, "commit": BUNDLE_COMMIT},
         "cycles": {"commit": CYCLES_COMMIT, "install": CYCLES_INSTALL, "patch": CYCLES_PATCH},
+        "usd_overlay": sorted(str(d.relative_to(a.dest)) for s, d in jobs if USD_OVERLAY in s.parents),
         "stylized": {"not_in_this_folder": True, "built_in": STYLIZED_BUILT, "git_head": git_head()},
         "date": datetime.date.today().isoformat(),
         "files": len(jobs),
