@@ -20,7 +20,7 @@ comp("c", width=320, height=180, fps=10, duration=2)
 t = text("title", body="Hi", size=40, x=100, y=90)
 t.key("opacity", {0.0: 0, 1.0: 1})
 shape("box", w=40, h=40, x=200, y=90)
-with group("row", w=300, h=60, layout="row", gap=10, hugWidth=False):
+with group("row", w=300, h=60, layout="row", gap=10, sizeW="fixed"):
     for n in ("ra", "rb", "rc"):
         shape(n, w=60, h=60)
 '''

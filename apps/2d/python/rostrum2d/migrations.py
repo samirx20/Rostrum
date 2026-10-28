@@ -7,6 +7,8 @@ means adding its step here (the kind refuses to start without it).
             several cameras its cuts (frame/convert.py, apps/2d/FRAME.md › Older files)
     3 → 4   the document gets its list of paintings (paintings.py; empty: no older file has any, and the new fill
             fields' defaults draw exactly as before)
+    4 → 5   a group's Width / Height hugs layers switches (hugWidth / hugHeight) become its size modes sizeW / sizeH:
+            on = "fit", off = "fixed" (the auto layout became the engine's CSS layout, layout.py)
 """
 from __future__ import annotations
 
@@ -29,5 +31,17 @@ def paintings_list(data: dict, lists: dict):
     return data, "Paintings list added"
 
 
-STEPS = {1: loop_words, 2: frames, 3: paintings_list}
+def size_modes(data: dict, lists: dict):
+    n = 0
+    for item in walk(data, lists):
+        if item.get("type") != "group":
+            continue
+        for old, new in (("hugWidth", "sizeW"), ("hugHeight", "sizeH")):
+            if old in item:
+                item[new] = "fit" if item.pop(old) else "fixed"
+                n += 1
+    return data, f"Hug switches written as size modes on {n} group side{'s' * (n != 1)}"
+
+
+STEPS = {1: loop_words, 2: frames, 3: paintings_list, 4: size_modes}
 FORMAT = len(STEPS) + 1
