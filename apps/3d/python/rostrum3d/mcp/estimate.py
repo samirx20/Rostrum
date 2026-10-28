@@ -100,7 +100,9 @@ def scale(m: dict, s: dict, frames: int, mp4: bool) -> dict:
     start-up once (engine, scene, warm-up), then each frame's fixed part plus its pixels × samples part, plus encoding."""
     px, pq = s["width"] * s["height"], math.prod(m["probe"]["size"]) if "probe" in m else 0
     line = m["fixed_ms"] + m["per_px_ms"] * px                  # between the probe's two sizes: the measured line
-    floor = (m["fixed_ms"] + m["per_px_ms"] * pq) * px / pq if pq else 0.0   # under the quarter: in step with the pixels
+    # under the quarter only: in step with the pixels (the line may dip below 0 there). Above it the line holds: scaling the
+    # quarter's whole time, fixed part included, by the pixels guessed a 1280x720 pour 30 % and full HD 70 % too slow (gaps 5)
+    floor = (m["fixed_ms"] + m["per_px_ms"] * pq) * px / pq if pq and px < pq else 0.0
     per_frame = max(line, floor, 0.0) / 1000 * sample_factor(m, s.get("samples", 0)) + m.get("change_ms", 0.0) / 1000 * (frames > 1)   # + the scene moving on to each new frame
     per_frame *= 2 if "shadow" in s.get("passes", ()) else 1     # the Shadow pass draws each frame twice (core passes.h)
     start = (m["load_ms"] + m["warmup_ms"]) / 1000
