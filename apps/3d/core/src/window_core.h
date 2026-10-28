@@ -23,11 +23,16 @@ class WindowCore {
   // one ENGINE_CONTRACT request line -> its reply line (never throws). Puts GL's state the way Hydra expects first
   // (Qt Quick leaves its own behind) and keeps no framebuffer of its own bound after.
   std::string answer(const std::string& line);
-  // The same with no GL at all, for a request that needs none and is slow: a clay stroke's end (the stroke applied
-  // again as one unit, 50-600 ms). Any thread, as long as nothing else uses this core meanwhile (the view item holds
-  // its other requests and draws nothing until it is answered).
+  // The same with no GL at all, for a request that needs none and is slow (runs_aside): a clay stroke's end (the stroke
+  // applied again as one unit, 50-600 ms), a scene's clays brought to their steps. Any thread, as long as nothing else
+  // uses this core meanwhile (the view item holds its other requests and draws nothing until it is answered).
   std::string answer_without_gl(const std::string& line);
   static bool is_stroke_end(const std::string& line);
+  // A request the window answers on a worker (answer_without_gl), drawing its other things meanwhile with the view's
+  // last picture held: a stroke's end, and a scene holding a clay (its clays brought to their steps: an undo of a
+  // stroke, a redo, a document opened; up to ~1.5 s that held the whole window's drawing). Not a scene whose copies
+  // are seen-tested by a camera: that test draws with Hydra (GL), so that scene is answered on the drawing step.
+  static bool runs_aside(const std::string& line);
   // Any one thread (the GUI's), only while no request of this core is waiting for its answer: a `sculpt` dab line's
   // clay work started now on a worker (Core::sculpt_ahead), so that when answer() gets the same line only its blocks
   // are written and the picture drawn. False when it can't start (no live stroke, another camera): answer() does all.

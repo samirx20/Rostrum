@@ -2,6 +2,7 @@
 
 #include <epoxy/gl.h>
 #include <stdlib.h>
+#include <cstring>
 #include <pxr/base/js/json.h>
 
 #include "requests.h"
@@ -103,6 +104,32 @@ bool WindowCore::is_stroke_end(const std::string& line) {
   // {"sculpt": {... "phase": "end" ...}} as Python's json.dumps writes it (with or without the space)
   return line.rfind("{\"sculpt\"", 0) == 0 &&
          (line.find("\"phase\": \"end\"") != std::string::npos || line.find("\"phase\":\"end\"") != std::string::npos);
+}
+
+namespace {
+// `key` followed by `value` as Python's json.dumps writes it (with or without the space after the colon)
+bool has_pair(const std::string& line, const char* key, const char* value) {
+  const std::string k = std::string("\"") + key + "\":";
+  for (size_t at = line.find(k); at != std::string::npos; at = line.find(k, at + 1)) {
+    size_t v = at + k.size();
+    while (v < line.size() && line[v] == ' ') ++v;
+    if (line.compare(v, std::strlen(value), value) == 0) return true;
+  }
+  return false;
+}
+}  // namespace
+
+bool WindowCore::runs_aside(const std::string& line) {
+  if (is_stroke_end(line)) return true;
+  if (line.rfind("{\"scene\"", 0) != 0 || !has_pair(line, "type", "\"clay\"")) return false;
+  // a seen-by camera named ("seenBy": "cam"; "" is none): its test draws (Core::seen_test)
+  const std::string k = "\"seenBy\":";
+  for (size_t at = line.find(k); at != std::string::npos; at = line.find(k, at + 1)) {
+    size_t v = at + k.size();
+    while (v < line.size() && line[v] == ' ') ++v;
+    if (!(v + 1 < line.size() && line[v] == '"' && line[v + 1] == '"')) return false;
+  }
+  return true;
 }
 
 void WindowCore::clear() {

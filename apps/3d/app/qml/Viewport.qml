@@ -171,7 +171,7 @@ Rectangle {
         text: "Free camera  ·  right-drag to turn  ·  Shift-drag to pan  ·  scroll to zoom" + (viewport.hasShot ? "  ·  ` back to the shot" : "")
         color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
     }
-    Rectangle {  // a changed clay being built again (an undo of a stroke): the view can't draw meanwhile, so say so
+    Rectangle {  // a changed clay being built again (an undo of a stroke): the view shows the clay from before meanwhile
         objectName: "clayUpdating"
         visible: viewport.rebuilding
         anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: Theme.pad }
