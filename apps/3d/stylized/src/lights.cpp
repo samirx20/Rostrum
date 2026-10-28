@@ -37,25 +37,53 @@ void FillRamp(RostrumRamp const &r, float *row)
     }
 }
 
-GfMatrix4d ShadowCamera(RostrumLightData const &l, GfVec3d const &c, double r)
+// A shadow camera that just holds the bounds' eight corners (a 2048 map then spends its texels on the scene, not on
+// empty space around a bounding sphere: a light near the scene got a 160 degree map and a stepped band edge).
+// `span`: the map's width at the bounds' centre, world units.
+GfMatrix4d ShadowCamera(RostrumLightData const &l, GfRange3d const &box, float *span)
 {
-    GfMatrix4d view;
-    GfFrustum f;
-    if (l.type == HdPrimTypeTokens->distantLight) {
-        GfVec3d L = l.xform.TransformDir(GfVec3d(0, 0, 1)).GetNormalized();
-        GfVec3d up = std::abs(L[1]) > 0.99 ? GfVec3d(1, 0, 0) : GfVec3d(0, 1, 0);
-        view.SetLookAt(c + L * (2 * r), c, up);
-        f.SetOrthographic(-r, r, -r, r, 0.5 * r, 3.5 * r);
+    GfVec3d c = box.GetMidpoint();
+    double r = std::max(box.GetSize().GetLength() * 0.5, 1e-4);
+    bool distant = l.type == HdPrimTypeTokens->distantLight;
+    GfVec3d eye, dir;
+    if (distant) {
+        dir = -l.xform.TransformDir(GfVec3d(0, 0, 1)).GetNormalized();
+        eye = c - dir * (2 * r);
     } else {
-        GfVec3d eye = l.xform.ExtractTranslation();
-        double d = (c - eye).GetLength();
-        GfVec3d dir = (c - eye) / std::max(d, 1e-6);
-        GfVec3d up = std::abs(dir[1]) > 0.99 ? GfVec3d(1, 0, 0) : GfVec3d(0, 1, 0);
-        view.SetLookAt(eye, c, up);
-        double fov = d > r ? std::min(160.0, 2.1 * std::asin(r / d) * 180.0 / M_PI) : 160.0;
-        f.SetPerspective(fov, 1.0, std::max(d - r, d * 0.02), d + r);
+        eye = l.xform.ExtractTranslation();
+        dir = (c - eye) / std::max((c - eye).GetLength(), 1e-6);
     }
-    return view * f.ComputeProjectionMatrix();
+    GfMatrix4d view;
+    view.SetLookAt(eye, eye + dir, std::abs(dir[1]) > 0.99 ? GfVec3d(1, 0, 0) : GfVec3d(0, 1, 0));
+    // the corners in the light's view (looking down -z): their extent across, and their depth range
+    double x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30, n = 1e30, f = 0;
+    bool behind = false;
+    for (int k = 0; k < 8; ++k) {
+        GfVec3d p = view.Transform(box.GetCorner(k));
+        double depth = -p[2];
+        if (!distant && depth < 1e-6) { behind = true; break; }
+        double x = distant ? p[0] : p[0] / depth, y = distant ? p[1] : p[1] / depth;
+        x0 = std::min(x0, x); x1 = std::max(x1, x); y0 = std::min(y0, y); y1 = std::max(y1, y);
+        n = std::min(n, depth); f = std::max(f, depth);
+    }
+    double const wide = std::tan(80.0 * M_PI / 180.0);   // a local light's widest map: 160 degrees
+    double d = (c - eye).GetLength();
+    GfFrustum fr;
+    if (distant) {
+        double m = 0.01 * r;                             // a hair round the edge
+        fr.SetOrthographic(x0 - m, x1 + m, y0 - m, y1 + m, std::max(n - m, 1e-4), f + m);
+        *span = float(std::max(x1 - x0, y1 - y0) + 2 * m);
+    } else if (behind || std::max({-x0, x1, -y0, y1}) > wide) {  // the light is among the bounds: the widest map
+        fr.SetPerspective(160.0, 1.0, std::max(d - r, d * 0.02), d + r);
+        *span = float(2 * wide * d);
+    } else {
+        double m = 0.01 * std::max(x1 - x0, y1 - y0);
+        fr.SetProjectionType(GfFrustum::Perspective);
+        fr.SetWindow(GfRange2d(GfVec2d(x0 - m, y0 - m), GfVec2d(x1 + m, y1 + m)));  // on the plane 1 unit away
+        fr.SetNearFar(GfRange1d(std::max(n * 0.98, d * 0.02), f * 1.02));
+        *span = float((std::max(x1 - x0, y1 - y0) + 2 * m) * d);
+    }
+    return view * fr.ComputeProjectionMatrix();
 }
 
 float Luma(GfVec3f const &c) { return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2]; }
@@ -86,9 +114,9 @@ float Brightness(RostrumLightData const &l, float *minD2)
 
 }  // namespace
 
-RostrumFrameLights RostrumPackLights(std::map<SdfPath, RostrumLightData> const &lights,
-                                     GfVec3d const &centre, double radius)
+RostrumFrameLights RostrumPackLights(std::map<SdfPath, RostrumLightData> const &lights, GfRange3d const &lit)
 {
+    GfVec3d const centre = lit.GetMidpoint();
     // strongest first, judged at the centre of what is lit
     struct Pick { SdfPath const *path; RostrumLightData const *l; float k, minD2, strength; };
     std::vector<Pick> all, picks;
@@ -156,7 +184,7 @@ RostrumFrameLights RostrumPackLights(std::map<SdfPath, RostrumLightData> const &
             }
             out.extra[i] = GfVec4f(outer, inner, p.minD2, -1.0f);
             if (l.shadow && out.shadows < kMaxShadows) {
-                out.shadowMat[out.shadows] = GfMatrix4f(ShadowCamera(l, centre, radius));
+                out.shadowMat[out.shadows] = GfMatrix4f(ShadowCamera(l, lit, &out.shadowSpan[out.shadows]));
                 out.extra[i][3] = float(out.shadows++);
             }
         }

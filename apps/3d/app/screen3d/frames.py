@@ -205,3 +205,6 @@ class EngineVia:
 
     def inspect_usd(self, file):            # import.add reads a file's unit, size and parts (ops_import.py)
         return self.worker.wait_for(lambda e: _program(e).inspect_usd(file))
+
+    def copies_box(self, item, frame):      # framing a copies item (item_bounds.py)
+        return self.worker.wait_for(lambda e: _program(e).copies_box(item, frame))

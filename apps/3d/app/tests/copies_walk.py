@@ -5,8 +5,8 @@
 #      Enter (the new copies item is selected and its Count row has the keys). One undo step for the make, one for the number.
 #   2. 400 PEBBLES SCATTERED ON A PLINTH: the pebble selected, a right-click on the block › Scatter 'pebble' on 'block'; Count
 #      typed as 400. The grey line under Count reads "N of 400 in <shot>" (the engine's seen test), N below 400.
-#   3. DRAGGING COUNT: a real mouse drag on Count's slider. Every pointer move is timed (the GUI thread's cycles, as
-#      sound-fix-r9's drive.py) and the engine's own ms per `copies` request is read; the document does not change until the
+#   3. DRAGGING COUNT: a real mouse drag on Count's slider. Every pointer move is timed in real milliseconds on the GUI
+#      thread (time.perf_counter_ns around the move and the events it causes, the redraw included) and the engine's own ms per `copies` request is read; the document does not change until the
 #      release, which is ONE undo step.
 #   4. A KEYED CHANGE NEAR SPHERE IN PLAYBACK: a click on a bud, Change near › Scale: a small sphere and an effector
 #      (one undo step, the sphere selected); the sphere keyed across the shot, then played: engine ms per frame.
@@ -24,6 +24,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 os.environ.setdefault("ROSTRUM_BACKGROUND_WINDOWS", "1")
@@ -259,10 +260,11 @@ def main():
             moves, during = [], []
             for i in range(1, 31):
                 p = QPoint(start.x() + 3 * i, start.y())
-                c = W.gui_cycles_ms()
+                t0 = time.perf_counter_ns()
                 QTest.mouseMove(win, p)
-                W.QCoreApplication.processEvents()
-                moves.append(round(W.gui_cycles_ms() - c, 2))
+                W.QCoreApplication.processEvents()          # the move, the live request, the update it posts
+                W.QCoreApplication.processEvents()          # and the redraw that update asks for
+                moves.append(round((time.perf_counter_ns() - t0) / 1e6, 2))
                 W.pump(0.016)
                 during.append(changes(doc))
             live = (b._live or {}).get("send")
@@ -274,10 +276,10 @@ def main():
             W.check(changes(doc) == n0 + 1, f"letting go: one undo step ({n0} -> {changes(doc)})")
             W.check(doc.item(pebbles)["count"] > c0, f"Count grew ({c0} -> {doc.item(pebbles)['count']})")
             worst, med = max(moves), sorted(moves)[len(moves) // 2]
-            budget(worst <= BUDGET_MS, f"Count drag: slowest move {worst:.1f} ms of the GUI thread (budget {BUDGET_MS:.0f}), median {med:.1f}")
+            budget(worst <= BUDGET_MS, f"Count drag: slowest move {worst:.1f} ms real time on the GUI thread (budget {BUDGET_MS:.0f}), median {med:.1f}")
             if engine:
                 budget(max(engine) <= BUDGET_MS, f"Count drag: the engine's slowest `copies` answer {max(engine):.1f} ms (budget {BUDGET_MS:.0f})")
-            NUMBERS["countDrag"] = {"count": [c0, doc.item(pebbles)["count"]], "guiCpuMsPerMove": moves, "engineMsPerRequest": engine,
+            NUMBERS["countDrag"] = {"count": [c0, doc.item(pebbles)["count"]], "guiMsPerMove": moves, "engineMsPerRequest": engine,
                                     "requests": 0 if live is None else live.sent}
             w.settle("the dragged count")
             w.snap("3-count-dragged")

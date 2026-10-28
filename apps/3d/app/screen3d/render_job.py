@@ -12,7 +12,9 @@ Render always makes the Final picture (SPEC § 1 6:30): the Final preset whateve
 Custom samples keeps its own, a shot set to Stylized renders Stylized: its look is not a Cycles one; other qualities
 are the render sheet's, the ▾ beside the button). The moment it starts,
 its note says how long it will take (render_guess: the kept measurement, else a first guess) and counts the seconds
-against that; when it lands, the picture shows over the viewport (RenderView.qml) with Show in folder.
+against that. As soon as Cycles has drawn a little of the frame (its "step" lines: the share done), the time is measured
+on this very frame instead (render_guess.left: "about 25 s left"), so a first guess that was far off is put right
+within seconds. When it lands, the picture shows over the viewport (RenderView.qml) with Show in folder.
 """
 from __future__ import annotations
 
@@ -62,6 +64,7 @@ class RenderJob(QObject):
         self._engine, self._stop = None, threading.Event()
         self._landed.connect(self._on_landed)
         self._expect, self._measured, self._t0, self._s = 0.0, False, 0.0, {}
+        self._drawn = None                                 # [first, last] (share done, ms) Cycles reported for the frame
         self._tick = QTimer(self, interval=1000)          # the seconds so far, against the time it said
         self._tick.timeout.connect(self._on_tick)
 
@@ -107,6 +110,9 @@ class RenderJob(QObject):
 
     def _running_note(self) -> str:
         so_far = time.monotonic() - self._t0
+        if (left := render_guess.left(*self._drawn) if self._drawn else None) is not None:
+            self._expect, self._measured = so_far + left, True     # measured on this frame: the time left
+            return f"Rendering the final picture · {render_guess.words_left(left)}" + (f" · {so_far:.0f} s so far" if so_far >= 1 else "")
         said = render_guess.words(self._expect, self._measured)
         late = so_far > self._expect * 1.15 + 2
         return (f"Rendering the final picture · {said}" + (f" · {so_far:.0f} s so far" if so_far >= 1 else "")
@@ -134,7 +140,7 @@ class RenderJob(QObject):
         layers = passes(shot) if s["renderer"] == "cycles" else []
         size, folder, cyc = (s["width"], s["height"]), b.doc.folder, engine_fields(s)
         self._expect, self._measured = render_guess.guess(scene, s, getattr(self._make_engine, "exe", None))
-        self._t0, self._s = time.monotonic(), s
+        self._t0, self._s, self._drawn = time.monotonic(), s, None
         self._state = "running"
         self._note = self._running_note()
         self._tick.start()
@@ -148,7 +154,8 @@ class RenderJob(QObject):
                 engine = self._engine = self._make_engine()
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
-                _, files, _ = still("render", snap, info, scene, engine, frame, s["renderer"], size, FORMATS, 0, cyc, folder, layers, stop.is_set)
+                _, files, _ = still("render", snap, info, scene, engine, frame, s["renderer"], size, FORMATS, 0, cyc, folder, layers, stop.is_set,
+                                    step=self._on_step)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was
@@ -163,6 +170,11 @@ class RenderJob(QObject):
 
         self._thread = threading.Thread(target=work, name="render-still", daemon=True)
         self._thread.start()
+
+    def _on_step(self, line: dict):
+        """Cycles' share of the frame so far (worker thread): keep the first report and the newest."""
+        now = (line["fraction"], line["ms"])
+        self._drawn = [self._drawn[0] if self._drawn else now, now]
 
     @Slot()
     def cancel(self):

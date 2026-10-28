@@ -31,14 +31,9 @@
   <nodegraph name="NG_rostrum_noise_float" nodedef="ND_rostrum_noise_float">
     <position name="pos" type="vector3"><input name="space" type="string" value="object"/></position>
     <multiply name="scaled" type="vector3"><input name="in1" type="vector3" nodename="pos"/><input name="in2" type="float" interfacename="scale"/></multiply>
-    <noise3d name="warp" type="vector3"><input name="position" type="vector3" nodename="scaled"/><input name="pivot" type="float" value="0"/></noise3d>
-    <multiply name="warped" type="vector3"><input name="in1" type="vector3" nodename="warp"/><input name="in2" type="float" interfacename="distortion"/></multiply>
-    <add name="p" type="vector3"><input name="in1" type="vector3" nodename="scaled"/><input name="in2" type="vector3" nodename="warped"/></add>
-    <add name="octaves" type="integer"><input name="in1" type="integer" interfacename="detail"/><input name="in2" type="integer" value="1"/></add>
-    <fractal3d name="f" type="float"><input name="position" type="vector3" nodename="p"/><input name="octaves" type="integer" nodename="octaves"/><input name="lacunarity" type="float" value="2"/><input name="diminish" type="float" interfacename="roughness"/></fractal3d>
-    <multiply name="half" type="float"><input name="in1" type="float" nodename="f"/><input name="in2" type="float" value="0.5"/></multiply>
-    <add name="mid" type="float"><input name="in1" type="float" nodename="half"/><input name="in2" type="float" value="0.5"/></add>
-    <output name="value" type="float" nodename="mid"/>
+    <convert name="layers" type="float"><input name="in" type="integer" interfacename="detail"/></convert>
+    <rostrum_cycles_noise name="cn" type="multioutput"><input name="position" type="vector3" nodename="scaled"/><input name="detail" type="float" nodename="layers"/><input name="roughness" type="float" interfacename="roughness"/><input name="distortion" type="float" interfacename="distortion"/></rostrum_cycles_noise>
+    <output name="value" type="float" nodename="cn" output="value"/>
   </nodegraph>
   <nodedef name="ND_rostrum_noise_color3" node="rostrum_noise" nodegroup="rostrum">
     <input name="scale" type="float" value="5"/>
@@ -50,14 +45,9 @@
   <nodegraph name="NG_rostrum_noise_color3" nodedef="ND_rostrum_noise_color3">
     <position name="pos" type="vector3"><input name="space" type="string" value="object"/></position>
     <multiply name="scaled" type="vector3"><input name="in1" type="vector3" nodename="pos"/><input name="in2" type="float" interfacename="scale"/></multiply>
-    <noise3d name="warp" type="vector3"><input name="position" type="vector3" nodename="scaled"/><input name="pivot" type="float" value="0"/></noise3d>
-    <multiply name="warped" type="vector3"><input name="in1" type="vector3" nodename="warp"/><input name="in2" type="float" interfacename="distortion"/></multiply>
-    <add name="p" type="vector3"><input name="in1" type="vector3" nodename="scaled"/><input name="in2" type="vector3" nodename="warped"/></add>
-    <add name="octaves" type="integer"><input name="in1" type="integer" interfacename="detail"/><input name="in2" type="integer" value="1"/></add>
-    <fractal3d name="f" type="color3"><input name="position" type="vector3" nodename="p"/><input name="octaves" type="integer" nodename="octaves"/><input name="lacunarity" type="float" value="2"/><input name="diminish" type="float" interfacename="roughness"/></fractal3d>
-    <multiply name="half" type="color3"><input name="in1" type="color3" nodename="f"/><input name="in2" type="float" value="0.5"/></multiply>
-    <add name="mid" type="color3"><input name="in1" type="color3" nodename="half"/><input name="in2" type="float" value="0.5"/></add>
-    <output name="colour" type="color3" nodename="mid"/>
+    <convert name="layers" type="float"><input name="in" type="integer" interfacename="detail"/></convert>
+    <rostrum_cycles_noise name="cn" type="multioutput"><input name="position" type="vector3" nodename="scaled"/><input name="detail" type="float" nodename="layers"/><input name="roughness" type="float" interfacename="roughness"/><input name="distortion" type="float" interfacename="distortion"/></rostrum_cycles_noise>
+    <output name="colour" type="color3" nodename="cn" output="colour"/>
   </nodegraph>
   <nodedef name="ND_rostrum_mix_color3" node="rostrum_mix" nodegroup="rostrum">
     <input name="factor" type="float" value="0.5"/>
@@ -391,6 +381,15 @@
     <dot name="col" type="color3"><input name="in" type="color3" interfacename="colour"/></dot>
     <output name="out" type="color3" nodename="col"/>
   </nodegraph>
+  <nodedef name="ND_rostrum_cycles_noise" node="rostrum_cycles_noise" nodegroup="rostrum">
+    <input name="position" type="vector3" value="0, 0, 0"/>
+    <input name="detail" type="float" value="2"/>
+    <input name="roughness" type="float" value="0.5"/>
+    <input name="distortion" type="float" value="0"/>
+    <output name="value" type="float"/>
+    <output name="colour" type="color3"/>
+  </nodedef>
+  <implementation name="IM_rostrum_cycles_noise_genglsl" nodedef="ND_rostrum_cycles_noise" file="rostrum_cycles_noise.glsl" function="mx_rostrum_cycles_noise" target="genglsl"/>
   <nodedef name="ND_rostrum_grey_color3" node="rostrum_grey" nodegroup="rostrum">
     <input name="in" type="float" value="0"/>
     <output name="out" type="color3"/>

@@ -9,7 +9,9 @@ Click **Render** at the right of the top bar (or press **F12**). It starts at on
 picture of the shot's current frame (the Final preset, whatever Quality the sheet shows; a shot set to Custom samples
 keeps its own, a shot set to Stylized renders Stylized). From the click, the button's place shows the seconds so far against the time it will take ("12 / 40 s";
 rest the pointer on it for the whole sentence); the time is the measured one when this scene was measured before, else
-a first guess from how fast this computer drew its last render, said as "a first guess". **×** beside it cancels. When
+a first guess from how fast this computer drew its last render, said as "a first guess". Once the final renderer has
+drawn a little of the frame (usually within a few seconds), the time is measured on that frame itself: "about 25 s
+left", and the clock follows it. **×** beside it cancels. When
 it is done the picture shows over the viewport, saved in the project's Renders folder (`renders/<item>/vNNN/`, a PNG
 and an EXR); **Show in folder** opens that folder with the picture selected, **Close** (Esc) goes back to the view.
 

@@ -104,14 +104,18 @@ struct State {
   int seen = -1;                              // copies the camera sees (-1: not tested)
   std::vector<bool> shown;                    // per copy: drawn (the seen test); empty = all
   SimTrack sim;                               // the stored fall, when it has one
+  bool late = false;                          // on a clay: laid out after the clays' sync (lay_out_late)
 };
 
 // Reads the node (props, held, effectors), defines the instancer at `path` and builds the sources under it.
 // The layout waits for lay_out_all (a surface may be built after this item).
 void build(Item& it, const PXR_NS::JsArray& children, const PXR_NS::JsArray& held, const PXR_NS::JsArray& effectors,
            const PXR_NS::JsObject* sim, const PXR_NS::SdfPath& path);
-// After every item is built: each copies item's surface read, laid out and written.
-void lay_out_all(const PXR_NS::UsdStageRefPtr& stage, std::vector<State>& all);
+// After every item is built: each copies item's surface read, laid out and written. One whose surface is a clay (its
+// Xform among `clays`) waits (`late`): a clay's surface reaches the held stage only in the clay store's sync.
+void lay_out_all(const PXR_NS::UsdStageRefPtr& stage, std::vector<State>& all, const PXR_NS::SdfPathVector& clays);
+// A copies item that waited for its clay surface, laid out and written on the held stage once the clays are synced.
+void lay_out_late(const PXR_NS::UsdStageRefPtr& stage, State& s);
 
 // The live `copies` request: `props` (any of the node's props) and, when given, `held` replace the state's; the copies
 // are laid out again and written on `stage` in one change. Returns the time taken, ms.
@@ -125,6 +129,9 @@ std::vector<Copy> at_frame(const PXR_NS::UsdStageRefPtr& stage, const State& s, 
 std::vector<Copy> drawn_at(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame, PXR_NS::GfMatrix4d* world);
 // Each copy's points for the seen test at `frame` (world): its base and its bounds' centre, two per copy.
 std::vector<PXR_NS::GfVec3d> seen_points(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
+// Everything the copies take at `frame` as drawn (drawn_at), world, aligned: each copy's source bounds moved with it
+// (framing a copies item, the `copies_box` request). Empty when there are no copies.
+PXR_NS::GfRange3d world_box(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
 // Writes invisibleIds from s.shown.
 void write_shown(const PXR_NS::UsdStageRefPtr& stage, const State& s);
 

@@ -27,5 +27,5 @@ def call(where: str, what: str, engine, scene: dict, method: str, *args, **kw):
                            hint="The engine's log path, if any, is in the message.") from e
 
 
-def render(where: str, what: str, engine, scene: dict, progress=None, **req) -> dict:
-    return call(where, what, engine, scene, "render", progress=progress, **req)
+def render(where: str, what: str, engine, scene: dict, progress=None, step=None, **req) -> dict:
+    return call(where, what, engine, scene, "render", progress=progress, **({"step": step} if step else {}), **req)

@@ -154,6 +154,27 @@ std::string ShaderDir()
     return plug->GetResourcePath() + "/shaders";
 }
 
+// The sky behind the scene, as Storm and Cycles show it: an even dome as its colour x intensity; a dome picture
+// (lat-long) sampled by each pixel's view direction in the dome's own frame (USD's way: top row = the dome's +Y,
+// u = (atan2(z, x) + pi/2) / 2pi, v = acos(y) / pi), x colour x intensity. When the picture can't be read: its
+// average. Sets u_bg_color_*, u_skyOn / u_skyGain / u_skyUnproj / u_skyLocal / u_frame; *tex = the picture.
+void SkyUniforms(GLuint p, RostrumLightData const &l, GfMatrix4d const &viewProj, int W, int h, GLuint *tex)
+{
+    GfVec3f flat = GfCompMult(l.color, (l.domeUp + l.domeDown) * 0.5f) * l.intensity;
+    U(p, "u_bg_color_x", flat[0]);
+    U(p, "u_bg_color_y", flat[1]);
+    U(p, "u_bg_color_z", flat[2]);
+    *tex = l.domeFile.empty() ? 0 : RostrumSkyTexture(l.domeFile);
+    U(p, "u_skyOn", int(*tex != 0));
+    if (!*tex) return;
+    U(p, "u_skyGain", l.color * l.intensity);
+    U(p, "u_skyUnproj", viewProj.GetInverse());
+    GfMatrix4d local = l.xform.GetInverse();
+    local.SetTranslateOnly(GfVec3d(0));
+    U(p, "u_skyLocal", local);
+    U(p, "u_frame", GfVec2f(float(W), float(h)));
+}
+
 void Upload(GpuMesh &g, RostrumMeshData const &m)
 {
     std::vector<float> v;
@@ -330,17 +351,23 @@ void HdRostrumRenderPass::_Draw(HdRenderPassStateSharedPtr const &state, int w, 
         bool card = mat != scene.materials.end() && mat->second.unlit;
         key.meshSum = key.meshSum * 1000003ull + m.version * 2ull + (card ? 1 : 0);
         ++key.meshes;
-        bent = bent || (!m.bend.camera.empty() && m.bend.camera == camera);
+        bool bentHere = !m.bend.camera.empty() && m.bend.camera == camera;
+        bent = bent || bentHere;
         if (!m.visible || card) continue;
-        lit.UnionWith(GfVec3d(m.center) - GfVec3d(m.radius));
-        lit.UnionWith(GfVec3d(m.center) + GfVec3d(m.radius));
+        if (bentHere) {  // a bend can reach past the mesh's own box
+            lit.UnionWith(GfVec3d(m.center) - GfVec3d(m.radius));
+            lit.UnionWith(GfVec3d(m.center) + GfVec3d(m.radius));
+        } else {
+            lit.UnionWith(GfRange3d(GfVec3d(m.boxMin), GfVec3d(m.boxMax)));
+        }
     }
+    if (lit.IsEmpty()) lit = GfRange3d(GfVec3d(-1), GfVec3d(1));
     if (bent) { key.camera = camera; key.view = view; }  // a bend follows the camera, and so do its shadows
-    GfVec3d centre = lit.IsEmpty() ? GfVec3d(0) : lit.GetMidpoint();
-    double radius = lit.IsEmpty() ? 1.0 : lit.GetSize().GetLength() * 0.5;
+    GfVec3d centre = lit.GetMidpoint();
+    double radius = std::max(lit.GetSize().GetLength() * 0.5, 1e-4);
     double camDist = view.Transform(centre).GetLength();
     float depthNear = float(std::max(camDist - radius, 1e-3)), depthFar = float(camDist + radius);
-    RostrumFrameLights L = RostrumPackLights(scene.lights, centre, radius);
+    RostrumFrameLights L = RostrumPackLights(scene.lights, lit);
     if (L.legacy) {  // legacy ramp lights only (32 KB)
         glBindTexture(GL_TEXTURE_2D, g.ramps);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -412,12 +439,16 @@ void HdRostrumRenderPass::_Draw(HdRenderPassStateSharedPtr const &state, int w, 
         glDrawBuffer(GL_NONE);
         glReadBuffer(GL_NONE);
         glViewport(0, 0, size, size);
+        // pushed back by its own slope as the light sees it: a face the light grazes doesn't shadow itself in steps
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(2.0f, 1.0f);
         for (int s = 0; s < L.shadows; ++s) {
             glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, g.shadowTex, 0, s);
             glClear(GL_DEPTH_BUFFER_BIT);
             glUniformMatrix4fv(glGetUniformLocation(g.shadow, "u_viewProj"), 1, GL_FALSE, L.shadowMat[s].data());
             drawMeshes(g.shadow, true);
         }
+        glDisable(GL_POLYGON_OFFSET_FILL);
         g.shadowKey = key;
     }
     clock.Mark("shadows");
@@ -468,25 +499,26 @@ void HdRostrumRenderPass::_Draw(HdRenderPassStateSharedPtr const &state, int w, 
     glUniform4fv(glGetUniformLocation(g.shade, "u_lightExtra"), kMaxLights, L.extra[0].data());
     glUniformMatrix4fv(glGetUniformLocation(g.shade, "u_shadowMat"), kMaxShadows, GL_FALSE, L.shadowMat[0].data());
     U(g.shade, "u_shadowTexel", 1.0f / float(size));
-    U(g.shade, "u_shadowAuto", float(8.0 * 2.0 * radius / double(size)));
-    // where nothing is drawn: the scene's dome when the camera sees it (as Storm and Cycles show it: its colour x
-    // intensity; a dome picture as its average), else rostrum:bg:color
+    float autoOffset[kMaxShadows];   // 8 texels of each map where the scene is
+    for (int s = 0; s < kMaxShadows; ++s) autoOffset[s] = 8.0f * L.shadowSpan[s] / float(size);
+    glUniform1fv(glGetUniformLocation(g.shade, "u_shadowAuto"), kMaxShadows, autoOffset);
+    // where nothing is drawn: the scene's dome when the camera sees it, else rostrum:bg:color
+    GLuint skyTex = 0;
+    U(g.shade, "u_skyOn", 0);        // a uniform keeps its value: last frame's dome may be gone
     VtValue seen = _delegate->GetRenderSetting(HdRenderSettingsTokens->domeLightCameraVisibility);
     if (!seen.IsHolding<bool>() || seen.UncheckedGet<bool>()) {
+        RostrumLightData const *dome = nullptr;
         float best = -1.0f;
-        GfVec3f sky(0.0f);
         for (auto const &[path, l] : scene.lights) {
             if (l.type != HdPrimTypeTokens->domeLight || !l.enabled) continue;
             GfVec3f c = GfCompMult(l.color, (l.domeUp + l.domeDown) * 0.5f) * l.intensity;
             float y = 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];
-            if (y > best) { best = y; sky = c; }
+            if (y > best) { best = y; dome = &l; }
         }
-        if (best >= 0.0f) {
-            U(g.shade, "u_bg_color_x", sky[0]);
-            U(g.shade, "u_bg_color_y", sky[1]);
-            U(g.shade, "u_bg_color_z", sky[2]);
-        }
+        if (dome) SkyUniforms(g.shade, *dome, view * proj, W, H, &skyTex);
     }
+    Bind(7, GL_TEXTURE_2D, skyTex);
+    U(g.shade, "u_sky", 7);
     draw();
     clock.Mark("shade");
 
@@ -531,7 +563,7 @@ void HdRostrumRenderPass::_Draw(HdRenderPassStateSharedPtr const &state, int w, 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, g.gbuf.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g.out.fbo);
     glBlitFramebuffer(0, 0, W, H, 0, 0, w, h, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-    for (int i = 6; i >= 0; --i) Bind(i, i == 5 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D, 0);
+    for (int i = 7; i >= 0; --i) Bind(i, i == 5 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D, 0);
     clock.Mark("down");
     if (clock.on)
         printf("[rostrum] passes ms (%dx%d ss %d, %d lights, %d shadowed):%s\n", w, h, ss, L.count, L.shadows,

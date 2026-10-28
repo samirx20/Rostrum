@@ -13,6 +13,8 @@ Where the controls live:
 | The **frame** (renderer settings `rostrum:*`) | supersampling, shadow maps, background, brush strokes, frame-wide ink, paper | 5 |
 | A **mesh** (constant primvars `rostrum:bend:*`) | per-camera shape bend | 6 |
 
+Where it draws: the viewport's Look: Stylized, a render whose shot has Quality **Stylized** (the Render button, the render sheet, and an agent's `render_still` / `render_video` when it gives no `renderer` or `quality`), and any `look_frame` / `render_still` / `render_video` with `renderer: "stylized"`.
+
 ## 1. What a pixel goes through
 
 1. **Shadow maps** for up to 4 lights (section 3.4).
@@ -135,7 +137,7 @@ Still read when authored on a light as constant primvars `primvars:rostrum:<name
 
 ### 3.4 Shadows
 
-The first 4 lights (strongest first) whose shadows are on get a shadow map, fitted to the bounds of the lit objects. Domes cast none. Glowing cards cast none. Settings: `rostrum:shadow:size`, `:soft`, `:offset` (section 5).
+The first 4 lights (strongest first) whose shadows are on get a shadow map, fitted tightly around the corners of the lit objects' box as that light sees it (a light among the objects gets a 160° map). The map is drawn with a slope offset, so a face the light only grazes doesn't shadow itself in steps. Domes cast none. Glowing cards cast none. Settings: `rostrum:shadow:size`, `:soft`, `:offset` (section 5).
 
 ## 4. "How lit" in the picture
 
@@ -150,8 +152,8 @@ Name = `rostrum:<group>:<name>`; in the shaders it becomes `u_<group>_<name>`. A
 | `rostrum:ss` | 2 | Supersampling: renders at this multiple of the size (1–4) and filters down. The viewport sends 1; a render sends its `supersample` (default 2). Higher = smoother lines, slower, more video memory (section 7). |
 | `rostrum:shadow:size` | 2048 | Shadow-map size in pixels (256–8192), one square map per shadowed light. |
 | `rostrum:shadow:soft` | 1.5 | Shadow edge softness, in shadow-map texels (a 5×5 blur). |
-| `rostrum:shadow:offset` | auto | Pushes the shadow lookup off the surface, in scene units. Unset (or below 0): 8 shadow-map texels of the lit scene's size, so a 25 cm product and a room both work. Raise if surfaces speckle with their own shadow; lower if shadows detach. |
-| `rostrum:bg:color` | (0, 0, 0) | Colour where nothing is drawn. |
+| `rostrum:shadow:offset` | auto | Pushes the shadow lookup off the surface, in scene units. Unset (or below 0): 8 texels of that light's map where the lit objects are, so a 25 cm product and a room both work. Raise if surfaces speckle with their own shadow; lower if shadows detach. |
+| `rostrum:bg:color` | (0, 0, 0) | Colour where nothing is drawn, when the camera doesn't see a dome. A dome the camera sees is shown instead, as Storm and Cycles show it: its picture by view direction (USD's lat-long, the dome's `turn` applied) × colour × intensity, or its colour × intensity without a picture. |
 | `rostrum:brush:amount` | 0 | Brush strokes push "how lit" up and down (Light to colour and legacy ramps; plain shading is not changed). 0 = off. |
 | `rostrum:brush:length` / `:width` | 18 / 3 | Stroke size, output pixels. |
 | `rostrum:brush:angle` / `:follow` | 35 / 0.7 | Fixed stroke angle on screen; 0 = all strokes at the angle, 1 = follow the form. |

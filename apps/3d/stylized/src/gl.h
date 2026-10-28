@@ -20,6 +20,10 @@ void RostrumSetLook(GLuint prog, std::map<std::string, float> const &look);
 // An sRGB image as a mip-mapped texture (cached by path); 0 when it cannot be read.
 GLuint RostrumTexture(std::string const &path);
 
+// A dome's lat-long picture (float / half, linear) as it is, for the sky behind the scene (cached by path); 0 when
+// it cannot be read.
+GLuint RostrumSkyTexture(std::string const &path);
+
 // A framebuffer with colour attachments of the given internal formats (+ optional depth).
 struct RostrumTarget {
     GLuint fbo = 0, depth = 0;

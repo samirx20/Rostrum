@@ -27,7 +27,7 @@ AppShell {
     documentName: backend.docName
     leftWidth: 0
     rightWidth: width >= 1920 ? 340 : width >= 1646 ? 300 : 280
-    bottomHeight: backend.blocks.open && backend.page !== "render" ? 340   // a material's blocks: room for a few rows of them
+    bottomHeight: backend.blocks.open && backend.page !== "render" ? (height < 800 ? 284 : 340)   // a material's blocks: room for a few rows of them (a short window keeps the rail clear)
                 : backend.page === "build" ? 204 : 284   // Animate: more key rows; Render: the shots and the queue
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     exporter: backend.exporter
@@ -139,6 +139,7 @@ AppShell {
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
             anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on && !backend.stretch.shown
+                     && !blockSettings.visible      // a picked block's settings take its place (BlockSettings.qml)
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 KeepSizeRow { width: parent.width }       // an import just rescaled to metres: Keep original size (importing.py)
@@ -169,7 +170,7 @@ AppShell {
         PosePanel { anchors.fill: parent; visible: viewport.pose.on }  // Pose: Joints, Names, Holds
         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
         FirstUse { anchors.fill: parent; visible: backend.assets.shown; when: visible; sourceComponent: Component { AssetSheet { } } }   // Import › Asset library
-        BlockSettings { anchors.fill: parent }     // a material's blocks open: the picked block's settings
+        BlockSettings { id: blockSettings; anchors.fill: parent }     // a material's blocks open: the picked block's settings
         AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: [

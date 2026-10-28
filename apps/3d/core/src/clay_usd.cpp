@@ -226,6 +226,21 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   check(mark, "writing " + path.GetString());
 }
 
+void Blocks::hide(const SdfPath& clay, const BlockKey& key, bool hidden, const std::set<BlockKey>& have) {
+  if (!have.count(key)) return;
+  TfErrorMark mark;
+  const SdfLayerHandle layer = p_->layer;
+  const SdfPath path = clay.AppendChild(block_name(key));
+  const SdfPath vis = path.AppendProperty(UsdGeomTokens->visibility);
+  if (!layer->HasSpec(vis)) {
+    if (!hidden) return;  // never hidden
+    SdfAttributeSpec::New(layer->GetPrimAtPath(path), UsdGeomTokens->visibility.GetString(), SdfValueTypeNames->Token);
+  }
+  layer->SetField(vis, SdfFieldKeys->Default,
+                  VtValue(hidden ? UsdGeomTokens->invisible : UsdGeomTokens->inherited));
+  check(mark, (hidden ? "hiding " : "showing ") + path.GetString());
+}
+
 void Blocks::remove_all(const SdfPath& clay, std::set<BlockKey>& have) {
   TfErrorMark mark;
   const SdfLayerHandle layer = p_->layer;

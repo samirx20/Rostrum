@@ -103,7 +103,14 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
 
   // Cycles
   UsdShadeShader c = shader(stage, path, "Cycles", "cycles_principled_bsdf");
-  set(c, "base_color", kColor, base);
+  // A copy's colour change (copies' Change near colour): Object Info gives the copy's tint and its share (our Cycles
+  // patch sets them from the copies' rostrumTint; 0 on everything else), laid over the base colour.
+  UsdShadeShader tint = shader(stage, path, "CopyTint", "cycles_mix_color");
+  UsdShadeShader copy = shader(stage, path, "CopyInfo", "cycles_object_info");
+  set(tint, "a", kColor, base);
+  link(tint, "fac", kFloat, copy, "alpha", kFloat);
+  link(tint, "b", kColor, copy, "color", kColor);
+  link(c, "base_color", kColor, tint, "result", kColor);
   set(c, "metallic", kFloat, metallic);
   set(c, "roughness", kFloat, roughness);  // also blurs what is seen through glass (frosted glass): one roughness
   set(c, "transmission_weight", kFloat, transmission);
@@ -127,7 +134,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(c, "subsurface_scale", kFloat, subsurface_mm * 0.001f);  // the scene is in metres
   if (!base_tex.empty()) {
     UsdShadeShader t = cycles_image(stage, path, "BaseColorTexture", base_tex, true);
-    link(c, "base_color", kColor, t, "color", kColor);
+    link(tint, "a", kColor, t, "color", kColor);
   }
   if (!rough_tex.empty()) {
     UsdShadeShader t = cycles_image(stage, path, "RoughnessTexture", rough_tex, false);

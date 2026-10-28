@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The right panel while a material's blocks are open (BlocksPanel.qml) and a block is picked in the view: that block's
-// settings (backend.blocks.rows, screen3d/blocks_qt.py), over the item's own. Surface = the material's own rows (as
+// settings (backend.blocks.rows, screen3d/blocks_qt.py), in place of the item's own (hidden meanwhile). Surface = the material's own rows (as
 // under its item); any other block = its type's settings (Noise: Scale, Detail, Roughness, Distortion). A setting a wire
 // feeds says so under its field. No ‹ here: the block view's own ‹ Back (and Esc) closes both.
 Rectangle {

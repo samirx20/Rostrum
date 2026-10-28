@@ -29,9 +29,22 @@ class GraphError(ValueError):
 
 
 def graph_of(material: dict) -> dict:
-    """The material's graph, every part present (a copy: change it and write it back)."""
+    """The material's graph, every part present (a copy: change it and write it back). A stylized setting that is on
+    without its block (a starting point, material.set, a script) gets one, wired into Surface's Style, so the view
+    always shows what the material does."""
     g = copy.deepcopy(material.get(FIELD) or {})
-    return {"blocks": g.get("blocks", []), "wires": g.get("wires", []), "surface": g.get("surface", {"x": 0, "y": 0})}
+    g = {"blocks": g.get("blocks", []), "wires": g.get("wires", []), "surface": g.get("surface", {"x": 0, "y": 0})}
+    have = {b["type"] for b in g["blocks"]}
+    missing = [t for t, field in B.STYLIZED.items() if material.get(field) and t not in have]
+    taken = {b["id"] for b in g["blocks"]}
+    for k, type_ in enumerate(missing):
+        bid = next(f"{type_}_{n}" for n in range(1, 10**6) if f"{type_}_{n}" not in taken)
+        taken.add(bid)
+        g["blocks"].append({"id": bid, "type": type_, "x": g["surface"].get("x", 0) - 300,
+                            "y": g["surface"].get("y", 0) + 140 + 160 * k})
+        chain = style_chain(g)                   # at the end of the Style chain: taking it out breaks no other
+        g["wires"].append({"from": f"{bid}.style", "to": f"{chain[-1]}.{B.CHAIN}" if chain else f"{SURFACE}.style"})
+    return g
 
 
 def has_graph(material: dict) -> bool:

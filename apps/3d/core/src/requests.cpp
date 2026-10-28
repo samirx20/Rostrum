@@ -101,6 +101,8 @@ JsObject Core::scene(const JsObject& a) {
   copies_.clear();
   for (copies::State& c : built_.copies) copies_[c.id] = std::move(c);
   built_.copies.clear();
+  for (auto& [id, c] : copies_)
+    if (c.late) copies::lay_out_late(stage_, c);  // scattered on a clay: its surface is there now
   double seen_ms = 0;
   const JsObject copies_info = seen_test(&seen_ms);
   return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},
@@ -172,13 +174,22 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   JsArray channels;  // the EXR's channel names, the same for every frame
   for (int f = first; f <= last; ++f) {
     const auto tf = Clock::now();
+    const bool twice = needs_unshadowed(passes);  // the Shadow pass draws the frame a second time
+    const auto step = [&, f](double from, double share) {  // ENGINE_CONTRACT § render: the share of this frame drawn
+      return [&, f, from, share](double fraction, double) {
+        progress(JsObject{{"step", JsValue(std::string("drawing"))}, {"frame", JsValue(f)},
+                          {"fraction", JsValue(from + share * fraction)}, {"ms", JsValue(r1(ms_since(tf)))}});
+      };
+    };
+    if (report) s.onStep = step(0.0, twice ? 0.5 : 1.0);
     clay_->pose_frame(f);  // CL5: each skinned clay posed for this frame
     const double weldMs = renderer == "cycles" ? clay_->whole_for_cycles() : 0.0;  // CL6: one closed mesh per clay
     Aovs lit, unshadowed;
     Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_, &lit);
-    if (needs_unshadowed(passes)) {  // the Shadow pass: the same frame again with no shadows
+    if (twice) {  // the Shadow pass: the same frame again with no shadows
       DrawSettings no_shadows = s;
       no_shadows.castShadows = false;
+      if (report) no_shadows.onStep = step(0.5, 0.5);
       hy.draw(renderer, cam, f, w, h, no_shadows, mem_, &unshadowed);
     }
     JsObject fo{{"frame", JsValue(f)}};

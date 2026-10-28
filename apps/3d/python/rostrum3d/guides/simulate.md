@@ -85,13 +85,15 @@ Neither needs computing again: they change how the stored result is played back.
 
 ## Turn it into keys
 
-`sim.to_keys` on the shot turns the result into ordinary keys on each falling thing (x y z rx ry rz: every frame; with
-Timing on 2s / 3s a held key every 2 or 3 frames; with Simplify every nth frame) and switches its simulation off, in one undo
-step. From then on it is plain animation: nudge one key by hand to place a bud just so. Running `sim.to_keys` again never
+`sim.to_keys` on the shot turns the result into ordinary keys on each falling thing (x y z rx ry rz) and switches its
+simulation off, in one undo step. It keeps only the keys that matter: a key the straight line between its neighbours
+already gives, within 1 mm (x y z) or 0.1° (rx ry rz), is left out, so a thing at rest keeps two keys and a bouncing one a
+key at each bounce and a few along each arc; played back, the keys give every frame of the fall within that. With Timing
+on 2s / 3s the keys are held, every 2 or 3 frames where the value changes; with Simplify they come from every nth frame. From then on it is plain animation: nudge one key by hand to place a bud just so. Running `sim.to_keys` again never
 changes a key it already wrote for the same result, so a nudge stays, and it never touches keys you made yourself.
 
 A falling copies item becomes **keyed copies**: every copy gets its own keys on x y z rx ry rz (in the copies item's own space,
-the same frames as above) and the copies item stops simulating, in the same undo step. Nudge one copy with `copies.key`
+thinned the same way) and the copies item stops simulating, in the same undo step. Nudge one copy with `copies.key`
 {copy, prop, t, v}: it changes the key at that time (or adds one), and running `sim.to_keys` again keeps it, as for any item.
 `copies.release` {copy} lets a copy go back to its place in the layout, its keys with it.
 

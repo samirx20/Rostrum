@@ -168,7 +168,7 @@ selected item. The rail only shows tools that work today. Simulation appears whe
 
 ## Import
 
-Bring in a model made elsewhere: glTF or GLB, OBJ, FBX, Alembic (its animation plays with the shot) or USD. The file is
+Bring in a model made elsewhere: glTF or GLB (its first animation plays with the shot, a skinned character too), OBJ, FBX (at its rest pose), Alembic (its animation plays with the shot) or USD. The file is
 used where it is and never changed.
 
 - **The Import list** (Build page, under Type & logo; **Ctrl+I**): **glTF / GLB…**, **OBJ…**, **FBX…**, **Alembic…**,
@@ -245,8 +245,8 @@ tool). By hand, twelve buds dropping into a bowl:
 - **Stylize it** (the same group): **Timing** Every frame · On 2s · On 3s moves the bodies in steps like hand animation
   while the camera stays smooth; **Simplify** keeps every nth frame of the result and moves smoothly between them. Neither
   makes the result out of date. **Turn into keys** (while it is stored; also in Ctrl+K) gives each falling item the result
-  as ordinary keys and sets it Off, one undo step: nudge a key by hand after it. A copies item keeps simulating (its copies
-  have no keys of their own).
+  as ordinary keys and sets it Off, one undo step: nudge a key by hand after it. A falling copies item gets keys on each
+  copy instead. Only the keys that matter are written (within 1 mm / 0.1°), not one per frame.
 
 ## The settings panel (right)
 

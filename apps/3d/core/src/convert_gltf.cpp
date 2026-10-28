@@ -1,9 +1,10 @@
 // glTF 2.0 (.gltf and .glb) into a converted layer (convert.h), read with cgltf (third_party/cgltf, MIT).
 // glTF is metres and Y up already. Read: the scene's node tree (matrix or TRS), every triangle primitive (indexed
 // or not) with POSITION, NORMAL and TEXCOORD_0, and the metallic-roughness materials with their base colour image
-// (a file next to the .gltf, or one carried inside the file, written once to the import cache). Skins, morph
-// targets and animations are not read: the model comes in its rest pose.
+// (a file next to the .gltf, or one carried inside the file, written once to the import cache). Its first animation
+// and its skins play as time samples (convert_gltf_anim.h); morph targets are not read.
 #define _CRT_SECURE_NO_WARNINGS  // cgltf's strncpy / fopen
+#include "convert_gltf_anim.h"      // cgltf's declarations first: its implementation part has no guard of its own
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
@@ -67,6 +68,8 @@ struct Reader {
   cv::Names names;
   std::map<const cgltf_material*, UsdShadeMaterial> materials;
   std::map<const cgltf_image*, std::string> images;  // image -> file on disk
+  std::map<const cgltf_node*, UsdGeomXform> xforms;  // every node's Xform (animation writes into them)
+  std::vector<gltf::Skinned> skinned;                // skinned primitives, posed by gltf::write_animation
 
   // The file an image is in: next to the .gltf, or written out of a buffer / data URI into the cache.
   std::string image_file(const cgltf_image* img) {
@@ -124,7 +127,7 @@ struct Reader {
   }
 
   // One primitive as a Mesh (triangles only; points and lines are left out).
-  void primitive(const SdfPath& parent, const std::string& name, const cgltf_primitive& p) {
+  void primitive(cgltf_node* owner, const SdfPath& parent, const std::string& name, const cgltf_primitive& p) {
     if (p.type != cgltf_primitive_type_triangles) return;
     if (p.has_draco_mesh_compression)
       throw Error("its meshes are Draco-compressed, which isn't read yet; export it without mesh compression");
@@ -157,11 +160,13 @@ struct Reader {
     m.counts.assign(m.indices.size() / 3, 3);
     UsdGeomMesh mesh = cv::write_mesh(stage, names.child(parent, name, "Mesh"), m);
     if (p.material) cv::bind(mesh.GetPrim(), material(p.material));
+    if (owner->skin) skinned.push_back({owner, &p, mesh, std::move(m)});
   }
 
-  void node(const SdfPath& parent, const cgltf_node* n) {
+  void node(const SdfPath& parent, cgltf_node* n) {
     const SdfPath path = names.child(parent, n->name ? n->name : "", "Node");
     UsdGeomXform x = UsdGeomXform::Define(stage, path);
+    xforms[n] = x;
     float m[16];
     cgltf_node_transform_local(n, m);  // column-major with column vectors = USD's row-major with row vectors
     cv::set_transform(x, GfMatrix4d(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12],
@@ -169,7 +174,7 @@ struct Reader {
     if (const cgltf_mesh* mesh = n->mesh) {
       const std::string base = mesh->name ? mesh->name : "Mesh";
       for (size_t i = 0; i < mesh->primitives_count; ++i)
-        primitive(path, mesh->primitives_count == 1 ? base : base + "_" + std::to_string(i), mesh->primitives[i]);
+        primitive(n, path, mesh->primitives_count == 1 ? base : base + "_" + std::to_string(i), mesh->primitives[i]);
     }
     for (size_t i = 0; i < n->children_count; ++i) node(path, n->children[i]);
   }
@@ -197,6 +202,7 @@ void convert_gltf(const std::string& file, const UsdStageRefPtr& out) {
     for (size_t i = 0; i < r.data->nodes_count; ++i)
       if (!r.data->nodes[i].parent) r.node(root, &r.data->nodes[i]);
   }
+  gltf::write_animation(r.data, r.xforms, r.skinned, out);
 }
 
 }  // namespace r3d
