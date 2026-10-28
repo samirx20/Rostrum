@@ -4,6 +4,7 @@ These helpers are already available in every `run_script` script, with no import
 a plain list of notes or hits, timed in beats from the line's own start. `write(track, line, at)` puts a line on a
 track. The document then holds ordinary notes that a person can edit, and running the script again keeps their edits.
 The craft (when and why to use each technique) is in `inspect_guide 'writing-music'`.
+A hit, stop or drop cut into the parts once they are written (a breath before it, the band really stopping, a real gap): `moment(...)`, `inspect_guide 'script'` › Moments that read.
 
 **Helpers or operations.** Helpers write a part from scratch in a script. For notes that already exist (a person's, or a finished
 script's) use the operations through `edit_document` instead: `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`,

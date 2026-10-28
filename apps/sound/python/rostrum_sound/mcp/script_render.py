@@ -25,7 +25,7 @@ AGAIN = "and run_script again with the edited source, the same name and look"
 SCHEMA = {"anyOf": [{"type": "boolean"}, {"type": "object"}],
           "description": "Render the mix after the script merges and answer with render_mix's listening check: true, or an "
                          "object with render_mix's arguments ({\"name\": \"Late Set\", \"folder\": \"C:/out\", \"expect\": "
-                         "[{\"at\": 31.5, \"kind\": \"stop\"}, {\"kind\": \"tempo\", \"bpm\": 132}]}). The reply opens NOT DONE: with each fault (id, when, fix) or DONE:. The call waits for the "
+                         "[{\"at\": 31.5, \"kind\": \"stop\"}, {\"kind\": \"tempo\", \"bpm\": 132}]}). The reply opens NOT DONE: with each fault (id, when, fix) or DONE:. With `folder` it is a delivery, refused while a fault is open unless `keep` explains it (render_mix › keep). The call waits for the "
                          "render (up to 150 s; longer: the reply names the job for inspect_job). A failing script renders nothing."}
 LEAD = ("The loop: write the whole piece as one script with `look` (true, or render_mix's arguments with `expect`), read "
         "the reply's weakest moments, edit the script and run it again under the same name with `look`, until the list is clean. ")

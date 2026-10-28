@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from . import stop_fall
 from .core import num
 
 HARD_DB = 3.0            # the limiter pulling this much at the stop flattens it (faults.SQUASH_DB)
@@ -54,6 +55,7 @@ def words(f) -> str:
         why.append(f"the beat at {d['beat_before_s']:g} s is {100 * d['beat_before_share']:.0f} % as strong")
     if d.get("fall_after_db") is not None and d["fall_after_db"] < 8:
         why.append(f"the gap after it falls only {d['fall_after_db']:g} dB, not clearly quieter")
+    why += stop_fall.why(d)
     band = ("rest the band on the beat before, put its strongest accent on the stop, then end held notes, ride and "
             "pedal at once (short notes on the stop itself)")
     head = f"stop at {t:.2f} s lands soft: {'; '.join(why) or 'it does not stand out'}"
@@ -64,4 +66,4 @@ def words(f) -> str:
         return (f"{head}; the master limiter pulls {d['limiter_db']:g} dB there{by}, flattening it. Fix first: a compressor "
                 f"on {who or 'the most peaked track'} (edit_loudness {call}) or lower velocity on ride and "
                 f"cymbals; then {band}; raise maxLimit only after that")
-    return f"{head}; fix: {band}"
+    return f"{head}; fix: {band}; {stop_fall.script_fix(t)}"
