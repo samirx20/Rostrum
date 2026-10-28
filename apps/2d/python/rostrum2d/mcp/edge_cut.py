@@ -51,6 +51,21 @@ def rig_parts(comp: dict) -> dict[str, list[str]]:
     return found
 
 
+def ask_drawn(ask, t: float, ids: list[str]) -> dict:
+    """The engine's placements of `ids` at t, leaving out parts not drawn then (a swapped-out mouth or eye fails a whole
+    ask, so a failed ask is retried part by part)."""
+    try:
+        return ask(t, ids) if ids else {}
+    except Exception:       # noqa: BLE001  (one undrawn part fails the whole ask)
+        places = {}
+        for i in ids:
+            try:
+                places.update(ask(t, [i]))
+            except Exception:       # noqa: BLE001  (not drawn at t: simply not measured)
+                pass
+        return places
+
+
 def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict[str, tuple]], list[str]]:
     """Per time {rig id: its posed body's box in picture px} (the engine poses it: placement.asker), and notes for rigs not measured."""
     from rostrum2d import placement
@@ -64,10 +79,9 @@ def rig_boxes(doc_data: dict, comp: dict, times: list[float]) -> tuple[list[dict
         inv = _invert(view.world_matrix(comp, view.shot(comp, t), {"screenLock": True}))
         row = {}
         for rid, ids in rigs.items():
-            try:
-                places = ask(t, ids)
-            except Exception as e:      # noqa: BLE001  (named in the reply, not hidden)
-                note = f'rig "{rid}" could not be measured for the edge check: {e}'
+            places = ask_drawn(ask, t, ids)
+            if not places:
+                note = f'rig "{rid}" could not be measured for the edge check: no part is drawn at {t:g} s'
                 if note not in notes:
                     notes.append(note)
                 continue

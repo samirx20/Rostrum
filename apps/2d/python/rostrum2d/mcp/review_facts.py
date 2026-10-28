@@ -8,6 +8,7 @@ from rostrum_core.motion.report import stem
 from rostrum2d.frame import view
 
 from .geometry import comp_size, drawn_box, flatten
+from . import edge_cut
 
 HOLD_FRAMING_S = 10.0     # the frame (camera) unchanged this long is named
 FRAMING_SAME = 0.004      # ... moves under this share of the picture (and zoom / turn this small) count as unchanged
@@ -71,7 +72,6 @@ def framing(comp: dict, times: list[float], step: float) -> list[dict]:
 def pose_vectors(doc_data: dict, comp: dict, times: list[float]) -> tuple[dict[str, list], list[str]]:
     """{rig id: per time the centres of its parts relative to its body box, in body heights (None where not measured)}."""
     from rostrum2d import placement
-    from . import edge_cut
     rigs = {k: v for k, v in edge_cut.rig_parts(comp).items() if v}
     if not rigs:
         return {}, []
@@ -103,15 +103,7 @@ def pose_vectors(doc_data: dict, comp: dict, times: list[float]) -> tuple[dict[s
 
 def _centres(ask, t: float, ids: list[str], placement) -> dict:
     """{part id: its centre in comp px} at t; a part the engine refuses (not drawn then) is left out."""
-    try:
-        places = ask(t, ids) if ids else {}
-    except Exception:       # noqa: BLE001  (one undrawn part fails the whole ask: ask each alone)
-        places = {}
-        for i in ids:
-            try:
-                places.update(ask(t, [i]))
-            except Exception:       # noqa: BLE001  (not drawn at t: simply not measured)
-                pass
+    places = edge_cut.ask_drawn(ask, t, ids)
     return {i: placement.comp_point(p, p["w"] / 2, p["h"] / 2) for i, p in places.items() if p.get("w") and p.get("h")}
 
 

@@ -68,7 +68,7 @@ def render_video(ctx, args):
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
-    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file for blank, washed-out and unchanged stretches (look_frame what \"empty\") and names them with times and numbers (`quiet_stretches`), and any subject cut by the frame edge (`edge_cuts`); look at those times with look_frame."""
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out and unchanged stretches: `quiet_stretches`; subjects cut by the frame edge: `edge_cuts`) and ends with the time left and the film's weakest moments with times, ranked (look_review): fix the top one and export again."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
@@ -118,7 +118,7 @@ def render_video(ctx, args):
         also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
                      f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said} '
-                     f'{quiet[0]}{" " + cuts[0] if cuts[0] else ""} {exporting.next_steps(f'look_frame what "sheet", start {start:g}, end {end:g}', bool(info.get("sound")), folder or doc.folder)}',
+                     f'{exporting.next_steps(f'look_frame what "sheet", start {start:g}, end {end:g}', bool(info.get("sound")), folder or doc.folder)}',
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
