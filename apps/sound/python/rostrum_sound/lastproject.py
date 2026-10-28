@@ -1,13 +1,13 @@
-"""The person's last RostrumSound song, read the way the Sound screen's Recent songs list reads it
+"""The person's recent RostrumSound songs, read the way the Sound screen's Recent songs list reads it
 (rostrum_core/recent.py, the one Open recent list: rows {folder, item, name}, newest first; gone songs left out).
-The MCP server opens the first row when it is started with no options, so an agent works on what the person was just doing.
+The MCP server lists them for run_open_project (what "recent"); it never opens one by itself (rostrum_core/agent_start.py).
 """
 from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
 
-from rostrum_core import agent_last, project, recent
+from rostrum_core import project, recent
 from rostrum_core.storage import paths
 
 from . import KIND
@@ -29,13 +29,6 @@ def describe(row: dict) -> dict:
     f = doc_file(row["folder"], row["item"])
     return {"folder": row["folder"], "item": row["item"], "name": row.get("name") or Path(row["folder"]).name,
             "changed": datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec="seconds")}
-
-
-def last_project() -> dict | None:
-    """What the server opens at start-up: the project this working folder's agent last opened when that changed after
-    the person's newest recent row (a resumed agent session gets its project back), else that row; None when neither."""
-    rows = recent_rows()
-    return agent_last.pick("rostrum-sound", KIND.ext, rows[0] if rows else None)
 
 
 def docs_in(folder) -> list[str]:

@@ -32,8 +32,8 @@ INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document 
                 "(a removed track, note or marker disappears; a new name that re-makes the same tracks is refused). Use edit_document only for one-off touch-ups. "
                 "Check with look_arrangement (a picture, and which tracks start on each marker), look_sound (loudness, levels, spectrum, stereo, "
                 "low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
-                "with render_voice, then render. The server opens the song you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last song; run_open_project lists the recent ones "
-                "(what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render asks for a fix pass: listen, name the three weakest moments, change the script, run it again.")
+                "with render_voice, then render. The server starts on your own song: the one you last opened from this folder (a resumed session gets it back), else a fresh scratch project made for you, never the person's work (the first reply says which); "
+                "the person's songs open only when you ask: run_open_project lists them (what \"recent\") and switches. Every reply ends with a clock line (time since your first call; the minutes left when you have a budget); a finished render asks for a fix pass: listen, name the three weakest moments, change the script, run it again.")
 
 
 NO_PROJECT = "No project is open. Open one in RostrumSound, or call run_open_project with a folder."

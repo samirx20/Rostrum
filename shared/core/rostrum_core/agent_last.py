@@ -2,16 +2,17 @@
 agent session (a resumed session starts a fresh server) reopens that project instead of starting with none.
 
 An agent's run_open_project never touches the person's Open recent list (recent.py); this is a separate, small record:
-`<userhome>/settings/<app>-agent-last.json`, {working folder: {folder, item}}. A resumed session runs in the same working
+`~/.rostrum/settings/<app>-agent-last.json` (home() below), {working folder: {folder, item}}. A resumed session runs in the same working
 folder, so the folder is the key.
 
-    remember(app, folder, item)         run_open_project calls this (open_folder.py)
-    pick(app, ext, person_row)          start-up: this folder's row when its document is newer than the person's last one
+    remember(app, folder, item)         run_open_project calls this (open_folder.py), and start-up for a scratch project
+    recall(app, ext)                    start-up (agent_start.py): this folder's row, when its document is still there
 """
 from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from . import userhome
@@ -20,8 +21,18 @@ from .storage import paths, write_atomic
 KEEP = 50
 
 
+def home() -> Path:
+    """Where agents' own things live (this record, agent_start's scratch projects): ~/.rostrum even in a run userhome counts
+    as scripted (a server started from a worktree gets a temp home, removed at exit, and the agent's work must outlive the
+    session). Nothing here is the person's settings or Open recent. ROSTRUM_AGENT_HOME overrides; tests use their scratch home."""
+    if os.environ.get("ROSTRUM_AGENT_HOME"):
+        return Path(os.environ["ROSTRUM_AGENT_HOME"])
+    testing = "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST")
+    return userhome.home() if testing else Path.home() / ".rostrum"
+
+
 def file(app: str) -> Path:
-    return userhome.home() / "settings" / f"{app}-agent-last.json"
+    return home() / "settings" / f"{app}-agent-last.json"
 
 
 def _here() -> str:
@@ -55,14 +66,3 @@ def recall(app: str, ext: str) -> dict | None:
         return None
     return {"folder": row["folder"], "item": row["item"]}
 
-
-def pick(app: str, ext: str, person_row: dict | None) -> dict | None:
-    """What a server started with no options opens: this folder's agent project when its document changed after the
-    person's last one (a resumed session picks up where it stopped), else the person's last project."""
-    mine = recall(app, ext)
-    if mine is None or person_row is None:
-        return mine or person_row
-
-    def changed(r):
-        return paths(r["folder"], r["item"], ext)["doc"].stat().st_mtime
-    return mine if changed(mine) >= changed(person_row) else person_row

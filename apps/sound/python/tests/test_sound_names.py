@@ -9,7 +9,7 @@ import pytest
 import soundfile as sf
 from rostrum_core import Document, RostrumError, Who, agent_last
 
-from rostrum_sound import KIND, deliver, lastproject, names, run_source
+from rostrum_sound import KIND, deliver, names, run_source
 from rostrum_sound.mcp import session_clock
 
 SOUND = Path(__file__).resolve().parents[2]
@@ -81,7 +81,7 @@ def test_a_resumed_agent_session_gets_its_song_back(tmp_path, monkeypatch):
     from rostrum_sound.mcp.app import open_or_new
     open_or_new(tmp_path / "proj", "song").data           # makes the document
     agent_last.remember("rostrum-sound", tmp_path / "proj", "song")
-    assert lastproject.last_project()["item"] == "song"
+    assert agent_last.recall("rostrum-sound", KIND.ext)["item"] == "song"
 
 
 def test_the_fix_pass_asks_for_a_listen_names_the_time_and_counts_the_passes_left():

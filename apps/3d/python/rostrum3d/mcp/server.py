@@ -1,9 +1,14 @@
 """The `rostrum-3d` MCP server.
 
-    python -m rostrum3d.mcp --project <folder> --item <id> [--item <id> ...]      (stdio; opens or creates each item)
+    python -m rostrum3d.mcp                                                       (stdio; the agent's own scene, never the person's)
+    python -m rostrum3d.mcp --project <folder> [--item <id> ...]                  (that project; --item opens or creates each item)
     rostrum-3d --project <folder> --item <id>                                     (the same, as an installed command)
 
-Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
+With no options the server opens the scene this working folder's agent last opened (a resumed session gets it back), else
+a fresh scratch project with a new scene (the start scene; rostrum_core/agent_start.py); never the person's last scene.
+The first reply says what is open and whose; run_open_project lists the person's scenes (what "recent") and switches.
+
+Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus run_open_project (project_tool.py),
 look_frame, look_sheet, look_shots, look_material, look_at, look_paint, inspect_paint_strokes, look_coverage, look_where, look_shape, render_still, render_video, render_estimate, render_send_shot, inspect_model_file, inspect_shot,
 inspect_animations, look_motion. One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
@@ -16,7 +21,7 @@ from functools import reduce
 from dataclasses import dataclass
 from pathlib import Path
 
-from rostrum_core import Document
+from rostrum_core import Document, agent_start
 import anyio
 from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import App, Guides
@@ -29,13 +34,16 @@ from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
-from . import session_clock
+from . import project_tool, session_clock
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), sculpted clay, imports, copies (one thing many times, scattered over a surface), lights and cameras, animated by keys and rendered by Hydra "
                 "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'getting-started' first for the five-minute character. "
                 "Read inspect_guide 'agents', build with run_script, then check "
-                "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video.")
+                "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video. "
+                "The server starts on your own scene: the one you last opened from this folder (a resumed session gets it back), else a fresh "
+                "scratch project made for you, never the person's work (the first reply says which); the person's scenes open only when you ask: "
+                "run_open_project lists them (what \"recent\") and switches.")
 SCRIPT_HELP = ("In Rostrum3D: write the whole scene as ONE script, look, edit that script, and re-run it whole under the same name. "
                "Any id already in the scene (another script's, or left by an undo) is taken over by the script that makes it again, "
                "under any name; edit(id) / item(id) gives a handle to anything in the scene. A re-run that leaves out most of what "
@@ -87,11 +95,14 @@ async def _serve(app: App):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="rostrum-3d", description="The rostrum-3d MCP server (stdio).")
-    ap.add_argument("--project", required=True, help="The project folder.")
-    ap.add_argument("--item", action="append", required=True, help="A document's item id (repeat for several).")
+    ap = argparse.ArgumentParser(prog="rostrum-3d", description="The rostrum-3d MCP server (stdio). With no options it opens the agent's own last scene, else a fresh scratch project; never the person's.")
+    ap.add_argument("--project", help="The project folder. Default: this working folder's agent scene, else a new scratch project (not the person's Open recent).")
+    ap.add_argument("--item", action="append", help="A document's item id (repeat for several). Default: the project's recent item, else its newest scene, else a new \"scene\".")
     a = ap.parse_args(argv)
-    anyio.run(_serve, make_app(a.project, a.item))
+    start = project_tool.start_choice(a.project, a.item)
+    app = make_app(start.folder, start.items)
+    agent_start.settle(app, start)                  # on disk, remembered, and said in the instructions and first reply
+    anyio.run(_serve, app)
 
 
 if __name__ == "__main__":

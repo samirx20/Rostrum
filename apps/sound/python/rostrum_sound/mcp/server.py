@@ -1,11 +1,12 @@
 """The `rostrum-sound` MCP server (stdio), on rostrum_core.mcp.
 
-    python -m rostrum_sound.mcp                                        (opens the person's last song)
+    python -m rostrum_sound.mcp                                        (the agent's own song, never the person's)
     python -m rostrum_sound.mcp --project <folder> [--item <id>]       (that project; --folder is the same)
 
-With no options the server opens the song the Sound screen would open: the newest row of Recent songs still on disk. With
-none, no document is open (inspect_project says so). While running, run_open_project lists the person's songs
-(what "recent") and switches (the one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
+With no options the server opens the song this working folder's agent last opened (a resumed session gets it back), else
+a fresh scratch project with an empty song (rostrum_core/agent_start.py); never the person's last song. The first reply
+says what is open and whose. While running, run_open_project lists the person's songs (what "recent") and switches (the
+one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import argparse
 
 import anyio
 from mcp.server.stdio import stdio_server
+from rostrum_core import agent_start
 from rostrum_core.mcp import Runtime, Tools, build_server
 
 from rostrum_sound.modules import TOOLS
@@ -52,12 +54,14 @@ async def _serve(app):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="rostrum-sound", description="The rostrum-sound MCP server (stdio). With no options it opens the person's last song.")
-    p.add_argument("--project", "--folder", dest="project", help="The project folder (documents in docs/, renders in renders/). Default: the person's last song.")
+    p = argparse.ArgumentParser(prog="rostrum-sound", description="The rostrum-sound MCP server (stdio). With no options it opens the agent's own last song, else a fresh scratch project; never the person's.")
+    p.add_argument("--project", "--folder", dest="project", help="The project folder (documents in docs/, renders in renders/). Default: this working folder's agent song, else a new scratch project (not the person's Recent songs).")
     p.add_argument("--item", action="append", help="A Sound document's item id (repeatable). Default: the project's recent item, else its only / newest one.")
     a = p.parse_args(argv)
-    folder, items = tools_project.start_choice(a.project, a.item)
-    anyio.run(_serve, make_app(folder, items))
+    start = tools_project.start_choice(a.project, a.item)
+    app = make_app(start.folder, start.items)
+    agent_start.settle(app, start)                  # on disk, remembered, and said in the instructions and first reply
+    anyio.run(_serve, app)
 
 
 if __name__ == "__main__":
