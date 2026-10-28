@@ -148,6 +148,11 @@ class Plan:
             return self._box(c, group)
         self.items[c["id"]] = c
         style: dict = {}
+        if c["type"] == "text" and by_letter(p):        # drawn letter by letter: no wrap, a box of its own line
+            w, h = textsize.size(p)
+            style.update(width=w, height=h)
+            self._child_style(c, p, group, style)
+            return {"id": c["id"], "kind": "leaf", "style": style, "w": w, "h": h}
         if c["type"] == "text":
             text = dict(zip(textsize.FIELDS, textsize.key(p)))
             text.pop("boxWidth")
@@ -210,7 +215,7 @@ class Plan:
                 p = self.p_of(item)
                 if not wrapped:
                     out.append(p)
-                elif _narrowed(p, w):
+                elif _narrowed(p, w) and not by_letter(p):
                     out.append({**p, "boxWidth": w})
         return out
 
@@ -241,7 +246,7 @@ class Plan:
                 o = {}
                 if c["type"] == "text":
                     own_h = textsize.size(p)[1]
-                    if _narrowed(p, w):          # the layout narrowed (or widened) it: it wraps there
+                    if _narrowed(p, w) and not by_letter(p):     # the layout narrowed (or widened) it: it wraps there
                         o["boxWidth"] = w
                         own_h = textsize.size({**p, "boxWidth": w})[1]
                     ah = min(h, own_h)           # stretched taller than its lines: its lines stay at the top
@@ -254,6 +259,12 @@ class Plan:
 
 
 _CELL = {v: v for v in ("start", "center", "end", "stretch")}     # a place in a cell (between … baseline: start)
+
+
+def by_letter(p: dict) -> bool:
+    """A text the engine draws letter by letter (on a path, or its keys played letter by letter): it can't wrap, so
+    the layout gives it the box of its own line (the engine's stage_type::by_letter)."""
+    return bool(p.get("path")) or bool(p.get("letterDelay", 0))
 
 
 def _narrowed(p: dict, w: float) -> bool:

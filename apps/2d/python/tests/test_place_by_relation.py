@@ -50,3 +50,11 @@ def test_a_container_with_no_place_sits_centred():
     _, ls = _layers('comp("c")\nwith column("free"):\n    shape("a", w=10, h=10)\nwith row("put", x=40, y=60):\n    shape("b", w=10, h=10)')
     assert (ls["free"]["x"], ls["free"]["y"], ls["free"]["anchorX"], ls["free"]["anchorY"]) == (960, 540, 0.5, 0.5)
     assert (ls["put"]["anchorX"], ls["put"]["anchorY"]) == (0, 0)          # x / y given: its top-left, as CSS
+
+
+def test_a_letter_by_letter_text_goes_in_a_row_as_its_own_line():
+    comp, _ = _layers('comp("c")\nwith row("r", gap=20):\n    text("a", body="Every", letterDelay=0.05)\n'
+                      '    text("b", body="frame", letterDelay=0.05)')
+    with textsize.use(FakeEngine()):
+        out = layout.solve(comp, 0.0)
+    assert "boxWidth" not in out["a"] and out["b"]["x"] > out["a"]["x"]   # no wrap asked of it: the engine can't draw that
