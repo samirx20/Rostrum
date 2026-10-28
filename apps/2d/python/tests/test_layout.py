@@ -71,7 +71,7 @@ def test_boxes_become_places_by_anchor_and_shift_and_a_narrowed_text_wraps_there
     a = out["a"]
     assert (a["x"], a["y"]) == (10 + 0.5 * 100 + 5, 20 + 0.5 * 50 - 3)       # slot + anchor × size + shift
     t = out["t"]
-    assert t["boxWidth"] == 120 and t["x"] == 20 + 0.5 * 120                 # one line is 200 px: it wraps at 120
+    assert t["boxWidth"] == 120 and t["x"] == 20                 # one line is 200 px: it wraps at 120; a text in a box reads from the left
     assert t["y"] == 80 + 0.5 * 40                                           # its two lines, at the top of a taller slot
     assert "free" not in out                                                 # set apart: keeps its own x, y
     assert out["g"]["h"] == 260 and out["g"]["w"] == 400                     # fits its content: the height follows

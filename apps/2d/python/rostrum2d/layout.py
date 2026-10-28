@@ -133,8 +133,8 @@ class Plan:
             style["overflow"] = "hidden"
         for axis, field in (("W", "w"), ("H", "h")):
             mode = p[f"size{axis}"]
-            if mode == "fit":
-                style["width" if axis == "W" else "height"] = "fit"
+            if mode == "fit":                    # inside a box: auto, so a stretching parent stretches it (as CSS)
+                style["width" if axis == "W" else "height"] = "fit" if parent is None else "auto"
             elif mode == "fixed" or parent is None:
                 style["width" if axis == "W" else "height"] = p[field]
         self._child_style(group, p, parent, style)

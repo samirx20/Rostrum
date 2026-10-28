@@ -29,7 +29,8 @@ CHILD = {"grow": "layoutGrow", "shrink": "layoutShrink", "align_self": "alignSel
 BOX = {"padding_x": "paddingX", "padding_y": "paddingY", "row_gap": "rowGap", "radius": "bgRadius"}
 RESIZABLE = ("group", "shape", "image")
 KINDS = ("row", "column", "grid", "stack")
-START = {"padding": 0, "gap": 0, "align": "stretch"}       # a container starts as CSS does: no padding or gap, stretched
+START = {"padding": 0, "gap": 0, "align": "stretch", "hugPin": False}   # a container starts as CSS does: no padding or gap,
+# stretched; a fitting box grows around its origin, so x / y with origin="center" is its middle whatever its size
 
 
 def in_layout(build) -> bool:
@@ -84,6 +85,8 @@ def prepare(build, type_: str, id_, values: dict) -> dict:
             out[BOX[k]] = v
         else:
             out[k] = v
+    if inside and type_ == "text" and "align" not in out:
+        out["align"] = "left"                  # a text in a box reads from its slot's left edge, as on a web page
     if inside and not out.get("layoutApart") and {"x", "y"} & set(out):
         raise ValueError(f"{where}: x= / y= inside a container: the layout places this layer. Leave x / y out (use "
                          "align, justify, gap, margin; shift_x= / shift_y= to move it off its place without pushing the "
