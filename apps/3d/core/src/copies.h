@@ -33,6 +33,7 @@ struct Params {
   bool onTop = true;  // surface: only its faces that look up (world +Y), where things can rest
   unsigned seed = 0;
   double varyMove = 0, varyTurn = 0, varyScale = 0;
+  double varyStart = 0;         // s: a falling copy waits up to this much longer before it falls (from the seed)
   std::string seenBy;           // camera id: only the copies it sees are drawn ("" = all)
   int seenW = 1920, seenH = 1080;
 };
@@ -132,6 +133,8 @@ std::vector<PXR_NS::GfVec3d> seen_points(const PXR_NS::UsdStageRefPtr& stage, co
 // Everything the copies take at `frame` as drawn (drawn_at), world, aligned: each copy's source bounds moved with it
 // (framing a copies item, the `copies_box` request). Empty when there are no copies.
 PXR_NS::GfRange3d world_box(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
+// The frames copy `copy` waits before it falls, on top of its item's Falls from: up to varyStart seconds, from the seed.
+int start_delay(const Params& p, int copy, double fps);
 // Writes invisibleIds from s.shown.
 void write_shown(const PXR_NS::UsdStageRefPtr& stage, const State& s);
 

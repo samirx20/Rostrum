@@ -14,7 +14,7 @@ def test_a_new_scene_is_a_ground_the_studio_sky_and_shot_1_looking_at_the_middle
     d.run_script("start.py", run_source(SOURCE, "start.py"))
     scene = describe(d.data, "shot_1")
     by_id = {n["id"]: n for n in scene["items"]}
-    assert set(by_id) == {"ground", "sky", "shot_1_camera"} and d.data["shots"][0]["name"] == "Shot 1"
+    assert set(by_id) == {"ground", "sky", "key_light", "rim_light", "shot_1_camera"} and d.data["shots"][0]["name"] == "Shot 1"
     sky = Path(by_id["sky"]["props"]["texture"])
     assert sky.is_file() and sky.read_bytes()[:10] == b"#?RADIANCE"       # the file that comes with the app, absolute
     cam = _Frames(d.data, range(0, 1), 24).world("shot_1_camera", 0)

@@ -40,7 +40,7 @@ constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no ma
 // The node's props besides the transform, all sent by the compiler.
 const char* const kKeys[] = {"layout", "count", "columns", "spacingX", "spacingY", "spacingZ", "radius", "faceOut",
                              "surface", "amountBy", "density", "minSpacing", "alongSurface", "onTop", "seed", "varyMove",
-                             "varyTurn", "varyScale", "seenBy", "seenSize"};
+                             "varyTurn", "varyScale", "varyStart", "seenBy", "seenSize"};
 
 // A number from (seed, copy, channel), 0..1, the same on every run and machine: each copy's chances are its own, so
 // changing the count or the layout never reshuffles the others.
@@ -110,7 +110,8 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
   else if (key == "varyScale") {
     p.varyScale = at_least(v, where, 0);
     if (p.varyScale > 1) fail(where, std::to_string(p.varyScale) + " is too big", "0 .. 1");
-  } else if (key == "seenBy") p.seenBy = text(v, where);
+  } else if (key == "varyStart") p.varyStart = at_least(v, where, 0);
+  else if (key == "seenBy") p.seenBy = text(v, where);
   else if (key == "onlySeen") flag(v, where);  // the document's switch; `seenBy` carries it
   else if (key == "seenSize") {
     if (!v.IsArray() || v.GetJsArray().size() != 2) fail(where, "is not a list of 2", "[width, height] in pixels");
@@ -818,6 +819,10 @@ int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3
     if (v >= 0 && v < best_score) best = i, best_score = v;
   }
   return best;
+}
+
+int start_delay(const Params& p, int copy, double fps) {
+  return p.varyStart > 0 ? int(std::lround(rnd(p.seed, copy, 7) * p.varyStart * fps)) : 0;
 }
 
 }  // namespace copies

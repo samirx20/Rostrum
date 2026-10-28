@@ -20,6 +20,7 @@ LINE, GRID, CIRCLE, SURFACE = (IS("layout", v) for v in LAYOUTS)
 BY_DENSITY = {"all": [SURFACE, IS("amountBy", "density")]}
 LINE_OR_GRID = {"any": [LINE, GRID]}
 VARIED = {"any": [NOT("varyMove", 0.0), NOT("varyTurn", 0.0), NOT("varyScale", 0.0)]}
+FALLING = IS("simulate", "falls")             # the copies item falls (sim/fields.py): only then can its copies start apart
 HELD = "held"                                  # rows [copy, x, y, z, rx, ry, rz, s] in the copies item's own space
 COPY_KEYS, COPY_KEYS_FROM = "copyKeys", "copyKeysFrom"   # keyed copies (copy_keys.py)
 
@@ -51,9 +52,11 @@ COPIES = [
       help="Copies the shot camera never sees are not drawn or rendered (the report says how many were left out)"),
     N("seed", "Seed", "Vary", 0, 1e9, 1, "", S, integer=True, default=1,
       help="The same seed gives the same copies, whatever else changes"),
-    N("varyMove", "Move", "Vary", 0, 1e4, 0.001, "m", S, help="Each copy shifts by up to this much, any way"),
-    N("varyTurn", "Turn", "Vary", 0, 360, 0.1, "°", S, help="Each copy turns round up by up to this much"),
-    N("varyScale", "Size", "Vary", 0, 1, 0.01, "", S, help="Each copy is up to this share smaller or bigger"),
+    N("varyMove", "Move", "Vary", 0, 1e4, 0.001, "m", P, help="Each copy shifts by up to this much, any way"),
+    N("varyTurn", "Turn", "Vary", 0, 360, 0.1, "°", P, help="Each copy turns round up by up to this much"),
+    N("varyScale", "Size", "Vary", 0, 1, 0.01, "", P, help="Each copy is up to this share smaller or bigger"),
+    N("varyStart", "Start", "Vary", 0, 3600, 0.01, "s", P, FALLING,
+      help="Each copy starts to fall up to this much later than Falls from, so they land one after another"),
     Param.points(HELD, label="Held copies", group="Copies data", importance=D, min=8, max=8, default=None, nullable=True, shown="script",
                  help="Rows [copy, x, y, z, rx, ry, rz, scale] in the copies item's own space: a copy put by hand. "
                       "A layout change never moves it; copies.release lets it go. Set by copies.hold"),

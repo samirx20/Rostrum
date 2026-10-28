@@ -117,6 +117,8 @@ def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
     camera, size = getattr(fr, "shot_camera", ""), getattr(fr, "shot_size", [0, 0])
     seen = node["props"]["layout"] == "surface" and node["props"]["onlySeen"] and camera
     node["props"]["seenBy"], node["props"]["seenSize"] = (camera, size) if seen else ("", size)
+    if not node["props"].get("varyStart"):                     # sent only when set: every stored fall keeps its key
+        node["props"].pop("varyStart", None)
 
 
 def _outline_props(id_: str, values: dict, props: dict, folder):

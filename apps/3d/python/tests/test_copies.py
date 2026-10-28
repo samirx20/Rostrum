@@ -72,3 +72,27 @@ def test_an_effectors_keyed_amount_and_its_near_items_movement_are_baked_per_fra
 def test_the_checker_names_a_copies_item_with_nothing_to_copy(doc):
     with pytest.raises(Exception, match="nothing to copy"):
         doc.apply({"op": "item.remove", "target": ["bud"], "args": {}}, SAM)
+
+
+def test_a_start_spread_reaches_the_fall_and_keeps_a_persons_edit_on_a_rerun():
+    """Vary › Start (varyStart): only on a falling copies item; sent to the core with the seed (each copy's wait comes from
+    them there); left out at 0 so every stored fall keeps its key; a script re-run never wipes the person's value."""
+    from rostrum3d.sim.inputs import sim_inputs
+    src = '''
+cam = camera("cam", z=3)
+shot("hero", camera=cam, fps=24, start=0, end=2)
+bud = mesh("bud", shape="sphere", radius=0.05, y=0.5)
+copies("buds", bud, layout="grid", count=12, columns=4, varyMove=0.02).simulate("falls")
+'''
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source(src, "s.py"))
+    assert "varyStart" not in node(d, "buds")["props"]
+    _, before = sim_inputs(d.data, "hero")
+    d.apply({"op": "copies.set", "target": ["buds"], "args": {"varyStart": 0.8, "seed": 7}}, SAM)
+    assert (node(d, "buds")["props"]["varyStart"], node(d, "buds")["props"]["seed"]) == (0.8, 7)
+    assert sim_inputs(d.data, "hero")[1] != before                      # a new spread is a new fall
+    d.run_script("s.py", run_source(src, "s.py"))
+    assert (d.item("buds")["varyStart"], d.item("buds")["seed"]) == (0.8, 7)
+    d.apply({"op": "copies.set", "target": ["buds"], "args": {"simulate": "off"}}, SAM)
+    with pytest.raises(Exception, match="varyStart"):                  # nothing falls: a start spread means nothing
+        d.apply({"op": "copies.set", "target": ["buds"], "args": {"varyStart": 1.0}}, SAM)
