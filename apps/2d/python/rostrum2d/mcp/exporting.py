@@ -27,6 +27,19 @@ def nothing_showing(comp: dict) -> bool:
     return not any(not lay.get("hidden") and lay.get("type") != "camera" for lay in comp.get("layers", [])) and not comp.get("soundtrack")
 
 
+def next_steps(look: str, has_sound: bool, folder) -> str:
+    """What an export's reply says next (render_video and render_export's mp4): a concrete fix pass, and how to put music
+    under a silent video. In the fair benchmark, agents stopped after one small change and left 3 of 7 films silent."""
+    said = (f"Next, a fix pass: look at it ({look}) and at its motion (look_motion), name its three weakest moments "
+            "(an empty or barely changing stretch, something cut off by the frame, a pose or framing held without life, "
+            "a moment that reads flat), fix each and export again to the same name.")
+    if not has_sound and folder:
+        said += (f' It is silent. For music under it: on rostrum-sound, run_open_project {{"folder": "{folder}"}}, write the '
+                 "music with run_script (its inspect_guide 'scoring-to-picture'), run_set_main_mix; the next export here "
+                 "puts that mix under the picture.")
+    return said
+
+
 def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
     """What a job exports, taken now (edits made while it runs are not in the file): the engine's scene, or for motion
     the samples themselves (read from the composition as it plays)."""

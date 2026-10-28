@@ -67,6 +67,84 @@ pub fn count(runs: &[Range<usize>]) -> usize {
     runs.iter().map(|r| r.len()).sum()
 }
 
+// Grouped sub-frames (scene_serve.rs `stage_at`, crate::motion `sub_frames_grouped`): within a group only the frame
+// moves, so a top-level layer's piece differs from its group's middle sample only in its frame wrapper's matrix
+// (frame/mod.rs `place`). Such a piece is painted once at the middle sample and kept; each other sample of the group
+// draws that picture moved by its own matrix after the kept one's inverse (anyrender `draw_cached_moved`). Exact up
+// to resampling (the picture moved by fractions of a px, sampled smoothly) and, at the frame's edge, the few px a
+// move uncovers, which take the picture's edge px (the stage clips at the frame, so nothing past it was drawn).
+
+/// The order a grouped frame's samples are drawn in: each group's middle sample (its base) before the others of its
+/// group (the sum is the same in any order). In order when not grouped.
+pub fn order(bases: &[usize], n: usize) -> Vec<usize> {
+    if bases.len() != n {
+        return (0..n).collect();
+    }
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        if i == 0 || bases[i] != bases[i - 1] {
+            out.push(bases[i]);
+        }
+        if bases[i] != i {
+            out.push(i);
+        }
+    }
+    out
+}
+
+/// A frame wrapper's piece cut round its matrix: (text before the numbers, the matrix, text after).
+fn split(piece: &str) -> Option<(&str, [f64; 6], &str)> {
+    const KEY: &str = "transform:matrix(";
+    if !piece.starts_with("<div id=\"cam~") {
+        return None;
+    }
+    let tag = piece.find('>')?;
+    let at = piece[..tag].find(KEY)? + KEY.len();
+    let end = at + piece[at..tag].find(')')?;
+    let mut m = [0.0; 6];
+    let mut parts = piece[at..end].split(',');
+    for v in &mut m {
+        *v = parts.next()?.trim().parse().ok()?;
+    }
+    parts.next().is_none().then_some((&piece[..at], m, &piece[end..]))
+}
+
+/// The layer id a frame wrapper's piece names (`cam~<id>`, as written), when it is one and holds no other wrapper.
+pub fn wrapper_id(piece: &str) -> Option<&str> {
+    let rest = piece.strip_prefix("<div id=\"cam~")?;
+    (piece.matches("id=\"cam~").count() == 1).then(|| &rest[..rest.find('"').unwrap_or(0)])
+}
+
+/// The piece with its frame matrix written as `matrix` (`matrix(…)`, frame/mod.rs `matrix_of`).
+pub fn with_matrix(piece: &str, matrix: &str) -> Option<String> {
+    let (a, _, b) = split(piece)?;
+    Some(format!("{}{matrix}{}", &a[..a.len() - "matrix(".len()], &b[1..]))
+}
+
+/// The piece's frame matrix, when it is a frame wrapper that composites plainly (`regroups`): a piece that may be kept
+/// and moved.
+pub fn movable(piece: &str) -> Option<[f64; 6]> {
+    split(piece).filter(|_| regroups(piece)).map(|(_, m, _)| m)
+}
+
+/// `piece` is `kept` (a movable piece) with only the frame matrix changed: its matrix.
+pub fn moved(piece: &str, kept: &str) -> Option<[f64; 6]> {
+    let (a, m, b) = split(piece)?;
+    let (ka, _, kb) = split(kept)?;
+    (a == ka && b == kb).then_some(m)
+}
+
+/// The move that carries the picture drawn through matrix `from` to where matrix `to` draws it, in device px of a
+/// view at `scale` whose top-left is page px (x0, y0): V · to · from⁻¹ · V⁻¹.
+pub fn delta(to: [f64; 6], from: [f64; 6], view: (f32, f32, f32)) -> Option<[f64; 6]> {
+    use crate::rig::math::Aff;
+    let aff = |m: [f64; 6]| Aff { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] };
+    let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
+    let v = Aff::scale(k, k) * Aff::translate(-x0, -y0);
+    let r = v * aff(to) * aff(from).inverse()? * v.inverse()?;
+    Some([r.a, r.b, r.c, r.d, r.e, r.f])
+}
+
 /// A still piece that blends (or sits in a frosted glass, a held or tapped element) must never be drawn once and laid
 /// over: the picture would be silently wrong. Moving pieces split runs and keep their order.
 #[cfg(test)]
@@ -87,5 +165,21 @@ mod tests {
         assert_eq!(super::of(&[glow.clone(), glow])[0], 0..1);
         assert!(super::of(&[a.clone()]).is_empty(), "one sample: nothing to share");
         assert!(super::of(&[a.clone(), a[..3].to_vec()]).is_empty(), "samples cut differently: drawn as before");
+    }
+
+    #[test]
+    fn a_frame_wrapper_moves_only_when_its_matrix_alone_changed() {
+        let w = |m: &str, blur: &str| format!("<div id=\"cam~a\" style=\"position:absolute;transform-origin:0 0;transform:matrix({m});filter:blur({blur}px);\"><div style=\"left:3px;\"></div></div>");
+        let (a, b) = (w("1.000000, 0.000000, 0.000000, 1.000000, 0.000, -10.000", "2.000"), w("1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500", "2.000"));
+        assert_eq!(super::movable(&a), Some([1.0, 0.0, 0.0, 1.0, 0.0, -10.0]));
+        let to = super::moved(&b, &a).unwrap();
+        assert_eq!(super::delta(to, super::movable(&a).unwrap(), (1.0, 0.0, 0.0)).unwrap(), [1.0, 0.0, 0.0, 1.0, 0.0, -4.5]);
+        assert_eq!(super::delta(to, super::movable(&a).unwrap(), (0.5, 100.0, 0.0)).unwrap()[5], -2.25, "a half-size view moves half as far");
+        assert!(super::moved(&w("1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500", "3.000"), &a).is_none(), "its blur changed too");
+        assert!(super::movable("<div style=\"transform:matrix(1, 0, 0, 1, 0, 0);\"></div>").is_none(), "not a frame wrapper");
+        assert!(super::movable(&a.replace("filter:", "mix-blend-mode:screen;filter:")).is_none(), "it blends");
+        assert_eq!(super::order(&[1, 1, 1, 4, 4, 4], 6), vec![1, 0, 2, 4, 3, 5]);
+        assert_eq!(super::wrapper_id(&a), Some("a"));
+        assert_eq!(super::with_matrix(&a, "matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500)").as_deref(), Some(w("1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500", "2.000").as_str()));
     }
 }

@@ -88,5 +88,5 @@ fn find<'a>(n: &'a Node, id: &str) -> Option<&'a Node> {
 }
 
 fn is_effect(n: &Node) -> bool {
-    matches!(n.kind, "blur" | "glow" | "shadow" | "backdrop" | "grain" | "trail" | "smear" | "gradient")
+    matches!(n.kind, "blur" | "glow" | "shadow" | "backdrop" | "grain" | "rough" | "trail" | "smear" | "gradient")
 }

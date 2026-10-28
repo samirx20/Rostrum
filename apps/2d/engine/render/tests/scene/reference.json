@@ -2614,6 +2614,38 @@
     "seed",
     "number",
     null
+   ],
+   [
+    "smooth",
+    "toggle",
+    null
+   ]
+  ],
+  "rough": [
+   [
+    "amount",
+    "number",
+    null
+   ],
+   [
+    "size",
+    "number",
+    null
+   ],
+   [
+    "detail",
+    "number",
+    null
+   ],
+   [
+    "boil",
+    "number",
+    null
+   ],
+   [
+    "seed",
+    "number",
+    null
    ]
   ],
   "shadow": [
@@ -3101,6 +3133,21 @@
     null
    ],
    [
+    "dof",
+    "toggle",
+    null
+   ],
+   [
+    "focus",
+    "number",
+    null
+   ],
+   [
+    "focusBlur",
+    "number",
+    null
+   ],
+   [
     "ridePath",
     "text",
     null
@@ -3480,6 +3527,13 @@
    "size",
    "seed"
   ],
+  "rough": [
+   "amount",
+   "size",
+   "detail",
+   "boil",
+   "seed"
+  ],
   "shadow": [
    "dx",
    "dy",
@@ -3543,6 +3597,8 @@
    "y",
    "zoom",
    "rotation",
+   "focus",
+   "focusBlur",
    "rideAlong"
   ],
   "trail": [

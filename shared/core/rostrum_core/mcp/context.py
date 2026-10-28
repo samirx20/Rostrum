@@ -86,7 +86,9 @@ class ToolContext:
             if len(docs) == 1:
                 return self._saw(next(iter(docs.values())))
             raise RostrumError(codes.BAD_ARGUMENT, self.tool, "argument \"item\"",
-                               "is needed: " + ("no document is open" if not docs else "several documents are open"), sorted(docs))
+                               "is needed: " + ("no document is open" if not docs else "several documents are open"), sorted(docs),
+                               None if docs else "Open your project first: run_open_project {\"folder\": \"<the project folder>\"} "
+                               "(run_open_project what \"recent\" lists the recent ones); every change was saved, nothing is lost.")
         if item not in docs:
             raise RostrumError.not_found(self.tool, "open document", item, docs, "the open documents")
         return self._saw(docs[item])

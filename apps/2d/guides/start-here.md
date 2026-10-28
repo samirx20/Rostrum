@@ -157,7 +157,7 @@ Effects: `item.effect(type, id=None, **fields)`: the **type comes first**, the i
 like a layer's), and it **returns the effect**, which keys like a layer: `t.effect("blur", radius=30).key("radius",
 {0.0: 30, 0.8: 0})` is a blur-in. Fields: `"blur"` (`radius`, px), `"shadow"` (`dx`, `dy`, `radius`, `color`, `strength`), `"glow"`, `"gradient"` (`color1`,
 `color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom; it arrives as the layer's **gradient fill**,
-so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
+so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"rough"` (edges wobble as if drawn by hand: `amount` px, `size` px of a bump, `detail`, `boil` frames), `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
 
 The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
 `width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,
@@ -274,13 +274,13 @@ Edits are all or nothing, so nothing changed.
 | Guide | Read it when |
 |---|---|
 | `type-and-kinetic-text` | you set type: fonts, variable axes, OpenType features, per-letter animation, gradient letters, building a title in steps |
-| `ui-and-product-animation` | you build screens and product shots: boxes, masks, frosted glass, shadows, tilt and depth |
+| `ui-and-product-animation` | you build screens and product shots: devices and screen blocks in one call (`device`, `list_rows`, `card`, `bars` …), counting numbers (`counter`), boxes, masks, frosted glass, shadows, tilt and depth |
 | `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
 | `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
 | `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax |
 | `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
-| `character-rigging-and-lip-sync` | you make a figure move from bones and IK, or make a mouth follow a voice |
+| `character-rigging-and-lip-sync` | you make a figure move from bones and IK (`limb`, `walk`, `idle`, `follow`, `blink`, `layer(id)` in a script), or make a mouth follow a voice |
 | `frame-parallax-motion-blur` | you move the frame, look through it, pin a title to it, set depth between layers, motion blur, smears, trails |
 | `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |
 | `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |

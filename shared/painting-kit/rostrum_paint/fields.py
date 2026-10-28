@@ -19,7 +19,8 @@ LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
 HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
-GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}, {"not": IS("granulation", 0.0)}]}   # the paper shows
+GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}, {"not": IS("granulation", 0.0)},
+                  {"not": IS("bloom", 0.0)}, {"not": IS("dry", 0.0)}]}   # the paper shows
 TURNS = {"any": [{"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}},   # tips whose turn shows,
                  {"not": IS("texture", "none")}]}                                         # or a tip picture's
 
@@ -59,8 +60,15 @@ BRUSH = [
       help="The width breathes along the stroke, thinning by up to this much and back, as a hand's press does; "
            "works on points with no pressure"),
     N("pool", "Ink pool", 0, 2, 0.01, 0.0, D, group="Pen", display="percent",
-      help="Ink gathers where the brush lands and lifts: the ends this much wider and denser, over about half a "
-           "brush size (use with Taper for a pointed but loaded stroke)"),
+      help="Ink gathers where the brush lands and lifts, and where it turns a corner: the ends this much wider and "
+           "denser over about half a brush size, the corners less (use with Taper for a pointed but loaded stroke)"),
+    A("load", "Ink load", 0.0, D, group="Pen", when={"any": [IS("brush", "bristle"), IS("brush", "flat")]},
+      help="How full the brush is: the gaps between a bristle or flat tip's hairs fill, so the line's body is solid "
+           "ink and only its edges stay ragged; 0 = a dry, streaky brush"),
+    A("dry", "Runs dry", 0.0, D, group="Pen", when={"any": [IS("brush", "bristle"), IS("brush", "flat")]},
+      help="The brush runs out of ink along the stroke (sooner on long straight runs, which a hand draws fast, than "
+           "where it turns): its hairs drop out one by one into dry-brush streaks and the paper's tooth shows; every "
+           "stroke starts full"),
     N("spacing", "Spacing", 0.02, 2, 0.01, 0.1, D, display="percent", help="Distance between dabs, as a share of the tip's length"),
     Param.toggle("even", label="Even soft edge", group="Brush", default=True, importance=D,
                  help="Dabs come closer the softer the tip, so a soft stroke stays smooth (no rings)"),
@@ -71,11 +79,18 @@ BRUSH = [
     N("angle", "Tip angle", -360, 360, 1, 0.0, D, "°", IS("follow", False)),
     A("grain", "Paper grain", 0.0, D, help="How much the paper's tooth breaks up the paint"),
     A("edge_darken", "Edge darkening", 0.0, D, group="Wash",
-      help="Pigment gathers at the wash's wet edge as it dries: a darker rim just inside the stroke's edge, about a "
-           "fifth of the brush size wide (laid once the stroke is done)"),
+      help="Pigment gathers at the wash's wet edge as it dries: a deeper-coloured rim just inside the stroke's edge, "
+           "about a fifth of the brush size wide, stronger in some places than others (laid once the stroke is done)"),
     A("granulation", "Granulation", 0.0, D, group="Wash",
-      help="Pigment settles in the paper's tooth: more paint in the paper's valleys, a speckled wash (the Paper "
-           "and Paper scale choose the tooth)"),
+      help="Pigment settles in the paper's tooth and clumps: deeper-coloured specks in the paper's valleys (the "
+           "Paper and Paper scale choose the tooth)"),
+    A("pooling", "Pooling", 0.0, D, group="Wash",
+      help="Pigment pools as the wash dries: soft blotches of deeper colour inside the stroke, from about two brush "
+           "sizes across down to a quarter, so a flat wash is never one even colour (laid once the stroke is done)"),
+    A("bloom", "Bloom", 0.0, D, group="Wash",
+      help="A backrun: the wet paint runs past the stroke's edge into the damp paper and stops at a wandering, "
+           "cauliflower-shaped front, pale inside with darker pigment dried along the front; up to about 0.6 brush "
+           "size out at 100 % (laid once the stroke is done)"),
     Param.choice("paper", PAPERS, label="Paper", group="Brush", default="tooth", importance=D, valid_when=GRAINY,
                  help="The paper's tooth; it stays put on the canvas (or moves with the layer), never with the stroke"),
     N("paper_scale", "Paper scale", 0.25, 4, 0.05, 1.0, D, "×", when=GRAINY, help="How big the paper's tooth is"),

@@ -93,29 +93,42 @@ def rig_follow(ctx, targets, args):
                      hint="Pick the bone the motion starts at (the upper arm, the hip); its children are the ones that trail.")
         comp = comp_of(ctx, t)
         fps, comp_end = float(comp.get("fps", 30)), float(comp.get("duration", 5.0))
-        lag, over, amount = args.get("lag", 0.12), args.get("overshoot", 0.4), args.get("amount", 1.0)
         start, end = args.get("start", 0.0), min(args.get("end", comp_end), comp_end)
         if end <= start:
             ctx.fail(codes.BAD_ARGUMENT, "end", f"{end} s is not after start {start} s")
-        last = min(comp_end, end + 4 * lag * len(steps))                 # room for the tail to settle
-        times = [start + i / fps for i in range(int(round((last - start) * fps)) + 1)]
-        own = {b: [float(value_at(bones[b], "rotation", s)) for s in times] for b in bones}
-        world = {}                                                       # each bone's turn on screen, per sample
-        for b in _top_down(bones):
-            up = world.get(bones[b]["parent"], [0.0] * len(times))
-            world[b] = [u + o for u, o in zip(up, own[b])]
-        for n, level in enumerate(steps, 1):
-            for b in level:
-                drive = world[bones[b]["parent"]]                        # the parent, already followed
-                lagged = spring(drive, 1 / fps, lag * n, over)
-                own[b] = [o + amount * (y - x) for o, y, x in zip(own[b], lagged, drive)]
-                world[b] = [d + o for d, o in zip(drive, own[b])]
-            for b in level:
-                values = [round(v, 3) for v in own[b]]
-                for k in [k for k in keys_of(bones[b], "rotation") if times[0] - 1e-9 <= k["t"] <= times[-1] + 1e-9]:
-                    ctx.remove(k["id"])
-                for i in thin(times, values, TOLERANCE):
-                    put_key(ctx, b, "rotation", round(times[i], 4), {"v": values[i], "ease": "linear"})
+        span, baked = bake(rig["bones"], t, fps, comp_end, start, end, args.get("lag", 0.12), args.get("overshoot", 0.4),
+                           args.get("amount", 1.0))
+        for b, keys in baked.items():
+            for k in [k for k in keys_of(bones[b], "rotation") if span[0] - 1e-9 <= k["t"] <= span[1] + 1e-9]:
+                ctx.remove(k["id"])
+            for at, v in keys:
+                put_key(ctx, b, "rotation", at, {"v": v, "ease": "linear"})
+
+
+def bake(bone_list: list, root: str, fps: float, comp_end: float, start: float, end: float, lag: float = 0.12,
+         over: float = 0.4, amount: float = 1.0) -> tuple[tuple[float, float], dict[str, list[tuple[float, float]]]]:
+    """The follow-through of the bones below `root` as (time, rotation) keys per bone, and the span they replace
+    (`start` to the settle after `end`). Pure: reads the bones' own keys (a document's or a script's), changes nothing."""
+    bones = {b["id"]: b for b in bone_list}
+    steps = descendants(bone_list, root)
+    last = min(comp_end, end + 4 * lag * len(steps))                 # room for the tail to settle
+    times = [start + i / fps for i in range(int(round((last - start) * fps)) + 1)]
+    own = {b: [float(value_at(bones[b], "rotation", s)) for s in times] for b in bones}
+    world = {}                                                       # each bone's turn on screen, per sample
+    for b in _top_down(bones):
+        up = world.get(bones[b]["parent"], [0.0] * len(times))
+        world[b] = [u + o for u, o in zip(up, own[b])]
+    out = {}
+    for n, level in enumerate(steps, 1):
+        for b in level:
+            drive = world[bones[b]["parent"]]                        # the parent, already followed
+            lagged = spring(drive, 1 / fps, lag * n, over)
+            own[b] = [o + amount * (y - x) for o, y, x in zip(own[b], lagged, drive)]
+            world[b] = [d + o for d, o in zip(drive, own[b])]
+        for b in level:
+            values = [round(v, 3) for v in own[b]]
+            out[b] = [(round(times[i], 4), values[i]) for i in thin(times, values, TOLERANCE)]
+    return (times[0], times[-1]), out
 
 
 def _top_down(bones: dict) -> list[str]:

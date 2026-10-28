@@ -125,6 +125,11 @@ impl View {
         Aff::translate(ox, oy) * Aff::rotate(-roll) * Aff::scale(z, z) * from
     }
 
+    /// The matrix `place` writes on this layer's wrapper (`matrix(…)`); None when the frame never leaves home.
+    pub fn matrix_of(&self, layer: &Item) -> Option<String> {
+        self.lens.as_ref().map(|_| matrix(&self.map(layer)))
+    }
+
     /// One top-level layer's markup, seen through the frame. The wrapper carries the layer's blend so the layer
     /// still blends with the layers under it (a transformed div holds what is inside it apart).
     pub fn place(&self, layer: &Item, markup: String) -> String {

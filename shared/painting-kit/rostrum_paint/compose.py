@@ -19,27 +19,51 @@ def over(layers, w, h) -> np.ndarray:
         return out
     out = np.zeros((h, w, 4), np.float32)
     for paint, px in layers:
-        if not paint["visible"] or paint["opacity"] <= 0:
-            continue
-        s = px * np.float32(paint["opacity"]) if paint["opacity"] < 1 else px
-        sa, ba = s[..., 3:], out[..., 3:]
-        mode = paint["mode"]
-        if mode == "normal":
-            rgb = s[..., :3] + out[..., :3] * (1 - sa)
-        elif mode == "multiply":
-            rgb = s[..., :3] * (1 - ba) + out[..., :3] * (1 - sa) + s[..., :3] * out[..., :3]
-        elif mode == "screen":
-            rgb = s[..., :3] + out[..., :3] - s[..., :3] * out[..., :3]
-        elif mode == "add":
-            rgb = s[..., :3] + out[..., :3]
-        else:
-            raise ValueError(f"paint layer {paint['id']}: unknown blend {mode!r}")
-        a = sa + ba - sa * ba
-        if mode == "add":       # light sums; where it is brighter than the coverage, the alpha grows to carry it
-            rgb = np.minimum(rgb, 1)
-            a = np.maximum(a, rgb.max(axis=2, keepdims=True))
-        out = np.concatenate([np.minimum(rgb, a), a], axis=2)
+        if paint["visible"] and paint["opacity"] > 0:
+            blend(out, paint, px)
     return out
+
+
+def bounds(px: np.ndarray) -> tuple[int, int, int, int] | None:
+    """(y0, y1, x0, x1) of the pixels with any paint (alpha > 0: premultiplied colour is never more than its alpha),
+    None when there are none."""
+    seen = px[..., 3] > 0
+    rows, cols = np.flatnonzero(seen.any(axis=1)), np.flatnonzero(seen.any(axis=0))
+    if not len(rows):
+        return None
+    return int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
+
+
+def blend(out: np.ndarray, paint: dict, px: np.ndarray, box=None) -> None:
+    """One visible layer onto `out` (HxWx4 premultiplied, clamped: every colour at most its alpha), in place. `box`:
+    (y0, y1, x0, x1), where the layer has paint (`bounds`); outside it a see-through layer leaves `out` as it is in
+    every mode (the same numbers), so only the box is worked out: a 2100 x 1080 drawing of five layers took ~1.1 s a
+    picture, each Drawn so far frame of a wash."""
+    if box is None:
+        box = (0, px.shape[0], 0, px.shape[1])
+    y0, y1, x0, x1 = box
+    if y1 <= y0 or x1 <= x0:
+        return
+    px, region = px[y0:y1, x0:x1], out[y0:y1, x0:x1]
+    s = px * np.float32(paint["opacity"]) if paint["opacity"] < 1 else px
+    sa, ba = s[..., 3:], region[..., 3:]
+    mode = paint["mode"]
+    if mode == "normal":
+        rgb = s[..., :3] + region[..., :3] * (1 - sa)
+    elif mode == "multiply":
+        rgb = s[..., :3] * (1 - ba) + region[..., :3] * (1 - sa) + s[..., :3] * region[..., :3]
+    elif mode == "screen":
+        rgb = s[..., :3] + region[..., :3] - s[..., :3] * region[..., :3]
+    elif mode == "add":
+        rgb = s[..., :3] + region[..., :3]
+    else:
+        raise ValueError(f"paint layer {paint['id']}: unknown blend {mode!r}")
+    a = sa + ba - sa * ba
+    if mode == "add":       # light sums; where it is brighter than the coverage, the alpha grows to carry it
+        rgb = np.minimum(rgb, 1)
+        a = np.maximum(a, rgb.max(axis=2, keepdims=True))
+    region[..., :3] = np.minimum(rgb, a)
+    region[..., 3:] = a
 
 
 def straight8(px: np.ndarray) -> np.ndarray:

@@ -2,13 +2,14 @@
 (with its folders above it), open, and say plainly what was made. Checks come first, so a refused call makes nothing.
 
 Each app passes its own pieces: `docs_in(folder)` (its documents there, newest first), `default_item(folder, explicit)`
-and `open_project(app, folder, items)`; `word` is what a person calls one document ("document", "song").
+and `open_project(app, folder, items)`; the folder opened is remembered for this working folder
+(agent_last.py), so a resumed agent session's new server reopens it. `word` is what a person calls one document ("document", "song").
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from .. import ids
+from .. import agent_last, ids
 from ..errors import RostrumError, codes
 from .reply import Reply
 
@@ -51,5 +52,7 @@ def open_folder(ctx, args, *, docs_in, default_item, open_project, word: str = "
     new = ("" if item in found else f" Made the folder and started the {word}, empty." if made else
            f" Started the {word}, empty; the project's other {word}s: {', '.join(found)}." if found else f" Started the {word}, empty.")
     open_project(ctx.app, str(folder.resolve()), [item])
+    if getattr(ctx.app, "name", None):
+        agent_last.remember(ctx.app.name, ctx.app.folder, item)     # a server started again for this session reopens it
     return Reply(f'Opened {ctx.app.folder} ({word} "{item}").{new} Other tools now work on it.',
                  {"folder": ctx.app.folder, "item": item, "documents": sorted(ctx.app.documents), "others": found, "new": item not in found})

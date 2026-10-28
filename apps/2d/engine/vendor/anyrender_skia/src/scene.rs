@@ -900,6 +900,26 @@ impl PaintScene for SkiaScenePainter<'_> {
         true
     }
 
+    /// Rostrum patch (motion-blur buckets): kept picture `k` drawn moved by `m` (device px), sampled smoothly; past its
+    /// edges it is stretched (clamped), so a few px the move uncovers at the frame's edge are its edge px, not a gap.
+    fn draw_cached_moved(&mut self, k: usize, m: [f64; 6]) -> bool {
+        let Some(image) = self.cache.cached.get(k).cloned() else { return false };
+        let [a, b, c, d, e, f] = m.map(|v| v as f32);
+        let local = skia_safe::Matrix::new_all(a, c, e, b, d, f, 0.0, 0.0, 1.0);
+        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+        let Some(shader) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&local)) else { return false };
+        let mut paint = Paint::default();
+        paint.set_shader(shader);
+        let info = self.inner.image_info();
+        self.inner.save();
+        self.inner.reset_matrix();
+        self.inner.translate((-self.cache.origin.0 as f32, -self.cache.origin.1 as f32));
+        let (x0, y0) = (self.cache.origin.0 as f32, self.cache.origin.1 as f32);
+        self.inner.draw_rect(skia_safe::Rect::from_xywh(x0, y0, info.width() as f32, info.height() as f32), &paint);
+        self.inner.restore();
+        true
+    }
+
     fn draw_warped(&mut self, content: &anyrender::Scene, mesh: &anyrender::WarpMesh) {
         let rest = mesh.rest;
         let s = mesh.transform.determinant().abs().sqrt().max(1e-3);

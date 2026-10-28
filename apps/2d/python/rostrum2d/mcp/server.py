@@ -35,7 +35,7 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "loop, loopTimes and loopStepX / loopStepY (inspect_guide 'drawing-and-frame-by-frame'); to paint strokes on over time (write on), key drawnSoFar 0 → 1 on the drawing layer or painted element (strokes in painting order, each along its path); a filled polygon (a ridge, a silhouette) is fill.add or ink.fill in a script. A painting (painting.add) is a canvas many shapes and paths can use as one shared fill (layer.fill type \"painted\"): paint.stroke on it (its own px, or `through` a layer using it, in that layer's px; on a seamless painting a stroke over an edge comes back on the opposite side), look_painting (repeats: 1 shows it 3 × 3), look_painting what \"facts\" (with a seam check), look_at (where a point lands in it); to make it boil, frame.add on the painting (eachFrame turns on; every use boils from its own start, always looping, `phase` in layer.fill starts a use on another drawing). "
                 "Every reply ends with a clock line (time since your first call; the minutes left when you have a budget): the time is "
                 "for making, looking and refining in passes, and inspect_project what \"session\" lists what is still unchecked. "
-                "The server opens the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
+                "The server opens the project you last opened with run_open_project from this folder (a resumed session gets it back), else the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
 
 
 SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
@@ -58,9 +58,19 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "No import except math and random (seeded: the same numbers every run; random(7) is your own seeded generator "
                "with .uniform/.randint/.choice/.random) and no classes: use functions and dicts. "
                "Equations, graphs and charts: plot_area, curve_points, param_points, polar_points, line_d, lines_d, "
-               "nice_ticks, tick_label, view3d, surface_lines, parse_table (inspect_guide 'data-math-and-graphs'). "
+               "nice_ticks, tick_label, view3d, surface_lines, parse_table; math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers, one per symbol (inspect_guide 'data-math-and-graphs'). "
                "Before a field's first key it holds that key's value. Every field and the first-time surprises: "
-               "inspect_guide 'start-here'. An error names the line and what to write instead.")
+               "inspect_guide 'start-here'. An error names the line and what to write instead. "
+               "layer(\"id\") gives back an item made earlier in the script. Characters (guide character-rigging-and-lip-sync): "
+               "limb(id, x=, y=, lengths=, widths=, kind=\"arm\"|\"leg\", parent=, color=) makes a bending arm or leg (bones, IK, "
+               "parts in the body's colour unless color= is given; an arm rests with a relaxed elbow and, keyed on arm.upper alone, "
+               "its forearm bends and trails by itself; arm.out is the rotation sign that swings it away from the body); "
+               "pose({limb or bone: turn}, at=) hits a key pose with anticipation and overshoot; "
+               "walk(legs=[a, b], arms=, body=, start=, end=, step=, stride=), idle(chest, head=, arms=, legs=) (legs: weight "
+               "shifts foot to foot), follow(bone), "
+               "blink(eyes, open=, closed=) write plain keys. Screens (guide ui-and-product-animation): device(id, kind=\"phone\"|"
+               "\"laptop\"|\"browser\") returns its screen group; status_bar, nav_bar, tab_bar, list_rows, card, button, toggle, bars; "
+               "counter(id, start, to, at=, duration=, decimals=, prefix=) is one text that counts (never stack texts).")
 
 
 def app_tools():

@@ -729,6 +729,7 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
         match crate::runs::planned(node_id) {
             Some(crate::runs::Run::Skip) => return,
             Some(crate::runs::Run::Cached(k)) if scene.draw_cached(k) => return,
+            Some(crate::runs::Run::Moved(k, m)) if scene.draw_cached_moved(k, m) => return,
             _ => {}
         }
         let node = &self.dom.as_ref().tree()[node_id];
