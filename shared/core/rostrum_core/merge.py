@@ -65,9 +65,10 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
                                 "kept": GONE, "who": "?", "label": err.problem})
             continue
         _record(new_base, lists, e, name, base_idx)
-    problems = doc.kind.check(work)
+    problems = list(dict.fromkeys(doc.kind.check(work) + _opening_check(doc, work, applied, idx)))
     if problems:                          # all or nothing: a run that breaks the check changes nothing. A problem the
-        had = set(doc.kind.check(doc.data))   # document had before (an older file) is not this run's: named, not blamed
+        had = set(doc.kind.check(doc.data)) | set(_opening_check(doc, doc.data, applied, doc.locs()))   # document had
+                                          # before (an older file) is not this run's: named, not blamed
         new = [p for p in problems if p not in had]
         if new:
             raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
@@ -84,3 +85,12 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
         call = {"op": "run_script", "target": [], "args": {"script": name, "force": force}}
         report.change = doc.commit(work, applied, who, f"Run {name}", [call], session)
     return report
+
+
+def _opening_check(doc, data, applied, idx) -> list[str]:
+    """The check opening the file runs on the items a step set (storage.open_doc): every field value and the app's
+    rules for a changed item, stricter than the whole-document check (a gradient left with no stops because a held-back
+    change took them). A run passes it here, or opening the saved file would refuse the whole document."""
+    from .run import changed_items
+    items = changed_items(applied, idx, doc.kind.lists)
+    return doc.kind.problems(data, items, None, idx) if items else []

@@ -55,6 +55,15 @@ def _edge_cuts(data: dict, comp: dict, start: float, end: float) -> tuple[str, l
     return edge_cut.tell(rows), rows
 
 
+def checked(job, frames: int, mp4: Path, shown: Path, data: dict, comp: dict, start: float, end: float) -> tuple:
+    """The finished file's checks (quiet stretches, edge cuts), run after it is delivered and saying so in the job's
+    progress: the showreel's finished export sat at "2400 of 2400, nothing new" while they ran, its file not yet copied."""
+    job.progress(frames, frames, f"The video is written ({shown}). Checking it for empty stretches.")
+    quiet = _quiet_stretches(mp4, start)
+    job.progress(frames, frames, f"The video is written ({shown}). Checking it for subjects cut by the frame edge.")
+    return quiet, _edge_cuts(data, comp, start, end)
+
+
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
@@ -98,9 +107,7 @@ def render_video(ctx, args):
         target = partial / f'{item}_{comp["id"]}.mp4' if partial else out
         info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"], job.on_cancel)
         exporting.with_sound(ctx.tool, info, target, s, folder or doc.folder)      # before it is finished or copied
-        quiet = _quiet_stretches(target, start)       # of the file itself, before it is finished
-        cuts = _edge_cuts(data, comp_now, start, end)
-        files = [target]
+        files, beside = [target], None
         if partial:
             if info["frames"] != round((end - start) * info["fps"]):      # fail loudly: the .partial stays, nothing is finished
                 raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the video {target.name}", f'has {info["frames"]} frames, expected {round((end - start) * info["fps"])}', hint=f"Left in {partial}.")
@@ -111,6 +118,7 @@ def render_video(ctx, args):
                 tmp.replace(copy_to)
                 files.append(copy_to)
                 beside = args.get("with_project") and project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
+        quiet, cuts = checked(job, info["frames"], files[0], files[-1], data, comp_now, start, end)    # delivered first
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to and beside else ""
         took = info["timing"]["totalS"]
         video = files[-1] if len(files) > 1 else files[0]           # the deliverable: the copy asked for, else the render

@@ -42,17 +42,19 @@ def shape(found: list[dict], doc) -> list[dict]:
         else:
             fid = k if whole else f"{k}:{mark}" if mark else f"{k}@{t:g}"
         what, _, fix = f["words"].partition("; ")
+        fix = fix[5:] if fix.startswith("fix: ") else fix          # the old words say "; fix: …" themselves
         when = None if whole else f"{t:.2f} s" + (f", marker '{mark}'" if mark else "")
         out.append(shared.fault(fid, what, fix or "see what", when))
     return out
 
 
-def loudness_fault(measured, target) -> list[dict]:
+def loudness_fault(measured, target, push=None) -> list[dict]:
     """The mix off the master's loudness target (`target` None: no target, nothing to miss) by more than LOUD_LU."""
     if not isinstance(target, (int, float)) or measured is None or abs(measured - target) <= LOUD_LU:
         return []
     short = measured < target
-    fix = (f"raise master maxLimit (edit_loudness {{\"apply\": \"best\"}} measures it) or the quietest parts' volumes to gain "
+    raise_to = f"raise master maxLimit to {push:g} (in a script master(maxLimit={push:g}))" if push else "raise master maxLimit"
+    fix = (f"{raise_to} (edit_loudness {{\"apply\": \"best\"}} measures it) or the quietest parts' volumes to gain "
            f"{target - measured:.1f} dB" if short else
            f"lower the master volume or loudness target by {measured - target:.1f} dB (a mix this far over the target is over-limited)")
     return [shared.fault("loudness", f"{measured:.1f} LUFS, the target is {target:g} ({measured - target:+.1f} LU, over {LOUD_LU:g} allowed)", fix)]
@@ -140,11 +142,30 @@ def rings_past_end(wav, end_s) -> list[dict]:
                          "a shorter reverb tail) or move the end (length / an 'end' marker) later", f"{end_s + END_AFTER_S:.2f} s on")]
 
 
-def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None) -> list[dict]:
-    """Every check, shaped: the listening faults, then loudness, ducks and the end."""
-    out = shape(found, doc) + loudness_fault(measured_lufs, target) + duck_faults(doc.data, ducks, stems)
+PEAK_SLACK_DB = 0.05   # the true-peak reading's own rounding
+
+
+def peak_faults(peak, clipped) -> list[dict]:
+    """The file's true peak over the master's ceiling (`peak` = (measured, ceiling)), and samples cut flat."""
+    out = []
+    tp, ceiling = peak or (None, None)
+    if tp is not None and ceiling is not None and tp > ceiling + PEAK_SLACK_DB:
+        out.append(shared.fault("true_peak", f"true peak {tp:.1f} dBTP, over the {ceiling:g} ceiling",
+                                "keep the master limiter on (it holds the ceiling) or lower the loudest track; edit_loudness tame_peaks"))
+    if clipped:
+        out.append(shared.fault("clipped", f"{clipped} samples cut flat at full scale",
+                                "lower the master volume or the track driving it; keep the limiter on"))
+    return out
+
+
+def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None, ring_s=0.0, peak=None, clipped=None, push=None) -> list[dict]:
+    """Every check, shaped: the listening faults, then loudness, the file's peak and clipping, ducks and the end (the
+    end read after the ring a render allowed: ring_past_length)."""
+    out = (shape(found, doc) + loudness_fault(measured_lufs, target, push) + peak_faults(peak, clipped)
+           + duck_faults(doc.data, ducks, stems))
     try:
-        out += rings_past_end(wav, end_second(doc))
+        end = end_second(doc)
+        out += rings_past_end(wav, end + ring_s if end else end)
     except Exception:  # noqa: BLE001  a file the ears cannot read is said by the listening check
         pass
     return out

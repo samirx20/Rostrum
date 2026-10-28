@@ -78,8 +78,8 @@ def render_export(ctx, args):
             say = f'Wrote the motion samples of {comp["id"]}: {len(facts["checked"]["layers"])} moving layers ({", ".join(facts["checked"]["layers"])}), {facts["checked"]["samples"]} samples each at {facts["checked"]["rate"]}/s, to {facts["file"]}. Hand it to RostrumSound: edit_sounds_from_motion samples="{facts["file"]}"'
             return Reply(say + ".", data)
         if fmt == "mp4":            # the same checks as render_video's reply, on the finished file
-            quiet = video._quiet_stretches(Path(facts["file"]), s["start"])
-            cuts = video._edge_cuts(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
+            quiet, cuts = video.checked(job, facts["frames"], Path(facts["file"]), Path(facts["file"]), data_now,
+                                        next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
             data.update(quiet_stretches=quiet[1], edge_cuts=cuts[1])
             say += '. ' + exporting.next_steps(f'look_frame what "sheet" with video "{facts["file"]}"', "sound" in facts, folder).rstrip(".")
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])

@@ -39,9 +39,23 @@ AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb t
 TAIL = 0.25             # seconds kept after the last audible sound
 FOLD_S = 1.0            # a ring-out that runs past an exact length is faded to nothing over the last second of it
 RING_WARNINGS = ("The song's length is", "The last sounds still ring")    # the engine's words for a file that ends after the length
+RING_S = 2.0            # ring_past_length true: a ring-out may run this far past the length (the usual delivery allowance)
+MOST_RING_S = 6.0       # the most a ring-out may run past the length
 MIN_SECONDS = 0.5       # never a shorter file than this
 BLOCK = 1 << 18         # frames read and written at a time (2 MB of stereo float)
 WRITERS = 4             # files converted at once (reading, converting and writing a file leave Python's lock free)
+
+
+def ring_allowed(v) -> float:
+    """render_mix's `ring_past_length` in seconds: False 0, True RING_S, a number up to MOST_RING_S."""
+    if v is None or v is False:
+        return 0.0
+    if v is True:
+        return RING_S
+    if isinstance(v, (int, float)) and 0 <= v <= MOST_RING_S:
+        return float(v)
+    raise RostrumError(codes.BAD_ARGUMENT, "render_mix", f"ring_past_length={v!r}", f"is not true, false or seconds from 0 to {MOST_RING_S:g}",
+                       hint=f"true lets the ring run up to {RING_S:g} s past the length; 1.5 up to 1.5 s.")
 
 
 def rates_for(fmt: str) -> list[dict]:
@@ -62,6 +76,7 @@ class Options:
     start: float | None = None       # a range of the song (seconds): `from` / `to` in a request; both or neither
     end: float | None = None
     length: float | None = None      # exact: the song's Length (seconds) the file must be, a ring-out folded into it (see `deliver`)
+    ring: float = 0.0                # seconds a ring-out may run past `length` (ring_past_length), faded inside that
 
     @classmethod
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
@@ -81,7 +96,7 @@ class Options:
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {a} to {b}", "is not a stretch of the song",
                                hint='Give both `from` and `to` in seconds, with 0 ≤ from < to (or neither for the whole song).')
         return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b),
-                   None if args.get("length") is None else float(args["length"]))
+                   None if args.get("length") is None else float(args["length"]), float(args.get("ring") or 0.0))
 
     @property
     def spec(self) -> dict:
@@ -238,7 +253,9 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
         keep = min(frames, int(opts.end * rate)) - first
     elif opts.length is not None:      # the song's Length is the file's length: not shorter (trim), not longer (a ring-out)
         keep = round(opts.length * rate)
-        fold = min(int(FOLD_S * rate), keep) if frames > keep else 0       # the engine rang on past the Length: fade it inside it
+        if opts.ring:                  # the ring may run on up to `ring` past it (its silent end trimmed), faded inside that
+            keep = min(frames, max(keep, min(heard + int(TAIL * rate), keep + round(opts.ring * rate))))
+        fold = min(int(FOLD_S * rate), keep) if frames > keep and heard > keep else 0     # still ringing where it ends: fade it inside it
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     def one(job):
@@ -260,9 +277,11 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     song = (r.get("seconds") or frames / rate) if ranged else frames / rate
     warnings = [w for w in r.get("warnings") or [] if not (fold and w.startswith(RING_WARNINGS))]
     if fold:
-        warnings.append(f"The song's length is {keep / rate:.2f} s and so is the file: what still rang past it ({(frames - keep) / rate:.1f} s) is faded "
+        is_ = (f"{opts.length:.2f} s; the file is {keep / rate:.2f} s with the {opts.ring:g} s of ring allowed" if opts.ring and opts.length is not None
+               else f"{keep / rate:.2f} s and so is the file")
+        warnings.append(f"The song's length is {is_}: what still rang past it ({(frames - keep) / rate:.1f} s) is faded "
                         f"out over the last {fold / rate:.1f} s. End the last notes earlier, or set a longer length, so the ring has room "
-                        f"inside it; `ring_past_length: true` lets the file run on until the ring has died away.")
+                        f"inside it; `ring_past_length: true` lets it run up to {RING_S:g} s past the length.")
     return {**{k: v for k, v in r.items() if k not in ("range", "warnings")}, "warnings": warnings, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},

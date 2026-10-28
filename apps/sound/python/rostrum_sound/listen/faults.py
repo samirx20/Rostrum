@@ -15,9 +15,10 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
-from . import lead_in, stop_soft, tempo_fit
+from . import drop_gap, lead_in, stop_fall, stop_soft, tempo_fit
 
-NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words}
+NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words,
+             "drums_in_gap": drop_gap.words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -100,6 +101,9 @@ def heard(d) -> str:
     if d.get("times_bed") is not None:
         bits.append(f"{d['times_bed']:.1f}x the notes of the 2 s before")
     bits.append(f"{d['jump_lu']:+.1f} LU over the 1.5 s before" if d.get("jump_lu") is not None else "silence before it")
+    if d.get("over_before_db") is not None:
+        pk = f", peak {d['peak_over_bed_db']:+.1f} dB over the bed's" if d.get("peak_over_bed_db") is not None else ""
+        bits.append(f"{d['over_before_db']:+.1f} dB over the 2 s before{pk} (hits that read: +8 dB or more)")
     return ", ".join(bits)
 
 
@@ -117,7 +121,8 @@ def weak_fixes(t, d) -> list[str]:
     if d["bright_x"] < BRIGHT_X:
         out.append("add a short loud part with a fast bright attack on it (crash, snare, a high piano or brass stab)")
     if d.get("jump_lu") is not None and d["jump_lu"] < JUMP_LU:
-        out.append(f"silence or duck the bed for 0.3–0.5 s before it (end its notes by {max(0.0, t - 0.4):.2f} s)")
+        out.append(f"silence or duck the bed for 0.3–0.5 s before it (end its notes by {max(0.0, t - 0.4):.2f} s; in a "
+                   f"script m = moment(\"hit\", at={t:g}); m.rest(<the bed's tracks>, before=0.4); m.strike(brass, [\"C2\", \"G2\"], vel=1.0, ring=4.0))")
     if d.get("times_bed") is not None and d["times_bed"] < BED_X:
         out.append("shorten the bed's notes into it and strike nothing on the beat before")
     if len(out) < 3:
@@ -139,8 +144,9 @@ def _words(f) -> str:
         why = (f"the beat at {d['beat_before_s']:g} s is {100 * d['beat_before_share']:.0f} % as strong"
                if d.get("beat_before_share") is not None and d["beat_before_share"] >= 0.7 else
                f"the sound falls only {d['fall_after_db']:g} dB in the second after it")
+        why = "; ".join([why] + stop_fall.why(d))
         return (f"blurred stop at {t:.2f} s: {why}; rest the band on the beat before, end held notes, ride and pedal "
-                "at the stop, keep the hit's own notes short")
+                f"at the stop, keep the hit's own notes short; {stop_fall.script_fix(t)}")
     if k == "early_drop":
         return (f"drums drop early at {t:.2f} s: the last beat is at {d['last_beat_s']:g} s, {d['early_s']:g} s before "
                 f"(the beats are {d['beat_gap_s']:g} s apart); play up to the drop: a last hit or fill ending on the time")
@@ -207,13 +213,13 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True, peaky=None) -> dict:
+def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None) -> dict:
     """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
     is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
     the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
-    drivers are unknown."""
+    drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them)."""
     timed = [m for m in moments or [] if m.get("kind") != "tempo"]
-    found = moment_faults(wav, timed) if timed else []
+    found = moment_faults(wav, timed, drums) if timed else []
     found = stop_soft.merge(found, limiter, peaky) + [f for m in moments or [] if m.get("kind") == "tempo" for f in tempo_fit.faults(m)]
     if whole:
         found += _whole(wav)
