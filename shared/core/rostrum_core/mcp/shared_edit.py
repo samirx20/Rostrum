@@ -4,6 +4,7 @@ The document changes only through `ctx.apply` / `ctx.run_script` (= `Document.ap
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -84,7 +85,9 @@ def register(tools: Tools):
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
-        return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings() + _new_advice(doc, advised), changed=changed)
+        reply = Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings() + _new_advice(doc, advised), changed=changed)
+        look = args.get("look")
+        return ctx.app.script_look(ctx, doc, look, reply) if look not in (None, False, []) and ctx.app.script_look else reply
 
     @tools.tool("inspect_job", {"properties": {
         "job_id": {"type": "string", "description": "The job (this server's, or one another program has waiting or running). Without it: every job in the queue's order (running, waiting, other programs', then ended)."},
@@ -106,3 +109,18 @@ def register(tools: Tools):
         render ends its engine at once, even mid-frame. Its output is marked incomplete."""
         job = ctx.jobs.cancel(args["job_id"])
         return Reply(f"Stop requested for {job.id} ({job.label}); it is {job.status}.{' ' + job.note if job.owner else ''}", job.state())
+
+
+LOOK = {"look": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
+                 "description": "After the merge, look at the result in the same call: seconds, e.g. [2, 7, 12, 17, 22, 27], or true "
+                                "for 6 moments spread over the film. The reply carries one contact sheet of those moments and the "
+                                "film's weakest moments (named faults with times), so you can edit and re-run at once."}}
+LOOK_LEAD = ("Write the whole film as one script; pass look to get stills + faults back; edit and re-run under the same name. ")
+
+
+def with_look(tools: Tools):
+    """run_script gains `look` (the app gave App.script_look): its schema and the lead of its description."""
+    t = tools.get("run_script")
+    tools._tools["run_script"] = dataclasses.replace(t, description=LOOK_LEAD + t.description,
+                                                     schema={**t.schema, "properties": {**t.schema["properties"], **LOOK}})
+

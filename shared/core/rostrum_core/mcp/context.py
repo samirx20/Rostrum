@@ -32,6 +32,7 @@ class App:
     no_project_hint: str = ""                               # with no folder and nothing open: what to do (inspect_project)
     recent: Callable[[], list] | None = None                # the person's recent projects, shown when none is open
     script_help: str = ""                                   # the script layer in brief: added to run_script's description
+    script_look: Callable | None = None                     # (ctx, doc, look, reply) -> Reply: run_script's `look` after the merge (stills + faults); none: no `look`
 
 
 class Groups:
