@@ -11,6 +11,11 @@ Simulate runs as a job off the GUI thread: rostrum3d.sim.compute on a snapshot o
 process (never the viewport's); when it lands, the GUI thread records it with the operation agents call too
 (`sim.run {shot}`: one undo step; the result is already in the cache, so it only sets the shot's key). The state comes
 from rostrum3d.sim.state, read again a moment after each change (one read per burst of edits, not per drag step).
+
+A result that is in the cache for the inputs as they are but that the shot does not name yet (another project with the
+same set-up computed it, or a render did) is recorded as the shot's stored one the moment the row sees it (`adopt`), so a
+later edit reads "Out of date" with the old fall still shown, never "Not computed" (the shot must name a result to know
+one existed).
 """
 from __future__ import annotations
 
@@ -82,6 +87,7 @@ class SimJob(QObject):
         self._st: dict = {}
         self._running, self._failure, self._done, self._of = False, "", 0, 0
         self._kind, self._thread, self._demo = "", None, ""
+        self._adopt_tried = ""                  # the key adopt() last tried to record (a failure never loops)
         self._landed.connect(self._on_landed)
         self._stepped.connect(self._on_step)
         self._later = QTimer(self, singleShot=True, interval=150)     # one read per burst of edits
@@ -199,6 +205,9 @@ class SimJob(QObject):
             self._failure = ""                     # no bodies: nothing to say any more
         self._kind = kind_of(b.doc, list(b.selection))
         self.changed.emit()
+        from rostrum3d.sim.state import adoptable
+        if adoptable(self._st) and self._st.get("key") != self._adopt_tried and not self._running:
+            QTimer.singleShot(0, self.adopt)    # not inside this change's own handlers
 
     @Property(bool, notify=changed)
     def can(self):
@@ -249,6 +258,7 @@ class SimJob(QObject):
         except Exception:  # noqa: BLE001  refresh says why
             return self.refresh()
         if adoptable(st):
+            self._adopt_tried = st.get("key", "")
             self._failure = ""
             b._guard(lambda: b._done(b.doc.apply([{"op": "sim.run", "target": [b.shot_id], "args": {}}], b.who,
                                                  label=f"Simulate {self._shot_label()} (for the render)"), ""))
