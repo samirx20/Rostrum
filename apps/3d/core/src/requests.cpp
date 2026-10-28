@@ -59,9 +59,15 @@ void background(const UsdStageRefPtr& stage, float rgb[3]) {
 
 Core::Core() : stage_(UsdStage::CreateInMemory()) { clay_ = std::make_unique<clay::Store>(stage_); }
 
-Core::Core(GlContext::Borrow) : Core() { borrow_gl_ = true; }
+Core::Core(GlContext::Borrow) : Core() {
+  borrow_gl_ = true;
+  gl_thread_ = std::this_thread::get_id();
+}
 
 Hydra& Core::hydra() {
+  // the window answers some requests on a worker (WindowCore::runs_aside): one that draws must never get there
+  if (borrow_gl_ && std::this_thread::get_id() != gl_thread_)
+    throw Error("internal: a request that draws was answered off the window's drawing thread");
   if (!hydra_) hydra_ = borrow_gl_ ? std::make_unique<Hydra>(stage_, GlContext::Borrow{}) : std::make_unique<Hydra>(stage_);
   return *hydra_;
 }

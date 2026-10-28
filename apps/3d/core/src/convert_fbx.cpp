@@ -2,8 +2,8 @@
 // ufbx turns the scene upright (right-handed, Y up) through the nodes' transforms; units are left as the file has
 // them (metersPerUnit = the file's unit). Read: the node tree with local transforms, every mesh (polygons kept,
 // normals, UV set 0, per-face materials as GeomSubsets), and the materials (ufbx's PBR view of them, which covers
-// the classic Lambert / Phong ones: colour and its image, metalness, roughness, emission, opacity). Skins, blend
-// shapes and animations are not read: the model comes in its rest pose.
+// the classic Lambert / Phong ones: colour and its image, metalness, roughness, emission, opacity). The first
+// animation stack, the skins and the blend shapes play as time samples (convert_fbx_anim.h).
 #include <ufbx.h>
 
 #include <pxr/usd/usdGeom/tokens.h>
@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 
+#include "convert_fbx_anim.h"
 #include "convert_usd.h"
 #include "error.h"
 
@@ -38,6 +39,8 @@ struct Reader {
   UsdStageRefPtr stage;
   cv::Names names;
   std::map<const ufbx_material*, UsdShadeMaterial> materials;
+  std::map<const ufbx_node*, UsdGeomXform> xforms;  // every node's Xform (animation writes into them)
+  std::vector<fbx::Deformed> deformed;              // skinned / blend-shaped meshes, posed by fbx::write_animation
 
   // The image file of a texture: one carried inside the FBX goes to the import cache; else the first of its paths
   // that exists (next to the file, as written, by name next to the file).
@@ -85,6 +88,7 @@ struct Reader {
       m.points.push_back(vec(geo ? ufbx_transform_position(&node->geometry_to_node, src->vertices.data[i])
                                  : src->vertices.data[i]));
     const bool has_n = src->vertex_normal.exists, has_uv = src->vertex_uv.exists;
+    std::vector<uint32_t> corners;  // the face corners written, for the animation's normals
     for (size_t f = 0; f < src->faces.count; ++f) {
       const ufbx_face face = src->faces.data[f];
       if (face.num_indices < 3) continue;  // a loose edge or point
@@ -92,6 +96,7 @@ struct Reader {
       face_material.push_back(src->face_material.count ? int(src->face_material.data[f]) : 0);
       for (uint32_t k = 0; k < face.num_indices; ++k) {
         const uint32_t c = face.index_begin + k;
+        corners.push_back(c);
         m.indices.push_back(int(src->vertex_indices.data[c]));
         if (has_n) m.normal_indices.push_back(int(src->vertex_normal.indices.data[c]));
         if (has_uv) m.uv_indices.push_back(int(src->vertex_uv.indices.data[c]));
@@ -116,11 +121,14 @@ struct Reader {
     std::vector<UsdShadeMaterial> list;
     for (size_t i = 0; i < mats.count; ++i) list.push_back(material(mats.data[i]));
     cv::bind_per_face(out, face_material, list);
+    if (src->skin_deformers.count || src->blend_deformers.count)
+      deformed.push_back({node, src, out, std::move(corners)});
   }
 
   void node(const SdfPath& parent, const ufbx_node* n) {
     const SdfPath path = names.child(parent, str(n->name), "Node");
     UsdGeomXform x = UsdGeomXform::Define(stage, path);
+    xforms[n] = x;
     cv::set_transform(x, matrix(n->node_to_parent));
     if (n->mesh) mesh(path, n, n->mesh);
     for (size_t i = 0; i < n->children.count; ++i) node(path, n->children.data[i]);
@@ -134,6 +142,7 @@ void convert_fbx(const std::string& file, const UsdStageRefPtr& out) {
   opts.target_axes = ufbx_axes_right_handed_y_up;
   opts.space_conversion = UFBX_SPACE_CONVERSION_ADJUST_TRANSFORMS;  // upright through the transforms; no rescale
   opts.generate_missing_normals = true;
+  opts.evaluate_skinning = true;  // the rest pose's skins and shapes (convert_fbx_anim.cpp)
   ufbx_error error;
   std::unique_ptr<ufbx_scene, void (*)(ufbx_scene*)> scene(ufbx_load_file(file.c_str(), &opts, &error),
                                                            ufbx_free_scene);
@@ -146,6 +155,7 @@ void convert_fbx(const std::string& file, const UsdStageRefPtr& out) {
   r.stage = out;
   const ufbx_node* top = scene->root_node;
   for (size_t i = 0; i < top->children.count; ++i) r.node(root, top->children.data[i]);
+  fbx::write_animation(scene.get(), r.xforms, r.deformed, out);
 }
 
 }  // namespace r3d

@@ -21,45 +21,64 @@ tools = Tools()
 
 ENCODE_S_PER_FRAME = 0.15         # ffmpeg, libx264 preset slow, crf 14, at HD: a rough figure, not measured per machine
 HD_PIXELS = 1920 * 1080             # ENCODE_S_PER_FRAME is for a frame this big; encoding follows the pixels
-WARM_PROBE_MS = 3000              # a probe faster than this is cheap enough to render twice (the first absorbs scene load / kernel compile)
 
 
-def total_seconds(probe_ms: float, frames: int, encode_s_per_frame: float = ENCODE_S_PER_FRAME) -> float:
-    """Estimated whole-job seconds: every frame costs the probe, plus encoding."""
-    return frames * (probe_ms / 1000 + encode_s_per_frame)
-
-
-def fitting_settings(estimate_s: float, budget_s: float, renderer: str, samples: int, width: int) -> list[dict]:
+def fitting_settings(estimate_s: float, budget_s: float, renderer: str, samples: int, width: int, at=None) -> list[dict]:
     """Concrete lower settings that should fit `budget_s`, each changing one thing: [{"change": "samples", "to": 48, "text": "…"}].
+    `at(change, value)`: the job's seconds with that one change (`seconds_at`, from the measurement), so the suggestion follows the
+    measured cost (time grows much less than in step with samples); without it, in step with samples and pixels.
     Empty when nothing can fit by lowering that setting alone."""
     if estimate_s <= budget_s or estimate_s <= 0:
         return []
     k = budget_s / estimate_s                                   # the share of the time that is allowed
+    fit = lambda change, v: at(change, v) <= budget_s           # noqa: E731
     out = []
-    if renderer == "cycles" and (s := math.floor(samples * k)) >= 1:
-        out.append({"change": "samples", "to": s, "text": f"samples {s} (now {samples})"})
-    if (w := math.floor(width * math.sqrt(k) / 2) * 2) >= 64:
-        out.append({"change": "width", "to": w, "text": f"width {w} (now {width})"})
+    s = renderer == "cycles" and (_largest(1, samples - 1, lambda n: fit("samples", n)) if at else math.floor(samples * k))
+    if s and s >= 1:
+        out.append({"change": "samples", "to": s, "text": f"samples {s} (now {samples})" + (f", about {human(at('samples', s))}" if at else "")})
+    w = (_largest(32, width // 2 - 1, lambda x: fit("width", 2 * x)) or 0) * 2 if at else math.floor(width * math.sqrt(k) / 2) * 2
+    if w >= 64:
+        out.append({"change": "width", "to": w, "text": f"width {w} (now {width})" + (f", about {human(at('width', w))}" if at else "")})
     if renderer == "cycles":
         out.append({"change": "quality", "to": "fast", "text": "quality fast (Storm, a draft; far quicker)"})
     return out
 
 
+def _largest(lo: int, hi: int, ok) -> int | None:
+    """The largest n in lo..hi with ok(n), for an ok that holds up to some n and not past it; None when ok(lo) fails."""
+    if hi < lo or not ok(lo):
+        return None
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        lo, hi = (mid, hi) if ok(mid) else (lo, mid - 1)
+    return lo
+
+
+def seconds_at(m: dict, s: dict, frames: int, mp4: bool):
+    """at(change, value) for fitting_settings: the job's seconds with samples or width (the height following) changed."""
+    def at(change: str, v: int) -> float:
+        t = {**s, "samples": v} if change == "samples" else {**s, "width": v, "height": max(2, round(s["height"] * v / s["width"] / 2) * 2)}
+        return scale(m, t, frames, mp4)["seconds"]
+    return at
+
+
 def over_budget_text(estimate_s: float, budget_s: float, fits: list[dict]) -> str:
     texts = "; ".join(f["text"] for f in fits) or "nothing small enough by one setting alone: shorten the range with start / end"
     return (f"is estimated at {estimate_s / 60:.1f} min, over the {budget_s / 60:.1f} min budget. Try one of: {texts}. "
-            "(Assumption: time follows samples and pixels; denoising and encoding do not shrink, so allow some margin.)")
+            "(Measured on this machine; start-up and encoding do not shrink, and a busy graphics card is slower, so allow some margin.)")
 
 
 def sample_factor(m: dict, samples: int) -> float:
     """A frame's time at `samples` over its time at the probe's samples: the probe's measured sample curve
     (estimate_job), straight between its points on a log scale of samples, carried on past them; below its first point
-    in step with samples. No curve (Storm, or few samples): in step with samples."""
+    in step with samples. No curve (Storm, or few samples): in step with samples. Never lower for more samples (a noisy
+    curve point above 1 is held at 1), so asking for fewer samples never estimates longer."""
     S, pts = m.get("samples") or 0, m.get("curve") or []
     if not S or not samples:
         return 1.0                                               # Storm: no samples
     if len(pts) < 2:
         return samples / S
+    pts = [[n, min(v, 1.0)] if n < S else [n, v] for n, v in pts]
     if samples <= pts[0][0]:
         return pts[0][1] * samples / pts[0][0]
     (n0, v0), (n1, v1) = next(((a, b) for a, b in zip(pts, pts[1:]) if samples <= b[0]), pts[-2:])
@@ -142,12 +161,13 @@ def render_estimate(ctx, args):
         plan.append((i, settings_of(shot, i, args), draw.scene_of(d, sid)))
 
     def job_fn(job):
-        rows, total = [], 0.0
+        rows, total, at = [], 0.0, None
         for n, (i, s, scene) in enumerate(plan):
             job.progress(n, len(plan), f"Measuring {i['id']}…")
             m = estimate_job.measure(scene, i, s, ctx.tool, make_engine=make_engine)
             frames = s["end"] - s["start"] + 1
             e = scale(m, s, frames, mp4=frames > 1)
+            at = seconds_at(m, s, frames, frames > 1)
             total += e["seconds"]
             how = ("kept from an earlier probe of this same scene" if m["cached"] else "measured now") + \
                 f': frame {m["frame"]} at {m["probe"]["size"][0]}×{m["probe"]["size"][1]} took {m["probe"]["ms"][1] / 1000:.1f} s warm' + \
@@ -156,7 +176,7 @@ def render_estimate(ctx, args):
                          **e, "how": how, "gpu_busy": estimate_job.card_note(m), "probe_picture": m["picture"],
                          "measurement": {k: v for k, v in m.items() if k != "picture"}})
         budget = args["budget_min"] * 60 if "budget_min" in args else None
-        fits = fitting_settings(total, budget, "cycles", rows[0]["samples"], rows[0]["width"]) if budget and len(rows) == 1 else []
+        fits = fitting_settings(total, budget, plan[0][1]["renderer"], rows[0]["samples"], rows[0]["width"], at) if budget and len(rows) == 1 else []
         lines = [f'{r["shot"]}: {r["text"]} ({r["width"]}×{r["height"]}, {r["samples"]} samples; {r["how"]}; slowest part: {r["slowest_part"]}).'
                  for r in rows]
         if note := next((r["gpu_busy"] for r in rows if r["gpu_busy"]), ""):

@@ -6,8 +6,8 @@ kept by scene) scaled by rostrum3d.mcp.estimate.scale, exactly as the render_est
 alters samples, size or frames re-scales the kept measurement at once; a change to the scene (or opening the sheet with
 nothing kept) measures again 0.4 s later, in the background on its own engine, never while one of our renders runs.
 
-While it measures, the row says a first guess at once ("About 40 s, a first guess · measuring…", render_guess.py), so
-the sheet is never just "Measuring…" and the row does not change size when the number lands. It never measures for ever: from the moment it says it, a deadline (the probe's budget plus the wait for the
+While it measures, the row says "Measuring…" (no guess from elsewhere: render_guess.py says why they were wrong), its
+lines' places kept so the row does not change size when the number lands. It never measures for ever: from the moment it says it, a deadline (the probe's budget plus the wait for the
 card) runs on the window's clock; when it passes, the probe's engine is ended by its PID and the row says "Couldn't
 measure: <why>". An answer from a probe given up on is dropped. `use_recorded(m)` answers from a fixed measurement and
 never probes (the layout check: fast and certain; the real probe is proved by tools/estimate_check.py).
@@ -23,7 +23,6 @@ from rostrum3d.engine import Engine, own_pids
 from rostrum3d.mcp.estimate import human, scale
 from rostrum3d.runtime import find_exe
 
-from . import render_guess
 
 DELAY_MS = 400
 DEADLINE_S = estimate_job.BUDGET_S + 30   # the probe's own budget, plus waiting for the card and the engine's start
@@ -71,18 +70,8 @@ class Estimate(QObject):
     @Property(str, notify=changed)
     def text(self):
         if self._state == "measuring":
-            return self._first_guess()
+            return "Measuring…"                         # never a guess (render_guess.py: they were wrong)
         return self._error if self._state == "failed" else self._e.get("text", "")
-
-    def _first_guess(self) -> str:
-        """"About 40 s, a first guess · measuring…" (render_guess: this computer's last Render, else the reference laptop)."""
-        try:
-            scene, _, s, frames = self._sheet.plan_now()
-            g = render_guess.guess_job(scene, s, frames, self._exe)
-        except Exception:  # noqa: BLE001  nothing to guess from: the plain word
-            return "Measuring…"
-        w = render_guess.words(g, False)
-        return f"{w[0].upper()}{w[1:]} · measuring…"
 
     @Property(str, notify=changed)
     def how(self):

@@ -16,7 +16,7 @@ import json
 import sys
 import threading
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import Signal
 from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
 
 ViewProvider = ImageProvider
@@ -54,8 +54,8 @@ class ViewRenderer(PictureWorker):
     #   normal: where the surface was hit and which way it faces)
     notice = Signal(str)         # the engine was started again (never silent)
     copiesInfo = Signal(object)  # the scene reply's copies info ({copies id: {count, seen, camera}}), when a scene was loaded
-    rebuilding = Signal(bool)    # an undo / redo's scene whose clay changed is being loaded (up to ~1.5 s in which
-    #   the window's view can't draw): the viewport shows "Updating the clay…" from the frame before until it lands
+    rebuilding = Signal(bool)    # an undo / redo's scene whose clay changed is being loaded (up to ~1.5 s, on the
+    #   view's worker: the window keeps drawing, the view its picture from before): "Updating the clay…" until it lands
 
     def __init__(self, parent=None, link=None):
         super().__init__("view3d", parent)
@@ -89,11 +89,10 @@ class ViewRenderer(PictureWorker):
             clays, before, stepping = clay_key(scene), self._clays, self.stepping
             self._clays, self.stepping = clays, False
             if stepping and before is not None and clays and clays != before:
-                # the clay is built again in the view's own drawing step, which holds the whole window's picture: say
-                # so first, one frame ahead, so the sign is what shows while it builds (never a silent freeze)
+                # the clay is built again (on the view's worker, WindowCore::runs_aside): the view keeps its picture
+                # from before the undo meanwhile, so say that it is coming
                 self._rebuild = True
                 self.rebuilding.emit(True)
-                return QTimer.singleShot(40, lambda: (self.link._post_line(line, self._loaded), self.link.show(req)))
             self.link._post_line(line, self._loaded)
         self.link.show(req)
 

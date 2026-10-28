@@ -35,7 +35,7 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
    sits on the face, sized for it (about a sixth of the face's width there), and its mirrored copy appears on the
    other side and follows it. Drag it with the arrows, or type its size in the panel. Both stay on the face when
    you pose the body later.
-6. **Colour.** Select the body and click the small coloured square beside **Base colour** (under its **Material ▾**):
+6. **Colour.** Select the body and click the small coloured square beside **Base colour** (right under its **Material ▾**):
    pick an orange. New clays share the project's grey "Clay"; the first colour change gives this clay its own copy, so
    other clays stay grey. Select an
    eye, click its material ball, choose **Glossy plastic** under **Start from**, then set its Base colour to black.
