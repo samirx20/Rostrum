@@ -79,9 +79,13 @@ def pose_vectors(doc_data: dict, comp: dict, times: list[float]) -> tuple[dict[s
     if not rigs:
         return {}, []
     ask, out, notes = placement.asker(doc_data, comp["id"], (min(times), max(times))), {}, []
+    chains = edge_cut.rig_chains(comp, set(rigs))
     for rid, ids in rigs.items():
         found, bad = [], set()
         for t in times:
+            if not edge_cut.shown_at(comp, t, rid, chains[rid]):
+                found.append({})                        # off stage: nothing to measure, and no part is blamed for it
+                continue
             got = _centres(ask, t, [i for i in ids if i not in bad], placement)
             if len(got) < len(ids) - len(bad):          # some part fell out: remember it, so the next asks stay whole
                 bad |= {i for i in ids if i not in got and i not in bad}

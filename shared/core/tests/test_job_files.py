@@ -38,7 +38,7 @@ def test_another_programs_stuck_job_is_seen_and_stopped(tmp_path, monkeypatch):
         here.cancel(job_id)
         assert owner.stdout.readline().strip() == "cancelled"
         owner.wait(10)
-        assert job_files.read(job_id) is None            # its file went with the job
+        assert job_files.read(job_id)["status"] == "cancelled"   # its file keeps its end (a later session reads it)
     finally:
         if owner.poll() is None:
             owner.kill()

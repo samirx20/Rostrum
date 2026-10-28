@@ -9,7 +9,7 @@ command (a render, a look) is still there for the next. The server opens and sav
     python shared/mcp/call.py --name agent-title -- <server command …> :: tools        # the tools and their arguments
     python shared/mcp/call.py … :: render_video '{"wait": true}'              # waits (up to 50 s) and answers with the file
     python shared/mcp/call.py … :: render_video '{}' :: inspect_job '{"job_id": "JOB", "wait_s": 25}'
-    python shared/mcp/call.py --name agent-title -- <server command …> :: stop  # end the session and its server
+    python shared/mcp/call.py --name agent-title -- <server command …> :: stop  # end the session and its server (once its jobs end)
 
 Several `:: tool args` in a row run in order. `JOB` in a later call's arguments is replaced by the last reply's job id
 (in the same command). Arguments may be `@args.json` (a file; a relative path is from the current folder). Every
@@ -21,13 +21,16 @@ says which step failed and which were skipped, and the exit code is 1.
 
 Options before `--`:
     --name NAME       the client name the server records (`agent:NAME`). Default cli-agent.
-    --session KEY     the session to use. Default: made from --name, the server command and the current folder.
+    --session KEY     the session to use. Default: made from --name, the server command, the current folder and the
+                      ROSTRUM* / PYTHONPATH environment (the server runs with the environment that started it).
                       With a running --session the server command may be left out (`call.py --session KEY :: tool …`).
-    --stop            end the session and its server (same as a last `:: stop`).
+    --stop            end the session and its server (same as a last `:: stop`); a job still running finishes first.
     --once            no session: start the server for this command only and end it after (jobs end with it).
 
-A session ends itself after 30 min with no call (ROSTRUM_CALL_IDLE_S), and when its server ends. If it ended or died,
-the next command says so, starts a fresh one, and tells you that jobs started in the old one are gone.
+A session ends itself after 30 min with no call (ROSTRUM_CALL_IDLE_S), but never while its server has a job waiting or
+running, and when its server ends. A job outlives its session's end: after a stop or the idle end, inspect_job with its
+id in the next session reads it (running, then its result). If the session died (killed, the server crashed), the next
+command says so, starts a fresh one, and tells you that jobs started in the old one are gone.
 Sessions are listed in <ROSTRUM_DATA or ~/.rostrum>/call-sessions/ (one .json each, plus its .log).
 """
 from __future__ import annotations
@@ -51,7 +54,8 @@ def folder() -> Path:
 
 
 def session_key(name: str, server: list[str]) -> str:
-    digest = hashlib.sha1(json.dumps([name, server, os.getcwd()]).encode()).hexdigest()[:10]
+    env = sorted((k, v) for k, v in os.environ.items() if k.upper().startswith("ROSTRUM") or k.upper() == "PYTHONPATH")
+    digest = hashlib.sha1(json.dumps([name, server, os.getcwd(), env]).encode()).hexdigest()[:10]
     return f"{re.sub(r'[^A-Za-z0-9_.-]', '_', name)[:40]}-{digest}"
 
 
@@ -145,11 +149,15 @@ def stop(key: str) -> int:
     if not s:
         print(f"No session {key} is running.")
         return 0
-    s.ask({"op": "stop"})
+    running = s.ask({"op": "stop"}).get("running", 0)
     until = time.monotonic() + 15
-    while _read(folder() / f"{key}.json") and time.monotonic() < until:   # gone once its server has ended
+    while _read(folder() / f"{key}.json") and time.monotonic() < until:   # gone at once (it takes no more calls)
         time.sleep(0.1)
-    print(f"Session {key} ended (process {record['pid']}) with its server; its jobs are gone.")
+    if running:
+        print(f"Session {key} takes no more calls; it ends (process {record['pid']}) with its server once its {running} "
+              "running job(s) end. inspect_job with a job's id in a new session reads it, then its result.")
+    else:
+        print(f"Session {key} ended (process {record['pid']}) with its server.")
     return 0
 
 

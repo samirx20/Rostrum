@@ -42,11 +42,13 @@ class Sampled:
         except Exception as e:      # noqa: BLE001  (no engine: the character checks are skipped, said in a note)
             self.notes.append(f"characters not measured for staging: {e}")
             return [{} for _ in self.times]
-        out = []
+        out, chains = [], edge_cut.rig_chains(self.comp, set(rigs))
         for t in self.times:
             inv = _invert(view.world_matrix(self.comp, view.shot(self.comp, t), {"screenLock": True}))
             row = {}
             for rid, ids in rigs.items():
+                if not edge_cut.shown_at(self.comp, t, rid, chains[rid]):
+                    continue
                 quads = [[_apply(inv, *placement.comp_point(p, x, y)) for x, y in ((0, 0), (p["w"], 0), (p["w"], p["h"]), (0, p["h"]))]
                          for p in edge_cut.ask_drawn(ask, t, ids).values() if inv and p.get("w") and p.get("h")]
                 if quads:
