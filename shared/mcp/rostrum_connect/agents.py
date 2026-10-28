@@ -35,6 +35,7 @@ class Agent:
     cli_list: tuple | None = None
     deeplink: str | None = None
     button_cli: bool = True        # False: the agent's CLI rewrites the person's whole file, so Add / Remove edit it ourselves
+    know_by_module: bool = False   # True: a hand-made entry that runs our server (`-m <module>`) also counts as ours
     restart: str = "Close and reopen {name}."
     check: str = "Ask {name} to list its tools; rostrum-2d and rostrum-sound should be there."
 
@@ -93,13 +94,14 @@ AGENTS = (
           restart="In Cascade press the refresh button next to the plugins, or restart Windsurf.",
           check="Open the “…” menu in the Cascade panel → MCPs; both servers should be listed. "
                 "(Unsure which file your Windsurf reads? Use its “Open MCP config file” button.)"),
-    Agent("gemini", "Gemini CLI", "https://geminicli.com/docs/tools/mcp-server/", ("gemini",),
-          _same("~/.gemini/settings.json"), "json", ("mcpServers",), "std", detect_paths=("~/.gemini",),
-          cli_add=("gemini", "mcp", "add", "{env:-e}", "-s", "user", "{name}", "{cmd}"),
-          cli_remove=("gemini", "mcp", "remove", "-s", "user", "{name}"), cli_list=("gemini", "mcp", "list"),
-          restart="Start a new Gemini CLI session.", check="In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. "
-                "Gemini switches every such server off in a folder you haven't trusted (it then says Disabled): "
-                "start Gemini CLI in your project folder and say yes when it asks whether to trust it."),
+    # Gemini CLI is not listed: Google stopped it for personal accounts on 2026-06-18 and sends people to Antigravity.
+    Agent("antigravity", "Antigravity", "https://codelabs.developers.google.com/google-workspace-mcp-antigravity", ("agy",),
+          _same("~/.gemini/antigravity/mcp_config.json"), "json", ("mcpServers",), "std",
+          detect_paths=("~/.gemini/antigravity",), know_by_module=True,
+          restart="In Antigravity open the “…” menu of the Agent panel → MCP Servers → Manage MCP Servers and press Refresh "
+                  "(or start a new `agy` session).",
+          check="In the Agent panel's “…” menu choose MCP Servers → Manage MCP Servers (or type /mcp in `agy`); "
+                "rostrum-2d and rostrum-sound should be listed. “View raw config” shows the file Antigravity reads."),
     Agent("opencode", "opencode", "https://opencode.ai/docs/mcp-servers/", ("opencode",),
           _same("~/.config/opencode/opencode.json"), "jsonc", ("mcp",), "opencode",
           detect_paths=("~/.config/opencode",), candidates=("~/.config/opencode/opencode.jsonc",), restart="Start a new opencode session.",

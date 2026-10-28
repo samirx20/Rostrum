@@ -59,8 +59,14 @@ def agents_found() -> list[Found]:
     return sorted((_found(a) for a in agents.AGENTS), key=lambda f: not f.installed)
 
 
-def _ours(entry) -> bool:
-    return agents.entry_env(entry).get("ROSTRUM_ADDED_BY") == servers.MARKER["ROSTRUM_ADDED_BY"]
+def _ours(entry, a: agents.Agent | None = None, name: str = "") -> bool:
+    if agents.entry_env(entry).get("ROSTRUM_ADDED_BY") == servers.MARKER["ROSTRUM_ADDED_BY"]:
+        return True
+    if not (a and a.know_by_module and isinstance(entry, dict)):     # a hand-made entry that starts our own server
+        return False
+    app = next((v for v in servers.APPS.values() if v[0] == name), None)
+    args = entry.get("args") or []
+    return bool(app) and "serverUrl" not in entry and list(args[:2]) == ["-m", app[1]]
 
 
 def _entries(a: agents.Agent) -> dict:
@@ -70,14 +76,16 @@ def _entries(a: agents.Agent) -> dict:
 
 def entries(agent_id: str) -> dict:
     """Every MCP server name in the agent's user file → True when Rostrum added it."""
-    return {n: _ours(e) for n, e in _entries(agents.get(agent_id)).items()}
+    a = agents.get(agent_id)
+    return {n: _ours(e, a, n) for n, e in _entries(a).items()}
 
 
 def status(agent_id: str, app: str) -> Status:
     a, name = agents.get(agent_id), servers.entry(app).name
     e = _entries(a).get(name)
-    return Status(a, app, _found(a).installed, agents.user_file(a), e is not None and _ours(e),
-                  e is not None and not _ours(e), None if e is None else _plain(e))
+    ours = e is not None and _ours(e, a, name)
+    return Status(a, app, _found(a).installed, agents.user_file(a), ours,
+                  e is not None and not ours, None if e is None else _plain(e))
 
 
 def _plain(e):
@@ -148,7 +156,7 @@ def remove(agent_id: str, app: str) -> Result:
         _run([cli, *agents.render_argv(a.cli_remove, srv, a.shape)[1:]])
     else:
         _edit(a, lambda d: table(d.data, a.key).pop(srv.name, None))
-    before.tidy(st.file, a.fmt, a.key, _drop_table, _ours)     # the last of ours gone: the file as it was before us
+    before.tidy(st.file, a.fmt, a.key, _drop_table, lambda e: _ours(e, a, srv.name))   # the last of ours gone: the file as it was before us
     _check_listed(a, app, False, "to remove it")
     return Result(True, f"{srv.name} is removed from {a.name}'s settings ({st.file}). {a.restart.format(name=a.name)}",
                   st.file, saved, bool(cli and a.cli_remove))
