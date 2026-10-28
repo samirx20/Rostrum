@@ -5,8 +5,9 @@ Fragments show how a tool is called; the numbers are placeholders.
 
 ## Layout
 
-A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchorX` / `anchorY` 0–1 across its box;
-0 = left / top). A group is the container: its children are placed from the group's own top-left (0, 0).
+A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchor="top-left"`, `"left"`, `"center"` …
+or `anchorX` / `anchorY` 0–1 across its box); with no `x`, `y` it sits at the parent's centre. A group's children are
+placed from the group's own top-left (0, 0).
 
 **Lay screens out with boxes, not x / y.** `row`, `column`, `grid` and `stack` (guide `lay-out-a-screen`) are groups
 with a layout: they place and size what is made inside them, with padding, gap, align and justify as on a web page,
@@ -31,13 +32,13 @@ that fits its content grows right and down from its top-left, as a design tool's
 `bgStrokeColor`, `bgStrokeWidth`). With auto layout and hugging on, the box hugs the layers with the `padding` all
 round, so a lower-third is one group: a name with a pill around it that grows with the name (`bg=`, `radius=` on a
 `row` or `column` set them). In the settings panel
-it is the group's Background section. A hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the panel), so a
-longer name pushes the pill's right end only. Move the anchor off the middle (`anchorX=1` grows leftward) or turn `hugPin`
-off and it grows around its anchor instead. In a script, give the group its anchor (`anchorX=0` as below puts the left
-edge at `x`); with the middle anchor the edge is where the group's own `w` × `h` box puts it. Files made before this keep their old look (`hugPin` off) until you turn it on.
+it is the group's Background section. On the canvas a hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the
+panel), so a longer name pushes the pill's right end only; turn it off and it grows around its anchor. A script's box
+grows around its anchor (`hugPin=True` to pin it): `anchor="left"` as below keeps the left edge at `x`, `"right"` grows
+leftward, `"center"` both ways. Files made before this keep their old look (`hugPin` off) until you turn it on.
 
 ```python
-with row("lower_third", x=120, y=900, origin="left-center", padding=18, bg="#1d4ed8", radius=999):
+with row("lower_third", x=120, y=900, anchor="left", padding=18, bg="#1d4ed8", radius=999):
     text("name", body="Ada Lovelace", size=44)
 ```
 
@@ -265,7 +266,7 @@ Effects are a layer's look, in order (`effect.add`, or `item.effect(type, id, ..
 | `rough` | Moves the layer's pixels by smooth noise, so every edge wobbles as if drawn or cut by hand: `amount` (px an edge moves at most), `size` (px, how wide one bump is), `detail` (1–8: finer wobble on top), `boil` (a new wobble every that many frames; 0 = still), `seed`. Works on any layer, a group (all its layers warp together), text and pictures. |
 
 ```python
-card = shape("glass", shape="rect", w=520, h=320, radius=32, x=960, y=540, fill="#ffffff")
+card = shape("glass", shape="rect", w=520, h=320, radius=32, fill="#ffffff")      # no x / y: centred
 card.effect("backdrop", id="frost", radius=40, fillAmount=0.2, saturate=1.4)
 card.effect("shadow", id="lift", dy=30, radius=60, strength=0.4)
 ```
@@ -289,7 +290,7 @@ A card with a front and a back is two groups in one, each turned edge-on in turn
 back never shows mirrored. At 90° a face is edge-on and invisible, so the swap at that moment can't be seen:
 
 ```python
-with group("card", x=960, y=540):
+with group("card"):                                    # centred, each face too
     with group("front") as front:
         shape("front_bg", w=360, h=480, radius=24, fill="#f4efe6")
         ...                                            # the front's layers

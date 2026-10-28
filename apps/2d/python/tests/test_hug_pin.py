@@ -9,7 +9,8 @@ from fake_layout import FakeEngine
 
 SRC = '''
 comp("c", width=1000, height=400, fps=10, duration=1)
-with group("g", x=300, y=200, w=200, h=100, layout="row", padding=0, sizeW="fit", sizeH="fit") as g:
+with group("g", x=300, y=200, w=200, h=100, layout="row", padding=0, sizeW="fit", sizeH="fit",
+           hugPin=True) as g:
     shape("a", w=200, h=100)
 g.key("w", {0: 200})
 '''
