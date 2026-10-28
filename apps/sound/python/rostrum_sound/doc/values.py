@@ -209,9 +209,10 @@ def fields_of(params: list[Param], what: str):
     return rule, {"type": "object", "properties": {q.name: q.json_schema() for q in params}}
 
 
-def curve(name, x: tuple, y: tuple, **kw) -> Value:
+def curve(name, x: tuple, y: tuple, x_hint: str | None = None, **kw) -> Value:
     """Points [[x, y], …] in x order, x in x = (lo, hi), y in y = (lo, hi) (hi None = no top): a note's
-    dynamics (fraction of its length -> level) or bend (seconds into it -> cents)."""
+    dynamics (fraction of its length -> level) or bend (seconds into it -> cents). `x_hint`: what an x out of range
+    most likely meant and what to write instead (a note's dynamics given in song seconds)."""
     def rule(p, v, where):
         if not isinstance(v, list) or not v:
             _bad(p, v, where, "is not a list of points", ["[[x, y], …]"])
@@ -222,7 +223,8 @@ def curve(name, x: tuple, y: tuple, **kw) -> Value:
                 _bad(p, v, where, "is not a list of points", ["[[x, y], …]"])
             for c, (lo, hi), axis in ((pt[0], x, "x"), (pt[1], y, "y")):
                 if c < lo or hi is not None and c > hi:
-                    _bad(p, v, where, f"has {axis} {c} outside {lo} … {hi if hi is not None else '∞'}")
+                    _bad(p, v, where, f"has {axis} {c} outside {lo} … {hi if hi is not None else '∞'}", (),
+                         x_hint if axis == "x" else None)
             if last is not None and pt[0] < last:
                 _bad(p, v, where, "is not in order", ["points sorted by their first number"])
             last = pt[0]

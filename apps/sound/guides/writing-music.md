@@ -87,6 +87,9 @@ Give every part its own range and its own job, and the mix sorts itself out:
 - **Density follows the form:** start with a few parts and add one at a time. Something new should enter at every
   section; taking things out before a peak makes the peak bigger.
 - **Doubling** a line an octave up (`vary(line, "double")`) makes it bigger without making it busier.
+- **When a section adds parts, lift what was there.** A piano, pad and guitar that all stay in the low middle when
+  drums, bass and strings arrive pile up at 250 Hz–1 kHz: the mix gets louder but darker. Move one of them up an
+  octave, or thin its chord, as the new parts come in; `look_sound` (`what: "spectrum"`) shows the bands before and after.
 - **Rhythm layers:** long notes (a pad), a middle pulse (comping, an arpeggio) and fast detail (hats, 16th notes).
   Too many parts at the same speed blur together.
 
@@ -95,7 +98,11 @@ Give every part its own range and its own job, and the mix sorts itself out:
 - **Shape every phrase:** it swells towards its high point and falls away after it. In a script, use
   `t.phrase(start, end, vel=[(0, 0.55), (0.6, 0.85), (1, 0.6)])` on a part, or `vary(line, "dynamics:0.6>1.0")`.
 - **Shape the whole piece too:** the expression lane `t.dynamics([(time, level), …])` gives a swell over several bars,
-  the way strings and brass actually play.
+  the way strings and brass actually play. A note's own `dynamics=[(0, 0.4), (1, 1.0)]` runs across that one note
+  (x is the fraction of its length), not song time.
+- **A build to one big moment** under a loudness target (a crescendo, a hit, a tutti): how wide to make it, how long
+  the loud moment must last so the limiter doesn't flatten it, and how to stage the hit: `inspect_guide
+  'scoring-to-picture'` › "Builds, hits and climaxes under a loudness target".
 - **Sustained instruments** (strings, brass, pads) need long notes and slow swells. Short notes on a pad sound like a
   keyboard demo. **Plucked and struck instruments** (piano, guitar, marimba) need movement: broken chords, arpeggios,
   pedal.

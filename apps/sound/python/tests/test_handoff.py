@@ -86,3 +86,29 @@ def test_a_given_name_is_the_mixs_file_name_and_never_a_stems(tmp_path):
     assert Path(r["file"]).name == "Launch_ _theme_.wav"
     r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test", name="drums")
     assert Path(r["file"]).name == "drums 2.wav" and Path(r["stems"]["drums"]).name == "drums.wav"
+
+
+def test_a_render_refused_over_an_out_of_range_note_names_every_such_note_and_the_fix(tmp_path, monkeypatch):
+    """The engine names only the first note it met, by its sample file; the reply names the track, every such note and
+    what to change, so one fix pass mends them all (a refused render is right; a guess is not)."""
+    from rostrum_sound import note_ranges
+
+    class Refuses(FakeEngine):
+        def request(self, *a, **k):
+            raise RuntimeError("the mix C:/sounds/ViolinEnsSusVib.sfz: no sample for E6 (key 88) at velocity 61; the instrument plays G3–D6")
+    monkeypatch.setattr(note_ranges, "problems", lambda data, engine: [
+        {"kind": "out-of-range", "item": "violins", "message": 'Track "violins" has notes its sound can\'t play (E6, F6): it plays G3–D6'}])
+    doc = Document.new(KIND, folder=tmp_path, item="song")
+    doc.save()
+    with pytest.raises(RostrumError) as e:
+        handoff.render(tmp_path, doc, Refuses(), {}, "agent:test")
+    said = str(e.value)
+    assert 'Track "violins"' in said and "E6, F6" in said and "an octave lower" in said
+
+
+def test_a_notes_dynamics_given_in_song_seconds_says_it_is_a_fraction_of_the_note():
+    from rostrum_sound.doc.playing import NOTE
+    dyn = next(p for p in NOTE if p.name == "dynamics")
+    with pytest.raises(RostrumError) as e:
+        dyn.check([[0, 0.5], [31, 1.0]], "note")
+    assert "fraction of its length" in e.value.hint and "track.dynamics" in e.value.hint
