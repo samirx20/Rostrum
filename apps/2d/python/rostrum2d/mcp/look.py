@@ -8,7 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import render, video_frames
+from . import look_wash, render, video_frames
 from .geometry import comp_size, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
@@ -41,7 +41,9 @@ def look_frame(ctx, args):
     sheet from `start`, `end`, `count` (evenly spaced). A sheet is for the whole motion at a glance; for detail look at
     one frame (960 px, or `width` up to the comp's), a sheet of 2-4 moments, or `area` [x, y, w, h] (comp px): only that
     part, drawn sharp at `width` (a zoom: a mouth, a hand, an edge).
-    Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
+    Also lists which layers are on screen then (approximate: judged from their values, not from pixels), and names a
+    painted area (a drawing's wash: a masked stroke, as paint.wash lays; 1 % of the frame or more) that is one flat value at frame
+    size: its lightness spread, how much darker its edge is and its grain, in % (`washes` in the data, every area). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait.
     `video`: the path of a finished mp4 (render_video's `video`) with `times` (or one `time`): the sheet is made of the film's
     own frames, so you look at the export itself."""
@@ -69,8 +71,10 @@ def look_frame(ctx, args):
             raw = Path(tmp) / "raw.png"
             render.stills(ctx.tool, scene, [(t, raw)])
             w, h = sheet.scaled_copy(raw, width, dest)
-        return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.',
-                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen}, [dest], [dest],
+        washes = look_wash.facts(comp, t)
+        return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.'
+                     + look_wash.words(washes),
+                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen, "washes": washes}, [dest], [dest],
                      scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)

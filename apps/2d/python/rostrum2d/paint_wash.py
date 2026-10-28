@@ -13,7 +13,8 @@ How it is laid (all ordinary kit items, so it replays, undoes and draws on with 
   canvas, the canvas's own outline. The passes running past it never grow the drawing (paint_grow: a masked mark
   reaches no further than its mask).
 Every brush setting (brush, hardness, opacity, granulation, edge_darken, paper, wobble …) goes to each stroke as given;
-left out, the drying is a watercolour's (`WATER`: a dried edge, some granulation, pooling), each turned off by 0.
+left out, the drying is a watercolour's (`WATER`: a dried edge, granulation, pooling, the paper's tooth showing) and a
+box / outline's edge wanders (`bleed` from the size), each turned off by 0.
 """
 from __future__ import annotations
 
@@ -28,7 +29,10 @@ from rostrum_paint.ops import build, canvas_of
 from .kind import REGISTRY as R
 
 SAMPLE = 12             # px between the outline's points once it is roughened
-WATER = {"edge_darken": 0.4, "granulation": 0.3, "pooling": 0.5}   # a wash's drying, left out: a watercolour's
+# A wash's drying, left out: a watercolour's, strong enough to read in a 1920x1080 frame seen small (at 0.4 / 0.3 / 0.5
+# and no grain the rim, puddles and speckle averaged away below ~480 px wide and a wash read as a flat fill).
+WATER = {"edge_darken": 0.85, "granulation": 0.7, "pooling": 0.9, "grain": 0.3}
+BLEED_SHARE, BLEED_MAX = 0.2, 30    # a box / outline's edge, left out, wanders up to this share of the size (≤ this px)
 
 
 def _box(points) -> tuple[float, float, float, float]:
@@ -51,10 +55,12 @@ def outline(region, w: int, h: int) -> list[list[float]] | None:
 
 
 def _noise(t: float, seed: int) -> float:
-    """Smooth, 0..1, from a few sines with phases from the seed (the same edge every run)."""
-    r = [((seed * 2654435761 + k * 40503) % 1000) / 1000 for k in range(3)]
-    v = math.sin(t * 1.0 + 6.28 * r[0]) + 0.6 * math.sin(t * 2.3 + 6.28 * r[1]) + 0.35 * math.sin(t * 5.1 + 6.28 * r[2])
-    return (v / 1.95 + 1) / 2
+    """Smooth, 0..1, from a few sines with phases from the seed (the same edge every run): long swells plus a ripple a
+    few tens of px across, so the edge wanders at a small scale too (a long-wave-only edge reads as a bent ruler)."""
+    r = [((seed * 2654435761 + k * 40503) % 1000) / 1000 for k in range(5)]
+    v = (math.sin(t * 1.0 + 6.28 * r[0]) + 0.6 * math.sin(t * 2.3 + 6.28 * r[1]) + 0.35 * math.sin(t * 5.1 + 6.28 * r[2])
+         + 0.3 * math.sin(t * 11.3 + 6.28 * r[3]) + 0.2 * math.sin(t * 23.7 + 6.28 * r[4]))
+    return (v / 2.45 + 1) / 2
 
 
 def bled(poly: list, bleed: float, seed: int) -> list:
@@ -104,10 +110,14 @@ def plan(region, w: int, h: int, values: dict) -> tuple[dict | None, list[dict]]
     poly = outline(region, w, h)
     to, down = v.pop("to", None), v.pop("direction", "across") == "down"
     bands = int(v.pop("bands", 10)) if to else 1
-    overlap, bleed, edge = v.pop("overlap", None), float(v.pop("bleed", 0.0)), float(v.pop("edge", 0.0))
+    overlap, bleed, edge = v.pop("overlap", None), v.pop("bleed", None), float(v.pop("edge", 0.0))
     if overlap is not None and not 0.05 <= overlap <= 1:
         raise ValueError(f"overlap {overlap}: rows are size × overlap apart, 0.05 .. 1 (left out: from the hardness)")
     x0, y0, x1, y1 = _box(poly) if poly else (0, 0, w, h)
+    if bleed is None:               # left out: the edge wanders a little, as a brushed edge does (0 = the region's own)
+        across = (x1 - x0) if down else (y1 - y0)
+        bleed = min(BLEED_MAX, BLEED_SHARE * float(v.get("size") or max(24.0, min(400.0, across / 5)))) if poly else 0.0
+    bleed = float(bleed)
     if poly:
         x0, y0, x1, y1 = x0 - bleed, y0 - bleed, x1 + bleed, y1 + bleed
     size = float(v.setdefault("size", round(max(24.0, min(400.0, ((x1 - x0) if down else (y1 - y0)) / 5)), 1)))
@@ -145,8 +155,9 @@ PARAMS = [Param.text("id", label="Id", importance="deep", help="Optional: the st
                        help="Rows this many brush sizes apart. Left out: as far apart as the hardness allows with no "
                             "paler lines between rows (0.16 at hardness 0.1, 0.28 at 0.3, 0.5 from 0.67); wider = "
                             "visible rows (a streaky, laid-in-strokes wash)"),
-          Param.number("bleed", label="Bleed", min=0, max=500, default=0, unit="px",
-                       help="The edge runs out unevenly past the region by up to this much (paint creeping into damp paper)"),
+          Param.number("bleed", label="Bleed", min=0, max=500, unit="px",
+                       help="The edge runs out unevenly past the region by up to this much (paint creeping into damp "
+                            "paper). Left out: a fifth of the size, at most 30 px; 0 = the region's own straight edge"),
           Param.number("edge", label="Edge softness", min=0, max=500, default=0, unit="px",
                        help="The edge blurred this wide (the paint mask's Feather); 0 = as crisp as the brush")]
 
@@ -155,9 +166,10 @@ PARAMS = [Param.text("id", label="Id", importance="deep", help="Optional: the st
              "back and forth past every side, so nothing is left bare; an edge that is soft (edge), runs unevenly "
              "(bleed) or neither; flat (one stroke) or graded (to, bands). Makes ordinary strokes and one paint mask "
              "(<id>_edge), one undo step; drawnSoFar paints them on pass by pass. Every "
-             "brush setting applies (granulation, edge_darken, pooling, bloom, paper, wobble …); left out, it dries like "
-             "watercolour (edge_darken 0.4, granulation 0.3, pooling 0.5; 0 turns one off); size defaults to a fifth "
-             "of the region.",
+             "brush setting applies (granulation, edge_darken, pooling, bloom, grain, paper, wobble …); left out, it dries like "
+             "watercolour strongly enough to read in a frame seen small (edge_darken 0.85, granulation 0.7, pooling "
+             "0.9, grain 0.3, and a box / outline's edge wanders by bleed = a fifth of the size, at most 30 px); 0 turns "
+             "any one off; size defaults to a fifth of the region.",
              target="paint", label="Wash", importance="secondary",
              params=[*REGION, *PARAMS, *(p for p in rostrum_paint.BRUSH)])
 def paint_wash(ctx, targets, args):
