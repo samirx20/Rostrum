@@ -39,7 +39,7 @@ with `name` (one instrument), `inspect_engine` what `instrument` (its recorded r
 |---|---|---|
 | `piano` | `grandPiano`, `acousticPiano`, `feltPiano` | concert grand (Salamander, Yamaha C5), A0–C8 |
 | `electricPiano` | `wurlitzer` | Wurlitzer EP200 electric piano |
-| `rhodes` | | Fender Rhodes Mark II electric piano, E1–E7 (F4–C#6 stretched from E4 and D6, so a melody there sounds thinner) |
+| `rhodes` | | Fender Rhodes Mark II electric piano, E1–E7 (F4–C#6 were not recorded: they are stretched from E4 and D6 and blended across B4–G5, so the tone darkens evenly there; a mono recording, widen it with `chorus` or `tremolo`) |
 | `organ` | `drawbarOrgan` | drawbar organ |
 | `pipeOrgan` | | pipe organ, loud registration |
 | `guitar` | `nylonGuitar` | classical nylon-string guitar |
@@ -56,7 +56,7 @@ with `name` (one instrument), `inspect_engine` what `instrument` (its recorded r
 | `violin` | | solo violin |
 | `cello` | | solo cello |
 | `harp` | | concert harp |
-| `brass` | `cinematicBrass` | brass section: tuba, trombone, horn, trumpet by pitch |
+| `brass` | `cinematicBrass` | brass section: tuba, trombone to D4, trumpet above (each recorded soft and loud; the horn is `horn`) |
 | `horn` | | French horn (the name is singular) |
 | `trumpet` | | trumpet |
 | `mutedTrumpet` | | trumpet with a straight mute: soft, nasal |
@@ -178,7 +178,7 @@ The range is read as the song was before the call. Operations' own arguments: `i
 
 ## Loudness: louder or cleaner (`maxLimit`)
 
-**A first render often lands 1 to 3 dB under the target (-16 LUFS for video): that is the default, not a failure. Do not leave it: the `render_mix` reply names the fix; `edit_loudness {"apply": "best"}` (or `keep_balance`) reaches the target in one call. A single track far below the others (`look_sound` `levels` shows each track's LUFS) is a level problem of its own: raise that track.**
+**A first render often lands 1 to 3 dB under the target (-16 LUFS for video): that is the default, not a failure. Do not leave it: the `render_mix` reply names the fix; `edit_loudness {"apply": "best"}` (or `keep_balance`) reaches the target in one call (with no loudness target on the master yet, the same call turns it on: render again, then call it once more). A single track far below the others (`look_sound` `levels` shows each track's LUFS) is a level problem of its own: raise that track.**
 
 A new song has gentle limiting on: the master's limiter may pull the loudest moment down by at most `maxLimit` (default 2 dB;
 the screen's **Most limiting**; the document takes 0 to 12 dB). A mix whose peaks stand further above its average loudness is

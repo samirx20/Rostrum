@@ -111,6 +111,46 @@ again with `look_music` (`events`, `by_stem: true`). A soft or masked start (str
 at all: read that stem's own row, not the mix's nearest onset. Whether a sound *fits* the image is decided by a
 person watching and listening; say so in your report.
 
+## 5. Builds, hits and climaxes under a loudness target
+
+A cue that grows to one big moment and must still measure -16 LUFS has a mechanical trap. **Integrated loudness is set
+by the loud stretches that last**: anything more than 10 LU under them is left out of the measurement. A hit that is
+loud for 0.3 s barely counts, so the master turns the whole piece up until the *build* carries the target, and then
+the build's peaks already touch the limiter before the hit arrives. The hit can't get louder than the ceiling, so it
+reads as just another note (measured on a thriller cue: build peaks at -1.3 dBTP before the hit, the same -1.3 at the
+hit, onset strength 1.0× a normal note). The cure is in the writing, not in the limiter:
+
+- **Let the loud moment last.** Write the hit or tutti to ring or hold for 3–6 s (a held brass and string chord with a
+  slow `dynamics` fall, a low piano cluster with the pedal down, timpani or a cymbal left to ring). Then the loud part
+  carries the integrated loudness and the build can stay quiet. A short stab followed by a quick drop leaves the
+  loudness to the build.
+- **Keep the build's peaks under the hit's.** Check `look_sound` (`what: "loudness"`): the highest sample in the
+  seconds before the hit should sit about 4–6 dB under the true-peak ceiling. If the build already reaches the ceiling,
+  thin it or lower it (percussive parts first: their peaks are high for their loudness), or lengthen the hit; do not
+  raise the build to "fill" it.
+- **A limiter warning on the hit is a writing question.** If `look_sound` says the hit is squashed, the build is
+  carrying the loudness. Lengthen the loud moment or lower the build's peaks before raising `maxLimit`.
+
+**A long crescendo (20–40 s).** The measured range of strong orchestral swells is wide: the first seconds 20–30 LU under
+the climax (short-term loudness, 3 s windows). Ways to get there with the tools:
+
+- Velocity is level: on a recorded instrument the gain follows velocity squared, so velocity 0.3 plays about 21 dB
+  under 1.0 and 0.5 about 12 dB under, and the soft samples are darker too. Start the sustained parts low (0.2–0.35).
+- Swell held notes with the track's expression lane, `t.dynamics([(0, 0.3), (bar(9), 0.7), (38.0, 1.2)])`: it
+  moves the level inside a note, as a bow or breath does. A note's own `dynamics` is a fraction of that note
+  (`[(0, 0.4), (1, 1.0)]` swells one note to its end), not song time.
+- Add parts in register order as it grows: low and middle first, then the top (violins high, flute, glockenspiel,
+  cymbal swell), so the sound gets brighter as well as louder. Doubling a line an octave up near the top adds the most.
+- Hold the very top back: the last 2–4 s before the climax are the steepest step (the strongest measured swells rose
+  6–10 LU in the last 3 s), and a beat of thinner texture just before the downbeat makes the arrival bigger.
+
+**The climax and the hit.** Put the attacks on the downbeat (timpani, cymbal, a low piano or brass note written on the
+marker) and let the sustained sound bloom after it: the loudest 3 s landing 1–2 s after the downbeat is how an
+orchestra sounds. Spread the hit across registers, a low note for weight and a bright high attack (crash, high piano,
+brass at full velocity) for edge. A short silence before it (0.3–0.6 s) makes the onset stand out. After the climax,
+settle over several seconds (overlapping chords stepping down, `dynamics` falling) rather than stopping everything on
+one beat.
+
 ## Sound from motion
 
 `edit_sounds_from_motion` reads a 2D animation's motion samples and suggests musical answers (a hit or note on a

@@ -172,6 +172,23 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
         raise
 
 
+def _range_fix(doc, engine, e) -> str:
+    """For a render the engine refused over a note its recorded sound can't play: every such note, by track, and the
+    fix, so one reply mends them all (the engine names only the first note it met, by its sample file). Refusing is
+    right (fail loudly: a file with notes silently dropped or moved is a broken file); being left to guess is not."""
+    if "no sample for" not in str(e):
+        return ""
+    from . import diagnose, note_ranges               # only on this failure: they ask the engine for ranges
+    try:
+        found = note_ranges.problems(doc.data, engine)
+    except Exception:  # noqa: BLE001  the engine's own words still stand
+        found = []
+    said = " ".join(p["message"] + "." for p in found)
+    return (f". {said} " if said else ". ") + (diagnose.FIXES["out-of-range"] + ": write them an octave lower or higher in "
+            "the script (or edit_document's note.transpose with semitones -12 / 12), leave that chord tone out, or give the "
+            "line to a sound that reaches it. inspect_diagnose lists every such note before a render")
+
+
 def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say, name="", sheet=None) -> dict:
     item = doc.item_id
     say("Rendering the mix and its stems" if stems else "Rendering the mix")
@@ -180,7 +197,7 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
         r = engine.request("render", schedule=schedule, out=str(part / deliver.mix_name(item)),
                            stems="all" if stems == "groups" else stems, stemsDir=str(part), **rng)
     except Exception as e:
-        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed: {e}") from e
+        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed: {e}{_range_fix(doc, engine, e)}") from e
     if not Path(r["file"]).is_file():
         raise RostrumError(codes.JOB_FAILED, "render", str(part), "the engine answered but wrote no mix")
     try:

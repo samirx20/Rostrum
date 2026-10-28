@@ -74,10 +74,9 @@ class Clock:
 
 def fix_pass(clock: Clock | None, render_s: float | None = None) -> str:
     """What a finished render's reply asks next: a concrete fix pass, and the time left for it."""
-    said = ("Next, a fix pass: listen to this render with look_music (events, beats, pitch) and look_sound (loudness, levels, spectrum, stereo), "
-            "name its three weakest moments with their times (a hit or stop that barely stands out from what is around it, a note or "
-            "chord that blurs into the next, a held sound that stays flat, a stretch too loud or too quiet for its place), change each "
-            "in the script and render_mix again to the same name.")
+    said = ("Next, a fix pass: change the script for each weak moment above (look_music and look_sound show more: a chord "
+            "that blurs into the next, a held sound that stays flat, a stretch too loud or quiet for its place) and render_mix "
+            "again to the same name.")
     left = clock.left() if clock else None
     if left is None:
         return said

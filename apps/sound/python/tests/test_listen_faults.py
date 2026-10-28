@@ -4,6 +4,7 @@ import numpy as np
 import soundfile as sf
 
 from rostrum_sound.listen.faults import check
+from rostrum_sound.listen.weakest import from_markers, lines
 
 SR = 48000
 NOTES = [261.6, 329.6, 392.0, 440.0, 293.7, 349.2, 493.9, 523.3]
@@ -39,7 +40,7 @@ def kinds(r):
 def test_weak_hit_named_with_time_and_fix(tmp_path):
     r = check(_piece(tmp_path / "weak.wav", hit_amp=0.26), [{"at": 10.0, "kind": "hit"}], whole=False)
     assert "weak_hit" in kinds(r)
-    assert "10.0" in r["words"] and "a normal note" in r["words"] and "silence just before" in r["words"]
+    assert "10.0" in r["words"] and "a normal note" in r["words"] and "bright attack" in r["words"]
 
 
 def test_clear_hit_passes(tmp_path):
@@ -60,3 +61,43 @@ def test_flat_held_tone(tmp_path):
     r = check(str(tmp_path / "flat.wav"))
     assert "held_tone" in kinds(r) and "one flat tone" in r["words"]
     assert "near_mono" in kinds(r)
+
+
+def test_low_boom_hit_is_weak_and_the_render_lines_say_why(tmp_path):
+    """Sound-gaps brief 2: a loud low hit with no bright attack, after a breath of silence, passed the old mel check
+    (2.9x) while listeners and the benchmark heard a normal note. The attack check names it and points at the crack."""
+    y = np.zeros(20 * SR)
+    for k, t0 in enumerate(np.arange(0, 20, 0.5)):          # a bed of bright, clicky notes
+        if 9.0 <= t0 < 10.0:
+            continue
+        n = _note(NOTES[k % len(NOTES)] * 2, 0.2)
+        y[int(t0 * SR):int(t0 * SR) + n.size] += n[:y.size - int(t0 * SR)]
+    t = np.arange(int(1.5 * SR)) / SR                        # the hit: 55 Hz, 25 ms swell, no click
+    boom = 3.0 * np.sin(2 * np.pi * 55 * t) * np.minimum(1, t / 0.025) * np.exp(-t * 2)
+    y[10 * SR:10 * SR + boom.size] += boom
+    y = 0.8 * y / np.abs(y).max()
+    sf.write(tmp_path / "boom.wav", np.stack([y, np.roll(y, 240)], axis=1), SR, subtype="PCM_24")
+    moments = from_markers([("Big hit", 10.0), ("verse", 2.0)])
+    assert moments == [{"at": 10.0, "kind": "hit"}]
+    out = lines(str(tmp_path / "boom.wav"), moments)
+    assert out[0].startswith("10.0") and "weak hit" in out[0] and "bright attack" in out[0] and "fast bright attack" in out[0], out
+
+
+def test_weak_hit_with_the_build_at_the_ceiling_leads_with_headroom(tmp_path):
+    """Sound-gaps 2: the build already peaked at the limiter's ceiling, and "raise the build" flattened the piece.
+    The fix list starts with headroom (the build's peaks 4–6 dB under), measured from the 3 s before."""
+    r = check(_piece(tmp_path / "flat.wav", hit_amp=0.2), [{"at": 10.0, "kind": "hit"}], whole=False)
+    f = next(f for f in r["faults"] if f["kind"] == "weak_hit")
+    assert f["measured"]["headroom_db"] < 1.5 and "fix: make headroom" in f["words"] and "raise the build" not in r["words"]
+
+
+def test_dull_top_end_named_and_a_bright_mix_passes(tmp_path):
+    """Sound-gaps 2: dull mixes (top end -20 dB and under against the low middle) were never named."""
+    t = np.arange(12 * SR) / SR
+    dull = 0.2 * sum(np.sin(2 * np.pi * f * t) for f in (220.0, 330.0, 440.0)) * (1 + 0.5 * np.sin(2 * np.pi * 0.7 * t))
+    bright = dull + 0.05 * np.random.default_rng(1).normal(0, 1, t.size)
+    for name, y in (("dull", dull), ("bright", bright)):
+        sf.write(tmp_path / f"{name}.wav", np.stack([y, np.roll(y, 480)], axis=1), SR, subtype="PCM_24")
+    r = check(str(tmp_path / "dull.wav"))
+    assert "dull_top" in kinds(r) and "4–16 kHz" in r["words"] and "up an octave" in r["words"]
+    assert "dull_top" not in kinds(check(str(tmp_path / "bright.wav")))

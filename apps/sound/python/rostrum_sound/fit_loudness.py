@@ -247,7 +247,9 @@ def plan(r: dict, master: dict, tracks: dict, root: dict, engine, scratch: Path,
     limit = master.get("maxLimit", 2) if master.get("gentle") else None
     out = {"target": goal, "lufs": r["lufs"], "need_db": need_db(r), "max_limit": limit}
     if goal is None:
-        return {**out, "state": "no target", "words": "The master has no loudness target (normalize is off): the level is what the faders add up to.",
+        return {**out, "state": "no target", "best": "set_target", "words": "The master has no loudness target (normalize is off): the level is what the faders add up to. "
+                         "Turn it on with edit_loudness {\"apply\": \"best\"} (or master(loudness=-16) in a script; "
+                         "edit_document's op is master.set with target [\"master\"]), render_mix again, then fit.",
                 "options": [{"name": "set_target", "words": "Turn the loudness target on.",
                              "ops": [{"op": "master.set", "target": ["master"], "args": {"normalize": True, "loudness": master.get("loudness", -16)}}]}]}
     short = goal - r["lufs"]

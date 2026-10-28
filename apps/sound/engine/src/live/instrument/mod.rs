@@ -91,7 +91,7 @@ enum Kind {
     Drums(std::collections::HashMap<String, String>, std::collections::HashMap<String, KitVoice>),
     /// Regions, their preloaded samples, legato, how often each key has been struck (round robin), and the half steps
     /// the file's keys sit above the key played (SfzSpec key_offset).
-    Sfz(std::sync::Arc<Vec<crate::instruments::sfz::Region>>, std::collections::HashMap<std::path::PathBuf, std::sync::Arc<crate::instruments::sfz::Sample>>, bool, std::collections::HashMap<u8, u32>, i8),
+    Sfz(std::sync::Arc<Vec<crate::instruments::sfz::Region>>, std::collections::HashMap<std::path::PathBuf, std::sync::Arc<crate::instruments::sfz::Sample>>, bool, std::collections::HashMap<u8, u32>, i8, f64),
     Layers(Vec<crate::live::layers::Layer>),
     Plugin(crate::plugins::live::PluginVoice),
 }
@@ -173,7 +173,7 @@ impl Instrument {
                     return Err(format!("{}: a swell shapes each note by its length (known in a score, not while a key is held); play the plain articulation live", s.file));
                 }
                 let (regions, samples) = crate::instruments::sfz::preload(&s.file)?;
-                Kind::Sfz(regions, samples, s.legato, Default::default(), s.key_offset)
+                Kind::Sfz(regions, samples, s.legato, Default::default(), s.key_offset, s.velocity_tone)
             }
             (None, None, None, None, Some(layers)) => Kind::Layers(layers.iter().map(|l| crate::live::layers::Layer::new(l, rate)).collect::<Result<_, String>>()?),
             _ => return Err("a live instrument is exactly one of { synth }, { sampler }, { drums: { key: voice } }, { sfz }, { layers } or { plugin }".into()),

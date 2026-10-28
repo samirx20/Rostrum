@@ -114,6 +114,10 @@ NOTE = [
                help="One of the track's articulations; left out = its main SFZ file."),
     *touch(track=False, imp="secondary", group="Playing"),
     V.curve("dynamics", (0, 1), (0, 2), group="Playing", importance="deep",
+            x_hint="A note's dynamics runs across that note only: x is the fraction of its length (0 = its start, "
+                   "1 = its end), so [(0, 0.5), (1, 1.0)] swells it to its end. A level over song time, across many "
+                   "notes (a 30 s crescendo), is the track's lane: track.dynamics([(0, 0.4), (31, 1.0)]) in seconds, "
+                   "beats or bars.",
             help="Swell / fade across the note: [[fraction of its length, level 0 … 2], …]."),
     V.record("vibrato", VIBRATO, "vibrato", group="Playing", importance="deep",
              help='Steady vibrato: {"rate": Hz, "depth": cents, "delay": s}.'),

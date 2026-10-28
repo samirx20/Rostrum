@@ -57,19 +57,23 @@ pub fn built_in(name: &str, at: &str) -> Result<Resolved, Error> {
 }
 
 fn recorded(name: &str, e: &Recorded, art: Option<&'static str>, at: &str) -> Result<Resolved, Error> {
-    let entries: Vec<(u8, &Recorded)> = if e.zones.is_empty() { vec![(127, e)] } else { e.zones.iter().map(|(k, id)| (*k, cat::recorded(id).expect("a zone the table names"))).collect() };
+    let entries: Vec<(u8, &Recorded, f64)> = if e.zones.is_empty() { vec![(127, e, 0.0)] } else { e.zones.iter().map(|(k, id, db)| (*k, cat::recorded(id).expect("a zone the table names"), *db)).collect() };
     let first = art.unwrap_or(entries[0].1.arts[0].0);
-    let mut zones = vec![];
-    for (hikey, z) in entries {
+    let (mut zones, mut lo) = (vec![], 0u8);
+    for (hikey, z, db) in entries {
         let (sf2, rel) = (z.arts[0].1.ends_with(".sf2"), z.arts[0].1);
         if sf2 {
             let font = file(name, z.pack, rel, at)?;
             return Ok(Resolved { inst: Inst::Sampler(json!({ "font": font, "program": 0, "bank": 0, "drums": false, "humanize": true })), family: art_family(z.arts[0].0), credit: e.credit });
         }
         let spec = |file: Value, legato: bool, swell: bool| {
-            let mut s = json!({ "file": file, "legato": legato, "swell": swell });
+            let mut s = json!({ "file": file, "legato": legato, "swell": swell, "velocityTone": z.velocity_tone });
             if z.key_offset != 0 {
                 s["keyOffset"] = json!(z.key_offset);
+            }
+            // The zone's level (its seams matched): every key it plays, in dB.
+            if db != 0.0 {
+                s["gains"] = json!((lo..=hikey).map(|k| (k, db)).collect::<Vec<_>>());
             }
             s
         };
@@ -83,6 +87,7 @@ fn recorded(name: &str, e: &Recorded, art: Option<&'static str>, at: &str) -> Re
         }
         let main = arts.iter().find(|(a, _)| a == first).unwrap_or(&arts[0]).1.clone();
         zones.push(Zone { hikey, main, arts });
+        lo = hikey.saturating_add(1);
     }
     Ok(Resolved { inst: Inst::Sfz(zones), family: art_family(first), credit: e.credit })
 }
@@ -120,7 +125,7 @@ fn kit_table(kit: &str) -> serde_json::Map<String, Value> {
 pub fn kit_file(path: &str, at: &str) -> Result<(Value, Vec<u8>), Error> {
     let regions = crate::instruments::sfz::instrument(path).map_err(|e| Error::new("BAD_ARGUMENT", at, format!("\"{path}\""), e))?;
     let keys: Vec<u8> = (0..=127u8).filter(|&k| regions.iter().any(|r| !r.cc_only && !r.on_release && r.lokey <= k && k <= r.hikey)).collect();
-    Ok((json!({ "file": path, "legato": false, "swell": false }), keys))
+    Ok((json!({ "file": path, "legato": false, "swell": false, "velocityTone": 0 }), keys))
 }
 
 fn installed(pack: &str, rel: &str) -> bool {
@@ -132,7 +137,7 @@ pub fn describe() -> Vec<Value> {
     let mut out: Vec<Value> = cat::PLAIN.iter().map(|(n, p)| match p {
         Plays::Rec(id, art) => {
             let e = cat::recorded(id).expect("an entry the table names");
-            let parts: Vec<&Recorded> = if e.zones.is_empty() { vec![e] } else { e.zones.iter().filter_map(|(_, z)| cat::recorded(z)).collect() };
+            let parts: Vec<&Recorded> = if e.zones.is_empty() { vec![e] } else { e.zones.iter().filter_map(|(_, z, _)| cat::recorded(z)).collect() };
             let mut arts: Vec<&str> = parts[0].arts.iter().map(|a| a.0).filter(|a| parts.iter().all(|p| p.arts.iter().any(|b| b.0 == *a))).collect();
             let first = art.unwrap_or(arts[0]);
             arts.retain(|a| *a != first);

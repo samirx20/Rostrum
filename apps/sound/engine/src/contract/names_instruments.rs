@@ -5,7 +5,8 @@
 //! A document keeps the name as written; changing a row here changes every song that uses it.
 
 /// A recorded instrument: its pack folder (under `<assets>/sounds/`), its articulations' files relative to
-/// it (the first plays by default), or `zones` (highest MIDI key, entry id) that split a section by pitch.
+/// it (the first plays by default), or `zones` (highest MIDI key, entry id, level in dB) that split a section by pitch, each zone's level
+/// set so the seams between its instruments match.
 pub struct Recorded {
     pub id: &'static str,
     pub pack: &'static str,
@@ -13,16 +14,19 @@ pub struct Recorded {
     /// Playable MIDI keys, low and high.
     pub range: (u8, u8),
     pub arts: &'static [(&'static str, &'static str)],
-    pub zones: &'static [(u8, &'static str)],
+    pub zones: &'static [(u8, &'static str, f64)],
     /// What its licence asks every work using it to say (CC-BY packs).
     pub credit: Option<&'static str>,
     /// Half steps the pack's file maps each sample above the pitch it sounds (Growlybass names every sample an octave
     /// high): a note asks the file for its key plus this, so it plays at the pitch written.
     pub key_offset: i8,
+    /// Brightness with velocity where the files have fewer than three layers (dB at velocity 0, instruments/sfz/tone.rs);
+    /// 0 for what does not brighten when played harder (organs).
+    pub velocity_tone: f64,
 }
 
 const fn rec(id: &'static str, pack: &'static str, about: &'static str, range: (u8, u8), arts: &'static [(&'static str, &'static str)]) -> Recorded {
-    Recorded { id, pack, about, range, arts, zones: &[], credit: None, key_offset: 0 }
+    Recorded { id, pack, about, range, arts, zones: &[], credit: None, key_offset: 0, velocity_tone: crate::instruments::sfz::tone::DEFAULT_DEPTH }
 }
 
 const VS: &str = "vsco2-strings";
@@ -39,14 +43,14 @@ pub const RECORDED: &[Recorded] = &[
     rec("violas", VS, "viola section (VSCO 2)", (48, 86), &[("sustain", "ViolaEnsSusVib.sfz"), ("soft", "ViolaEnsSusVib-Quiet.sfz"), ("spiccato", "ViolaEnsSpic.sfz"), ("tremolo", "ViolaEnsTrem.sfz"), ("pizzicato", "ViolaEnsPizz.sfz")]),
     rec("cellos", VS, "cello section (VSCO 2)", (36, 77), &[("sustain", "CelloEnsSusVib.sfz"), ("soft", "CelloEnsSusVib-Quiet.sfz"), ("spiccato", "CelloEnsSpic.sfz"), ("tremolo", "CelloEnsTrem.sfz"), ("pizzicato", "CelloEnsPizz.sfz")]),
     rec("basses", VS, "contrabass (VSCO 2, solo: the library's only bass)", (24, 60), &[("sustain", "ContrabassSusVB.sfz"), ("soft", "ContrabassSusVB-Quiet.sfz"), ("spiccato", "ContrabassSpic.sfz"), ("tremolo", "ContrabassTrem.sfz"), ("pizzicato", "ContrabassPizz.sfz"), ("nonVibrato", "ContrabassSusNV.sfz")]),
-    Recorded { id: "strings", pack: VS, about: "string section (VSCO 2): basses below C2, cellos to B2, violas to F#3, violins above", range: (24, 86), arts: &[], zones: &[(35, "basses"), (47, "cellos"), (54, "violas"), (127, "violins")], credit: None, key_offset: 0 },
+    Recorded { id: "strings", pack: VS, about: "string section (VSCO 2): basses below C2, cellos to B2, violas to F#3, violins above", range: (24, 86), arts: &[], zones: &[(35, "basses", 0.0), (47, "cellos", 0.0), (54, "violas", 0.0), (127, "violins", 0.0)], credit: None, key_offset: 0, velocity_tone: crate::instruments::sfz::tone::DEFAULT_DEPTH },
     rec("violin", VS, "solo violin (VSCO 2)", (55, 96), &[("sustain", "SViolinVib.sfz"), ("soft", "SViolinVib-Quiet.sfz"), ("spiccato", "SViolinSpic.sfz"), ("tremolo", "SViolinTrem.sfz"), ("pizzicato", "SViolinPizz.sfz")]),
     rec("harp", VS, "concert harp (VSCO 2)", (28, 101), &[("pluck", "Harp.sfz")]),
     rec("horn", VB, "French horn (VSCO 2)", (33, 77), &[("sustain", "FHornSus.sfz"), ("staccato", "FHornStac.sfz"), ("muted", "FHornMute.sfz")]),
     rec("trumpet", VB, "trumpet (VSCO 2)", (52, 84), &[("sustain", "TrumpetSus.sfz"), ("vibrato", "TrumpetSusVib.sfz"), ("staccato", "TrumpetStac.sfz"), ("muted", "TrumpetStraightMuteSus.sfz")]),
     rec("trombone", VB, "tenor trombone (VSCO 2)", (34, 65), &[("sustain", "TromboneSus.sfz"), ("vibrato", "TromboneVib.sfz"), ("staccato", "TromboneStac.sfz")]),
     rec("tuba", VB, "tuba (VSCO 2)", (29, 62), &[("sustain", "TubaSus.sfz"), ("staccato", "TubaStac.sfz")]),
-    Recorded { id: "brass", pack: VB, about: "brass section (VSCO 2): tuba to D2, trombone to A3, horn to A#4, trumpet above", range: (29, 84), arts: &[], zones: &[(38, "tuba"), (57, "trombone"), (70, "horn"), (127, "trumpet")], credit: None, key_offset: 0 },
+    Recorded { id: "brass", pack: VB, about: "brass section (VSCO 2): tuba to D2, trombone to D4, trumpet above", range: (29, 84), arts: &[], zones: &[(38, "tuba", 0.0), (62, "trombone", 3.5), (127, "trumpet", -4.0)], credit: None, key_offset: 0, velocity_tone: crate::instruments::sfz::tone::DEFAULT_DEPTH },
     rec("flute", VW, "flute (VSCO 2)", (60, 96), &[("sustain", "FluteSusVib.sfz"), ("nonVibrato", "FluteSusNV.sfz"), ("staccato", "FluteStac.sfz")]),
     rec("piccolo", VW, "piccolo (VSCO 2)", (67, 91), &[("sustain", "PiccoloSus.sfz"), ("staccato", "PiccoloStac.sfz")]),
     rec("oboe", VW, "oboe (VSCO 2)", (58, 89), &[("sustain", "OboeSusVib.sfz"), ("nonVibrato", "OboeSusNV.sfz"), ("staccato", "OboeStac.sfz")]),
@@ -54,10 +58,10 @@ pub const RECORDED: &[Recorded] = &[
     rec("bassoon", VW, "bassoon (VSCO 2)", (34, 75), &[("sustain", "BassoonSus.sfz"), ("vibrato", "BassoonVib.sfz"), ("staccato", "BassoonStac.sfz")]),
     rec("timpani", "vsco2-percussion", "timpani (VSCO 2)", (36, 60), &[("hit", "Timpani.sfz"), ("roll", "TimpaniRolls.sfz")]),
     Recorded { credit: Some(SALAMANDER), ..rec("concertGrand", "salamander-piano", "concert grand piano (Salamander Grand Piano V3, a Yamaha C5)", (21, 108), &[("keys", "SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz")]) },
-    Recorded { credit: Some(RHODES), ..rec("rhodes", "rhodes", "Fender Rhodes Mark II 73 electric piano, one velocity layer (Tim Kahn); F4 to C#6 are stretched from E4 and D6", (28, 100), &[("keys", "rhodes.sfz")]) },
+    Recorded { credit: Some(RHODES), ..rec("rhodes", "rhodes", "Fender Rhodes Mark II 73 electric piano, one velocity layer (Tim Kahn); F4 to C#6 are stretched from E4 and D6, crossfaded over B4 to G5", (28, 100), &[("keys", "rhodes.sfz")]) },
     Recorded { credit: Some(WURLITZER), ..rec("wurlitzer", "wurlitzer", "Wurlitzer EP200 electric piano", (33, 96), &[("keys", "Wurlitzer EP200/Wurlitzer EP200.sfz")]) },
-    rec("drawbarOrgan", "drawbar-organ", "tonewheel drawbar organ (FreePats)", (33, 98), &[("keys", "DrawbarOrganEmulation-SFZ-20190712/DrawbarOrganEmulation-20190712.sfz")]),
-    rec("pipeOrgan", "vcsl-organ", "pipe organ, loud registration (VCSL)", (36, 97), &[("keys", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz"), ("pedal", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud Pedal.sfz")]),
+    Recorded { velocity_tone: 0.0, ..rec("drawbarOrgan", "drawbar-organ", "tonewheel drawbar organ (FreePats)", (33, 98), &[("keys", "DrawbarOrganEmulation-SFZ-20190712/DrawbarOrganEmulation-20190712.sfz")]) },
+    Recorded { velocity_tone: 0.0, ..rec("pipeOrgan", "vcsl-organ", "pipe organ, loud registration (VCSL)", (36, 97), &[("keys", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz"), ("pedal", "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud Pedal.sfz")]) },
     rec("nylonGuitar", "freepats-guitar", "Spanish classical guitar, fingerstyle (FreePats)", (29, 83), &[("fingerstyle", "SpanishClassicalGuitar-SF2-20190618/SpanishClassicalGuitar-20190618.sf2")]),
     rec("archtopGuitar", "shinyguitar", "archtop steel-string guitar (Karoryfer Shinyguitar)", (33, 91), &[("fingerstyle", "Programs/rostrum-acoustic.sfz")]),
     rec("cleanGuitar", "fsbs-clean-guitar", "electric guitar, clean (FreePats FSBS)", (35, 86), &[("pluck", "EGuitarFSBS-clean SFZ+FLAC-20260807/EGuitarFSBS-clean bridge 20260807.sfz")]),

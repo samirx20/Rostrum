@@ -15,7 +15,7 @@ UNTIMED = ("climax", "lift", "voice", "drop")   # moments that are not "a sound 
 EXPECT = {"expect": {"type": "array", "description": "Moments the music must deliver. Each is a time (seconds, {\"beat\": n} or \"#marker\": a sound must start there) or "
                      "{\"at\": time, \"kind\": \"hit\" | \"stop\" | \"drop\" | \"climax\" | \"lift\" | \"entry\" | \"voice\", \"end\": time (voice only)}: "
                      "with a kind the faults say whether it comes across (a weak or missing hit, a blurred stop, drums dropping early, "
-                     "the loudest moment off the climax, a lift that does not lift, a busy speech band in a voice span)."}}
+                     "a climax cut short or off its time, a build already at the ceiling, a lift that does not lift, a busy speech band in a voice span)."}}
 
 
 def parse(doc, items, where):
