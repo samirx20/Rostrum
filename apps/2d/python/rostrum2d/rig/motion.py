@@ -29,60 +29,14 @@ from ..evaluate import value_at
 from ..ops_swap import blinks
 from ..swap import child_index
 from . import follow as follow_mod
-from .model import start_bone, tip
+from . import limb as limb_mod, limb_parts, steps
+from .limb import PLACEHOLDER, Limb, bend_way
+from .model import tip
 
-LIMB_KINDS = ("arm", "leg")
-PIECES = ("bend", "parts", "none")
-PLACEHOLDER = "#d9d9d9"                      # a limb's colour until the end of the script finds its body's
-RELAX = {"arm": 20.0, "leg": 6.0}            # degrees the elbow / knee is bent at rest (relax=0: straight)
 SWING_BEND, SWING_FROM, SWING_TO = 1.5, 50.0, 100.0   # swung past SWING_FROM degrees the bend turns, by SWING_TO it
                                                       # is SWING_BEND x relax the way it swings (a raised arm's forearm up)
 NATURAL_LAG, NATURAL_OVER, NATURAL_DRAG = 0.1, 0.3, 0.6
 TOL_PX, TOL_DEG, TOL_SCALE = 0.25, 0.15, 0.0005
-
-
-class Limb:
-    """What limb() made: `upper`, `lower`, `end` (bones; `end` is None with no third length), `ik` (the chain on the
-    lower bone, or None), `parts` (the shapes), `out` (+1 or -1: the sign of `rotation` that swings it away from the
-    body). `reach({t: (x, y)})` keys the IK target in rig px; `pose({t: angle})` keys the upper bone's turn;
-    `set(fill=…)` sets fields on every part."""
-
-    def __init__(self, id_, kind, upper, lower, end, ik, parts, out=1):
-        self.id, self.kind, self.upper, self.lower, self.end, self.ik, self.parts = id_, kind, upper, lower, end, ik, parts
-        self.out = out
-
-    def reach(self, keys: dict, ease: str = "smooth") -> "Limb":
-        if self.ik is None:
-            raise ValueError(f"{self.id}.reach(…): this limb has no IK chain; make it with limb(…, ik=True)")
-        xs, ys = {}, {}
-        for t, v in keys.items():
-            (x, y), e = (v[0], v[1] if len(v) > 1 else ease) if isinstance(v[0], (tuple, list)) else (v, ease)
-            xs[t], ys[t] = (x, e), (y, e)
-        self.ik.key("targetX", xs).key("targetY", ys)
-        return self
-
-    def pose(self, keys: dict, ease: str = "smooth") -> "Limb":
-        """{t: upper turn} or {t: {"upper": a, "lower": b, "end": c}}: rotation keys on those bones. With natural=True
-        (the default) the elbow / knee bend that follows the swing is added at the end of the script, so the upper
-        turn alone gives a living arm; a "lower" value adds to that bend."""
-        per = {}
-        for t, v in keys.items():
-            v, e = (v[0], v[1]) if isinstance(v, tuple) else (v, ease)
-            for part, a in (v.items() if isinstance(v, dict) else (("upper", v),)):
-                if part not in ("upper", "lower", "end") or (part == "end" and self.end is None):
-                    raise ValueError(f'{self.id}.pose: "{part}" is not one of upper, lower{", end" if self.end else ""}')
-                per.setdefault(part, {})[t] = (a, e)
-        for part, k in per.items():
-            getattr(self, part).key("rotation", k)
-        return self
-
-    def set(self, **fields) -> "Limb":
-        for p in self.parts:
-            p.set(**fields)
-        return self
-
-    def __repr__(self):
-        return f"limb {self.id} ({self.kind}: {self.upper.id} › {self.lower.id}{' › ' + self.end.id if self.end else ''})"
 
 
 def _rig_of(build):
@@ -129,7 +83,7 @@ def for_script(build) -> dict:
             stack += [c for v in n.values() if isinstance(v, list) for c in v if isinstance(c, dict)]
         return None
 
-    limbs, followed = [], {}            # what the end-of-script pass needs: limbs made, follow ranges run per bone
+    limbs, followed, walked = [], {}, {}   # what the end-of-script pass needs: limbs made, follow / walk ranges per bone
 
     def layer(id):
         """An item this script made earlier (layer, group, rig, bone, ik), found by its id."""
@@ -143,85 +97,9 @@ def for_script(build) -> dict:
                              'where one is asked (bind(layer="leg", …)); to key it, make it in the script.')
         return Item(build, node)
 
-    def limb(id, x=None, y=None, angle=90, lengths=(120, 110, 30), widths=(40, 34, 44), parent=None, kind="arm",
-             ik=None, bend=None, pieces="bend", color=None, end_color=None, end_angle=None, soft=None, relax=None,
-             natural=True):
-        """Upper + lower (+ end: hand / foot) bones from (x, y) along `angle`, an IK chain on the lower bone, and
-        plain shapes bound to them. Legs get IK by default, arms don't (key their turns, or pass ik=True). The joint
-        rests bent by `relax` degrees toward `bend` (arms: out, away from the body); `color` None takes the body's."""
-        rig = _rig_of(build)
-        if kind not in LIMB_KINDS:
-            raise ValueError(f'limb {id}: kind "{kind}" is not one of {", ".join(LIMB_KINDS)}')
-        if pieces not in PIECES:
-            raise ValueError(f'limb {id}: pieces "{pieces}" is not one of {", ".join(PIECES)}')
-        lens = tuple(float(v) for v in lengths) + (0.0,) * (3 - len(lengths))
-        wid = tuple(float(v) for v in widths) + (widths[-1],) * (3 - len(widths))
-        if lens[0] <= 0 or lens[1] <= 0:
-            raise ValueError(f"limb {id}: the first two lengths (upper, lower) must be above 0, not {lengths}")
-        pid = getattr(parent.upper if isinstance(parent, Limb) else parent, "id", parent) or ""
-        start = start_bone(rig["bones"], {"parent": pid, **({"x": x} if x is not None else {}), **({"y": y} if y is not None else {})})
-        if "x" not in start or "y" not in start:
-            raise ValueError(f"limb {id}: give x, y (the shoulder or hip joint, rig px), or a parent to start at its tip")
-        bx, by = float(start["x"]), float(start["y"])
-        par = next((b for b in rig["bones"] if b["id"] == pid), None)
-        side = bend if bend is not None else "out" if kind == "arm" else "right"
-        if side in ("out", "in"):           # away from / toward the body: the parent bone's pivot, else the rig's middle
-            mid = float(par["x"]) if par is not None and abs(float(par["x"]) - bx) > 1e-6 else float(rig.get("w", 0)) / 2
-            side = ("right" if bx >= mid else "left") if side == "out" else ("left" if bx >= mid else "right")
-        way = bend_way(angle, side, id)
-        sign = 1.0 if way == "clockwise" else -1.0     # + rotation on the lower bone folds the joint toward `side`
-        # the bone calls, as a script writes them (script.for_script: bone / ik / bind)
-        from .script import for_script as rig_calls
-        calls = rig_calls(build)
-        upper = calls["bone"](f"{id}_upper", parent=pid, x=bx, y=by, angle=angle, length=lens[0])
-        lower = calls["bone"](f"{id}_lower", parent=upper, length=lens[1])
-        ea = end_angle if end_angle is not None else (0.0 if kind == "leg" else angle)
-        end = calls["bone"](f"{id}_end", parent=lower, angle=ea, length=lens[2]) if lens[2] > 0 else None
-        has_ik = ik if ik is not None else kind == "leg"
-        chain = calls["ik"](f"{id}_ik", bone=lower, bend=way) if has_ik else None
-        rlx = float(relax if relax is not None else RELAX[kind])
-        if rlx and not has_ik:              # the rest pose: joint bent (natural: put by the end-of-script pass, so keys on
-            if not natural:                 # the lower bone stay turns from the relaxed bend), the upper bone turned
-                lower.node["rotation"] = round(sign * rlx, 3)      # back half so the hand or foot stays under the joint
-            upper.node["rotation"] = round(-sign * rlx / 2, 3)
-        auto_color = color is None
-        color = PLACEHOLDER if auto_color else color
-        parts = []
-        a = math.radians(angle)
-        ux, uy = math.cos(a), math.sin(a)
-
-        def bar(pid_, length, w, at, col):
-            cx, cy = bx + ux * at, by + uy * at
-            return build.layer("shape", pid_, shape="rect", x=cx, y=cy, w=w, h=length + w, radius=w / 2,
-                               rotation=angle - 90, fill=col)
-
-        if pieces == "bend":
-            p = bar(id, lens[0] + lens[1], wid[0], (lens[0] + lens[1]) / 2, color)
-            calls["bind"](layer=p, bone=upper, bone2=lower, soft=soft if soft is not None else max(wid[0], 12.0))
-            parts.append(p)
-        elif pieces == "parts":
-            for bone_, n, w, at in ((upper, lens[0], wid[0], lens[0] / 2), (lower, lens[1], wid[1], lens[0] + lens[1] / 2)):
-                p = bar(f"{bone_.id}_part", n, w, at, color)
-                calls["bind"](layer=p, bone=bone_)
-                parts.append(p)
-        if pieces != "none" and end is not None:
-            wx, wy = tip(lower.node)
-            e = math.radians(ea)
-            col = end_color or color
-            if kind == "leg":
-                p = build.layer("shape", f"{id}_foot", shape="rect", x=wx + math.cos(e) * lens[2] / 2, y=wy + math.sin(e) * lens[2] / 2,
-                                w=lens[2] + wid[2], h=wid[2], radius=wid[2] / 2, rotation=ea, fill=col)
-            else:
-                p = build.layer("shape", f"{id}_hand", shape="ellipse", x=wx + math.cos(e) * lens[2] * 0.5,
-                                y=wy + math.sin(e) * lens[2] * 0.5, w=wid[2], h=wid[2], fill=col)
-            calls["bind"](layer=p, bone=end)
-            parts.append(p)
-        mid = float(par["x"]) if par is not None and abs(float(par["x"]) - bx) > 1e-6 else float(rig.get("w", 0)) / 2
-        out = (-1 if math.sin(math.radians(angle)) >= 0 else 1) * (1 if bx >= mid else -1)   # tip moves away from mid
-        made_limb = Limb(id, kind, upper, lower, end, chain, parts, out=int(out))
-        limbs.append({"limb": made_limb, "rig": rig, "relax": rlx if not has_ik else 0.0, "sign": sign,
-                      "auto_color": auto_color and end_color is None, "natural": natural and not has_ik})
-        return made_limb
+    def limb(id, **kw):
+        """Upper + lower (+ end) bones, an IK chain and plain shapes bound to them (rig/limb.py › make)."""
+        return limb_mod.make(build, _rig_of(build), limbs, id, **kw)
 
     def follow(bone, start=0.0, end=None, lag=0.12, overshoot=0.4, amount=1.0):
         """rig.follow in a script: the bones below `bone` trail its turn (rotation keys, start .. end + the settle)."""
@@ -347,6 +225,7 @@ def for_script(build) -> dict:
                     shin = _shin_turn(body_n, leg, (off[0] * env_in(t), off[1] * env_in(t), off[2] * env_in(t)), (x, y))
                     flat.append(env_in(t) * (-shin + tl))
                 tracks[(en["id"], "rotation")] = [o + v for o, v in zip(own_f, flat)]
+                walked.setdefault(en["id"], []).append((times[0], times[-1]))
         for ai, arm in enumerate(list(arms)[:2]):
             for n, fn in ((arm.upper.node, lambda ph: fx * swing * math.cos(2 * math.pi * ph)),
                           (arm.lower.node, lambda ph: -fx * elbow * (1 + 0.6 * max(0.0, -math.cos(2 * math.pi * ph))))):
@@ -488,6 +367,10 @@ def for_script(build) -> dict:
                 col = _body_color(rig, lm.upper.node["parent"], {p.node["id"] for p in lm.parts})
                 for p in lm.parts:
                     p.node["fill"] = col
+            if rec["outline"] is not False:             # after the colour is known; a part given its own outline keeps it
+                limb_parts.outline_parts([p for p in lm.parts if not p.node.get("stroke")], rec["outline"], rec["outline_width"])
+            if lm.ik is not None and lm.kind == "leg" and lm.end is not None:
+                _flat_foot(lm, rig, times, walked.get(lm.end.node["id"], []))
             if not rec["natural"]:
                 continue
             up, lo, en = lm.upper.node, lm.lower.node, lm.end.node if lm.end else None
@@ -523,20 +406,8 @@ def for_script(build) -> dict:
     if not hasattr(build, "finishers"):
         build.finishers = []
     build.finishers.append(natural)
-    return {"layer": layer, "limb": limb, "follow": follow, "blink": blink, "walk": walk, "idle": idle, "pose": pose}
-
-
-SIDES = {"right": 0.0, "down": 90.0, "left": 180.0, "up": 270.0}
-
-
-def bend_way(angle: float, bend: str, where: str) -> str:
-    """An IK bend: clockwise / counterclockwise as given, or the screen side the joint should point to (left, right,
-    up, down) for a limb whose rest direction is `angle` (clockwise puts the joint at angle - 90)."""
-    if bend in ("clockwise", "counterclockwise"):
-        return bend
-    if bend not in SIDES:
-        raise ValueError(f'limb {where}: bend "{bend}" is not one of clockwise, counterclockwise, {", ".join(SIDES)}')
-    return "clockwise" if math.cos(math.radians(angle - 90 - SIDES[bend])) > 0 else "counterclockwise"
+    return {"layer": layer, "limb": limb, "follow": follow, "blink": blink, "walk": walk, "idle": idle, "pose": pose,
+            "step": steps.maker(build, lambda ref: _bone(build, ref), Item)}
 
 
 def _smooth(u: float) -> float:
@@ -601,6 +472,24 @@ def _write(node: dict, field: str, span, keys):
                                                             and span[0] - 1e-9 <= k["t"] <= span[1] + 1e-9)]
     for t, v in keys:
         node["keys"].append({"id": key_id(node["id"], field, t), "type": "key", "prop": field, "t": float(t), "v": v, "ease": "linear"})
+
+
+def _flat_foot(leg: Limb, rig: dict, times, walked) -> None:
+    """An IK leg's foot kept flat (its rest direction on screen) however the body crouches, steps or leans: the shin's
+    turn taken off the foot bone's own keys, frame by frame, except where walk() already wrote it."""
+    bones = {b["id"]: b for b in rig["bones"]}
+    body, ik, en = bones.get(leg.upper.node["parent"]), leg.ik.node, leg.end.node
+    if body is None or (not keys_of(body, "moveX") and not keys_of(body, "moveY") and not keys_of(body, "rotation")
+                        and not keys_of(ik, "targetX") and not keys_of(ik, "targetY")):
+        return
+    mask = _outside(times, walked, 0.2)
+    flat = [m * -_shin_turn(body, leg, tuple(float(value_at(body, f, t)) for f in ("moveX", "moveY", "rotation")),
+                            (float(value_at(ik, "targetX", t)), float(value_at(ik, "targetY", t))))
+            for m, t in zip(mask, times)]
+    if max(map(abs, flat)) <= TOL_DEG:
+        return
+    own = [float(value_at(en, "rotation", t)) for t in times]
+    _write(en, "rotation", (times[0], times[-1]), _thinned(times, [o + v for o, v in zip(own, flat)], "rotation"))
 
 
 def _shin_turn(body: dict, leg: Limb, off, target) -> float:

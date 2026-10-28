@@ -142,7 +142,19 @@ def paint_size(item: dict, props: dict) -> tuple[int, int]:
     return max(1, round(w)), max(1, round(h))
 
 
-_SHOWN: dict = {}           # frame id -> (the frame as it was, w, h, its PNG): the last picture made of each drawing
+_SHOWN: dict = {}           # frame id -> (the frame as it was, w, h, its PNG, its strokes' mark): the last picture made of each drawing
+
+
+def _mark(frame: dict) -> tuple:
+    """Which stroke lists a drawing holds and how long each is. A committed document is never changed in place, but a
+    change in progress is: its paint.stroke calls append to the same frame, and placing each stroke lays the page out
+    (pictures included) between them. So a remembered frame that is the very same object counts as unchanged only with
+    the same mark (several strokes in one change showed only the first, 2D gaps2)."""
+    return tuple((id(p.get("strokes")), len(p.get("strokes", ()))) for p in frame.get("paints", ()))
+
+
+def _same(got: tuple, frame: dict) -> bool:
+    return got[4] == _mark(frame) if got[0] is frame else got[0] == frame
 
 
 def picture(item: dict, frame: dict, later: list | None = None) -> Path:
@@ -153,7 +165,7 @@ def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     makes it) to run off the screen's thread, and its last picture (or a blank one) stands in meanwhile."""
     w, h = canvas_size(item)
     got = _SHOWN.get(frame["id"])
-    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]):
+    if got and got[1:3] == (w, h) and _same(got, frame) and filestamps.is_file(got[3]):
         return got[3]
     if later is not None and canvas.made(frame, w, h) is None:
         queue(later, ("canvas", frame["id"], w, h), lambda: canvas.png(frame, w, h))
@@ -161,11 +173,11 @@ def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     path = canvas.png(frame, w, h)
     if len(_SHOWN) > 512:
         _SHOWN.clear()
-    _SHOWN[frame["id"]] = (frame, w, h, path)
+    _SHOWN[frame["id"]] = (frame, w, h, path, _mark(frame))
     return path
 
 
-_INKED: dict = {}           # frame id -> (the frame as it was, w, h, its entry): the last ink picture of each drawing
+_INKED: dict = {}           # frame id -> (the frame as it was, w, h, its entry, its strokes' mark): as _SHOWN
 
 
 def inked(item: dict, frame: dict, later: list | None = None) -> dict:
@@ -175,7 +187,7 @@ def inked(item: dict, frame: dict, later: list | None = None) -> dict:
     painted), so a stroke that grows the drawing never blinks the rest of it away."""
     w, h = canvas_size(item)
     got = _INKED.get(frame["id"])
-    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]["src"]):
+    if got and got[1:3] == (w, h) and _same(got, frame) and filestamps.is_file(got[3]["src"]):
         return got[3]
     done = ink.made(frame, w, h)
     if done is None and later is not None:
@@ -186,7 +198,7 @@ def inked(item: dict, frame: dict, later: list | None = None) -> dict:
     entry = _entry(done or ink.png(frame, w, h))
     if len(_INKED) > 512:
         _INKED.clear()
-    _INKED[frame["id"]] = (frame, w, h, entry)
+    _INKED[frame["id"]] = (frame, w, h, entry, _mark(frame))
     return entry
 
 

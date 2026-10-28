@@ -154,7 +154,8 @@ fn roi(graph: &mut Filter, n: &Node, fid: FilterId, bbox: Rect) {
     }
 }
 
-pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, scale: f64) -> Option<Filter> {
+/// `view`: the visible frame in the element's own px, the space of `bbox` (passed to shader primitives as `view`).
+pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, scale: f64) -> Option<Filter> {
     let filter = dom.get_node(dom.get_element_by_id(id)?)?;
     if local(filter) != "filter" {
         return None;
@@ -255,9 +256,12 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, scale: f64) -
             }
             // Rostrum patch (round 5): a GPU shader primitive (Motion's raster effects, src/engine/effects/sksl.ts).
             // Its SkSL is the element's text; `uniforms` = "name v v …;*name v" (`*`: px, scaled like lengths);
-            // the layer's box is passed as `box` (x, y, w, h).
+            // the layer's box is passed as `box` (x, y, w, h), the visible frame in the same space as `view`.
             "feshader" => {
-                let mut uniforms: Vec<(String, Vec<f32>)> = vec![("box".into(), vec![bbox.x0 as f32, bbox.y0 as f32, bbox.width() as f32, bbox.height() as f32])];
+                let mut uniforms: Vec<(String, Vec<f32>)> = vec![
+                    ("box".into(), vec![bbox.x0 as f32, bbox.y0 as f32, bbox.width() as f32, bbox.height() as f32]),
+                    ("view".into(), vec![view.x0 as f32, view.y0 as f32, view.width() as f32, view.height() as f32]),
+                ];
                 for entry in attr(n, "uniforms").unwrap_or("").split(';').filter(|e| !e.trim().is_empty()) {
                     let mut parts = entry.split_whitespace();
                     let Some(name) = parts.next() else { continue };

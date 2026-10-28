@@ -43,4 +43,6 @@ The text slides along the path between the keys.
 ## Good to know
 
 - Hide the path with its eye in the timeline if you don't want to see the line. The words stay on it.
+- Painted, hand-lettered words can bend along a curve too: `paint.letters` with `path` (SVG path data in composition px)
+  and `start`. They are brush strokes, not text, and write on with Drawn so far (painted-backgrounds.md › Hand-lettered words).
 - A text on a path exports to Lottie as a straight line. The Export panel lists it under "Lottie couldn't carry".

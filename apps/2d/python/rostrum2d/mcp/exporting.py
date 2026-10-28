@@ -28,11 +28,11 @@ def nothing_showing(comp: dict) -> bool:
 
 
 def next_steps(look: str, has_sound: bool, folder) -> str:
-    """What an export's reply says next (render_video and render_export's mp4): a concrete fix pass, and how to put music
-    under a silent video. In the fair benchmark, agents stopped after one small change and left 3 of 7 films silent."""
-    said = (f"Next, a fix pass: look at it ({look}) and at its motion (look_motion), name its three weakest moments "
-            "(an empty or barely changing stretch, something cut off by the frame, a pose or framing held without life, "
-            "a moment that reads flat), fix each and export again to the same name.")
+    """What an export's reply says next (render_video and render_export's mp4): a concrete fix pass (the weakest moments
+    themselves follow, from look_review through session_clock), and how to put music under a silent video. In the fair
+    benchmark, agents stopped after one small change and left 3 of 7 films silent."""
+    said = (f"Next, a fix pass: see it ({look}), fix the weakest moments named below, export again to the same name and "
+            "look_review again.")
     if not has_sound and folder:
         said += (f' It is silent. For music under it: on rostrum-sound, run_open_project {{"folder": "{folder}"}}, write the '
                  "music with run_script (its inspect_guide 'scoring-to-picture'), run_set_main_mix; the next export here "

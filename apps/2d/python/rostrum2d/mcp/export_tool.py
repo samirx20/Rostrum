@@ -37,8 +37,8 @@ def render_export(ctx, args):
     returns a job id at once; ask with inspect_job (wait_s up to 25). The file is written under a .partial name and renamed once it
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
-    before any job, as the Export button refuses it. An mp4's reply also names blank, washed-out and unchanged stretches
-    (`quiet_stretches`) and subjects cut by the frame edge (`edge_cuts`), as render_video's does."""
+    before any job, as the Export button refuses it. An mp4's reply ends, as render_video's does, with the time left and the film's
+    weakest moments (look_review); `quiet_stretches` and `edge_cuts` carry the file's checks as data."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
@@ -80,7 +80,7 @@ def render_export(ctx, args):
             quiet = video._quiet_stretches(Path(facts["file"]), s["start"])
             cuts = video._edge_cuts(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
             data.update(quiet_stretches=quiet[1], edge_cuts=cuts[1])
-            say += f'. {quiet[0]}{" " + cuts[0] if cuts[0] else ""} ' + exporting.next_steps(f'look_frame what "sheet" with video "{facts["file"]}"', "sound" in facts, folder).rstrip(".")
+            say += '. ' + exporting.next_steps(f'look_frame what "sheet" with video "{facts["file"]}"', "sound" in facts, folder).rstrip(".")
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,

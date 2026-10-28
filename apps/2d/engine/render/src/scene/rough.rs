@@ -4,7 +4,8 @@
 //! wobble on top, each half the size and half the reach. The noise is placed from the layer's box, so it moves with the
 //! layer and a motion-blur sub-frame or a kept, moved picture (still_runs.rs) sees the same warp. `boil` above 0 picks
 //! a new noise every `boil` frames (eval.rs writes the frame number now): the hand-drawn boil. The layer's bounds grow
-//! by `amount` so the warp is never cut. Same seed, same frame, same warp: preview and export draw it alike.
+//! by `amount` so the warp is never cut. The warp reads only inside the visible frame (`view`, given by the painter), so
+//! a layer that runs off the frame (a full-frame paper or wash) keeps a clean border instead of notches. Same seed, same frame, same warp: preview and export draw it alike.
 
 use super::eval::Item;
 use super::stage::escape;
@@ -13,7 +14,7 @@ type R<T> = Result<T, String>;
 
 /// Gradient noise (grain.rs `noise_sksl`) summed over octaves, each half the size and reach, turned so no grid shows;
 /// one noise for x, another for y.
-pub(crate) const PROGRAM: &str = concat!("uniform shader src; uniform float4 box; uniform float size; uniform float amount; uniform float detail; uniform float seed;
+pub(crate) const PROGRAM: &str = concat!("uniform shader src; uniform float4 box; uniform float4 view; uniform float size; uniform float amount; uniform float detail; uniform float seed;
 ", super::grain::noise_sksl!(), "
 half4 main(float2 p) {
     float2 q = (p - box.xy) / max(size, 0.5) + float2(mod(seed, 997.0) * 7.31, mod(seed, 991.0) * 5.17);
@@ -25,7 +26,9 @@ half4 main(float2 p) {
     }
     // The sum is about -0.7..0.7, mostly within 0.3: 1.6x spreads it over the reach, clamped to it.
     d = clamp(d / max(total, 0.0001) * 1.6, -1.0, 1.0);
-    return src.eval(p + d * amount);
+    // Read only inside the visible frame (`view`, the painter's): a layer running off the frame continues past its
+    // border instead of showing the gap beyond it.
+    return src.eval(clamp(p + d * amount, view.xy + 0.5, view.xy + view.zw - 0.5));
 }");
 
 /// The layer's look under its rough effects (unchanged when it has none): one filter per rough, in order.

@@ -97,6 +97,13 @@ t.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})
 A mask moves with its layer. To move a layer *through* a fixed edge, put it in a group with `clip=True` and animate the
 layer inside it. Masks cut before effects, so a glow cannot spill past a mask.
 
+## Hand-lettered words
+
+A text layer is typed letters. For words that look written by hand and write on stroke by stroke, paint them instead:
+`paint.letters` lays each letter's centre line from a single-stroke font and paints it with any brush on a drawing, in
+writing order; key the drawing's `drawnSoFar` 0 → 1 to write them on. How: [painted-backgrounds.md](painted-backgrounds.md)
+› Hand-lettered words. They are paint, not text: to change the words, clear that paint layer and letter them again.
+
 ## Text on a path
 
 To make a text follow a path layer, use `text.follow` with `path:"<path layer id>"` (a script writes `pathLayer="<id>"`); the text's own `path` field holds raw path data, not a layer id. The fields `pathLayer`, `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text layer; the guide for them is

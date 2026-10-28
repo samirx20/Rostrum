@@ -2280,7 +2280,7 @@ fn runtime_color_filter(r: &anyrender::filters::RuntimeShaderFilter, input: Opti
     }
     for (uname, values) in &r.uniforms {
         let Some(u) = effect.uniforms().iter().find(|u| u.name() == uname) else {
-            if uname != "box" {
+            if !anyrender::filters::PAINTER_UNIFORMS.contains(&uname.as_str()) {
                 anyrender::filters::shader_errors::push(format!("the {name} effect's shader has no uniform \"{uname}\""));
             }
             continue;
@@ -2393,7 +2393,7 @@ fn runtime_shader_filter(r: &anyrender::filters::RuntimeShaderFilter, input: Opt
     }
     for (name, values) in &r.uniforms {
         let Some(u) = effect.find_uniform(name) else {
-            if name != "box" {
+            if !anyrender::filters::PAINTER_UNIFORMS.contains(&name.as_str()) {
                 anyrender::filters::shader_errors::push(format!("the {} effect's shader has no uniform \"{name}\"", effect_name(&r.program)));
             }
             continue;
@@ -2476,7 +2476,7 @@ fn runtime_blender_filter(r: &anyrender::filters::RuntimeShaderFilter, source: O
     }
     for (uname, values) in &r.uniforms {
         let Some(u) = effect.uniforms().iter().find(|u| u.name() == uname) else {
-            if uname != "box" {
+            if !anyrender::filters::PAINTER_UNIFORMS.contains(&uname.as_str()) {
                 anyrender::filters::shader_errors::push(format!("the {name} effect's shader has no uniform \"{uname}\""));
             }
             continue;

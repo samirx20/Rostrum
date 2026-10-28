@@ -221,11 +221,15 @@ You can't judge motion from the script. Look.
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
 | `look_frame` (`what: "in_frame"`) | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
 | `look_frame` (`what: "empty"`) | Find **blank, pale and standing-still stretches** from tiny pictures every 0.5 s (seconds to run), with times and numbers: near-empty frames (almost only background), washed-out frames (all pale, low contrast), nothing moving for `min_still` s (default 2), and whether the piece ends on one. Facts, not verdicts: a held title is yours to judge. `video: "<mp4 path>"` checks a finished file. |
-| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file as `look_frame` `what: "empty"` does and names any blank, washed-out or unchanged stretches with times (`quiet_stretches`): look at those times with `look_frame`. |
+| `look_review` | List the film's **weakest moments, ranked**, each a located fault with times: a near-empty stretch, a text cut off by the frame edge, an old heading still faintly behind a new one, a set of parts (a chart's bars, a list's rows) not drawn in yet while the rest of its group shows, a plain card opening empty, a character's pose barely changing for 6 s or more, framing held 10 s or more (no camera move or cut), nothing moving, a subject cut by the edge. `beats: [{"at": 25, "to": 30, "expect": "camera move"}]` (also `cut`, `pose change`, `<layer id> moves`, `<layer id> shows`) names a beat of the brief that never happens. Seconds to run on a 30 s film; `video` reads an exported mp4's pictures. Facts, not taste: a held title may be meant. |
+| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out or unchanged stretches: `quiet_stretches`; subjects cut by the edge: `edge_cuts`) and ends with the time left and the weakest moments from `look_review`. |
 
-**Last step, every time: look at the export itself.** When `render_video` finishes, look at a sheet of the finished
-piece (`look_frame` `what: "sheet"` with `video` = the mp4's path, over the whole duration, after your last edit) and fix what is wrong before you call
-it done. A sheet from before your last edit doesn't count.
+**The loop: make → export → review → fix.** Every finished export's reply ends with the time left and its top weakest
+moments (from `look_review`), e.g. *Time left: 11 min. Weakest moments, most visible first: 1. 22–23 s: near-empty …
+2. 12 s: text "headline" is cut off by the right edge …* Fix the top one, export again, and repeat while time is left:
+each pass is a few minutes. Also look at a sheet of the finished piece (`look_frame` `what: "sheet"` with `video` = the
+mp4's path, after your last edit): `look_review` names what can be measured, your eyes judge the rest. A sheet from
+before your last edit doesn't count.
 
 ### Using your time
 
@@ -278,7 +282,7 @@ Edits are all or nothing, so nothing changed.
 | `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
 | `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
-| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax |
+| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax, or hand-letter a title as brush strokes |
 | `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
 | `character-rigging-and-lip-sync` | you make a figure move from bones and IK (`limb`, `walk`, `idle`, `follow`, `blink`, `layer(id)` in a script), or make a mouth follow a voice |
 | `frame-parallax-motion-blur` | you move the frame, look through it, pin a title to it, set depth between layers, motion blur, smears, trails |

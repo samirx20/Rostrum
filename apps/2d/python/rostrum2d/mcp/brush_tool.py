@@ -39,7 +39,7 @@ def _out(b):
     "required": ["action"]})
 def run_brush(ctx, args):
     """List, save, use, duplicate, rename, delete, keep or drop saved brushes (My brushes: the project's and the
-    person's own library). Each listed brush has `where` and `stroke`: the settings to pass to paint.stroke."""
+    person's own library). Each listed brush has `where` and `stroke`: the settings to pass to paint.stroke (or paint.letters, which writes words with it)."""
     folder, act = ctx.app.folder, args["action"]
     for need in NEEDS.get(act, ("id",) if act != "list" else ()):
         if not args.get(need):

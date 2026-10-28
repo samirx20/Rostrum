@@ -91,15 +91,15 @@ then grabs a handle. Key `mix` over a few frames, not one.
 
 ## Limbs, walks and idles in a script
 
-Six script calls build the usual parts in one line each and write the motion as **ordinary keys**: everything they
+These script calls build the usual parts in one line each and write the motion as **ordinary keys**: everything they
 make is bones, IK chains, shapes, binds and keys that you edit, retime or delete like your own. They choose no look:
 sizes, colours and timing are yours.
 
 - **`limb(id, x=, y=, angle=90, lengths=(upper, lower, end), widths=(…), parent=, kind="arm" | "leg")`** makes three
   bones from the joint at (x, y) along `angle` (`<id>_upper`, `<id>_lower`, `<id>_end`: the hand or foot; give two
-  lengths for none), and plain shapes bound to them. `pieces="bend"` (the default) is one rounded bar bent across the
-  elbow or knee by a bend bind (`soft` = how wide the fold is); `"parts"` is two bars, each rigid, overlapping at the
-  joint; `"none"` makes bones only, for your own pictures (bind them with `bind`). A leg gets an IK chain (`<id>_ik`), an
+  lengths for none), and plain shapes bound to them. `pieces="bend"` (the default) is one tapered piece bent across the
+  elbow or knee by a bend bind (`soft` = how wide the fold is); `"parts"` is two tapered pieces, each rigid, meeting at
+  the joint; `"none"` makes bones only, for your own pictures (bind them with `bind`). A leg gets an IK chain (`<id>_ik`), an
   arm only with `ik=True`. `bend` is the way the joint folds: `"left"`, `"right"`, `"up"`, `"down"` (the side of the screen
   it points to), `"out"` / `"in"` (away from / toward the body: the parent bone's joint) or `clockwise` /
   `counterclockwise`; an arm's default is `"out"`, a leg's `"right"`. A foot points along `end_angle` (0 = right,
@@ -109,6 +109,16 @@ sizes, colours and timing are yours.
   - **Colour.** `color=` (and `end_color=` for the hand or foot). Without one, the parts take the fill of the biggest
     plain-coloured layer bound to the bone the limb hangs from (the body), worked out at the end of the script, so bind
     the body before or after: either works. Nothing bound there: light grey.
+  - **Reading in a small still.** Two even tubes of one colour don't read as bent when shrunk, and a forearm in front
+    of a body of the same colour disappears. So by default a limb **tapers** (`widths[0]` at the shoulder or hip, a
+    little thinner at the elbow or knee, swelling back to `widths[1]` along the forearm or calf, then thinner by `taper`
+    at the wrist or ankle; `taper=0` is even), has a **joint shape** at the elbow or knee (`joint="round"`: a circle
+    under the limb that rounds the outside of the bend; `"ball"`: on top, a visible ball joint for a robot or puppet;
+    `"none"`), `joint_size` times the joint's width, and an **outline** (`outline=True`: each part's fill, darker;
+    a colour; `False`: none) `outline_width` px wide (default a tenth of `widths[0]`, at least 2). Give the upper part
+    and the forearm different widths (`widths=(44, 34, 60)`) and the bend shows in the silhouette alone. Check the
+    pose in `look_frame` at the size the video will be watched; if an elbow still hides, bend it further or turn
+    the outline colour up.
   - **Rest pose.** An arm without IK rests with its elbow bent `relax` degrees (default 20; a leg without IK 6) toward
     `bend`, the upper bone turned back half that much so the hand hangs under the shoulder. `relax=0` is dead straight.
   - **A living arm from upper keys alone** (`natural=True`, the default, for limbs without IK). Key only
@@ -138,6 +148,12 @@ sizes, colours and timing are yours.
   lands `stagger` s after the one before (overlap). A value is a turn (a limb's upper bone, a bone's `rotation`), a
   dict of fields for a bone (`{"rotation": 8, "moveY": -20}`), or for a limb `{"upper": a, "lower": b, "end": c}`.
   `anticipate=0, overshoot=0` is a plain ease. Write poses in time order: each starts from what the one before left.
+- **`step(legs=[a, b], by=px, at=, take=, lead=, lift=, dip=)`** moves a figure that faces the camera to a new spot in
+  side-steps: the foot on the side it moves steps out first (`lead` to choose), the other follows to its place beside
+  it, as many steps as the legs need, with the body carried over them and dipping at each step. `by` is px (+ right,
+  - left); it returns the time it ends, so chain the next move from it. Seen from the side, use `walk`. **Crouch, sit
+  back, rise on the toes:** move the hip, not the legs: `pose({hip: {"moveY": 40}}, at=t)`; IK feet stay planted and
+  the knees bend. An IK leg's foot stays flat on the floor however the body moves (unless you key its `end` bone).
 - **`follow(bone, start=, end=, lag=0.12, overshoot=0.4, amount=1)`** is `rig.follow` in a script (see Staging below).
   `walk` and `idle` run it on the arms' upper bones by default (`follow_through=False` leaves it out), so forearms and
   hands trail.
@@ -301,5 +317,16 @@ Technique, not a recipe. Where a figure feels stiff, the cause is usually one of
   change of a few percent reads as a wobble. Keep the eyes in about the same part of the frame across a cut, and the figure
   facing the same way, so the viewer does not have to search. Frame a walk wide enough for the stride, or let the frame
   travel with it (`f.fit` on the figure at the walk's start and end times).
+- **Acting over a shot.** A figure that only gestures with its arms while its feet stay put reads as standing still.
+  Give each beat of the brief its own key pose with a clearly different silhouette (weight on the other leg, a step
+  toward what it reacts to, a crouch before a jump, the body turned), roughly every two to four seconds, and let the
+  holds between them breathe with `idle`. Move the legs whenever the body's weight moves: a step toward, a step back
+  in surprise, a shift before a line (make the legs with `limb(…, kind="leg")`: shapes bound to the hip can't step). Check with a contact sheet across the whole piece: if two stills a few seconds
+  apart look alike, a beat is missing there.
+- **A lively face.** Change the eyes and mouth with the beats, not just the blink: a swap set per feature
+  (`eyes_open`, `eyes_wide`, `eyes_happy` …) keyed with `eyes.show({t: "eyes_wide"})` at each reaction, a few frames
+  *before* the body moves (thought leads action); `blink` over the rest, and a blink on a head turn. Lip sync from the
+  voice is one call once the line is made in Sound: `lipsync("voice:<line id>", at=<the line's start>, slot=mouth,
+  shapes={...})`; keys you add to the same slot (a smile after the line) sit between its keys.
 - **Holds.** Let a pose rest for a few frames (a `hold` ease, or the same value at two times) before the next move; constant motion reads as drifting.
 - **Easing on IK.** Keys on an IK target (`targetX`, `targetY`, `mix`) take an ease like any key (`key.add ... ease=easeOut`): the hand leaves its place quickly and settles.
