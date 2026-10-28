@@ -48,3 +48,13 @@ def test_every_stroke_of_one_change_reaches_the_picture():
     whole = ink.png(frame, w, h)[1]                     # the ink of all four strokes, made from the strokes themselves
     assert whole[3] > 200                               # it spans the first line to the last (y 100 .. 320)
     assert D.inked(item, frame)["crop"] == whole        # the picture the engine gets: not only the first new stroke
+
+
+def test_script_letters_paint_the_same_strokes():
+    from rostrum2d import run_source
+    d = Document.new(KIND)
+    d.run_script("t.py", run_source('comp("film", width=1280, height=720, duration=2)\n'
+                                    'p = drawing("ink").frame(0).paint()\n'
+                                    'p.letters("Hi", x=200, y=400, height=100, font="sans", size=8)\n', "t.py"))
+    got = strokes(d)
+    assert len(got) == len(lettering.strokes("Hi", font_name="sans", size=100)) and all(s["size"] == 8 for s in got)

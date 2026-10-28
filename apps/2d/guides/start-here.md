@@ -282,7 +282,7 @@ Edits are all or nothing, so nothing changed.
 | `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
 | `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
-| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax |
+| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for the frame's moves and parallax, or hand-letter a title as brush strokes |
 | `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
 | `character-rigging-and-lip-sync` | you make a figure move from bones and IK (`limb`, `walk`, `idle`, `follow`, `blink`, `layer(id)` in a script), or make a mouth follow a voice |
 | `frame-parallax-motion-blur` | you move the frame, look through it, pin a title to it, set depth between layers, motion blur, smears, trails |

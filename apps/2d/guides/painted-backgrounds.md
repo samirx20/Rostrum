@@ -175,7 +175,7 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   frame, so a layer that runs off the frame (a full-frame paper, a ground painted to the bottom of the picture) keeps
   a clean border there while its edges inside the frame wobble. Look at the edges at 100 % (`look_frame` with an
   `area` and a `width` as large as the area) to judge it.
-- **Hand-lettered words.** Typed text fading in reads as typed. `paint.letters` writes words as brush strokes: each
+- **Hand-lettered words.** Typed text fading in reads as typed. `paint.letters` (script `p.letters(text, x=, y=, height=, font=, **brush)` on a paint layer) writes words as brush strokes: each
   letter's centre line from a single-stroke font (`font`: script, script heavy, cursive, sans, serif, italic,
   blackletter …), in the order a hand writes it, painted with any brush, so every paint.stroke setting applies
   (`taper_start` / `taper_end` for pointed entries and exits, `swell`, `pool`, `wobble`, `bristle` + `dry` for dry

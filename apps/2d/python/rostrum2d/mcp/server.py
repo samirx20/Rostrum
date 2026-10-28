@@ -53,7 +53,7 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "Fields: x, y (the anchor, default the centre), w, h, scale, rotation, opacity 0-1; shape: shape=\"rect\" | "
                "\"ellipse\" …, fill, radius, filled, stroke=\"#fff\", strokeWidth; text: body, size, weight, color, align (a text's x is its left edge, middle or right edge as align says); "
                "path: d (SVG; with no x, y, w, h its points are comp px), fill=\"none\". Colours \"#rrggbb\" or \"#rgb\". "
-               "Drawings: d = drawing(id, w=, h=, eachFrame=True); f = d.frame(at); f.paint(); p.stroke(points, **brush) "
+               "Drawings: d = drawing(id, w=, h=, eachFrame=True); f = d.frame(at); f.paint(); p.stroke(points, **brush); p.letters(text, x=, y=, height=, font=\"script\", **brush) paints hand-lettered words as brush strokes in writing order (write on with drawnSoFar) "
                "(every drawing's paint joins the layer's one set of paint layers). "
                "No import except math and random (seeded: the same numbers every run; random(7) is your own seeded generator "
                "with .uniform/.randint/.choice/.random) and no classes: use functions and dicts. "

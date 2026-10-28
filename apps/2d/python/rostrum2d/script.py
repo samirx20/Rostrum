@@ -220,6 +220,19 @@ class Item:
             brush["mask"] = getattr(brush["mask"], "id", brush["mask"])
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
 
+    def letters(self, text: str, x: float = 0, y: float = 0, height: float = 120, font: str = "script", **values) -> list:
+        """Words as brush strokes on this paint layer, the way a hand letters them (the same as paint.letters): x, y the
+        baseline start in the canvas's px; tracking=, line=, slant=, align=, hand= (0–1), hand_seed=, path= / start= as
+        paint.letters; any brush setting. Gives its strokes in writing order (key drawnSoFar 0 → 1 to write them on)."""
+        from .lettering import strokes
+        self._need("paint", "letters")
+        own = {k: values.pop(k) for k in ("tracking", "line", "slant", "align", "hand", "hand_seed", "path", "start") if k in values}
+        lines = strokes(text, font_name=font, size=float(height), x=float(x), y=float(y), align=own.get("align", "left"),
+                        spacing=float(own.get("tracking", 0)), line=float(own.get("line", 1.6)), slant=float(own.get("slant", 0)),
+                        hand=float(own.get("hand", 0)), seed=int(own.get("hand_seed", 0)), path=own.get("path", ""),
+                        start=float(own.get("start", 0)))
+        return [self.stroke(pts, **values) for pts in lines]
+
     def wash(self, box=None, outline=None, id: str | None = None, **values) -> list:
         """A wash to the edges on this paint layer (paint_wash.py, the same as paint.wash): `p.wash(color="#1b2a5c")` covers
         the whole canvas; box=[x0, y0, x1, y1] or outline=[[x, y], …] a region, with bleed= / edge= px; to= and bands=
@@ -521,7 +534,7 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",
        "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / step(legs=[l, r], by=px, at=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",
        "device(id, kind=phone|laptop|browser) / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: guide ui-and-product-animation",
-       "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
+       "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.letters(text, x=, y=, height=, font=, **brush): hand-lettered words as brush strokes", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
        "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
 
