@@ -106,7 +106,7 @@ def _part(r: pose_ik.Rig, owner: str, name: str) -> int:
 
 def _put(node: dict, turns: dict, t: float, ease: str):
     bones = {bone["id"]: bone for bone, _ in pose_ik.skin.bones_of(node)}
-    for id_, p, at, v in pose_ik.drag_keys(node, turns, t):
+    for id_, p, at, v in pose_ik.drag_keys(node, turns, t, fill=False):
         k = {"id": key_id(id_, p, at), "type": "key", "prop": p, "t": float(at), "v": round(v, 6) + 0.0,
              "ease": ease}
         bones[id_]["keys"] = [o for o in bones[id_]["keys"] if o["id"] != k["id"]] + [k]
