@@ -5,7 +5,7 @@ check in the reply (loudness, the weakest asked moments with their fixes, faults
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
 touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, and only when it measures within the stated distance of passing (its words say what passes and from where it may be kept); further off, fix it, or move the moment itself in the script (`moment(name, at=...)` or `expect`) when the brief allows another time.
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it, and every why quotes the brief (in quotes, or 3 or more of its words in a row) where it asks for that fault: `brief("...")` in the script stores the brief's own words on the song (a dull top is kept for "dark, muffled", never for "a piano chord progression"); with no brief stored, or a why that does not quote it, the keep is refused and the fault's fix says why; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, and only when it measures within the stated distance of passing (its words say what passes and from where it may be kept); further off, fix it, or move the moment itself in the script (`moment(name, at=...)` or `expect`) when the brief allows another time.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
@@ -23,6 +23,7 @@ Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery 
 **A script's shape** (a technique; every name is below):
 
 ```python
+brief("<the brief you were given, word for word>")      # 0. a kept fault quotes it (keep)
 tempo(96); key("F major"); length(bar(17))                 # 1. the song's map: tempo (changes), meter, key, length
 marker("lift", at=bar(9)); section("verse", bar(1), bar(9))  #    sync points as markers, sections as named spans
 CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}              # 2. the music as data: bar -> chord, a dict you edit
@@ -181,6 +182,11 @@ colour is already on the keys.
 
 A song stops at its `length`. What a clean end needs, with what exists today:
 
+- **Stop on a marker (a clean, real ending).** End the last notes on the marker (`end="#end"`), set `length` there and,
+  after it, `ring_out(False)`: the song stops at its length with its last 0.1 s smoothed so it does not click
+  (`ring_out(False, soft_end=False)`: a dead stop). A short, dry last hit (a staccato chord, a kick with a choked
+  cymbal) stops cleanest. With Ring out on, the ring past the length is faded in the delivered file: when the brief
+  asks for a clean ending, or a marker named end / ending marks it, that fade is the fault `faded_end`.
 - **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
   **Ring out** (the song field `ringOut`, on in every new song) a sound still ringing at `length` plays on until it dies away
   (under -60 dBFS, at most 6 s more) and the engine's file ends there; a note held past `length` is let go at it, and a note that

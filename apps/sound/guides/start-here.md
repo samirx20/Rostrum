@@ -5,16 +5,18 @@ effects), sections, markers and a master. You build it from ONE Python script an
 
 ## The loop
 
-1. **Write the whole piece as one script**: the song's map (tempo, key, length, sections, markers), every track's notes,
-   the effects, the mix and the master target.
+1. **Write the whole piece as one script**, starting with the brief you were given, word for word: `brief("...")`.
+   Then the song's map (tempo, key, length, sections, markers), every track's notes, the effects, the mix and the master
+   target.
 2. **Run it with `run_script` and `look: true`**, under one `name` for the song. It merges the script, renders the mix and
    listens.
 3. **Read the faults.** The reply opens `NOT DONE:` (each fault with its id, its time and a fix) or `DONE:`.
 4. **Fix the script, not the song**, and run it again **under the same name**. A removed track, note or marker disappears;
    nothing is copied. A new name that makes the same tracks is refused (it would double every note).
 5. Repeat until the reply says `DONE:`, then deliver with `render_mix` (`name`, `folder`, `format`). A delivery is refused
-   while a fault is open, unless `keep: {"fault_id": "why"}` explains it; a fault on the moment the brief asked for is kept
-   only after a render that tried the fix, and only when it measures near passing (the fault says what passes); else
+   while a fault is open, unless `keep: {"fault_id": "why"}` explains it by quoting the brief's words that ask for it
+   (`"dull_top": "the brief asks for \"dark, muffled\""`); any other why is refused. A fault on the moment the brief
+   asked for is kept only after a render that tried the fix, and only when it measures near passing (the fault says what passes); else
    fix it, or move the moment itself in the script when the brief allows.
 
 ## Bars first

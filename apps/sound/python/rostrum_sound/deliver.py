@@ -289,4 +289,5 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
             "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None) and opts.length is None),
             **({"range": [start, start + keep / rate]} if opts.start is not None else {}),
-            "clippedSamples": over, "clippedFiles": clipped}
+            "clippedSamples": over, "clippedFiles": clipped,
+            **({"fadedEnd": {"faded_s": fold / rate, "rang_s": (frames - keep) / rate, "from_s": (keep - fold) / rate}} if fold else {})}

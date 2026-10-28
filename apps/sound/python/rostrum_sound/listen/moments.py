@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import attack, drop_gap, stop_fall
+from . import attack, drop_gap, rise_gap, stop_fall
 from . import rival as rival_attack
 from .brightness import growth
 from .core import load, mono, num
@@ -168,12 +168,12 @@ def check(wav, moments, drums=None) -> list[dict]:
         if kind in ("hit", "stop", "entry"):
             out += _hit(wav, m, sr, at, kind)
         elif kind == "lift":
-            out += _lift(y, sr, at) + _flat_top(wav, at)
+            out += _lift(y, sr, at) + _flat_top(wav, at) + rise_gap.faults(y, sr, at)
         elif kind == "drop":
             end = mo.get("end")
             out += _drop(m, sr, ev, at) + drop_gap.faults(m, sr, at, float(end) if end is not None else drop_gap.return_of(moments, at), drums)
         elif kind == "climax":
-            out += _climax(wav, m, sr, y, at) + _flat_top(wav, at)
+            out += _climax(wav, m, sr, y, at) + _flat_top(wav, at) + rise_gap.faults(y, sr, at)
         elif kind == "voice" and mo.get("end") is not None:
             out += _voice(y, sr, at, float(mo["end"]))
     return sorted(out, key=lambda f: f["at_s"])
