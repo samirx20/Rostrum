@@ -28,7 +28,7 @@ TIMES = {"times": {"type": "array", "items": {"type": "number", "minimum": 0}, "
 
 AREA = {"area": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4,
                  "description": "[x, y, w, h] in comp px: only that part, drawn sharp at `width` (a zoom on a mouth, a "
-                                "hand, an edge; e.g. [860, 380, 200, 120]). One frame only (not with `times`)."},
+                                "hand, an edge; e.g. [860, 380, 200, 120]). One frame only (not with `times`). The area is in the composition's own px, not in what the camera shows: with the frame zoomed or moved, the same px can be a different part of the picture than a plain look_frame shows (an empty crop usually means the area is off the subject)."},
         "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "With `times`: tiles per row. Default 4 "
                                                                                 "(fewer when there are fewer times)."}}
 

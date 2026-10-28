@@ -15,7 +15,7 @@ PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
               size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
               taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none", wrap=False,
-              by_dab=False, wobble=0.0, swell=0.0, pool=0.0, edge_darken=0.0, granulation=0.0)
+              by_dab=False, wobble=0.0, swell=0.0, pool=0.0, edge_darken=0.0, granulation=0.0, bloom=0.0, pooling=0.0, load=0.0, dry=0.0)
 EVEN = 0.13   # even soft edge: a dab every EVEN * sqrt(radius * edge width) px at most (ridges under ~1.5/255)
 
 
@@ -106,6 +106,13 @@ class Paper:
             g = 0.6 * _noise(h, w, s, self.seed, 0, o, r) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o, r)
             self._g = (g, _noise(h, w, 1.5, self.seed, 2, o, r))
         return self._g
+
+    def noise(self, x0, y0, x1, y1, cell, salt):
+        """Smooth value noise 0..1 (features about `cell` px) over the canvas box x0..x1, y0..y1, fixed to the paper
+        like its grain: the same numbers at a pixel whatever box is asked for (a wash's pooling and blooms)."""
+        if self.wrap:
+            return _noise(self.h, self.w, cell, self.seed, salt, self.origin, True)[y0:y1, x0:x1]
+        return _noise(y1 - y0, x1 - x0, cell, self.seed, salt, (self.origin[0] - x0, self.origin[1] - y0))
 
 
 def curve(*pts, n=32, pressure=(1.0, 1.0, 1.0)):

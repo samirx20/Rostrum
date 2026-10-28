@@ -32,3 +32,12 @@ def test_the_report_names_the_bare_strip_while_the_wash_paints_on():
     assert 125 <= big["box"][1] <= 140 and big["box"][3] == 180 and "bare paper: a 320×" in big["words"]
     half, _, _ = C.report(d["frames"][0], 320, 180, write_on.amount_at(d, 1.0))     # half drawn: more bare
     assert half["bare"] > rep["bare"] + 0.2
+
+
+def test_a_wash_dries_like_watercolour_unless_told():
+    """Left out, a wash's strokes carry the watercolour drying (paint_wash.WATER); 0 turns one off."""
+    from rostrum2d import paint_wash
+    _, strokes = paint_wash.plan([0, 0, 200, 100], 400, 300, {"color": "#203060"})
+    assert all(s[k] == v for s in strokes for k, v in paint_wash.WATER.items())
+    _, strokes = paint_wash.plan([0, 0, 200, 100], 400, 300, {"color": "#203060", "pooling": 0.0})
+    assert strokes[0]["pooling"] == 0.0

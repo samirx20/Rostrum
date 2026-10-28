@@ -66,7 +66,7 @@ fn shown(frames: &[super::Pic], t: f64, fps: f64) -> Option<&super::Pic> {
 
 fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     let mut props = props_at(node, t);
-    // Which picture shows (a drawing's frame, paint, grain's frame, a video's frame) decides what is drawn, so it is
+    // Which picture shows (a drawing's frame, paint, grain's and rough's frame, a video's frame) decides what is drawn, so it is
     // read at the frame's own time even in a motion-blur sub-frame (`content_time`).
     let tc = content_time(t);
     if node.kind == "drawing" {
@@ -84,7 +84,7 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         // A painted fill (stage_raster.rs): the painting's drawing showing now is the fill's picture.
         props.insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, tc, fps)));
     }
-    if node.kind == "grain" {
+    if node.kind == "grain" || node.kind == "rough" {
         props.insert("frame".into(), Value::from((tc * fps + 1e-6).floor()));
     }
     if node.kind == "video" {
@@ -147,9 +147,9 @@ thread_local! {
 /// hold key) between the frame's time and the sub-frame's, so a cut never smears two shots, and what is drawn is the
 /// frame's own (MOTION.md › Motion blur).
 pub fn shutter_at<T>(centre: f64, sub: f64, f: impl FnOnce() -> T) -> T {
-    OFFSET.with(|c| c.set(Some(sub - centre)));
+    let outer = OFFSET.with(|c| c.replace(Some(sub - centre)));
     let out = f();
-    OFFSET.with(|c| c.set(None));
+    OFFSET.with(|c| c.set(outer));
     out
 }
 

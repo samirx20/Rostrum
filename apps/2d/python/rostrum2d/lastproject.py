@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from rostrum_core import project, recent
+from rostrum_core import agent_last, project, recent
 from rostrum_core.storage import paths
 
 from . import KIND
@@ -33,9 +33,10 @@ def describe(row: dict) -> dict:
 
 
 def last_project() -> dict | None:
-    """The newest recent row, or None when the person has no recent project."""
+    """What the server opens at start-up: the project this working folder's agent last opened when that changed after
+    the person's newest recent row (a resumed agent session gets its project back), else that row; None when neither."""
     rows = recent_rows()
-    return rows[0] if rows else None
+    return agent_last.pick("rostrum-2d", KIND.ext, rows[0] if rows else None)
 
 
 def docs_in(folder) -> list[str]:

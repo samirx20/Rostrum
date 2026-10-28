@@ -15,6 +15,7 @@ from rostrum_core.mcp.tools import _schema_of
 SEES_PICTURE = {"look_motion", "look_drawing", "look_painting"}
 EXPORTS = {"render_video", "render_export"}        # an export the agent should look at (render_export: an mp4's reply has `quiet_stretches`)
 KINDS = {"full-size frame": "a full-size single frame (look_frame time)", "motion": "the motion (look_motion)"}     # named after an export until done     # looks that reset "edits since the last look"
+PASS_S = 150.0                # a look-fix-export pass besides the export itself: looks, a script change, thinking
 MOMENT = 2.0                  # a looked-at time stands for this many seconds either side of it
 SESSION_ARG = {"what": {"enum": ["project", "session"], "default": "project", "description":
                '"project" (default): the project\'s items. "session": the clock: time since your first call, calls, edits since you last '
@@ -45,6 +46,7 @@ class Clock:
         self.looked = False
         self.covered: list[tuple[float, float]] = []
         self.exported = self.export_looked = False
+        self.export_s: float | None = None          # how long the last export took (render_video's `seconds`)
         self.quiet: list[str] = []
         self.seen: set[str] = set()
 
@@ -66,6 +68,7 @@ class Clock:
             self.edits_since_look += 1
         if who in EXPORTS and (who == "render_video" or "quiet_stretches" in payload or args.get("format") == "mp4"):
             self.exported = True
+            self.export_s = payload.get("seconds") if isinstance(payload.get("seconds"), (int, float)) else self.export_s
             self.export_looked = self.export_looked and tool not in EXPORTS          # a new render: not looked at yet
         if who == "look_frame" and "video" in payload:
             self.export_looked = True
@@ -108,6 +111,9 @@ class Clock:
             left = self.budget_min * 60 - self.elapsed()
             parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to look and refine)" if left > 60 else "")
                          if left > 0 else f"your {self.budget_min:g} min are used")
+            passes = int(left // ((self.export_s or 60.0) + PASS_S)) if self.exported else 0
+            if passes >= 1:                  # agents stopped with two thirds of their time unused (fair 2D benchmark)
+                parts.append(f"enough for about {passes} more pass{'es' * (passes != 1)} of look, fix and export")
         return " · ".join(parts)
 
     def facts(self, span: float | None) -> Reply:

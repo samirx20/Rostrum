@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..errors import RostrumError
+from ..errors import RostrumError, codes
 
 URI = "rostrum://guide/"
 
@@ -91,6 +91,9 @@ class Guides:
         if section is not None:
             want = section.lower().lstrip("# ").strip()
             hits = [p for p in parts[1:] if want in p.splitlines()[0].lower()]
+            if not hits and want in self._topics:
+                raise RostrumError(codes.NOT_FOUND, "inspect_guide", f'"{section}"', f'no section "{section}" in the guide "{topic}"',
+                                   [_head(p) for p in parts[1:]], f'"{want}" is a guide of its own: inspect_guide topic "{want}"')
             if not hits:
                 raise RostrumError.not_found("inspect_guide", "section", section, [_head(p) for p in parts[1:]], f'the guide "{topic}"')
             return "".join(hits)

@@ -177,8 +177,9 @@ def _chain(paint, w, h, masks, below_key, at=(0, 0)) -> list[str]:
             reads += below_key
         keys.append(_h(keys[-1], json.dumps(s, sort_keys=True), reads))
     with _LOCK:
-        _CHAINS[mine] = (list(strokes), reads_of, keys)
-        _CHAINS.move_to_end(mine)
+        if not (got is not None and got[1] == reads_of and done == len(strokes) <= len(got[0])):
+            _CHAINS[mine] = (list(strokes), reads_of, keys)     # (a part of the strokes kept already: the whole stays,
+        _CHAINS.move_to_end(mine)                               # so Drawn so far's pictures don't key them all again)
         while len(_CHAINS) > CHAINS_KEEP:
             _CHAINS.popitem(last=False)
     return keys
@@ -378,11 +379,58 @@ def _over(layers, w, h) -> np.ndarray:
     """The layers' pixels together for their RGBA8 picture only (not `render`'s: no stroke-on-top map). One plain
     layer (most drawings) is its own pixels, not a copy clamped by compose.over: straight8 clamps the colour to the
     alpha the same (min(rgb, a) / a and rgb / a cut at 1 are both 1), so the bytes are the same, without two passes
-    over a whole canvas per picture (a Drawn so far picture made 2-4 canvases)."""
-    shown = [(p, px) for p, px, _, _ in layers if p["visible"] and p["opacity"] > 0]
+    over a whole canvas per picture (a Drawn so far picture made 2-4 canvases).
+
+    Otherwise the layers are put together one at a time, each only over its painted box (compose.bounds; a layer with
+    nothing on it is left out: it changes no pixel), and the result up to each layer is kept by its key (`_STACKS`),
+    so the next picture of a drawing being drawn on (Drawn so far: the layers under the one being drawn are the same,
+    those over it empty) starts from the layers under it, put together once (five 2100 x 1080 wash layers: ~1.1 s a
+    picture before). The same bytes as compose.over."""
+    shown, keys, below = [], [], _h("below")
+    for p, px, _, key in layers:
+        below = _h(below, key, json.dumps({k: p[k] for k in ("mode", "opacity", "visible")}, sort_keys=True))
+        if p["visible"] and p["opacity"] > 0 and (p["strokes"] or p.get("ground")):
+            shown.append((p, px, key))
+            keys.append(below)
+    if not shown:
+        return np.zeros((h, w, 4), np.float32)
     if len(shown) == 1 and shown[0][0]["mode"] == "normal" and shown[0][0]["opacity"] >= 1:
         return shown[0][1]
-    return compose.over([(p, px) for p, px, _, _ in layers], w, h)
+    start, out = 0, None
+    with _LOCK:
+        for i in range(len(shown), 0, -1):
+            if (keys[i - 1], w, h) in _STACKS:
+                start, out = i, _STACKS[(keys[i - 1], w, h)]
+                _STACKS.move_to_end((keys[i - 1], w, h))
+                break
+    if start == len(shown):
+        return out
+    out = np.zeros((h, w, 4), np.float32) if out is None else out.copy()
+    for i in range(start, len(shown)):
+        p, px, key = shown[i]
+        with _LOCK:
+            box = _BOUNDS.get(key, False)
+        if box is False:
+            box = compose.bounds(px)
+            with _LOCK:
+                _BOUNDS[key] = box
+                while len(_BOUNDS) > 512:
+                    _BOUNDS.popitem(last=False)
+        if i == len(shown) - 1 and i > start:          # the layers under the last kept too: the one being drawn on
+            with _LOCK:
+                _STACKS[(keys[i - 1], w, h)] = out.copy()
+        if box is not None:
+            compose.blend(out, p, px, box)
+    with _LOCK:
+        _STACKS[(keys[-1], w, h)] = out
+        while len(_STACKS) > STACKS_KEEP:
+            _STACKS.popitem(last=False)
+    return out
+
+
+_STACKS: OrderedDict = OrderedDict()     # (key of the layers up to one, w, h) -> them put together (shared: never changed)
+STACKS_KEEP = 3
+_BOUNDS: OrderedDict = OrderedDict()     # a layer's pixels' key -> its painted box (compose.bounds)
 
 
 def _seen(key):

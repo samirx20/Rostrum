@@ -121,11 +121,24 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   overlap show both edges (wet-on-dry). For wet-in-wet, where colours melt into each other, lay soft (`hardness` low)
   strokes, or blend them afterwards with `smudge` + `wet` on the same layer (it drags the paint, so work over the
   ground or an opaque base).
-- **How a wash dries.** `edge_darken` lays more pigment in a rim just inside each stroke's edge, as a wash does when its
-  water pulls pigment to the wet edge; it shows most on firm edges (`hardness` 0.5 and up) and barely on very soft
-  ones. Overlapping strokes each keep their own rim, which is how separate passes read as separate. `granulation`
-  lays more paint in the paper's valleys, a speckle that follows the `paper` and `paper_scale` and stays put on the
-  canvas; it reads on flat areas and on a dark ground.
+- **How a wash dries.** What makes a still frame read as painted rather than digital is that the paint is never one
+  even colour: real pigment gathers, settles and runs as the water dries, and each of those leaves *more pigment*, so
+  a deeper colour. `edge_darken` lays it at each stroke's edge (a thin hard line with a darker band inside, stronger
+  in some places than others), as a wash does when its water pulls pigment to the wet edge; it shows most on firm
+  edges (`hardness` 0.5 and up, or a paint mask's crisp edge) and barely on very soft ones. Overlapping strokes each
+  keep their own edge, which is how separate passes read as separate. `pooling` leaves soft puddles of deeper colour
+  inside the stroke at several sizes, the main thing that keeps a big flat area from looking like a fill.
+  `granulation` settles pigment in the paper's valleys in small clumps, a speckle that follows the `paper` and
+  `paper_scale` and stays put on the canvas; it reads on flat areas. `bloom` is a backrun: water running into the
+  drying wash pushes the paint out past the edge to a wandering, cauliflower-shaped front, paler inside, with darker
+  pigment dried along the front. `grain` breaks the paint itself up on the paper's tooth (a dry brush skipping over the
+  paper), so the paper shows through inside the stroke. `paint.wash` lays the first three by default.
+- **Which brush is which medium.** A watercolour or ink wash is a film, so it is laid with a soft `round` tip: the
+  passes melt into one coat and the drying settings above give it life. A `bristle` tip is a dry brush: each hair
+  leaves its own line, so rows of `bristle` strokes read as parallel streaks, never as a wash; it suits grass, wood,
+  rough texture and dry-brush accents. Gouache and other opaque paint: `opacity` 1, little pooling and edge, a `flat`
+  tip with `load` 1 for flat block-in. Transparency is part of watercolour: an `opacity` under 1 (or `multiply`
+  glazes) lets the paper and the washes below show through; opaque `normal` paint at 1 reads as gouache.
 - **A wash to the edges.** `paint.wash` (script `p.wash(...)`) covers the whole canvas, a `box` or an `outline` with
   passes that run past every side, with a crisp, soft (`edge`) or running (`bleed`) edge, flat or graded (`to`,
   `bands`); drawing-and-frame-by-frame.md › A wash to the edges lists every setting. Hand-laid rows leave bare strips
@@ -135,8 +148,33 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   loads: `wobble` drifts the path smoothly (around 0.2-0.5 of the size reads as a confident hand; jittering the
   points yourself gives a jagged line instead), `swell` varies the width along it without pressure in the points,
   `taper_start` / `taper_end` point its ends and `pool` makes the ends carry more ink (together: pointed, but loaded
-  where the brush touched down). A little `grain` breaks the edge on the paper's tooth (dry brush); a `bristle` tip
-  splits into hairs. Points with pressure still work and take precedence in feel: `size_pressure` follows them.
+  where the brush touched down, and a little at the corners where the hand slows). A brush line is thick-thin: give
+  the points pressure (`[x, y, pressure]`, light where the hand starts and lifts, full through the body) and
+  `size_pressure` turns it into width. A `bristle` tip with `load` near 1 keeps a solid ink body with ragged edges
+  (at `load` 0 it splits into separate hairs, which at small sizes reads as a thin broken line); `dry` then lets it
+  run out along the stroke, the outer hairs dropping first into dry-brush streaks while the middle stays solid,
+  sooner on long straight runs than round turns. A little `grain` breaks the edge on the paper's tooth. The path is
+  straight between the points you give: for a curve, give enough points along it, or the line turns hard corners a
+  hand would not.
+- **Paper over the whole picture.** A paper texture can sit over everything in the frame, so the washes, the line and
+  the shapes and type all sit in the same paper: a full-frame shape layer on top in a pale paper colour, blend
+  `multiply` (it darkens only by the paper's own tone), with a `grain` effect (`still` on, `smooth` on (the default:
+  soft round specks at any size; off gives square cells, which show at `size` 2 and up), `size` 1.5–4, `amount`
+  0.2–0.4) for the tooth, at a low opacity. A paint layer's `ground` with `granulation` / `grain` on its washes gives
+  tooth inside the drawing only.
+- **Rough edges.** Paint has soft, uneven edges, but a shape, a text, a path or a straight wash box drawn by the engine
+  is ruler-straight. The `rough` effect moves a layer's pixels by smooth noise, so every edge in it wobbles as if
+  drawn or cut by hand: `item.effect("rough", amount=6, size=40)`. `amount` is how far an edge moves at most (px),
+  `size` how wide one bump is (px), `detail` (1–8) adds finer wobble on top (1 = smooth bumps, 4 and up = a torn,
+  ragged edge), `seed` picks another wobble. Scale it to the mark: a few px on an inked line keeps it a line, 6–10 on
+  a big flat shape reads as hand-cut paper. Each layer takes its own (put the line on one drawing layer and the colour
+  on another to warp them differently), and on a group every layer in it warps together, so a line and its fill stay
+  together. `boil` 2–4 picks a new wobble every
+  that many frames: the hand-drawn "boil" of a line redrawn each frame; 0 holds still. The layer's box grows by
+  `amount` so nothing is cut; it moves with the layer and works under motion blur. A layer that is cut by the frame's
+  edge (a ground painted to the bottom of the picture) has nothing past that edge to pull in, so rough there shows
+  the background in notches: paint it past the edge by more than `amount`, or leave rough off it. Look at the edges
+  at 100 % (`look_frame` with an `area` and a `width` as large as the area) to judge it.
 
 ## Ways of working (techniques, not rules)
 

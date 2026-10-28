@@ -295,6 +295,8 @@ fn layer(it: &Item) -> R<String> {
     }
     let body = copies + &body;
     // Colour effects (grade.rs) act on the layer's own look and its effects; frosted glass stays as it sees what is behind.
+    // Rough edges move the layer's pixels first, so its colour effects and grain sit on the warped look, unstretched.
+    let body = super::rough::wrap(it, body)?;
     let body = super::grade::wrap(it, body)?;
     let body = super::grain::wrap(it, body)?;
     let (glass, opacity, body) = super::stage_fx::glass(it, !defs.is_empty(), body)?;

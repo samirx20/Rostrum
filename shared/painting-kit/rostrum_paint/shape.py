@@ -16,13 +16,16 @@ import math
 import numpy as np
 
 KEYS = ("steady", "tilt_angle", "tilt_size", "taper_start", "taper_end", "size_jitter", "angle_jitter",
-        "wobble", "swell", "pool")                                                                      # all 0 = off
+        "wobble", "swell", "pool", "load", "dry")                                                                      # all 0 = off
 STEADY_PX = 40.0         # steadiness 100 % = the line trails the pen by up to this many canvas px
 TILT_FULL = 60.0         # degrees of lean that count as "on its side"
 TILT_WIDEN = 2.0         # tilt → size 100 %, on its side: the tip is this much wider again
 WOBBLE_WAVE = 9.0        # a wobble's drift turns about every this many brush sizes along the stroke
 SWELL_WAVE = 6.0         # the width swells and thins about every this many brush sizes
 POOL_REACH = 0.6         # the ink pools over about this many brush sizes at each end
+DRY_SPAN = 60.0          # dry 100 %: the brush has run about dry after this many brush sizes (less, the less dry)
+DRY_GRAIN = 0.45         # dry 100 %: the paper's tooth breaks the ink at least this much (its grain)
+DRY_FROM = 0.6           # brush.plan: a drying brush's S starts here (every hair on) and climbs to 1 (only the longest left)
 
 
 def points(raw) -> np.ndarray:
@@ -185,3 +188,32 @@ def hand(p, t, length, size, step, seed):
         t = np.asarray(t, float)
         pl = p["pool"] * (np.exp(-(t / reach) ** 2) + np.exp(-((length - t) / reach) ** 2))
     return sw, pl
+
+
+def turns(th, size, step):
+    """0..1 per dab: how sharply the stroke is turning there (a corner: 1), smoothed over about a brush size, from the
+    dabs before it only (a stroke laid in pieces agrees)."""
+    if len(th) < 2:
+        return np.zeros(len(th))
+    d = np.abs((np.diff(th, prepend=th[0]) + np.pi) % (2 * np.pi) - np.pi)        # turn per dab, radians
+    rate = d / max(step, 1e-6) * size                                               # radians per brush size
+    k = min(1.0, step / max(size, 1e-6))
+    out, acc = np.empty(len(th)), 0.0
+    for i, v in enumerate(np.minimum(rate, 3.0).tolist()):
+        acc += k * (v - acc)
+        out[i] = acc
+    return np.clip(out / 1.2, 0, 1)
+
+
+def dried(p, t, th, size, step, seed):
+    """dry (0..1): the share of its ink each dab has left lost (0 = full): the brush runs out over DRY_SPAN brush
+    sizes (fewer the drier), faster on long straight runs (a quick stroke) than where it turns (the hand slows),
+    unevenly. Measured from the start in brush sizes, not as a share of the stroke, so a stroke in pieces agrees."""
+    if p["dry"] <= 0:
+        return np.zeros(len(t))
+    dry = float(p["dry"])
+    span = DRY_SPAN * size * (1.15 - dry)
+    straight = 1 - turns(th, size, step)
+    run = 1 - np.exp(-np.asarray(t, float) / span * (0.6 + 0.8 * straight))
+    wave = (_wave(len(t), size, step, 3.0, seed, 13) + 1) / 2
+    return np.clip(dry * run * (0.75 + 0.5 * wave), 0, 0.95)

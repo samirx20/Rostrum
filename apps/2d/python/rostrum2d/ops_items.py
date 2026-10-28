@@ -221,7 +221,8 @@ def _descendants(ctx, id_):
 
 
 @R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow, frosted glass, "
-             "grain (film grain on the layer's own look; on a group it covers all its layers), trail, smear.",
+             "grain (film grain on the layer's own look; on a group it covers all its layers), rough (edges wobble as if drawn by "
+             "hand: amount px, size px of a bump, detail, boil frames), trail, smear.",
              target=F.PLACED, label="Add effect",
              params=[Param.choice("type", list(F.EFFECTS), label="Effect", required=True), ID, NAME, INDEX])
 def effect_add(ctx, targets, args):

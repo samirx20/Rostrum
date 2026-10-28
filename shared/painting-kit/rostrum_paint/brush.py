@@ -164,11 +164,19 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
         Y = Y + rng.normal(0, p["jitter"] * size, n)
     X, Y = shaping.wobble(p, X, Y, th, size, step, seed)
     R = (size / 2) * (1 - sp * (1 - Pr))
+    way = th
     th, R = shaping.dabs(p, th, R, t, L, full, size, seed, by_dab, sized)
     A = p["opacity"] * (1 - p["opacity_pressure"] * (1 - Pr))
     if p["swell"] > 0 or p["pool"] > 0:     # the hand's line (shape.hand); off, the stroke's pixels are as before
         swell, pool = shaping.hand(p, t, L[-1] if sized is None else sized, size, step, seed)
+        if p["pool"] > 0:                   # and where it turns: the hand slows, the ink gathers
+            pool = pool + 0.4 * p["pool"] * shaping.turns(way, size, step)
         R, A = R * swell * (1 + pool), np.minimum(1, A * (1 + pool))
+    dried = None
+    if p["dry"] > 0 and tip in ("bristle", "flat"):     # the brush runs out: hairs drop out, the paper's tooth shows
+        dried = shaping.dried(p, t, way, size, step, seed)
+        A = A * (1 - 0.2 * dried)
+        p["grain"] = max(p["grain"], shaping.DRY_GRAIN * p["dry"])
     A, R = A * np.minimum(1, R / 0.5), np.maximum(R, 0.5)  # thinner than a pixel fades, never breaks
     most = R.max()
     if by_dab:          # the biggest the tip can be: full pressure, leaning on its side
@@ -188,14 +196,24 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
         prof = 0.88 + 0.12 * _up(_noise1(K, 6, rng), Kr)
     else:
         prof = np.ones(Kr)
+    if p["load"] > 0 and tip in ("bristle", "flat"):     # a loaded brush: the gaps between bristles fill, edges stay ragged
+        body = _ss((1 - np.abs(v)) / 0.12) * (0.88 + 0.12 * _up(_noise1(K, 6, np.random.default_rng([int(seed), 14])), Kr))
+        prof = prof + p["load"] * (np.maximum(body, prof) - prof)
     rag = {"bristle": (0.12, 0.35, 1.5), "flat": (0.08, 0.2, 5), "block": (0.25, 0.25, 5)}.get(tip, (0, 0, 8))
     start = rag[0] * _up(_noise1(K, rag[2], rng), Kr)
     end = rag[1] * _up(_noise1(K, rag[2], rng), Kr)
     streak = (_up(_noise1(K, 2 if tip == "bristle" else 6, rng), Kr) - 0.5) * 2
-    if open_:           # the pen is still down: no ragged end yet
+    if dried is not None:   # a drying brush's hairs drop out by `end`: the outer ones first, in clumps (streaks
+        #                     wider than one hair), so the line's body stays solid longest
+        clumps = _up(_noise1(K, 6, np.random.default_rng([int(seed), 15])), Kr)
+        order = np.argsort(np.argsort(0.6 * np.abs(v) + 0.4 * clumps))
+        end = (1 - shaping.DRY_FROM) * order / max(1, Kr - 1)                  # evenly spread: one by one
+    elif open_:             # the pen is still down: no ragged end yet
         end = np.full(Kr, -1e6)
     if by_dab and tip in ("bristle", "flat"):       # the ragged ends sized in brush sizes, not shares of the stroke
         S = shaping.fray(t, L[-1], size, rag, open_)
+    if dried is not None:   # a hair stays on while S < 1 - its end: the drier, the fewer (the start's are all on by then)
+        S = np.maximum(S, (shaping.DRY_FROM + (1 - shaping.DRY_FROM) * dried) * _ss(dried / 0.08))
     if by_dab:
         noise = lambda salt: _noise1_by_dab(n, max(2, size / step), np.random.default_rng([int(seed), salt]))  # noqa: E731
         hn, sn, vn = ((noise(salt) - 0.5) * 2 for salt in (5, 6, 7))
