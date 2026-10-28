@@ -58,9 +58,38 @@ def loudness_fault(measured, target) -> list[dict]:
     return [shared.fault("loudness", f"{measured:.1f} LUFS, the target is {target:g} ({measured - target:+.1f} LU, over {LOUD_LU:g} allowed)", fix)]
 
 
-def duck_faults(data: dict, ducks: list | None) -> list[dict]:
-    """A track's duck (under a voice, a voice-over clip or anything else) whose deepest dip in the render is under DUCK_MIN_DB.
-    `ducks`: the render's [{"track", "spans": [[from, to, db]]}] (the engine's own measured dips)."""
+VOICE_DBFS = -45.0     # a 50 ms window of the voice's stem above this is speaking
+_WIN_S = 0.05
+
+
+def _speaking(stems: dict | None, ids) -> list[float] | None:
+    """The start times of the 50 ms windows where any of the `ids` stems is above VOICE_DBFS (None: no stem to read)."""
+    files = [stems[i] for i in ids or [] if stems and stems.get(i)]
+    if not files:
+        return None
+    on = set()
+    for f in files:
+        y, sr = load(f)
+        m = np.asarray(y, dtype=np.float64).reshape(len(y), -1).mean(axis=1)
+        n = int(_WIN_S * sr)
+        for k in range(len(m) // n):
+            if db(float(np.mean(m[k * n:(k + 1) * n] ** 2))) > VOICE_DBFS:
+                on.add(round(k * _WIN_S, 2))
+    return sorted(on)
+
+
+def _mean_dip(spans, speaking: list[float]) -> float:
+    """The dip averaged over the time the voice speaks: a duck that fires in short blips lowers the music only there."""
+    if not speaking:
+        return 0.0
+    got = [next((-sp[2] for sp in spans if sp[0] <= t < sp[1]), 0.0) for t in speaking]
+    return max(0.0, sum(got) / len(got))
+
+
+def duck_faults(data: dict, ducks: list | None, stems: dict | None = None) -> list[dict]:
+    """A track's duck (under a voice, a voice-over clip or anything else) whose dip, averaged over the time the voice
+    speaks (its stem above VOICE_DBFS), is under DUCK_MIN_DB; without the voice's stem, its deepest dip.
+    `ducks`: the render's [{"track", "spans": [[from, to, db]]}] (the engine's own measured dips); `stems`: {track: wav}."""
     seen = {d["track"]: d.get("spans") or [] for d in ducks or []}
     out = []
     for t in data.get("tracks", []):
@@ -68,14 +97,16 @@ def duck_faults(data: dict, ducks: list | None) -> list[dict]:
         if not mine:
             continue
         spans = seen.get(t["id"], [])
-        dip = max(0.0, -min((s[2] for s in spans), default=0.0))
+        speaking = _speaking(stems, mine[0].get("under"))
+        dip = _mean_dip(spans, speaking) if speaking is not None else max(0.0, -min((s[2] for s in spans), default=0.0))
         if dip < DUCK_MIN_DB:
             d = mine[0]
-            where = f"{spans[0][0]:g}–{spans[0][1]:g} s" if spans else None
+            said = (f"{len(spans)} dip{'s' * (len(spans) != 1)} covering {sum(b - a for a, b, _ in spans):.1f} s of {len(speaking) * _WIN_S:.1f} s of speech"
+                    if speaking is not None else f"{len(spans)} dips" if spans else "no dips")
             out.append(shared.fault(
-                f"duck:{t['id']}", f"{t['id']} dips {dip:.1f} dB under the voice ({'no spans' if not spans else str(len(spans)) + ' spans'}; "
-                f"under {DUCK_MIN_DB:g} dB cannot be heard)",
-                f"raise the duck's depth (now {d.get('depth', 0.5):g}; 0.5 = 6 dB, 0.7 = 10 dB) or lower the track under the voice's spans", where))
+                f"duck:{t['id']}", f"{t['id']} is lowered {dip:.1f} dB on average while the voice speaks ({said}; under {DUCK_MIN_DB:g} dB cannot be heard)",
+                f"raise the duck's depth (now {d.get('depth', 0.5):g}) and its hold/release so it stays down between words "
+                "(voice=True ducks whole lines), or lower the track with volume keys under the voice's span", None))
     return out
 
 
@@ -109,9 +140,9 @@ def rings_past_end(wav, end_s) -> list[dict]:
                          "a shorter reverb tail) or move the end (length / an 'end' marker) later", f"{end_s + END_AFTER_S:.2f} s on")]
 
 
-def all_faults(doc, found, wav, measured_lufs, target, ducks) -> list[dict]:
+def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None) -> list[dict]:
     """Every check, shaped: the listening faults, then loudness, ducks and the end."""
-    out = shape(found, doc) + loudness_fault(measured_lufs, target) + duck_faults(doc.data, ducks)
+    out = shape(found, doc) + loudness_fault(measured_lufs, target) + duck_faults(doc.data, ducks, stems)
     try:
         out += rings_past_end(wav, end_second(doc))
     except Exception:  # noqa: BLE001  a file the ears cannot read is said by the listening check

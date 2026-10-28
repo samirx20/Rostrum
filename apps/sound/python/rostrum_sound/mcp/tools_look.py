@@ -230,10 +230,11 @@ def _faults(ctx, doc, args, wav, found, win, lufs):
         return fault_shape.shape(found, doc)
     master = (doc.data.get("master") or [{}])[0]
     try:
-        ducks = ctx.app.state.last_render(doc.item_id, "look_sound").get("ducks")
+        last = ctx.app.state.last_render(doc.item_id, "look_sound")
     except RostrumError:
-        ducks = None
-    return fault_shape.all_faults(doc, found, wav, lufs, master.get("loudness", -16) if master.get("normalize") else None, ducks)
+        last = {}
+    return fault_shape.all_faults(doc, found, wav, lufs, master.get("loudness", -16) if master.get("normalize") else None,
+                                  last.get("ducks"), last.get("stems"))
 
 
 def _is_low_part(doc, track_id: str) -> bool:

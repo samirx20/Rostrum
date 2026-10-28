@@ -223,7 +223,7 @@ def register(tools: Tools):
                 heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
                 if raw is not None:
-                    found = fault_shape.all_faults(doc, raw, r["file"], r.get("lufs"), goal, r.get("ducks"))
+                    found = fault_shape.all_faults(doc, raw, r["file"], r.get("lufs"), goal, r.get("ducks"), r.get("stems"))
                     if ctx.tool == "render_mix":             # a delivery; run_script's look is a check, never refused
                         deliver_checked(state, item, r, found, args.get("keep"), copied)
             return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
