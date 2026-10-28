@@ -38,7 +38,12 @@ def on() -> bool:
 
 
 def module_dir() -> Path:
-    return Path(os.environ["ROSTRUM3D_QML"]) if os.environ.get("ROSTRUM3D_QML") else MODULE
+    """ROSTRUM3D_QML, else a run copy of the build's module (rostrum3d/engine_copy.py: the window holds its DLL open, and
+    a rebuild must never collide with it)."""
+    if os.environ.get("ROSTRUM3D_QML"):
+        return Path(os.environ["ROSTRUM3D_QML"])
+    from rostrum3d.engine_copy import copy_of
+    return copy_of(MODULE.parent, "3d-view", only=(MODULE.name,)) / MODULE.name
 
 
 def wanted() -> bool:
