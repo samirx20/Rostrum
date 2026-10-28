@@ -1,7 +1,9 @@
 // Rostrum: Fender Rhodes Mark II 73 stage piano, one velocity layer, every note E1 to E4 and D6 to E7, recorded from
-// the harp through a tube preamp by Tim Kahn (Freesound pack 3957, CC-BY 4.0). F4 to C#6 were never recorded: E4 plays up
-// to D#5 and D6 down to E5 (up to 11 half steps of stretch there). Each sample's tuning is corrected to the cent it
-// was measured at; the quietest high notes are lifted by half their difference so a line keeps its level.
+// the harp through a tube preamp by Tim Kahn (Freesound pack 3957, CC-BY 4.0). Each sample's tuning is corrected to
+// the cent it was measured at; the quietest high notes are lifted by half their difference so a line keeps its level.
+// F4 to C#6 were never recorded: E4 plays up to F#5 and D6 down to C5, the two crossfaded over B4 to G5 (a power
+// curve; D6 raised 1 cent there so the two do not beat), each in ranges of three keys with its own volume so the
+// level runs evenly from E4 to D6 (measured renders, Team Hem sound gaps 2, 2026-10-28).
 <global> loop_mode=no_loop amp_veltrack=85 ampeg_release=0.35
 <region> sample=notes/E1.ogg pitch_keycenter=28 lokey=28 hikey=28 volume=0.5
 <region> sample=notes/F1.ogg pitch_keycenter=29 lokey=29 hikey=29
@@ -39,8 +41,18 @@
 <region> sample=notes/Cs4.ogg pitch_keycenter=61 lokey=61 hikey=61 volume=0.5
 <region> sample=notes/D4.ogg pitch_keycenter=62 lokey=62 hikey=62 tune=-4 volume=3.2
 <region> sample=notes/Ds4.ogg pitch_keycenter=63 lokey=63 hikey=63 tune=-5 volume=0.6
-<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=64 hikey=75 tune=-5 volume=0.3
-<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=76 hikey=86 volume=0.2
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=64 hikey=64 tune=-5 volume=0.3
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=65 hikey=67 tune=-5 volume=0.3
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=68 hikey=70 tune=-5 volume=0.3
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=71 hikey=73 tune=-5 volume=0.1 xfout_lokey=71 xfout_hikey=79
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=74 hikey=76 tune=-5 volume=-0.8 xfout_lokey=71 xfout_hikey=79
+<region> sample=notes/E4.ogg pitch_keycenter=64 lokey=77 hikey=78 tune=-5 volume=-1.4 xfout_lokey=71 xfout_hikey=79
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=72 hikey=74 tune=1 volume=-0.7 xfin_lokey=71 xfin_hikey=79
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=75 hikey=77 tune=1 volume=-1.0 xfin_lokey=71 xfin_hikey=79
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=78 hikey=80 tune=1 volume=-0.2 xfin_lokey=71 xfin_hikey=79
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=81 hikey=83 tune=1 volume=0.2
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=84 hikey=85 tune=1 volume=0.2
+<region> sample=notes/D6.ogg pitch_keycenter=86 lokey=86 hikey=86 volume=0.2
 <region> sample=notes/Ds6.ogg pitch_keycenter=87 lokey=87 hikey=87 volume=0.8
 <region> sample=notes/E6.ogg pitch_keycenter=88 lokey=88 hikey=88 volume=2.1
 <region> sample=notes/F6.ogg pitch_keycenter=89 lokey=89 hikey=89 volume=1.2

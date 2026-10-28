@@ -41,6 +41,9 @@ EFFECTS = {
              "hiss": F(0, 0, 1, True), "crackle": F(0, 0, 1, True)},
     "limiter": {"ceiling": F(-1, -24, 0, unit="dB"), "release": F(0.1, 0.001, 2, unit="s", importance="secondary")},
     "width": {"width": F(1, 0, 2, True), "monoBelow": F(120, 0, 1000, unit="Hz", importance="secondary")},
+    "chorus": {"rate": F(0.8, 0.05, 10, unit="Hz"), "depth": F(0.5, 0, 1, True), "mix": F(0.5, 0, 1, True),
+               "spread": F(1, 0, 1, importance="secondary")},
+    "tremolo": {"rate": F(4, 0.1, 20, unit="Hz"), "depth": F(0.5, 0, 1, True), "stereo": F(0, 0, 1)},
     "gate": {"threshold": F(-45, -100, 0, unit="dB"), "ratio": F(4, 1, 100, unit=":1"), "range": F(30, 0, 100, unit="dB"),
              "attack": F(0.002, 0.0001, 1, unit="s", importance="secondary"),
              "hold": F(0.05, 0, 2, unit="s", importance="secondary"),
@@ -53,7 +56,7 @@ EFFECTS = {
 }
 TYPES = list(EFFECTS)
 WORDS = {"eq": "EQ", "compressor": "Compressor", "reverb": "Reverb", "delay": "Delay", "saturate": "Saturation", "tape": "Tape",
-         "limiter": "Limiter", "width": "Stereo width", "gate": "Gate", "deess": "De-esser", "dehum": "De-hum",
+         "limiter": "Limiter", "width": "Stereo width", "chorus": "Chorus", "tremolo": "Tremolo", "gate": "Gate", "deess": "De-esser", "dehum": "De-hum",
          "plugin": "Plug-in"}                  # the one place an effect's name in words is written
 FLAT_BAND = [{"shape": "peak", "freq": 1000, "gain": 0, "q": 1}]   # a new EQ: one band that changes nothing, ready to move
 FREEVERB_ONLY = ("decay", "damping", "size")

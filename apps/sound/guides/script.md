@@ -66,7 +66,9 @@ checks use, so it cannot disagree with them. A setting marked "curve" also takes
 | `saturate` | `drive` 0 to 1, `mix` |
 | `tape` | `wow`, `flutter`, `age`, each 0 to 1 (`wow` a slow pitch drift of up to about 15 cents, `flutter` a fast waver, `age` adds saturation and a darker, thinner tone); `hiss`, `crackle`, each 0 to 1, default 0 (a record's surface: a soft noise bed and the ticks and pops of a played record) |
 | `limiter` | `ceiling` dB, `release` seconds |
-| `width` | `width` 0 to 2 (1 = unchanged), `monoBelow` Hz. Widens only what is already stereo: on a mono recording (Wurlitzer, Rhodes low notes, the basses, the kits' close mics) it does nothing; pan that track, or send it to a stereo reverb or delay |
+| `width` | `width` 0 to 2 (1 = unchanged), `monoBelow` Hz. Widens only what is already stereo: on a mono recording (Wurlitzer, Rhodes, the basses, the kits' close mics) it does nothing; use `chorus` or `tremolo` with `stereo` on that track, pan it, or send it to a stereo reverb or delay |
+| `chorus` | `rate` Hz (0.05 to 10, default 0.8), `depth` 0 to 1 (how far the copy sways, up to 5 ms; 0.5), `mix` 0 to 1 (0.5 the classic chorus, 1 only the swaying copy: a vibrato), `spread` 0 to 1 (1: left and right sway in opposite directions, so even a mono source comes out wide; 0: no widening) |
+| `tremolo` | `rate` Hz (0.1 to 20, default 4), `depth` 0 to 1 (how far the level dips; 0.5), `stereo` 0 to 1 (0: both sides dip together; 1: one side dips while the other rises, an auto-pan like a Rhodes Suitcase's stereo vibrato, which widens a mono source) |
 | `gate` | `threshold` dB, `ratio`, `range` dB, `attack` / `hold` / `release` seconds |
 | `deess`, `dehum` | see `inspect_engine` |
 
@@ -114,6 +116,10 @@ colour is already on the keys.
 - *Space:* a small `room` reverb with a low `mix` and a dark `delay` (`damp` 0.5 or more) on the lead, not on the bass.
 - *Surface:* `tape` `hiss` 0.2 to 0.4 and `crackle` 0.2 to 0.5 on one full-length track or bus (see "Record surface"),
   so the bed runs under the whole piece; with a voice over it, keep `crackle` lower during the voice (a curve).
+- *Width:* the Rhodes, the basses and the Wurlitzer are mono recordings, so a mix of them is near mono (`look_sound` "stereo"
+  correlation near 1) and `width` cannot widen it. On the keys: `chorus` (`rate` 0.5 to 1, `depth` 0.3 to 0.6, `mix` 0.3 to 0.5,
+  `spread` 1) or `tremolo` with `stereo` 1 (`rate` 3 to 6, `depth` 0.3 to 0.7); a stereo reverb adds width too. Keep the bass
+  and kick centred. Render and compare the correlation before and after.
 - *Keys:* `rhodes` is a recorded Rhodes; `electricPiano` is a Wurlitzer (brighter, more bark).
 
 ## Ending a song

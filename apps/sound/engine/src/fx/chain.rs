@@ -3,7 +3,7 @@
 //! - linked (one gain for every channel, so the image does not shift): compressor, limiter, gate,
 //!   de-esser, leveller (its loudness BS.1770-weighted);
 //! - per channel: EQ, saturation, tape (its record surface drawn apart on each channel), declip, declick;
-//! - per left/right pair, a centre channel alone: delay (ping-pong bounces inside a pair), convolution
+//! - per left/right pair, a centre channel alone: delay, chorus, tremolo (ping-pong bounces inside a pair), convolution
 //!   (the IR's left side on the left speaker), dehum, dereverb; time-based effects leave the LFE dry;
 //! - the reverb insert: one reverb over the mains (dsp.rs);
 //! - a CLAP / VST3 effect is stereo: on a surround bed it is an error naming it.
@@ -12,12 +12,14 @@
 //! rendered offline) make the chain `whole`: its owner then runs it over the whole signal as one block.
 
 use crate::bed::Layout;
+use crate::fx::chorus::Chorus;
 use crate::fx::convolve::Conv;
 use crate::fx::eq::Eq;
 use crate::fx::inserts::{Compressor, Delay, Limiter, ReverbInsert, Saturate};
 use crate::fx::state::{two, Insert, Pairwise};
 use crate::fx::stereo::Width;
 use crate::fx::tapefx::TapeFx;
+use crate::fx::tremolo::Tremolo;
 use crate::mix::schedule::Effect;
 
 /// Runs a chain of inserts over a stereo buffer, in order.
@@ -59,6 +61,14 @@ impl Chain {
                 Effect::Width { width, mono_below } => {
                     let mut p = Pairwise::new(layout, n, false, || Width::new(width, *mono_below, sr));
                     Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |w, l, r| Ok(w.pair(l, r, t0)))))
+                }
+                Effect::Chorus { rate, depth, mix, spread } => {
+                    let mut p = Pairwise::new(layout, n, false, || Chorus::new(*rate, depth, mix, *spread, sr));
+                    Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |c, l, r| Ok(c.pair(l, r, t0)))))
+                }
+                Effect::Tremolo { rate, depth, stereo } => {
+                    let mut p = Pairwise::new(layout, n, false, || Tremolo::new(*rate, depth, *stereo, sr));
+                    Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |t, l, r| Ok(t.pair(l, r, t0)))))
                 }
                 Effect::Convolution { ir, mix } => {
                     let sides = crate::fx::convolve::sides(ir, sr)?;

@@ -71,6 +71,8 @@ fn name(e: &Effect) -> &'static str {
         Effect::Tape { .. } => "tape",
         Effect::Limiter { .. } => "a limiter",
         Effect::Width { .. } => "a stereo width",
+        Effect::Chorus { .. } => "a chorus",
+        Effect::Tremolo { .. } => "a tremolo",
         Effect::Convolution { .. } => "a convolution",
         Effect::Plugin { .. } => "a plugin effect",
         Effect::Deess { .. } | Effect::Gate { .. } | Effect::Leveller { .. } => "a dialogue dynamics effect (deess, gate, leveller)",

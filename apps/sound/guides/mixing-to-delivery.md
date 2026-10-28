@@ -139,7 +139,7 @@ as hard as it must. Either way the fix is at the source: turn the loud parts dow
 2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments, room for speech (under a voice: +6 dB or more).
 3. `look_sound` (`what: "levels"`): each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
 4. `look_sound` (`what: "clash"`): which two tracks fight in which frequency band, and when.
-5. `look_sound` (`what: "low_end"`): each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_sound` (`what: "stereo"`): balance and mono safety.
+5. `look_sound` (`what: "low_end"`): each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_sound` (`what: "stereo"`): balance and mono safety; correlation near 1 is a near-mono mix. A mono source (the Rhodes, the basses, the Wurlitzer) is widened by a `chorus` (`spread` 1), a `tremolo` with `stereo` above 0 or a stereo reverb, not by `width` (which only scales the stereo already there); pan or render that track's stem to see it alone.
 6. Change one thing, render, look again. Compare numbers between renders, not against a rule.
 
 ## Stems and handoff

@@ -39,7 +39,7 @@ with `name` (one instrument), `inspect_engine` what `instrument` (its recorded r
 |---|---|---|
 | `piano` | `grandPiano`, `acousticPiano`, `feltPiano` | concert grand (Salamander, Yamaha C5), A0–C8 |
 | `electricPiano` | `wurlitzer` | Wurlitzer EP200 electric piano |
-| `rhodes` | | Fender Rhodes Mark II electric piano, E1–E7 (F4–C#6 stretched from E4 and D6, so a melody there sounds thinner) |
+| `rhodes` | | Fender Rhodes Mark II electric piano, E1–E7 (F4–C#6 were not recorded: they are stretched from E4 and D6 and blended across B4–G5, so the tone darkens evenly there; a mono recording, widen it with `chorus` or `tremolo`) |
 | `organ` | `drawbarOrgan` | drawbar organ |
 | `pipeOrgan` | | pipe organ, loud registration |
 | `guitar` | `nylonGuitar` | classical nylon-string guitar |

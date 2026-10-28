@@ -41,6 +41,10 @@ pub enum Effect {
     /// Stereo width: 0 mono, 1 as it is, 2 wider; the side under `mono_below` Hz kept as it is (stereo.rs).
     #[serde(rename_all = "camelCase")]
     Width { width: Param, mono_below: f64 },
+    /// Stereo chorus: `rate` Hz, `depth` 0 … 1 (±5 ms at 1), `mix` 0 … 1, `spread` 0 … 1 (the right sweep's lag, half a turn at 1) (chorus.rs).
+    Chorus { rate: f64, depth: Param, mix: Param, spread: f64 },
+    /// Tremolo / auto-pan: `rate` Hz, `depth` 0 … 1, `stereo` 0 (together) … 1 (opposite: auto-pan) (tremolo.rs).
+    Tremolo { rate: f64, depth: Param, stereo: f64 },
     /// An impulse response: built in (generated) or a decoded file.
     Convolution { ir: crate::fx::convolve::Ir, mix: Param },
     /// A CLAP / VST3 effect plugin.

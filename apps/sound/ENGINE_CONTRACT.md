@@ -189,6 +189,8 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 | `tape` | `wow`, `flutter`, `age` (0.2 each, *env*); `hiss`, `crackle` (0 each, *env*: a record's surface, absolute levels, drawn apart on each channel) |
 | `limiter` | `ceiling` (−1 dB), `release` (0.1 s) |
 | `width` | `width` (1; 0 mono, 2 wider, *env*), `monoBelow` (120 Hz) |
+| `chorus` | `rate` (0.8 Hz), `depth` (0.5, *env*; ±5 ms sweep at 1 around 12 ms), `mix` (0.5, *env*; 1 = only the swept copy), `spread` (1: the right sweep half a turn behind the left; widens a mono source). Per left/right pair (`fx/chorus.rs`, added 2026-10-28) |
+| `tremolo` | `rate` (4 Hz), `depth` (0.5, *env*), `stereo` (0: both sides together; 1: opposite, an auto-pan whose two gains sum to one). Per left/right pair (`fx/tremolo.rs`, added 2026-10-28) |
 | `gate` | `threshold` (−45 dB), `ratio` (4), `range` (30 dB), `attack` (0.002 s), `hold` (0.05 s), `release` (0.12 s) |
 | `deess` | `freq` (6000 Hz), `threshold` (−30 dB), `range` (8 dB) |
 | `dehum` | `freq` (0 = found in the clip; else 50 / 60), `harmonics` (6), `width` (40) |
