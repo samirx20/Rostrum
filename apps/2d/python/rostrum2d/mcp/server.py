@@ -3,7 +3,7 @@
     python -m rostrum2d.mcp                                          (stdio; the agent's own project, never the person's)
     python -m rostrum2d.mcp --project <folder> [--item <id> ...]     (that project; --item opens or creates each item)
 
-With no options the server opens the project this working folder's agent last opened (a resumed session gets it back),
+With no options the server opens the project this agent session last opened (a resumed session gets it back),
 else a fresh scratch project with an empty document (rostrum_core/agent_start.py); never the person's last project. The
 first reply says what is open and whose. While running, run_open_project lists the person's projects (what "recent") and
 switches. Every change is saved at once, so the 2D screen process can open the same file.
@@ -122,7 +122,7 @@ async def _serve(app: App):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="rostrum2d.mcp", description="The rostrum-2d MCP server (stdio). With no options it opens the agent's own last project, else a fresh scratch project; never the person's.")
-    ap.add_argument("--project", help="The project folder. Default: this working folder's agent project, else a new scratch project (not the person's Open recent).")
+    ap.add_argument("--project", help="The project folder. Default: this agent session's own project, else a new scratch project (not the person's Open recent).")
     ap.add_argument("--item", action="append", help="A document's item id (repeat for several). Default: the project's recent item, else its only / newest one.")
     a = ap.parse_args(argv)
     start = start_choice(a.project, a.item)

@@ -4,7 +4,7 @@
     python -m rostrum3d.mcp --project <folder> [--item <id> ...]                  (that project; --item opens or creates each item)
     rostrum-3d --project <folder> --item <id>                                     (the same, as an installed command)
 
-With no options the server opens the scene this working folder's agent last opened (a resumed session gets it back), else
+With no options the server opens the scene this agent session last opened (a resumed session gets it back), else
 a fresh scratch project with a new scene (the start scene; rostrum_core/agent_start.py); never the person's last scene.
 The first reply says what is open and whose; run_open_project lists the person's scenes (what "recent") and switches.
 
@@ -96,7 +96,7 @@ async def _serve(app: App):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="rostrum-3d", description="The rostrum-3d MCP server (stdio). With no options it opens the agent's own last scene, else a fresh scratch project; never the person's.")
-    ap.add_argument("--project", help="The project folder. Default: this working folder's agent scene, else a new scratch project (not the person's Open recent).")
+    ap.add_argument("--project", help="The project folder. Default: this agent session's own scene, else a new scratch project (not the person's Open recent).")
     ap.add_argument("--item", action="append", help="A document's item id (repeat for several). Default: the project's recent item, else its newest scene, else a new \"scene\".")
     a = ap.parse_args(argv)
     start = project_tool.start_choice(a.project, a.item)

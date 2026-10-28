@@ -1,9 +1,11 @@
-"""The project an agent last opened through an app's MCP server, per working folder, so a server started again for the same
-agent session (a resumed session starts a fresh server) reopens that project instead of starting with none.
+"""The project an agent last opened through an app's MCP server, per agent session, so a server started again for the same
+session reopens that project instead of starting with none.
 
 An agent's run_open_project never touches the person's Open recent list (recent.py); this is a separate, small record:
-`~/.rostrum/settings/<app>-agent-last.json` (home() below), {working folder: {folder, item}}. A resumed session runs in the same working
-folder, so the folder is the key.
+`~/.rostrum/settings/<app>-agent-last.json` (home() below), {session key: {folder, item}}. The key is the agent's session id
+when the agent passes one to its servers (SESSION_VARS: a resumed Claude Code session keeps its id), else the working folder
+plus the agent process that started this server (a server restarted inside the same session gets it back). Never the folder
+alone: Agent Hub starts every child agent in the same worktree, and a new agent must not be handed another agent's project.
 
     remember(app, folder, item)         run_open_project calls this (open_folder.py), and start-up for a scratch project
     recall(app, ext)                    start-up (agent_start.py): this folder's row, when its document is still there
@@ -35,8 +37,15 @@ def file(app: str) -> Path:
     return home() / "settings" / f"{app}-agent-last.json"
 
 
+SESSION_VARS = ("CLAUDE_CODE_SESSION_ID",)         # agents that tell their servers which session they serve
+
+
 def _here() -> str:
-    return os.path.normcase(str(Path.cwd().resolve()))
+    """This agent session's key (see the module text)."""
+    sid = next((os.environ[v] for v in SESSION_VARS if os.environ.get(v)), None)
+    if sid:
+        return f"session:{sid}"
+    return f"{os.path.normcase(str(Path.cwd().resolve()))}|agent:{os.getppid()}"
 
 
 def _read(app: str) -> dict:

@@ -3,7 +3,7 @@
 An agent session starts safe: with no --project it never opens the person's work. It opens
 
     asked     --project <folder>: that folder (whoever started the server chose it)
-    resumed   the project this working folder's agent last opened (agent_last.py: a resumed session gets its own back)
+    resumed   the project this agent session last opened (agent_last.py: a resumed session gets its own back)
     scratch   else a fresh scratch project made for the agent, `~/.rostrum/projects/agent-scratch/<app>-<date-time>`,
               with a new empty document; it is remembered, so a resumed session reopens it. Each start removes the
               scratch projects older than 2 days that never got a change (their files exactly as made: `tidy`)
@@ -43,8 +43,8 @@ class Start:
             return (f"Open: a fresh scratch project made for you at {self.folder} ({what}, new), not the person's work. "
                     'To work on one of theirs, call run_open_project with its folder (what "recent" lists them).')
         if self.whose == "resumed":
-            return (f"Open: {self.folder} ({what}), your project from earlier in this session (the one you last opened from "
-                    'this working folder), not necessarily the person\'s. Their projects: run_open_project (what "recent").')
+            return (f"Open: {self.folder} ({what}), your project from earlier in this session (the one you last opened), "
+                    'not necessarily the person\'s. Their projects: run_open_project (what "recent").')
         return f"Open: {self.folder} ({what}), the project this server was started with (--project)."
 
 
@@ -77,7 +77,7 @@ def choose(app: str, ext: str, project: str | None, items: list | None, default_
 
 def settle(app, start: Start) -> None:
     """After the app opened `start`: every opened document is on disk (an empty new one too, so a resumed session finds it),
-    a scratch project is remembered for this working folder, and `app.opened` says what is open and whose."""
+    a scratch project is remembered for this agent session, and `app.opened` says what is open and whose."""
     for item, doc in app.documents.items():
         if not paths(app.folder, item, doc.kind.ext)["doc"].is_file():
             doc.save()

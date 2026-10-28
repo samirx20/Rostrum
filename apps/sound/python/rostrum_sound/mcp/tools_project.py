@@ -26,7 +26,7 @@ from .app import NO_PROJECT, open_project
 
 
 def start_choice(folder: str | None, items: list[str] | None) -> agent_start.Start:
-    """What to open at start-up: --project / --item as given, else this working folder's agent song, else a fresh scratch
+    """What to open at start-up: --project / --item as given, else this agent session's own song, else a fresh scratch
     project (agent_start.py); never the person's last song."""
     return agent_start.choose("rostrum-sound", KIND.ext, folder, items, last.default_item, word="song")
 

@@ -3,7 +3,7 @@
     python -m rostrum_sound.mcp                                        (the agent's own song, never the person's)
     python -m rostrum_sound.mcp --project <folder> [--item <id>]       (that project; --folder is the same)
 
-With no options the server opens the song this working folder's agent last opened (a resumed session gets it back), else
+With no options the server opens the song this agent session last opened (a resumed session gets it back), else
 a fresh scratch project with an empty song (rostrum_core/agent_start.py); never the person's last song. The first reply
 says what is open and whose. While running, run_open_project lists the person's songs (what "recent") and switches (the
 one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
@@ -55,7 +55,7 @@ async def _serve(app):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="rostrum-sound", description="The rostrum-sound MCP server (stdio). With no options it opens the agent's own last song, else a fresh scratch project; never the person's.")
-    p.add_argument("--project", "--folder", dest="project", help="The project folder (documents in docs/, renders in renders/). Default: this working folder's agent song, else a new scratch project (not the person's Recent songs).")
+    p.add_argument("--project", "--folder", dest="project", help="The project folder (documents in docs/, renders in renders/). Default: this agent session's own song, else a new scratch project (not the person's Recent songs).")
     p.add_argument("--item", action="append", help="A Sound document's item id (repeatable). Default: the project's recent item, else its only / newest one.")
     a = p.parse_args(argv)
     start = tools_project.start_choice(a.project, a.item)

@@ -39,7 +39,7 @@ def open_documents(project: str, items: list[str]) -> dict:
 
 
 def start_choice(project: str | None, items: list[str] | None) -> agent_start.Start:
-    """What to open at start-up: --project / --item as given, else this working folder's agent project, else a fresh
+    """What to open at start-up: --project / --item as given, else this agent session's own project, else a fresh
     scratch project (agent_start.py); never the person's last project."""
     return agent_start.choose("rostrum-2d", KIND.ext, project, items, last.default_item)
 

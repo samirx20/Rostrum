@@ -17,6 +17,15 @@ def doc(folder, item="main"):
     return str(folder)
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def no_session_id(monkeypatch):
+    for v in agent_last.SESSION_VARS:          # the agent running these tests has its own session id
+        monkeypatch.delenv(v, raising=False)
+
+
 def choose(project=None):
     return agent_start.choose("rostrum-test", EXT, project, None, lambda folder, explicit: "main")
 
@@ -80,3 +89,18 @@ def test_tidy_removes_only_old_scratch_projects_that_never_changed(tmp_path, mon
     assert untouched.is_dir() and changed.is_dir()
     agent_start.tidy(now=time.time() + agent_start.UNTOUCHED_S + 60)
     assert not untouched.exists() and changed.is_dir()
+
+
+def test_another_agent_in_the_same_folder_never_gets_this_agents_project(tmp_path, monkeypatch):
+    """Agent Hub starts every child agent in one worktree: the 2026-10-28 proof run was told an earlier agent's scratch
+    project was 'your project from earlier in this session'. The record is per session, never per folder alone."""
+    monkeypatch.setenv("ROSTRUM_SCRIPTED_HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "agent-a")
+    agent_last.remember("rostrum-test", doc(tmp_path / "a"), "main")
+    assert choose().whose == "resumed"                                     # agent A, server started again: its own back
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "agent-b")
+    assert choose().whose == "scratch"                                     # agent B, same folder: a fresh project
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID")
+    monkeypatch.setattr("os.getppid", lambda: 999999)                      # no session id: another agent process
+    assert choose().whose == "scratch"
