@@ -37,7 +37,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_words as W, shafts, text_anchor, text_measure
+from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -158,6 +158,10 @@ class Item:
         self.node["exprs"] = [e for e in self.node["exprs"] if e["prop"] != prop]
         self.node["exprs"].append({"id": expr_id(self.id, prop), "type": "expr", "prop": prop, "source": source})
         return self
+
+    def sample(self, prop: str, values, start: float = 0, end: float | None = None, every: int = 1) -> "Item":
+        """Key a field from Python: a function of seconds or a list, one key per frame (script_sample.py)."""
+        return script_sample.sample(self, prop, values, start, end, every)
 
     def link(self, prop: str, of: str, field: str, scale: float = 1.0, offset: float = 0.0) -> "Item":
         """Bind a field to another item's field: value = other · scale + offset."""
@@ -412,6 +416,7 @@ class Build:
         return item
 
     def comp(self, id=None, **values) -> Item:
+        script_others.check_comp(self, id)          # a scene another script (or a person) made is theirs
         item = self.add("comp", id, values, self.root["comps"])
         self.holders = [item.node]
         node = frame_make.new(item.node, self.taken | self.reserved)
@@ -507,13 +512,14 @@ def run_source(source: str, name: str, doc=None) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged.
     `doc`: the document it will be merged into (run_script passes it), so the ids it already holds are left alone."""
     b = Build(_reserved(source) | _held_ids(doc, name))
+    b.doc, b.name = doc, name           # who made what is already there (script_others: layer() / comp() say so)
     rnd = SeededRandom(1)
     scope = {"__builtins__": {**SAFE, "__import__": _importer(rnd), "__build_class__": no_classes}, "math": math, "random": rnd, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
              **pathdata.for_script(b.layer), **plot.for_script(), **mathtype.for_script(b.layer), **text_measure.for_script(), **rig_script.for_script(b), **rig_motion.for_script(b), **ui_blocks.for_script(b), **shafts.for_script(b),
-             **lipsync_script.for_script(b)}
+             **lipsync_script.for_script(b), **script_scramble.for_script(b), **script_music.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
         for finish in getattr(b, "finishers", ()):     # end-of-script passes (rig.motion: limbs' natural bend, colour)
@@ -529,12 +535,12 @@ run_source.wants_doc = True            # rostrum_core's run_script tool then pas
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",
        "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / step(legs=[l, r], by=px, at=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",
        "device(id, kind=phone|laptop|browser) / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: guide ui-and-product-animation",
-       "light_shafts(id, x=, y=, count=, spread=, length=, lean=, color=, strength=, sway=): beams of light, a group (guide frame-parallax-motion-blur)",
+       "scramble(id, body, start=, end=, rate=, chars=, order=, **text fields): characters cycling and locking into words", "beats(start=, end=): the scene's music beats in seconds (music is made in RostrumSound)", "light_shafts(id, x=, y=, count=, spread=, length=, lean=, color=, strength=, sway=): beams of light, a group (guide frame-parallax-motion-blur)",
        "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.letters(text, x=, y=, height=, font=, **brush): hand-lettered words as brush strokes", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
        "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
