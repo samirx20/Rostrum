@@ -14,6 +14,7 @@ from rostrum3d import aim
 from rostrum3d.compile import _shot
 from rostrum3d.resolve import Frames
 from rostrum3d.sim import ops as sim_ops
+from rostrum3d.sim import cloth_check
 from rostrum3d.sim.compute import SimError, compute
 from rostrum3d.sim.inputs import KIND, bodies, value
 from rostrum3d.sim.result import read
@@ -54,7 +55,9 @@ def run_simulation(ctx, args):
     and stored; nothing is computed again until something it depends on changes (a mass, a place, a key). Renders compute it
     first on their own when it is out of date. Always a job: returns a job id at once; inspect_job shows 'frame n of m'. When
     done: the stored result's key, frames, how many fell, came to rest and end inside the camera's picture, each cloth's point
-    count and the engine's time per frame (frameMs). A failure names the
+    count and what it ends on (endsOn; a warning when it starts over nothing it can land on, or slides off what it started
+    over), and the engine's time per frame (frameMs). A thing set to Falls with fallStart holds still until then, then
+    falls. A failure names the
     thing, the frame and what to do (e.g. it starts inside another one: move it up or set Starts: asleep). To nudge the result
     by hand, the sim.to_keys operation turns it into plain keys (a copies item: keys on every copy, copies.key nudges one);
     cloth stays a simulation (its folds are not keys). A cloth that tears apart, flies apart or falls past everything fails
@@ -73,16 +76,19 @@ def run_simulation(ctx, args):
             raise RostrumError(codes.JOB_FAILED, ctx.tool, f'shot "{shot_id}"', f"could not be simulated: {e}") from e
         if _shot(doc.data, shot_id).get("simKey") != key:
             ctx.apply(doc, [{"op": "sim.run", "target": [shot_id]}], label="Simulate")
-        res = read(CACHE.get(KIND, key))
+        where = CACHE.get(KIND, key)
+        res = read(where)
         seen, total = in_frame(doc.data, info, res, folder)
         rest = res.reply.get("atRest", 0)
-        cloth = [{"item": c["item"], "points": c["points"], "triangles": c["triangles"]} for c in res.reply.get("cloth", [])]
-        drapes = "".join(f'; cloth {c["item"]}: {c["points"]} points' for c in cloth)
-        return Reply(f'Simulated {shot_id}: {total} falling, {rest} at rest at the end, {seen} of {total} inside the camera\'s '
-                     f'picture at the last frame{drapes}; frames {res.start}–{res.end}, {res.reply.get("frameMs")} ms a frame, '
-                     'stored.',
+        drapes, warns, facts = cloth_check.report(doc.data, info, where)
+        made = {c["item"]: c for c in res.reply.get("cloth", [])}
+        cloth = [{**f, "triangles": made.get(f["item"], {}).get("triangles")} for f in facts]
+        falls = (f'{total} falling, {rest} at rest at the end, {seen} of {total} inside the camera\'s picture at the last '
+                 'frame') if total or not cloth else "nothing falls"
+        return Reply(f'Simulated {shot_id}: {"; ".join([falls, *drapes])}; frames {res.start}–{res.end}, '
+                     f'{res.reply.get("frameMs")} ms a frame, stored.',
                      {"key": key, "frames": [res.start, res.end], "bodies": total, "atRest": rest, "inFrame": seen,
-                      "cloth": cloth, "ms": res.reply.get("ms"), "frameMs": res.reply.get("frameMs")})
+                      "cloth": cloth, "ms": res.reply.get("ms"), "frameMs": res.reply.get("frameMs")}, warnings=warns)
 
     return ctx.job(f"simulate {shot_id}", job_fn, key=f"simulate|{doc.item_id}|{shot_id}|{doc.seq}")
 

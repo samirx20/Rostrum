@@ -6,6 +6,9 @@ without what only changes its look: material, paint, which camera sees copies), 
 first frame; every still body's node; the ground; the frames and the frame rate; and the engine (SIM_ENGINE, mirrored in the
 core, which says its own in every reply). Timing and Simplify are not in it: they are applied when reading (result.py).
 
+Falls from (fallStart, seconds into the shot): a falling body held still until then goes as "wakeFrame" (frames after the
+shot's start), only when it is above 0, so every result made before it keeps its key.
+
 Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "pinned",
 "friction"}; its compiled node and these settings are in the key like any body's.
 """
@@ -94,6 +97,8 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
                 "velocity": _velocity(nodes[item["id"]], info["fps"]) if falls else [0.0, 0.0, 0.0]}
         if not falls:
             body["mass"] = 0
+        elif (wake := round(float(value(item, "fallStart")) * info["fps"])) > 0:   # sent only when set: older keys hold
+            body["wakeFrame"] = min(wake, info["end"] - info["start"] + 1)
         reqs.append(body)
         recipe.append({"body": body, "node": _look_free(nodes[item["id"]])})
     req = {"start": info["start"], "end": info["end"], "fps": info["fps"], "ground": ground, "bodies": reqs}

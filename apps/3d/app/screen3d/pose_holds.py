@@ -16,11 +16,19 @@ class PoseHolds:
         self._end()
         if g is None or it is None:
             return
-        on = next((h for h in L.holds_of(it) if h["bone"] == g["bone"]), None)
-        if on is not None:                              # that part is held already: the click lets go
+        on = self._held_near(g["bone"])
+        if on is not None:                              # beside that part's hold ring: the click lets go
             return self._let_go(on)
         rest = g["rest"] or self._rest_spot(it, g["bone"], g["local"])
         self.b._guard(lambda: self.b._apply(L.hold_calls(it["id"], rest=rest), f"Hold {self._part(g['bone'])}"))
+
+    def _held_near(self, bone):
+        """The hold on `bone` whose ring is within LET_GO of the press, or None. A click further along a held part
+        holds a second spot: two feet the finder left on the body (no foot joints) are both held; letting go on any
+        click on the part released the first foot when the second was clicked ("Holds 0", critic 3d-final at 1280)."""
+        rings = [r for r in self._rings if r["bone"] == bone]
+        k = PV.near(rings, *self._px(*self._start), *self.v._size, PV.LET_GO * self._k())
+        return rings[k] if k >= 0 else None
 
     def _let_go(self, ring):
         """A hold let go ({at, bone}: a ring or pose_link.holds_of's)."""

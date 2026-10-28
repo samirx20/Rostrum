@@ -85,6 +85,22 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
 - Don't change an id's kind between runs (`mesh("a")` then `light("a")`): use a new id. If a person had edited the old item, the run is
   refused, naming the fields the new kind doesn't have; if nobody had, the item is rewritten in place as the new kind.
 
+## Changing the new scene's own things (shot_1, ground, sky)
+
+A new document already holds `shot_1` (with `shot_1_camera`), `ground` (with `ground_material`) and `sky`. A script changes
+them like its own, in the same run (one undo step):
+
+- **Make it again under the same id** to replace it: `light("sky", kind="dome", intensity=0.4)`,
+  `shot("shot_1", camera=cam, end=6, width=1280, height=720)`. Fields you leave out go back to their defaults (no sky picture
+  above, as `texture` was not given).
+- **`edit(id, **fields)`** changes only the fields given and returns a handle: `edit("ground_material", baseColor="#2b2f36")`,
+  `edit("ground").set(width=40)`. It works on anything directly in the scene (an item, material or shot), whoever made it.
+- **`remove(id)`** takes it out: `remove("shot_1_camera")` after `shot("shot_1", camera=cam)`; `remove("ground")` and
+  `remove("ground_material")` together.
+
+From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
+usual (`force` lets the script win).
+
 ## Nesting
 
 ```python
@@ -137,7 +153,7 @@ In `edit_document`, a taken id is refused naming what holds it: `id "top" is alr
 
 ## What a script can't do (use `edit_document`)
 
-- Delete or move anything by hand (`item.remove`, `item.arrange`), duplicate (`item.duplicate`), rename (`item.rename`), or stop an aim (`item.aim off`): a script only describes what should exist.
+- Delete anything inside a group, or move anything by hand (`item.remove`, `item.arrange`; `remove(id)` takes out a thing directly in the scene), duplicate (`item.duplicate`), rename (`item.rename`), or stop an aim (`item.aim off`): a script only describes what should exist.
 - Change a key on something it didn't make, or change a single key's time, value or ease afterwards (`key.set`, `key.remove`, `key.clear`, `value.set`).
 - Shape a key's curve: `custom` ease points and `spring` stiffness / damping are key fields only `key.set` reaches (a script's `spring` / `custom` use the defaults).
 - Add a part to an import it didn't make, or anything to the document's own settings.

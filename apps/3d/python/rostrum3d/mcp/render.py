@@ -1,14 +1,17 @@
 """render_still and render_video: pictures for the Editor and the world, always jobs (CONVENTIONS § 7).
 
 A render is a project version `renders/<item>/vNNN/` (the files and a manifest.json, kind "pictures"); a failed one stays in
-`vNNN.partial/` and is never listed; a stopped one (cancelled on purpose) leaves nothing (`kept_unless_stopped`). Without a project folder it goes to the render cache. The engine writes each picture to
+`vNNN.partial/` and is never listed. A stopped still (cancelled on purpose) leaves nothing (`kept_unless_stopped`); a stopped or
+failed shot render (render_video, mcp/sequence.py) keeps the frames it finished, and the same render asked for again continues
+from them (mcp/resume.py). Without a project folder it goes to the render cache. The engine writes each picture to
 `<name>.partial` and renames it, so every file is whole; the video is encoded by the `ffmpeg` program (a separate process,
-like 2D's) from the PNG frames and written whole or not at all.
+like 2D's) from the PNG frames and written whole or not at all, with a small share copy `<name>-share.mp4` beside it (`share_copy`).
 """
 from __future__ import annotations
 
 import contextlib
 import copy
+import os
 import re
 import shutil
 import subprocess
@@ -25,7 +28,7 @@ from rostrum_core.mcp.files import render_cache_folder
 from ..render_fields import QUALITIES, STYLIZED
 from ..sim.compute import ready_for_render
 from .. import estimate_job
-from . import draw, estimate, layers
+from . import draw, estimate, layers, resume
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
 tools = Tools()
@@ -98,6 +101,17 @@ def _hashes(data: dict) -> dict:
     return {"scene_hash": h, "doc_hash": h}
 
 
+def resumable_folder(folder, doc, info, key: str) -> tuple[Path, bool]:
+    """The kept .partial folder of this very shot render (same hash, resume.find), else a new one marked with the hash.
+    (path, is a project version)"""
+    kept = resume.find(folder, doc.item_id, f'{doc.item_id or "doc"}_{info["id"]}', key)
+    if kept is not None:
+        return kept, bool(folder and doc.item_id)
+    partial, is_version = _folder(folder, doc, info)
+    resume.mark(partial, key)
+    return partial, is_version
+
+
 def _folder(folder, doc, info) -> tuple[Path, bool]:
     """A new empty .partial folder: the project's next version, or the render cache. (path, is a project version)"""
     if folder and doc.item_id:
@@ -107,8 +121,9 @@ def _folder(folder, doc, info) -> tuple[Path, bool]:
 
 @contextlib.contextmanager
 def kept_unless_stopped(partial: Path, stopped=None):
-    """Around a render into `partial`: when it raises because it was stopped on purpose (`stopped()` true: a cancel),
-    the half-made folder goes, since nobody wants it; a real failure keeps it (the error names it) to look at."""
+    """Around a one-picture render into `partial`: when it raises because it was stopped on purpose (`stopped()` true: a cancel),
+    the half-made folder goes, since nobody wants it; a real failure keeps it (the error names it) to look at. (A shot
+    render keeps its finished frames instead: resume.keeps_frames.)"""
     try:
         yield
     except BaseException:
@@ -189,17 +204,116 @@ def render_still(ctx, args):
                                              "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default 0."},
                                              "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (the frame at this time is the last one). Default: the last frame of the shot."},
                                              "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants), with its passes as layers (passes)."},
+                                             "output_folder": {"type": "string", "description": "A folder (absolute path) to copy the finished mp4 and its share copy into, besides the project render. Made if missing; checked before rendering: a folder that can't be written fails at once."},
+                                             "file_name": {"type": "string", "description": "The copy's name in output_folder (\".mp4\" optional; its share copy is <name>-share.mp4). Default: the render's own name. A file already there is replaced."},
                                              "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. The time is measured first (render_estimate's probe, kept for the scene); if the estimate is over this, nothing is rendered and the error names settings that should fit, each with its time."},
                                              "estimate_only": {"type": "boolean", "default": False, "description": "Return the measured estimate (render_estimate's probe of the middle frame, kept for the scene) and render no video."}}})
 def render_video(ctx, args):
     """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (the shot's render Quality by default:
-    Cycles, or Stylized when the Quality is Stylized; quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
-    job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frames n of m'."""
+    Cycles, or Stylized when the Quality is Stylized; quality fast = Storm for a draft), then encoded by ffmpeg, plus a small share copy
+    `<name>-share.mp4` beside it (about 8 Mbit/s at 1920×1080, scaled by the picture's size). A project render with a manifest; `exr` keeps the EXR frames too;
+    `output_folder` (+ `file_name`) also copies the mp4 and its share copy there. A stopped or failed render keeps the frames it finished: the same call
+    again (nothing rendered changed) continues from them and draws only the missing frames; the reply says "Continues from N finished frames". Always a
+    job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frame n of m'."""
     return ctx.job(*video_job(ctx, args))
 
 
+def _out_target(where: str, args: dict) -> Path | None:
+    """render_video's output_folder/file_name as the mp4 path to copy to, checked writable now (fail loudly), or None."""
+    if "output_folder" not in args:
+        if "file_name" in args:
+            raise RostrumError(codes.BAD_ARGUMENT, where, "file_name", "needs output_folder (the folder to copy the mp4 into)")
+        return None
+    d = Path(os.path.expandvars(os.path.expanduser(args["output_folder"])))
+    if not d.is_absolute():
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"output_folder {args['output_folder']!r}", "must be an absolute path")
+    name = args.get("file_name", "").strip()
+    if name and (re.search(r'[\\/:*?"<>|\x00-\x1f]', name) or name.strip(". ") == ""):
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"file_name {name!r}", 'must be a plain file name (no folder, none of \\ / : * ? " < > |)')
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        probe = d / f".rostrum3d-write-check-{os.getpid()}"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"output_folder {str(d)!r}", f"can't be written: {e.strerror or e}",
+                           hint="Nothing was rendered. Pick a folder you can write to.") from e
+    return d / (name if name.lower().endswith(".mp4") else f"{name}.mp4") if name else d
+
+
+def _copy_out(where: str, mp4: Path, share: Path, target: Path) -> list[Path]:
+    """The finished mp4 and its share copy, copied to `target` (a folder: under their own names). Fails loudly."""
+    out = target / mp4.name if target.is_dir() else target
+    pairs = [(mp4, out), (share, out.with_name(out.stem + "-share.mp4"))]
+    try:
+        for src, dst in pairs:
+            part = dst.with_name(dst.name + ".partial")
+            shutil.copyfile(src, part)
+            part.replace(dst)
+    except OSError as e:
+        raise RostrumError(codes.RENDER_FAILED, where, f"the copy to {out.parent}", f"could not be written: {e.strerror or e}",
+                           hint=f"The video itself is finished in {mp4.parent}.") from e
+    return [dst for _, dst in pairs]
+
+
+def video_key(scene: dict, info: dict, f0: int, f1: int, renderer: str, size, cycles: dict, exposure: float, keep_exr: bool, passes) -> str:
+    """The hash a kept video render is matched by (resume.key_of; a video's frames are PNGs in `_png`, its EXRs beside)."""
+    return resume.key_of(scene, info, f0, f1, renderer, size, {**cycles, "exposure": exposure, "video": True},
+                         ["png", *(["exr"] if keep_exr else [])], passes if keep_exr else None)
+
+
+def kept_count(folder, doc, info, key: str, f0: int, f1: int, keep_exr: bool) -> int:
+    """How many finished frames the same video render left (0: none kept, it starts afresh)."""
+    name = f'{doc.item_id or "doc"}_{info["id"]}'
+    kept = resume.find(folder, doc.item_id, name, key)
+    return len(resume.finished({"png": kept / "_png", **({"exr": kept} if keep_exr else {})}, name, f0, f1)) if kept else 0
+
+
+def video(where: str, doc, info: dict, scene: dict, engine, size: tuple[int, int], renderer: str, cycles: dict, f0: int, f1: int,
+          folder=None, exposure: float = 0, keep_exr: bool = False, passes: list[str] | None = None, progress=None, stopped=None,
+          resumed=None, say=None) -> tuple[Path, list[Path], dict]:
+    """Frames f0..f1 of the shot as an mp4 (+ its share copy, + the EXRs with `keep_exr`), as one project render version (or in
+    the render cache): the one code path of render_video and the render sheet's MP4. `scene`: as described (before its
+    simulation is laid over it; that is what the kept frames are matched by). `progress(done, total)` as frames land (kept
+    ones count as done); `resumed(n)` once with the finished frames it continues from; `say(words)` when it starts encoding.
+    A stop or failure keeps the finished frames (resume.py). Blocking. Returns (the finished folder, [mp4, share, exrs…], the engine's reply)."""
+    doc, fps, (w, h) = DocView.of(doc), info["fps"], size
+    passes = passes if passes and keep_exr else None
+    key = video_key(scene, info, f0, f1, renderer, size, cycles, exposure, keep_exr, passes)
+    scene = ready_for_render(where, doc.data, info["id"], folder, scene)     # its simulation, computed first if needed
+    partial, is_version = resumable_folder(folder, doc, info, key)
+    name = f'{doc.item_id or "doc"}_{info["id"]}'
+    mp4, pngs = partial / f"{name}.mp4", partial / "_png"
+    pngs.mkdir(exist_ok=True)
+    where_of = {"png": pngs, **({"exr": partial} if keep_exr else {})}
+    have = resume.finished(where_of, name, f0, f1, tidy=True)
+    if resumed:
+        resumed(len(have))
+    req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
+    with resume.keeps_frames(partial, lambda: len(resume.finished(where_of, name, f0, f1)), stopped):
+        out = resume.render_missing(where, f"frames {f0}–{f1} of {info['id']}", engine, scene, f0, f1, have, progress,
+                                    camera=info["camera"], renderer=renderer, width=w, height=h, exposure=exposure, timeoutS=3600,
+                                    **req, **cycles, **({"passes": passes} if passes else {}))
+        got = resume.finished(where_of, name, f0, f1)
+        if len(got) != f1 - f0 + 1:                                   # fail loudly: the .partial stays, its frames kept
+            raise RostrumError(codes.RENDER_FAILED, where, f"the frames of {info['id']}", f"are {len(got)} whole frames, expected {f1 - f0 + 1}",
+                               hint="Nothing was listed as a version.")
+        if say:
+            say("Making the MP4")
+        _encode(where, pngs, name, f0, fps, mp4, partial)
+        share = share_copy(where, mp4, (w, h))
+    if keep_exr:
+        _renumber(partial, name, "exr", f0, FIRST)
+    shutil.rmtree(pngs)
+    (partial / resume.RESUME).unlink(missing_ok=True)
+    files = [mp4.name, share.name, *(sorted(p.name for p in partial.glob("*.exr")))]
+    done = _finish(partial, is_version, _manifest(doc.item_id, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST,
+                                                  (out or {}).get("channels")))
+    return done, [done / n for n in files], out or {}
+
+
 def video_job(ctx, args):
-    """render_video's work as (label, job function, key), checked now (the shot, the range, ffmpeg): render_send_shot renders through it."""
+    """render_video's work as (label, job function, key), checked now (the shot, the range, ffmpeg, output_folder): render_send_shot renders through it."""
     doc, info = doc_and_shot(ctx, args)
     fps, s = info["fps"], render_settings(doc, info)
     renderer = _renderer(args, s)
@@ -208,64 +322,60 @@ def video_job(ctx, args):
     if f0 > f1:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"range {f0}–{f1}", "must run forward")
     check_frame(ctx, info, f0), check_frame(ctx, info, f1)
-    if shutil.which("ffmpeg") is None:
-        raise RostrumError(codes.RENDER_FAILED, ctx.tool, "the ffmpeg program", "was not found on the PATH; the mp4 is encoded with it",
-                           hint="Install FFmpeg (LGPL build) and put it on the PATH, or render_still for single pictures.")
+    check_ffmpeg(ctx.tool)
+    target = _out_target(ctx.tool, args)
     w, h = size_of(info, args, s["width"])
     w, h = w - w % 2, h - h % 2                # H.264 needs even sizes
     scene0, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
+    cycles, exposure = _cycles(args, renderer, s), args.get("exposure", 0)
 
     def job_fn(job):
         t_start = time.perf_counter()
         scene = ready_for_render(ctx.tool, doc.data, info["id"], ctx.app.folder, scene0)   # its simulation, computed first if needed
+        key = video_key(scene0, info, f0, f1, renderer, (w, h), cycles, exposure, keep_exr, passes)
+        kept = kept_count(ctx.app.folder, doc, info, key, f0, f1, keep_exr)
+        todo, cont = count - kept, resume.continues_text(kept)
         budget_s = args["budget_min"] * 60 if "budget_min" in args else None
-        est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes,
+        est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes, todo,
                                   must=budget_s is not None or args.get("estimate_only", False))
-        note = f"estimated {est:.0f} s" if est is not None else "not estimated"
+        note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
         if budget_s is not None and est > budget_s:
-            fits = estimate.fitting_settings(est, budget_s, renderer, _cycles(args, renderer, s).get("samples", 0), w, at)
-            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{count} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
+            fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at)
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{todo} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
                                hint="Nothing was rendered.")
+        kept_words = f" {cont} (kept from a stopped or failed render of the same thing)." if cont else ""
         if args.get("estimate_only"):
-            return Reply(f'Estimate for {info["id"]}: {count} frames, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
-                         f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}). No video was rendered.',
-                         {"frames": count, "renderer": renderer, **data_est}, warnings=engine.take_notices())
-        job.progress(0, count, f"frames 0 of {count}; {note}")
-        partial, is_version = _folder(ctx.app.folder, doc, info)
-        name, mp4 = f'{item or "doc"}_{info["id"]}', partial / f'{item or "doc"}_{info["id"]}.mp4'
-        pngs = partial / "_png"
-        pngs.mkdir()
-        req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
-        with kept_unless_stopped(partial, job.cancel_requested.is_set):     # stopped: no half-made folder left
-            out = draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene,
-                              progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
-                              camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
-                              timeoutS=3600, **req, **_cycles(args, renderer, s), **({"passes": passes} if passes else {}))
-            made = sorted(pngs.glob("*.png"))
-            if len(made) != count or any(p.stat().st_size == 0 for p in made):        # fail loudly: the .partial stays, nothing is finished
-                raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the frames of {info['id']}", f"are {len(made)} pictures, expected {count}", hint=f"Left in {partial}.")
-            _encode(ctx.tool, pngs, name, f0, fps, mp4, partial)
-            if keep_exr:
-                _renumber(partial, name, "exr", f0, FIRST)
-            shutil.rmtree(pngs)
-        files = [mp4.name, *(sorted(p.name for p in partial.glob("*.exr")))]
-        done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST,
-                                                      out.get("channels")))
+            return Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
+                         f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.',
+                         {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est}, warnings=engine.take_notices())
+        job.progress(kept, count, f"frame {kept} of {count}; {note}")
+        done, paths, _ = video(ctx.tool, doc, info, scene0, engine, (w, h), renderer, cycles, f0, f1, ctx.app.folder, exposure, keep_exr, passes,
+                               progress=lambda i, n: job.progress(i, n, f"frame {i} of {n}; {note}"), stopped=job.cancel_requested.is_set,
+                               say=lambda words: job.progress(count, count, words))
+        copies = _copy_out(ctx.tool, paths[0], paths[1], target) if target is not None else []
         took = time.perf_counter() - t_start
-        return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {mp4.name}, in {took:.0f} s '
-                     f'({took / count:.2f} s a frame; {note}).',
-                     {"frames": count, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done), **data_est,
-                      "seconds": round(took, 1), "seconds_per_frame": round(took / count, 3)},
-                     [done / n for n in files], warnings=engine.take_notices())
+        return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {paths[0].name} (share copy {paths[1].name}), in {took:.0f} s '
+                     f'({took / max(todo, 1):.2f} s a frame drawn; {note}).{kept_words}'
+                     + (f" Copied to {copies[0]} and {copies[1].name}." if copies else ""),
+                     {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
+                      **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
+                      **({"copies": [str(c) for c in copies]} if copies else {})},
+                     [*paths, *copies], warnings=engine.take_notices())
 
     return (f'render_video {info["id"]} f{f0}-{f1}', job_fn, f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
 
 
+def check_ffmpeg(where: str):
+    if shutil.which("ffmpeg") is None:
+        raise RostrumError(codes.RENDER_FAILED, where, "the ffmpeg program", "was not found on the PATH; the mp4 is encoded with it",
+                           hint="Install FFmpeg (LGPL build) and put it on the PATH, or render pictures instead.")
+
+
 def _estimate(ctx, engine, scene: dict, info: dict, renderer: str, size: tuple[int, int], frames: tuple[int, int], args: dict, s: dict,
-              passes, must: bool) -> tuple[float | None, dict, object]:
+              passes, todo: int, must: bool) -> tuple[float | None, dict, object]:
     """The video's time, measured the way render_estimate measures it (estimate_job: its own engine, the middle frame at a quarter
     and at the real size, kept by scene, so asking again or with other samples answers at once) and scaled by estimate.scale.
     Never by drawing the same frame twice on this engine: the second is answered from the picture it already has (~0.2 s
@@ -279,13 +389,12 @@ def _estimate(ctx, engine, scene: dict, info: dict, renderer: str, size: tuple[i
         if must:
             raise
         return None, {"estimate_s": None, "estimate_error": e.line()}, None
-    count = frames[1] - frames[0] + 1
-    e = estimate.scale(m, pe, count, mp4=True)
+    e = estimate.scale(m, pe, todo, mp4=True)   # only the frames still to draw (kept ones are done)
     how = "a kept measurement of this scene" if m["cached"] else "measured now on this scene"
     if note := estimate_job.card_note(m):
         how += f"; {note}"
     return e["seconds"], {"estimate_s": e["seconds"], "seconds_per_frame": e["seconds_per_frame"], "how": how,
-                          "gpu_busy": estimate_job.card_note(m)}, estimate.seconds_at(m, pe, count, True)
+                          "gpu_busy": estimate_job.card_note(m)}, estimate.seconds_at(m, pe, todo, True)
 
 
 def _encode(where: str, pngs: Path, name: str, first: int, fps: float, mp4: Path, partial: Path):
@@ -298,3 +407,24 @@ def _encode(where: str, pngs: Path, name: str, first: int, fps: float, mp4: Path
         raise RostrumError(codes.RENDER_FAILED, where, f"the video {mp4.name}", f"could not be encoded (ffmpeg exit {run.returncode}): {run.stderr.strip()[-400:]}",
                            hint=f"The frames are kept in {pngs}.")
     part.replace(mp4)
+
+
+SHARE_MBIT_1080 = 8.0                                # the share copy's rate at 1920×1080; other sizes scale by their pixels
+
+
+def share_copy(where: str, mp4: Path, size: tuple[int, int]) -> Path:
+    """A small copy for sharing, `<name>-share.mp4` beside the mp4: H.264 at about 8 Mbit/s for 1920×1080 (scaled by the
+    picture's pixels, at least 1 Mbit/s), fast start for the web. Written whole or not at all; a failure is loud."""
+    kbit = max(1000, round(SHARE_MBIT_1080 * 1000 * size[0] * size[1] / (1920 * 1080)))
+    share = mp4.with_name(mp4.stem + "-share.mp4")
+    part = mp4.with_name(mp4.stem + "-share.partial.mp4")
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(mp4), "-c:v", "libx264", "-preset", "medium",
+           "-b:v", f"{kbit}k", "-maxrate", f"{kbit * 3 // 2}k", "-bufsize", f"{kbit * 2}k", "-pix_fmt", "yuv420p",
+           "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-movflags", "+faststart", "-an", str(part)]
+    run = subprocess.run(cmd, capture_output=True, text=True)
+    if run.returncode != 0 or not part.is_file() or part.stat().st_size == 0:
+        part.unlink(missing_ok=True)
+        raise RostrumError(codes.RENDER_FAILED, where, f"the share copy {share.name}", f"could not be encoded (ffmpeg exit {run.returncode}): {run.stderr.strip()[-400:]}",
+                           hint=f"The full video {mp4.name} is made.")
+    part.replace(share)
+    return share

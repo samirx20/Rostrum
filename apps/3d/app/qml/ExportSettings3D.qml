@@ -2,8 +2,9 @@ import QtQuick
 import RostrumKit
 
 // Rostrum3D's rows in the render sheet (AppShell.exportSettings; screen3d/export3d.py): Quality and Size are the shot's
-// own render settings (a change is a shot edit, saved on the shot), then what file it saves as and, for an EXR, its passes.
-// First, while the shot's simulation is not up to date, the line saying the render computes it first.
+// own render settings (a change is a shot edit, saved on the shot), then what file it saves as and, for an EXR, its passes
+// (an MP4 has neither: it is the video). First, while the shot's simulation is not up to date, the line saying the render
+// computes it first; then, when a stopped render of exactly this left frames, "Continues from 130 finished frames".
 Column {
     id: root
     readonly property var job: backend.exporter
@@ -26,6 +27,9 @@ Column {
     Text { objectName: "sheetSimLine"; visible: text !== ""; width: parent.width; wrapMode: Text.WordWrap
            text: backend.sim.renderLine; color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.body }
     Gap { visible: backend.sim.renderLine !== "" }
+    Text { objectName: "sheetResumeLine"; visible: text !== ""; width: parent.width; wrapMode: Text.WordWrap
+           text: root.job.resumeLine; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+    Gap { visible: root.job.resumeLine !== "" }
     Head { objectName: "sheetQualityHead"; name: "Quality"; note: (root.job.quality === "custom" ? "Custom · " : "") + root.job.qualityText }
     Segmented { objectName: "sheetQuality"; width: parent.width; options: root.job.qualities; current: root.job.quality
                 onPicked: (v) => root.job.setShot("renderQuality", v) }
@@ -33,9 +37,9 @@ Column {
     Head { objectName: "sheetSizeHead"; name: "Size"; note: root.job.size !== "full" ? root.job.sizeText : "" }
     Segmented { objectName: "sheetSize"; width: parent.width; options: root.job.sizes; current: root.job.size
                 onPicked: (v) => root.job.setShot("renderSize", v) }
-    Gap { }
-    Head { name: "Save as" }
-    ChoiceField { objectName: "sheetFormat"; width: parent.width; options: root.job.formats; current: root.job.format; onPicked: (v) => root.job.setFormat(v) }
+    Gap { visible: root.job.choice !== "video" }
+    Head { visible: root.job.choice !== "video"; name: "Save as" }
+    ChoiceField { objectName: "sheetFormat"; visible: root.job.choice !== "video"; width: parent.width; options: root.job.formats; current: root.job.format; onPicked: (v) => root.job.setFormat(v) }
     // the EXR's layers: only while it saves an EXR (absent for a PNG); ticked ones are in the file, the beauty always is
     Gap { visible: root.job.passes.length > 0 }
     Head { visible: root.job.passes.length > 0; objectName: "sheetPassesHead"; name: "Passes"; note: "the picture always" }

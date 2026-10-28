@@ -39,10 +39,14 @@ def _folder(ctx):
 @R.operation("sim.body", "Make items part of the shot's simulation: kind falls (moved by gravity and bumps), still (others "
              "land on it and bounce off it; it never moves), cloth (a shape that drapes and folds over what is under it; a "
              "plane is made fine enough to fold) or off. Only items directly in the scene (not inside a group, copies or "
-             "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Then sim.set for Mass, "
-             "Bounce, Friction, Starts, Shape (cloth: clothWeight, stiffness, pinned, friction), and sim.run to compute.",
+             "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Cloth with `over` "
+             "(an item's id) also places the sheet over that item: centred above it, a little over its top, level, and a "
+             "plane too small to cover it made twice its size; set that item to still too. Then sim.set for Mass, "
+             "Bounce, Friction, Starts, fallStart, Shape (cloth: clothWeight, stiffness, pinned, friction), and sim.run "
+             "to compute.",
              target=SF.TYPES, label="Simulate",
-             params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True, labels=SF.WORDS)])
+             params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True, labels=SF.WORDS),
+                     Param.text("over", label="Drape over", help="Cloth only: the item the sheet is placed over")])
 def sim_body(ctx, targets, args):
     for t in targets:
         loc = ctx.idx[t]
@@ -53,6 +57,22 @@ def sim_body(ctx, targets, args):
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f'is a {ctx.item(t)["type"]}; only a shape can be cloth',
                      hint="Make a plane (or another shape) and set it to cloth.")
         ctx.set(t, "simulate", args["kind"])
+        if args.get("over"):
+            _drape_over(ctx, t, args)
+
+
+def _drape_over(ctx, t: str, args: dict):
+    from .cloth_check import over
+    if args["kind"] != "cloth":
+        ctx.fail(codes.BAD_ARGUMENT, '"over"', "only places a cloth", hint='Use kind "cloth" with over.')
+    if args["over"] == t or args["over"] not in ctx.idx:
+        ctx.fail(codes.BAD_ARGUMENT, f'over "{args["over"]}"', "is not another item in the scene")
+    try:
+        values = over(ctx.doc, ctx.item(t), args["over"])
+    except ValueError as e:
+        ctx.fail(codes.BAD_ARGUMENT, f'over "{args["over"]}"', str(e))
+    for k, v in values.items():
+        ctx.set(t, k, v)
 
 
 _ITEM = [p for p in F.unconditional("mesh") if p.name in SF.NAMES and p.name != "simulate"]
@@ -60,7 +80,8 @@ _SHOT = [p for p in F.unconditional("shot") if p.name in SF.SHOT_NAMES and p.nam
 
 
 @R.operation("sim.set", "Change Simulation settings. On an item: massFromSize, mass (kg), bounce (0–1), friction (0–2), "
-             "starts (moving | asleep: until something hits it), simShape (exact | box | sphere); on cloth: clothWeight "
+             "starts (moving | asleep: until something hits it), fallStart (seconds into the shot it holds still until, "
+             "then falls; others land on it meanwhile; on a copies item every copy waits), simShape (exact | box | sphere); on cloth: clothWeight "
              "(kg per m²: silk 0.05, cotton 0.2, denim 0.4), stiffness (0 silk … 1 thin card), pinned (none | top | bottom | "
              "left | right | front | back: that side, as seen in the scene at the first frame, held in place), friction. "
              "On a shot: simGround (a "

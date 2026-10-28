@@ -6,7 +6,8 @@ Operations (screen state, never the document; rule 4): `render.queue.add {shot}`
 A job reads a snapshot taken when it was added (scene, shot, settings: the shot's own render fields, the sheet's Save
 as), renders its frames through rostrum3d.mcp.sequence (the same path as the sheet's Export of the shot) on its own
 engine process, into the project's next render version via `.partial`. Cancel ends that process by its own handle
-(the job's stop hook; never by name); the row then says "Render cancelled" and nothing of it is left on disk (its `.partial` folder goes).
+(the job's stop hook; never by name); the row then says "Render cancelled". The frames it finished stay in its `.partial`
+folder, and the same render queued again continues from them (rostrum3d.mcp.resume); one cancelled before its first frame leaves nothing.
 """
 from __future__ import annotations
 

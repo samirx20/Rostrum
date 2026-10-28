@@ -14,6 +14,7 @@ from rostrum3d import aim, skin
 
 DOT_HIT = 7.5            # screen px either side of a joint dot (9 drawn, 15 hit)
 RING_HIT = 9.0           # a hold ring (12 drawn, 18 hit)
+LET_GO = 30.0            # a click on the held part this near its ring lets go; further along it holds another spot
 
 
 def chain_of(clay: dict) -> list[tuple[dict, int]]:

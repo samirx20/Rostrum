@@ -23,8 +23,10 @@ Panel {
             text: "Shot · render settings"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
         }
         Flickable {
+            id: flick
             anchors { left: parent.left; right: parent.right; top: sub.bottom; bottom: parent.bottom; topMargin: Theme.groupGap }
             contentHeight: col.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+            WheelScroll { flick: flick }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
             Column {
                 id: col
                 width: parent.width

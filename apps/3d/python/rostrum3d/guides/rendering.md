@@ -18,7 +18,7 @@ and an EXR); **Show in folder** opens that folder with the picture selected, **C
 
 ## Open the render sheet
 
-For anything else (the whole shot as frames, Draft or Good, another size, EXR passes, a file of your own): click the
+For anything else (the whole shot as frames or as an MP4 video, Draft or Good, another size, EXR passes, a file of your own): click the
 **▾** beside Render. Ctrl+E and the mark's menu › Export… open the same sheet. The sheet
 takes the settings panel's place, so the viewport stays in sight. Esc or × closes it.
 
@@ -28,13 +28,13 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 
 | Row | What it does |
 |---|---|
-| **What** | **This frame**: one picture at the playhead. **Hero 01 · 120 frames**: every frame of the shot, as numbered pictures. The count follows the frames set on the shot (the whole shot, or a stretch of it: the shot's Render group, Frames) |
+| **What** | **This frame**: one picture at the playhead. **Hero 01 · 120 frames**: every frame of the shot, as numbered pictures. **Hero 01 · MP4 video**: the same frames as one MP4 (H.264), plus a small `-share.mp4` copy beside it (about 8 Mbit/s at 1920 × 1080, less for smaller sizes) to send or post; Save as and Passes are not shown for it. The count follows the frames set on the shot (the whole shot, or a stretch of it: the shot's Render group, Frames) |
 | **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The numbers (samples, noise clean-up) are on the same line, at the right. Custom numbers are set on the shot (select the shot, then its Render group). **Stylized** is there while a material has Lines or Halftone on: the stylized renderer (lines, halftone, light to colour; guide `materials`), drawn at twice the size and smoothed down; its EXR holds the picture only (no passes) |
 | **Size** | The shot's own size, **½** or **× 2**. The size in pixels shows at the right of its name when it isn't the shot's own |
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
 | **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
 | **The time** | How long it will take, measured on this computer (below) |
-| **Render this frame / Render 120 frames** | Starts it. It runs in the background on its own engine; the top bar's job chip shows how far it is, with Cancel |
+| **Render this frame / Render 120 frames / Render 120 frames as MP4** | Starts it. It runs in the background on its own engine; the line under the bar says **Frame 12 of 120 · about 4 min left** (the time left is worked out from the frames this render has drawn, so it appears once the first frame is done), the top bar's job chip shows how far it is, with Cancel |
 
 Quality, Size, Save as and Passes are **the shot's own settings**. Changing them in the sheet changes the shot (one step in the history;
 ↶ undoes it) and they are saved with it. Agents read and set the same settings, so a render an agent starts looks the
@@ -42,6 +42,12 @@ same as yours.
 
 When it is done the line under the button says "Rendered …" with **Play** and **Show in folder**. A failure says what
 went wrong in red, and nothing is called finished.
+
+**Stopped or failed? The finished frames are kept.** Cancel a shot render (or have it fail) and the line says "Stopped ·
+130 finished frames kept". Open the sheet again with the same choices and it says **Continues from 130 finished frames**:
+Render draws only the missing frames, in the same version folder. The frames are reused only while nothing that shows in
+them has changed (the scene, the shot, Quality, Size, Save as, Passes); change one and the render starts afresh. A
+frame file is reused only when it is whole.
 
 ## Passes
 
@@ -113,8 +119,9 @@ has its own.
   later. **✕** cancels a waiting or running render. Finished renders stay below with the time taken and their
   folder: click one to see its last frame over the viewport (Close or Esc puts it away).
 
-**Cancel** ends that render's own engine at once. Nothing of it is left on disk (its half-made
-folder is removed); the row says **Render cancelled** in red. A render that fails says why in red, and nothing is called
+**Cancel** ends that render's own engine at once; the row says **Render cancelled** in red. The frames it finished stay
+in its half-made folder: rendering the same shot again, with nothing changed, continues from them (a render cancelled
+before its first frame leaves nothing). A render that fails says why in red, and nothing is called
 finished. Each render uses the shot's settings as they were when you added it; changes made while it waits or runs
 are not in it. While a queued render runs, the render sheet waits for it (one render on the graphics card at a time).
 

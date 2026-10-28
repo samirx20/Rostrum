@@ -10,8 +10,9 @@ the body bends to follow, each joint turning as little as it can.
    changed, the joints are found: Pose is on at the click and says "Finding joints of …" on the viewport (and
    "Finding…" in the panel) for the second or so it takes; thin bone lines and joint dots show while Pose is on, never
    otherwise.
-2. **Hold** what should stay still: click a spot once (an orange ring). Click a ring again, or hover it and press
-   **Del**, to let go; drag a ring to move it.
+2. **Hold** what should stay still: click a spot once (an orange ring); each other spot you click is held too (both
+   feet, even when they share a part). Click a ring again (or right beside it), or hover it and press **Del**, to let
+   go; drag a ring to move it.
 3. **Drag** any part: a hand, the head, a tail tip. The chip by the pointer shows the part and its biggest bend.
    **Esc** while dragging puts everything back as it was.
 4. Bent in the wrong place: undo, add a hold nearer to where it should bend, drag again. Holds are how you choose

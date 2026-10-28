@@ -50,6 +50,9 @@ ITEM = [
         CH("starts", STARTS, "Starts", "Simulation", "moving", S, FALLS,
            help="Asleep until hit: it stays where it is until something knocks it"),
         labels={"moving": "Moving", "asleep": "Asleep until hit"}),
+    N("fallStart", "Falls from", "Simulation", 0, 3600, 0.01, "s", S, FALLS, default=0.0,
+      help="Holds still where it is until this many seconds into the shot (others land on it and bounce off it), "
+           "then falls. 0: from the shot's start"),
     dataclasses.replace(                           # "simShape": a mesh's own `shape` (box, sphere …) is taken
         CH("simShape", SHAPES, "Shape", "Simulation", "exact", D, BODY,
            help="How it collides. Exact: its own outline (for one that falls, the outline with the dents filled); "

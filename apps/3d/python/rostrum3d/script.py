@@ -20,12 +20,19 @@ person moved stays where they put it).
     buddy.draw([(.07, .2, 0), (.2, .25, 0), (.2, .28, 0), (.07, .26, 0)], name="arm")   # joined; its own space
     vase = clay("vase", spin=[(0, 0, 0), (.05, 0, 0), (.04, .1, 0), (0, .12, 0)])          # spun round +Y
 
+The new scene's own things (start_scene.py: shot_1, shot_1_camera, ground, ground_material, sky) can be changed by a script:
+made again under the same id (`light("sky", kind="dome", intensity=0.5)`) it replaces that one, field by field, in the run's
+one undo step; `edit("ground", baseColor=…)` changes only the fields given, on any thing directly in the scene (an item,
+a material or a shot, made by hand, another script or the new scene); `remove("ground")` takes it out. The script then
+owns it (a re-run under its name changes it again); a field a person changed since is held back, as for any script.
+
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
 script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
 """
 from __future__ import annotations
 
 import ast
+import copy
 import math
 
 from rostrum_core import ids
@@ -101,10 +108,20 @@ class Item:
 
     def simulate(self, kind: str = "falls", **values) -> "Item":
         """Make it part of the shot's simulation (only things directly in the scene): "falls", "still", "cloth" (a shape
-        only) or "off", with Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", simShape="box";
-        cloth: clothWeight=, stiffness=, pinned="back"). Computing it is the run_simulation tool (or sim.run), never the
-        script."""
-        return self.set(simulate=kind, **values)
+        only) or "off", with Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", fallStart=1.5 (seconds into the shot it holds still
+        until, then falls), simShape="box";
+        cloth: clothWeight=, stiffness=, pinned="back", over=<item>). Computing it is the run_simulation tool (or sim.run), never the
+        script. Cloth with over=<item> (made earlier, or already in the scene) also places the sheet over it: centred,
+        a little above its top, level, and a plane too small to cover it made twice its size."""
+        over = values.pop("over", None)
+        self.set(simulate=kind, **values)
+        if over is not None:
+            from .sim.cloth_check import over as place
+            if kind != "cloth":
+                raise ValueError(f"{self.id}.simulate: over= only places a cloth")
+            tree = self._b.root if _id_of(over) in self._b.taken else (self._b.doc.data if self._b.doc else self._b.root)
+            self.set(**place(tree, self.node, _id_of(over)))
+        return self
 
     def place_on(self, other, at=None, normal=None) -> "Item":
         """Stand this mesh on `other`. Without `at`: on top of a mesh made earlier in the same group, its base on that
@@ -279,8 +296,66 @@ def _ids(values: dict) -> dict:
 
 
 class Build:
-    def __init__(self, reserved=()):
+    def __init__(self, reserved=(), doc=None, name=""):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), {}      # taken: id -> kind
+        self.doc, self.name, self.owned = doc, name, {}                    # owned: id -> its list, things already in the document it takes
+
+    def _found(self, id_: str, what: str) -> tuple[str, dict]:
+        """(its list, the document's node) of a thing directly in the scene, for edit / remove."""
+        if self.doc is None:
+            raise ValueError(f"{what}({id_!r}): only a script run on an open document (run_script) can change what is there")
+        for lst in ROOT_LISTS:
+            node = next((n for n in self.doc.data.get(lst, []) if n.get("id") == id_), None)
+            if node is not None:
+                return lst, node
+        raise ValueError(f"{what}({id_!r}): there is no {id_!r} directly in the scene (an item, material or shot); "
+                         "things inside a group are changed through their own script or an operation")
+
+    def edit(self, id_: str, **values) -> "Item":
+        """A thing already in the document, taken over: its fields as they are, then the ones given."""
+        lst, node = self._found(id_, "edit")
+        if id_ in self.taken:
+            raise ValueError(f'id "{id_}" is used twice in the script')
+        self.taken[id_], self.owned[id_] = node.get("type", "item"), lst
+        mine = copy.deepcopy(node)
+        self.root[lst].append(mine)
+        return Item(self, mine).set(**values)
+
+    def remove(self, id_: str):
+        """A thing already in the document, taken out by this run (one undo step with the rest)."""
+        if self.doc is not None and self.name in self.doc.script_bases and not any(
+                n.get("id") == id_ for lst in ROOT_LISTS for n in self.doc.data.get(lst, [])):
+            return                                           # a re-run: this script took it out already
+        lst, _ = self._found(id_, "remove")
+        if id_ in self.taken:
+            raise ValueError(f'remove({id_!r}): the script also makes {id_!r}')
+        self.owned[id_] = lst
+
+    def take_over(self, name: str):
+        """Before the merge: what this run takes over moves into its script's last output (the merge's base), out of any
+        other script's, so the merge sees an edit or a removal of it, never a second thing under a taken id. The base
+        copy is the other script's last output of it when there is one (so a person's later edit is held back, as for any
+        script), else the document's own."""
+        doc = self.doc
+        if doc is None:
+            return
+        for lst in ROOT_LISTS:                               # made again under a new-scene id: replaces that one
+            for n in self.root[lst]:
+                if n["id"] not in self.owned and _start_owned(doc, n["id"], lst):
+                    self.owned[n["id"]] = lst
+        if not self.owned:
+            return
+        base = doc.script_bases.setdefault(name, KIND.blank())
+        for id_, lst in self.owned.items():
+            if any(n.get("id") == id_ for n in base.get(lst, [])):
+                continue                                     # this script owns it already
+            was = None
+            for other, b in doc.script_bases.items():
+                if other != name and (hit := next((n for n in b.get(lst, []) if n.get("id") == id_), None)):
+                    b[lst].remove(hit)
+                    was = was or hit
+            now = next(n for n in doc.data[lst] if n.get("id") == id_)
+            base[lst].append(copy.deepcopy(was if was is not None else now))
 
     def new_id(self, type_or_id: str, id_: str | None = None, loose=False) -> str:
         if loose:                                        # a part's id from its path: already unique per import
@@ -314,6 +389,16 @@ class Build:
         return it
 
 
+ROOT_LISTS = ("items", "materials", "shots")
+START_SCRIPT = "start.py"                     # the new scene's script (start_scene.py, mcp/server.py, files_3d.py)
+
+
+def _start_owned(doc, id_: str, lst: str) -> bool:
+    """Whether the new scene made this one (and it is still there): a script making it again replaces it."""
+    base = doc.script_bases.get(START_SCRIPT) or {}
+    return any(n.get("id") == id_ for n in base.get(lst, [])) and any(n.get("id") == id_ for n in doc.data.get(lst, []))
+
+
 def _reserved(source: str) -> set[str]:
     try:
         return {n.value for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
@@ -340,19 +425,22 @@ def _import(name, *args, **kw):
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
        "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
-       "import.part(path, material=, visible=)",
+       "import.part(path, material=, visible=)", "edit(id, **fields) / remove(id): a thing already in the scene (shot_1, ground, sky …)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
-def run_source(source: str, name: str) -> dict:
-    """Python source → the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing merged."""
-    b = Build(_reserved(source))
+def run_source(source: str, name: str, doc=None) -> dict:
+    """Python source → the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing merged.
+    With the open document (`doc`, as run_script passes it): edit / remove, and the new scene's things made again by id,
+    are taken over (Build.take_over) before the merge."""
+    b = Build(_reserved(source), doc, name)
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              "clay": lambda id=None, **v: _clay(b, id, **v),
              "copies": lambda id=None, source=None, **v: _copies(b, id, source, **v),
+             "edit": lambda id, **v: b.edit(id, **v), "remove": lambda id: b.remove(id),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)
@@ -361,4 +449,8 @@ def run_source(source: str, name: str) -> dict:
         line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            API) from e
+    b.take_over(name)
     return b.root
+
+
+run_source.wants_doc = True            # rostrum_core's run_script tool then passes the open document

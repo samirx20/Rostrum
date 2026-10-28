@@ -23,6 +23,7 @@ Column {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         reuseItems: true
+        WheelScroll { flick: list }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
         onCountChanged: positionViewAtEnd()
         Component.onCompleted: positionViewAtEnd()
         delegate: Item {
