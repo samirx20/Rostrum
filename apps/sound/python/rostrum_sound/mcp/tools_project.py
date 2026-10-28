@@ -21,7 +21,7 @@ from .. import KIND
 from .. import lastproject as last
 from .. import note_ranges, script_scope
 from ..diagnose import FIXES
-from . import edit_examples, range_target, script_twins
+from . import edit_examples, range_target, script_shared, script_twins
 from .app import NO_PROJECT, open_project
 
 
@@ -109,7 +109,8 @@ EDIT_DOCUMENT = (
     "Complete calls (the whole arguments), each tried on a real song:\n" + edit_examples.as_text())
 RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name that makes the same tracks is refused (it would double every note), a new name with new track ids adds parts beside them. "
               "Example: {\"name\": \"cue\", \"source\": \"tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))\"}. "
-              "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces. Effect settings are plain numbers "
+              "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces; marker(name, at, shared=True) publishes a project marker (2D follows it). "
+              "Write the music in bar()/beat(); every time also takes a marker (\"#hit\", \"#hit+0.5\", \"#hit\" + beats(1)), downbeat/land's at= too; build_to(target, over, parts) writes a build into a moment as plain notes. Effect settings are plain numbers "
               "(compressor threshold in dB, attack and release in seconds); every effect's and the master's settings: inspect_engine. "
               "To end cleanly: a later length(), master(fadeOut=seconds) (inspect_guide 'script', Ending a song). "
               "Before composing, read inspect_guide 'writing-music'. Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
@@ -142,6 +143,7 @@ def with_script_print(runtime) -> None:
 
     def run_script(ctx, args):
         script_twins.refuse_second_copy(ctx.document(args.get("item")), args)
+        script_shared.publish(ctx, ctx.document(args.get("item")), args)      # marker(..., shared=True), before the merge
         script_scope.forget_printed()         # after the check: its dry run printed too
         try:
             out = old.fn(ctx, args)

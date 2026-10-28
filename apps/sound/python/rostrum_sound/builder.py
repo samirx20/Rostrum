@@ -14,7 +14,7 @@ from .builder_parts import Clip, Inserts, checked
 from .builder_routing import Bus, Routing
 from .doc import blank
 from .doc import fields as FD
-from .doc import ids, markers
+from .doc import ids
 from .doc.check import playing
 from .doc.kind import facts as item_facts
 from .doc.registry import MASTER_ID
@@ -166,6 +166,7 @@ class Song(MusicMap):
         self.markers: list[dict] = []
         self.buses: list[Bus] = []
         self.known: list[dict] = []        # the document's own markers (marker.add): read, never made, by the script
+        self.shared: set[str] = set()      # marker(..., shared=True): published to the project by run_script (builder_music.py)
         self.master = Master()
 
     def set(self, **fields):
@@ -184,25 +185,6 @@ class Song(MusicMap):
         self.buses.append(Bus(id, fields))
         return self.buses[-1]
 
-    def marker(self, name, at, id=None):
-        """A marker; the same name again at the same time is the same marker (marker("hit") then moment("hit") at
-        it), at another time a loud error naming both."""
-        same = next((m for m in self.markers if m["id"] == (id or ids.marker(name))), None)
-        if same is not None:
-            if same["at"] == at:
-                return
-            raise RostrumError(codes.BAD_ARGUMENT, f"marker {name}", f"at={at!r}",
-                               f"is a second time for the marker \"{name}\", already at {same['at']!r}",
-                               hint=f'One time per name: moment("{name}") without at uses the marker already there.')
-        self.markers.append({"id": id or ids.marker(name), "type": "marker",
-                             **checked("marker", {"name": name, "at": at}, f"marker {name}")})
-
-    def marks(self) -> list[dict]:
-        """The markers a time in the script can name: its own, then the document's it doesn't restate (one list
-        of markers, the document's, so a marker added with marker.add is found by a later script)."""
-        mine = {markers.key(m["name"]) for m in self.markers}
-        return self.markers + [m for m in self.known if markers.key(m.get("name", m["id"])) not in mine]
-
     def tree(self) -> dict:
         root = {**self.root, "markers": self.marks()}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
@@ -213,5 +195,5 @@ class Song(MusicMap):
         tracks = [t.item(root, taken) for t in self.tracks]
         master = {"id": MASTER_ID, "type": "master", **self.master.fields,
                   **self.master.insert_items(MASTER_ID, taken)}
-        return {"id": "root", "type": "doc", **self.root, "tracks": tracks, "buses": [b.item(taken) for b in self.buses], "markers": self.markers,
+        return {"id": "root", "type": "doc", **self.root, "tracks": tracks, "buses": [b.item(taken) for b in self.buses], "markers": self.own_markers(),
                 "master": [master]}

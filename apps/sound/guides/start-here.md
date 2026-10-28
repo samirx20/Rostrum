@@ -24,9 +24,10 @@ for t in (keys, pad): t.humanize(seed=2)                                   # the
 master(loudness=-16, truePeak=-1)                                          # the mix and master last
 ```
 
-Landing a sound on a time without bending the tempo: `downbeat(bar(n), at=T)` puts bar n at T seconds (music before bar 1
-is a pickup), `land(bar(n), at=T, ramp_from=bar(m))` glides the tempo so bar n lands at T; or write the moment as a marker
-(`marker("hit", at=31.5)`, `at="#hit"`). Details: `inspect_guide 'script'`, "Landing on a time".
+Write music in bars (`at=bar(5) + beats(1)`); seconds only for sync points (a tempo change never moves them). Landing on
+a time: `marker("hit", at=31.5)` then `at="#hit"`; `downbeat(bar(n), at="#hit")` (a pickup before bar 1); `land(bar(n),
+at="#hit", ramp_from=bar(m))` (a tempo glide). `shared=True` on a marker lets 2D follow it; `build_to("#hit",
+over=beats(8), parts=[...])` writes a build into it. Details: `inspect_guide 'script'`.
 
 ## How every reply reads
 
@@ -207,12 +208,12 @@ t.note('D4', at=bar(1), dur=beats(4))"}}
 
 ## Loudness: louder or cleaner (`maxLimit`)
 
-**A first render often lands 1 to 3 dB under the target (-16 LUFS for video): that is the default, not a failure. Do not leave it: the `render_mix` reply names the fix; `edit_loudness {"apply": "best"}` (or `keep_balance`) reaches the target in one call (with no loudness target on the master yet, the same call turns it on: render again, then call it once more). A single track far below the others (`look_sound` `levels` shows each track's LUFS) is a level problem of its own: raise that track.**
+**A render with a loudness target lands on it (within 0.5 LU): it raises the limiter for that file as far as the target needs and says how many dB of limiting it took.** When that is a lot (over ~3 dB) or even 12 dB is short, `edit_loudness {"apply": "best"}` makes the master need less (with no loudness target on the master yet, the same call turns it on). A single track far below the others (`look_sound` `levels` shows each track's LUFS) is a level problem of its own: raise that track.
 
 A new song has gentle limiting on: the master's limiter may pull the loudest moment down by at most `maxLimit` (default 2 dB;
 the screen's **Most limiting**; the document takes 0 to 12 dB). A mix whose peaks stand further above its average loudness is
-turned down as a whole instead, so it lands under its target (for a quiet piano or peaky drums, 1 to 3 dB under is normal) and
-the `render_mix` reply says how far and names the best of three ways to reach it:
+turned down as a whole instead, so playback lands under its target (for a quiet piano or peaky drums, 1 to 3 dB under is normal);
+a render pushes its file onto the target, and when that takes a lot of limiting there are three ways to need less:
 
 - **Cleaner:** turn the track that sets the peaks down (`look_sound` `loudness` names who drove the limiter's worst moment; `levels`
   shows each track's level), or write its loudest notes softer. The balance of the mix changes, and no limiting is added.
@@ -225,7 +226,7 @@ the `render_mix` reply says how far and names the best of three ways to reach it
 `{"apply": "best"}` takes the one the reply names best: keep_balance when it raises `maxLimit` by 1 dB or less and leaves at most ~3 dB of limiting, else
 tame_peaks (the master stays transparent). Raise `maxLimit` further only when the dense sound is what the piece wants.
 
-**Under the target: call `edit_loudness` first.** It reads the last render and answers three ways with measured numbers
+**Too much limiting, or short even at 12 dB: call `edit_loudness`.** It reads the last render and answers three ways with measured numbers
 and the exact `edit_document` call for each: `keep_balance` (the `maxLimit` that reaches the target, no track moves),
 `tame_peaks` (the gentle compressor above, threshold and makeup measured, balance and limit kept) and `trim_track` (the smallest cut of the most peaked track, or the `track` you name, that reaches it within the current
 `maxLimit`, tried with offline renders). `{"apply": "best"}` (or an option's name) makes that edit as one
