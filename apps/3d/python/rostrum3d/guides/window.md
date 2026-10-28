@@ -171,7 +171,7 @@ selected item. The rail only shows tools that work today. Simulation appears whe
 
 ## Import
 
-Bring in a model made elsewhere: glTF or GLB (its first animation plays with the shot, a skinned character too), OBJ, FBX (at its rest pose), Alembic (its animation plays with the shot) or USD. The file is
+Bring in a model made elsewhere: glTF or GLB (its first animation plays with the shot, a skinned character too), OBJ, FBX (its first animation plays with the shot, skins and blend shapes too), Alembic (its animation plays with the shot) or USD. The file is
 used where it is and never changed.
 
 - **The Import list** (Build page, under Type & logo; **Ctrl+I**): **glTF / GLB…**, **OBJ…**, **FBX…**, **Alembic…**,
