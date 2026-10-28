@@ -165,28 +165,33 @@ struct Mesher {
 }  // namespace
 
 void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out,
-                const float* mask) {
+                const float* mask, int part) {
   out.points.clear();
   out.normals.clear();
   out.indices.clear();
   out.mask.clear();
 
-  // Inside bits per dense row (bit x = sample x < 0); the edge scan then only visits surface edges.
+  // the owned edges start at relative voxels [lo, lo + n) on each axis: the whole block, or one octant
+  const int n = part < 0 ? kBlock : kPart;
+  const int lo[3] = {part < 0 ? 0 : (part & 1) * kPart, part < 0 ? 0 : ((part >> 1) & 1) * kPart,
+                     part < 0 ? 0 : ((part >> 2) & 1) * kPart};
+  // Inside bits per dense row (bit x = sample x < 0); the edge scan then only visits surface edges. Only the rows
+  // and bits the owned edges read: dense [lo + 1, lo + n + 1] (an owned edge starts in [lo + 1, lo + n]).
   static_assert(kDense <= 64, "a dense row must fit one 64-bit mask");
   uint64_t rows[kDense][kDense];  // [z][y]
   uint64_t any = 0, all = ~uint64_t(0);
-  for (int z = 0; z < kDense; ++z) {
-    for (int y = 0; y < kDense; ++y) {
+  const uint64_t used = ((uint64_t(1) << (n + 1)) - 1) << (lo[0] + 1);
+  for (int z = lo[2] + 1; z <= lo[2] + n + 1; ++z) {
+    for (int y = lo[1] + 1; y <= lo[1] + n + 1; ++y) {
       const float* r = dense + kSY * y + kSZ * z;
       uint64_t mask = 0;
-      for (int x = 0; x < kDense; ++x) mask |= uint64_t(r[x] < 0.f) << x;
+      for (int x = lo[0] + 1; x <= lo[0] + n + 1; ++x) mask |= uint64_t(r[x] < 0.f) << x;
       rows[z][y] = mask;
       any |= mask;
-      all &= mask;
+      all &= mask | ~used;
     }
   }
-  constexpr uint64_t kFull = (uint64_t(1) << kDense) - 1;
-  if (any == 0 || all == kFull) return;
+  if (any == 0 || all == ~uint64_t(0)) return;
 
   // Cell -> vertex slots, reset after use (only the touched ones) instead of clearing all 33^3 each call.
   thread_local struct Slots {
@@ -198,10 +203,10 @@ void mesh_block(const float* dense, const float* wide, const BlockKey& key, floa
 
   Mesher m{dense, wide, mask, voxel, key.x * kBlock - 1, key.y * kBlock - 1, key.z * kBlock - 1, slots.v, &out, &touched};
 
-  // Owned edges start at relative voxels [0, kBlock), i.e. dense [1, kBlock].
-  constexpr uint64_t kOwned = ((uint64_t(1) << kBlock) - 1) << 1;
-  for (int z = 1; z <= kBlock; ++z) {
-    for (int y = 1; y <= kBlock; ++y) {
+  // Owned edges start at relative voxels [lo, lo + n), i.e. dense [lo + 1, lo + n].
+  const uint64_t kOwned = ((uint64_t(1) << n) - 1) << (lo[0] + 1);
+  for (int z = lo[2] + 1; z <= lo[2] + n; ++z) {
+    for (int y = lo[1] + 1; y <= lo[1] + n; ++y) {
       const uint64_t r = rows[z][y];
       const uint64_t ex = (r ^ (r >> 1)) & kOwned;
       const uint64_t ey = (r ^ rows[z][y + 1]) & kOwned;

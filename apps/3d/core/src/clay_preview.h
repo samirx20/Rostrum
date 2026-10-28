@@ -5,14 +5,14 @@
 //    changed (Volume::take_changes, refresh_coarse; the store's coarse job); the first preview stroke on a clay, or
 //    one after a cache load, makes it at its begin (Volume::coarse_copy, on the catch-up thread, ~15 ms at 1 mm);
 //  - each sample's ray meets the copy, and the dab is applied to the copy (a Pull drag is cut by the copy's grain);
-//  - the copy's changed blocks are meshed at its grain (a quarter of the triangles) into preview prims of their own
-//    (preview_key), with skirts (add_skirts) so no crack shows where they meet the fine blocks, and the 8 fine blocks
-//    under each are taken down;
+//  - the copy's changed parts are meshed at its grain (a quarter of the triangles) into preview prims of their own
+//    (preview_key), with skirts (add_skirts) so no crack shows where they meet the fine blocks, and the fine block
+//    under each is hidden (Blocks::hide: only its visibility changes, so Storm moves none of its buffers);
 //  - the dabs found are the stroke (what is stored, cut by the clay's own grain): the catch-up thread applies them to
 //    the clay itself, one after another, as the stroke goes (Catchup). Volume::dab on the clay from the stroke's start,
 //    in order: exactly what a replay does, so live = replay still holds bit for bit (ROSTRUM3D_CLAY_VERIFY=1 checks).
-//  - at the end the thread finishes the dabs left, and the fine blocks (changed or taken down) replace the preview:
-//    the surface sharpens, and moves by at most the coarse grain's rounding.
+//  - at the end the thread finishes the dabs left, and the fine blocks replace the preview (the changed ones meshed
+//    again, all shown): the surface sharpens, and moves by at most the coarse grain's rounding.
 // The stored clay never sees coarse work (3d-v3 tried coarse work in the clay: ripples, dda74c0a reverted).
 #pragma once
 #include <tbb/task_arena.h>
@@ -40,11 +40,17 @@ constexpr float kPreviewFrom = 16.0f;
 // coarse copy from the first scene on (Store::sync) and the preview's empty prims ready (3d-cl4, Store reserve_ring)
 constexpr float kKeepCopyGrain = 0.0016f;
 bool preview_stroke(const Brush& b, float grain);
+// 3d-leftovers: the preview's prims are parts (below); ROSTRUM3D_CLAY_PARTS=0 makes them whole coarse blocks as before
+// (an A/B on one build: a coarse block's prim is keyed by the coarse block, and hides the 8 fine blocks under it)
+bool preview_parts();
 
-// The preview's prims sit beside the fine blocks under the clay's prim, named by their coarse block moved by this on x
-// (clay_1048576_…): a name no fine block reaches (that would be 33 km from the origin at 1 mm).
+// The preview's prims sit beside the fine blocks under the clay's prim, one per PART of a coarse block (clay_mesh.h
+// kPart: 16^3 coarse grains, exactly one fine block's space, so a part's key is that fine block's key), named by it
+// moved by this on x (clay_1048576_…): a name no fine block reaches (that would be 33 km from the origin at 1 mm).
+// 3d-leftovers: parts, not whole coarse blocks (each 8 fine blocks' space): a dab re-meshed and re-sent ~20 coarse
+// blocks, most of each far from the brush; a part hides only the one fine block under it.
 constexpr int kPreviewKey = 1 << 20;
-inline BlockKey preview_key(const BlockKey& coarse) { return {coarse.x + kPreviewKey, coarse.y, coarse.z}; }
+inline BlockKey preview_key(const BlockKey& part) { return {part.x + kPreviewKey, part.y, part.z}; }
 inline bool is_preview_key(const BlockKey& k) { return k.x >= kPreviewKey / 2; }
 // a preview block's skirt depth, in its own grains
 constexpr float kSkirtGrains = 1.5f;
