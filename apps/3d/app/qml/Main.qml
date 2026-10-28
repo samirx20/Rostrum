@@ -140,10 +140,17 @@ AppShell {
         Inspector {
             anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on && !backend.stretch.shown
                      && !blockSettings.visible      // a picked block's settings take its place (BlockSettings.qml)
-            below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
+            above: Column {     // the item's material (SPEC §6.1) by importance: its row with the picker, then the material's
+                width: parent ? parent.width : 0           // primary settings (Base colour …), so the colour is never under a fold
+                MaterialRow { id: materialRow; width: parent.width }
+                Repeater {
+                    model: backend.mats.head
+                    delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.head.instant }
+                }
+            }
+            below: Column {     // the material's other settings inline (secondary and deeper), then Edit as blocks
                 width: parent ? parent.width : 0
                 KeepSizeRow { width: parent.width }       // an import just rescaled to metres: Keep original size (importing.py)
-                MaterialRow { id: materialRow; width: parent.width }
                 Repeater {
                     model: backend.mats.rows
                     delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }

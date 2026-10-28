@@ -129,13 +129,17 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   quarter of the pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size
   with the job's samples, because a full-size frame does not cost exactly four quarter-size ones. A very heavy job (that frame
   expected over 9 s) draws the real size with 8 samples instead and adds the quarter's extra time for the samples.
-  About 12 s at full HD, Good; on a free card within 10 % of the real render. Past a minute and a half it
+  About 12 s at full HD, Good; on a free card within about a quarter of the real render (tests: 0.75-1.15x the real
+  time at 8-512 samples, for stills and 24-frame videos). Past a minute and a half it
   stops (its engine ended), the job fails and says the job is at least that slow or the engine stopped answering.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
 - `quality`, `samples`, `size`, `start` / `end` try other settings without touching the shot. `frame` estimates a still.
   `all_shots: true` gives each shot with its own settings, and a total.
-- `budget_min` is the minutes you can spend. Over it, the reply names one-setting changes that should fit (fewer samples, a smaller size).
+- `budget_min` is the minutes you can spend. Over it, the reply names one-setting changes that should fit (fewer samples, a smaller size),
+  each with its time, worked out from the measurement: halving the samples does not halve the time, so it may name far fewer.
+- `render_video` with `budget_min` or `estimate_only` uses this same measurement (kept for the scene), so it agrees with
+  `render_estimate`, and fewer samples never estimate longer.
 - Look at the probe picture it returns: it is what is about to be drawn.
 - It is a close guide, not a promise: start-up and encoding do not shrink with the settings, and time grows with samples much
   less than in step (a straight line in the log of the samples, as measured).

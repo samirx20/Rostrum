@@ -1,0 +1,229 @@
+; FBX 7.4.0 project file
+; Hand-written test for Rostrum3D's FBX import (convert_fbx_anim.cpp): no outside content.
+; "Bar": a 0.2 x 2 x 0.2 m column of 12 points, skinned to Bone1 (bottom ring), Bone1+Bone2 half and half (middle
+; ring) and Bone2 (top ring). Bone2 (at y = 1) turns about Z: 0 deg at 0 s, 60 deg at 0.5 s, 30 deg at 1 s.
+; "Spinner": a plain 0.3 m cube, not skinned; it slides x 1 -> 2 m and turns 0 -> 180 deg about Y over 1 s.
+; Cluster Transform = the mesh node -> bone at bind (inverse of the bone's bind for a mesh at the origin), as exporters write it.
+; Y up, metres (UnitScaleFactor 100 = 100 cm per unit). 1 s = 46186158000 FBX time ticks.
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7400
+	Creator: "Rostrum hand-written test"
+}
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UpAxisSign", "int", "Integer", "",1
+		P: "FrontAxis", "int", "Integer", "",2
+		P: "FrontAxisSign", "int", "Integer", "",1
+		P: "CoordAxis", "int", "Integer", "",0
+		P: "CoordAxisSign", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",100
+		P: "OriginalUnitScaleFactor", "double", "Number", "",100
+		P: "TimeMode", "enum", "", "",6
+		P: "TimeSpanStart", "KTime", "Time", "",0
+		P: "TimeSpanStop", "KTime", "Time", "",46186158000
+	}
+}
+Objects:  {
+	Geometry: 1001, "Geometry::Bar", "Mesh" {
+		Vertices: *36 {
+			a: -0.1,0,-0.1,0.1,0,-0.1,0.1,0,0.1,-0.1,0,0.1,-0.1,1,-0.1,0.1,1,-0.1,0.1,1,0.1,-0.1,1,0.1,-0.1,2,-0.1,0.1,2,-0.1,0.1,2,0.1,-0.1,2,0.1
+		}
+		PolygonVertexIndex: *40 {
+			a: 0,1,2,-4,11,10,9,-9,0,4,5,-2,1,5,6,-3,2,6,7,-4,3,7,4,-1,4,8,9,-6,5,9,10,-7,6,10,11,-8,7,11,8,-5
+		}
+		GeometryVersion: 124
+	}
+	Geometry: 1002, "Geometry::Spinner", "Mesh" {
+		Vertices: *24 {
+			a: -0.15,-0.15,-0.15,0.15,-0.15,-0.15,0.15,-0.15,0.15,-0.15,-0.15,0.15,-0.15,0.15,-0.15,0.15,0.15,-0.15,0.15,0.15,0.15,-0.15,0.15,0.15
+		}
+		PolygonVertexIndex: *24 {
+			a: 0,1,2,-4,7,6,5,-5,0,4,5,-2,1,5,6,-3,2,6,7,-4,3,7,4,-1
+		}
+		GeometryVersion: 124
+	}
+	Model: 2001, "Model::Bar", "Mesh" {
+		Version: 232
+		Properties70:  {
+		}
+		Shading: T
+		Culling: "CullingOff"
+	}
+	Model: 2002, "Model::Spinner", "Mesh" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",1,0.5,0
+		}
+		Shading: T
+		Culling: "CullingOff"
+	}
+	NodeAttribute: 3101, "NodeAttribute::Bone1", "LimbNode" {
+		TypeFlags: "Skeleton"
+	}
+	NodeAttribute: 3102, "NodeAttribute::Bone2", "LimbNode" {
+		TypeFlags: "Skeleton"
+	}
+	Model: 3001, "Model::Bone1", "LimbNode" {
+		Version: 232
+		Properties70:  {
+		}
+	}
+	Model: 3002, "Model::Bone2", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,1,0
+		}
+	}
+	Deformer: 4001, "Deformer::BarSkin", "Skin" {
+		Version: 101
+		Link_DeformAcuracy: 50
+	}
+	Deformer: 4002, "SubDeformer::Bone1", "Cluster" {
+		Version: 100
+		UserData: "", ""
+		Indexes: *8 {
+			a: 0,1,2,3,4,5,6,7
+		}
+		Weights: *8 {
+			a: 1,1,1,1,0.5,0.5,0.5,0.5
+		}
+		Transform: *16 {
+			a: 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+		}
+		TransformLink: *16 {
+			a: 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+		}
+	}
+	Deformer: 4003, "SubDeformer::Bone2", "Cluster" {
+		Version: 100
+		UserData: "", ""
+		Indexes: *8 {
+			a: 4,5,6,7,8,9,10,11
+		}
+		Weights: *8 {
+			a: 0.5,0.5,0.5,0.5,1,1,1,1
+		}
+		Transform: *16 {
+			a: 1,0,0,0,0,1,0,0,0,0,1,0,0,-1,0,1
+		}
+		TransformLink: *16 {
+			a: 1,0,0,0,0,1,0,0,0,0,1,0,0,1,0,1
+		}
+	}
+	AnimationStack: 5001, "AnimStack::Take 001", "" {
+		Properties70:  {
+			P: "LocalStart", "KTime", "Time", "",0
+			P: "LocalStop", "KTime", "Time", "",46186158000
+			P: "ReferenceStart", "KTime", "Time", "",0
+			P: "ReferenceStop", "KTime", "Time", "",46186158000
+		}
+	}
+	AnimationLayer: 5002, "AnimLayer::BaseLayer", "" {
+	}
+	AnimationCurveNode: 6001, "AnimCurveNode::R", "" {
+		Properties70:  {
+			P: "d|X", "Number", "", "A",0
+			P: "d|Y", "Number", "", "A",0
+			P: "d|Z", "Number", "", "A",0
+		}
+	}
+	AnimationCurve: 6002, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,23093079000,46186158000
+		}
+		KeyValueFloat: *3 {
+			a: 0,60,30
+		}
+		KeyAttrFlags: *1 {
+			a: 24836
+		}
+		KeyAttrDataFloat: *4 {
+			a: 0,0,218434821,0
+		}
+		KeyAttrRefCount: *1 {
+			a: 3
+		}
+	}
+	AnimationCurveNode: 6011, "AnimCurveNode::T", "" {
+		Properties70:  {
+			P: "d|X", "Number", "", "A",1
+			P: "d|Y", "Number", "", "A",0.5
+			P: "d|Z", "Number", "", "A",0
+		}
+	}
+	AnimationCurve: 6012, "AnimCurve::", "" {
+		Default: 1
+		KeyVer: 4009
+		KeyTime: *2 {
+			a: 0,46186158000
+		}
+		KeyValueFloat: *2 {
+			a: 1,2
+		}
+		KeyAttrFlags: *1 {
+			a: 24836
+		}
+		KeyAttrDataFloat: *4 {
+			a: 0,0,218434821,0
+		}
+		KeyAttrRefCount: *1 {
+			a: 2
+		}
+	}
+	AnimationCurveNode: 6021, "AnimCurveNode::R", "" {
+		Properties70:  {
+			P: "d|X", "Number", "", "A",0
+			P: "d|Y", "Number", "", "A",0
+			P: "d|Z", "Number", "", "A",0
+		}
+	}
+	AnimationCurve: 6022, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *2 {
+			a: 0,46186158000
+		}
+		KeyValueFloat: *2 {
+			a: 0,180
+		}
+		KeyAttrFlags: *1 {
+			a: 24836
+		}
+		KeyAttrDataFloat: *4 {
+			a: 0,0,218434821,0
+		}
+		KeyAttrRefCount: *1 {
+			a: 2
+		}
+	}
+}
+Connections:  {
+	C: "OO",2001,0
+	C: "OO",2002,0
+	C: "OO",3001,0
+	C: "OO",3002,3001
+	C: "OO",3101,3001
+	C: "OO",3102,3002
+	C: "OO",1001,2001
+	C: "OO",1002,2002
+	C: "OO",4001,1001
+	C: "OO",4002,4001
+	C: "OO",4003,4001
+	C: "OO",3001,4002
+	C: "OO",3002,4003
+	C: "OO",5002,5001
+	C: "OO",6001,5002
+	C: "OP",6001,3002, "Lcl Rotation"
+	C: "OP",6002,6001, "d|Z"
+	C: "OO",6011,5002
+	C: "OP",6011,2002, "Lcl Translation"
+	C: "OP",6012,6011, "d|X"
+	C: "OO",6021,5002
+	C: "OP",6021,2002, "Lcl Rotation"
+	C: "OP",6022,6021, "d|Y"
+}

@@ -15,7 +15,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +27,7 @@ from rostrum_core.mcp.files import render_cache_folder
 
 from ..render_fields import QUALITIES, STYLIZED
 from ..sim.compute import ready_for_render
+from .. import estimate_job
 from . import draw, estimate, layers, resume
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
@@ -206,8 +206,8 @@ def render_still(ctx, args):
                                              "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants), with its passes as layers (passes)."},
                                              "output_folder": {"type": "string", "description": "A folder (absolute path) to copy the finished mp4 and its share copy into, besides the project render. Made if missing; checked before rendering: a folder that can't be written fails at once."},
                                              "file_name": {"type": "string", "description": "The copy's name in output_folder (\".mp4\" optional; its share copy is <name>-share.mp4). Default: the render's own name. A file already there is replaced."},
-                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. One probe frame is timed first; if the estimate is over this, nothing is rendered and the error names settings that should fit."},
-                                             "estimate_only": {"type": "boolean", "default": False, "description": "Time one probe frame (the middle one) and return the estimate; render no video."}}})
+                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. The time is measured first (render_estimate's probe, kept for the scene); if the estimate is over this, nothing is rendered and the error names settings that should fit, each with its time."},
+                                             "estimate_only": {"type": "boolean", "default": False, "description": "Return the measured estimate (render_estimate's probe of the middle frame, kept for the scene) and render no video."}}})
 def render_video(ctx, args):
     """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (the shot's render Quality by default:
     Cycles, or Stylized when the Quality is Stylized; quality fast = Storm for a draft), then encoded by ffmpeg, plus a small share copy
@@ -338,21 +338,18 @@ def video_job(ctx, args):
         key = video_key(scene0, info, f0, f1, renderer, (w, h), cycles, exposure, keep_exr, passes)
         kept = kept_count(ctx.app.folder, doc, info, key, f0, f1, keep_exr)
         todo, cont = count - kept, resume.continues_text(kept)
-        probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args, s)
-        if "shadow" in passes:                     # the Shadow pass draws every frame twice (core passes.h); the probe draws once
-            probe_ms, probe_note = probe_ms * 2, probe_note + ", doubled for the Shadow pass"
-        est = estimate.total_seconds(probe_ms, todo)
-        note = f"estimated {est:.0f} s ({probe_ms:.0f} ms a frame; {probe_note})" + (f"; {cont.lower()}" if cont else "")
-        data_est = {"estimate_s": round(est, 1), "probe_ms": round(probe_ms), "probe_note": probe_note}
         budget_s = args["budget_min"] * 60 if "budget_min" in args else None
+        est, data_est, at = _estimate(ctx, engine, scene, info, renderer, (w, h), (f0, f1), args, s, passes, todo,
+                                  must=budget_s is not None or args.get("estimate_only", False))
+        note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
         if budget_s is not None and est > budget_s:
-            fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w)
+            fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at)
             raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{todo} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
                                hint="Nothing was rendered.")
         kept_words = f" {cont} (kept from a stopped or failed render of the same thing)." if cont else ""
         if args.get("estimate_only"):
-            return Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), from one probe frame at '
-                         f'{probe_ms:.0f} ms ({probe_note}).{kept_words} No video was rendered.',
+            return Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
+                         f'{data_est["seconds_per_frame"]:.2f} s a frame ({data_est["how"]}).{kept_words} No video was rendered.',
                          {"frames": todo, "kept_frames": kept, "renderer": renderer, **data_est}, warnings=engine.take_notices())
         job.progress(kept, count, f"frame {kept} of {count}; {note}")
         done, paths, _ = video(ctx.tool, doc, info, scene0, engine, (w, h), renderer, cycles, f0, f1, ctx.app.folder, exposure, keep_exr, passes,
@@ -361,7 +358,7 @@ def video_job(ctx, args):
         copies = _copy_out(ctx.tool, paths[0], paths[1], target) if target is not None else []
         took = time.perf_counter() - t_start
         return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {paths[0].name} (share copy {paths[1].name}), in {took:.0f} s '
-                     f'({took / max(todo, 1):.2f} s a frame drawn; estimated {est:.0f} s).{kept_words}'
+                     f'({took / max(todo, 1):.2f} s a frame drawn; {note}).{kept_words}'
                      + (f" Copied to {copies[0]} and {copies[1].name}." if copies else ""),
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
@@ -377,19 +374,27 @@ def check_ffmpeg(where: str):
                            hint="Install FFmpeg (LGPL build) and put it on the PATH, or render pictures instead.")
 
 
-def _probe(where: str, engine, scene: dict, info: dict, frame: int, renderer: str, size: tuple[int, int], args: dict, s: dict) -> tuple[float, str]:
-    """Time one frame the way the export draws it (same path, size, samples). The engine reports no scene-load or kernel-compile time
-    apart from the frame's, so a quick probe is drawn twice and the second is used; a slow one (the first would be as costly as the
-    second) is used as it is, and that is said. (ms, how it was measured)"""
-    with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
-        def one() -> float:
-            r = draw.render(where, f"probe frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                            width=size[0], height=size[1], png=str(Path(tmp) / "probe.png"), exposure=args.get("exposure", 0), **_cycles(args, renderer, s))
-            return float(r["frames"][0]["ms"])
-        first = one()
-        if first >= estimate.WARM_PROBE_MS:
-            return first, "one probe frame, may include scene load, so the estimate can be a little high"
-        return one(), "second probe frame, after a warm-up one"
+def _estimate(ctx, engine, scene: dict, info: dict, renderer: str, size: tuple[int, int], frames: tuple[int, int], args: dict, s: dict,
+              passes, todo: int, must: bool) -> tuple[float | None, dict, object]:
+    """The video's time, measured the way render_estimate measures it (estimate_job: its own engine, the middle frame at a quarter
+    and at the real size, kept by scene, so asking again or with other samples answers at once) and scaled by estimate.scale.
+    Never by drawing the same frame twice on this engine: the second is answered from the picture it already has (~0.2 s
+    for a 3.4 s frame), which made the old estimates 3.5-5x low. `must` (a budget or estimate_only): a failed probe is the
+    call's error; otherwise the video is rendered without an estimate. (seconds or None, reply data, at() for fitting_settings)"""
+    pe = {**s, "renderer": renderer, "width": size[0], "height": size[1], "start": frames[0], "end": frames[1], "passes": passes,
+          **(_cycles(args, renderer, s) if renderer == "cycles" else {"samples": 0})}
+    try:
+        m = estimate_job.measure(scene, info, pe, ctx.tool, make_engine=lambda: type(engine)(engine.exe, engine._env, engine.args))
+    except RostrumError as e:
+        if must:
+            raise
+        return None, {"estimate_s": None, "estimate_error": e.line()}, None
+    e = estimate.scale(m, pe, todo, mp4=True)   # only the frames still to draw (kept ones are done)
+    how = "a kept measurement of this scene" if m["cached"] else "measured now on this scene"
+    if note := estimate_job.card_note(m):
+        how += f"; {note}"
+    return e["seconds"], {"estimate_s": e["seconds"], "seconds_per_frame": e["seconds_per_frame"], "how": how,
+                          "gpu_busy": estimate_job.card_note(m)}, estimate.seconds_at(m, pe, todo, True)
 
 
 def _encode(where: str, pngs: Path, name: str, first: int, fps: float, mp4: Path, partial: Path):

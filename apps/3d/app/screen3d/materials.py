@@ -3,6 +3,11 @@ materials and the starting points (each with its rendered ball, material_balls.p
 item ("Used by 3 items", Make its own), and that material's own settings inline under the item's (the kit's rows,
 K3's rule: Surface open, changed groups open, the rest a row of names).
 
+The material's ESSENTIALS (the primary params, Base colour, Metallic, Roughness, with the rest of their group, the images) go in `head`,
+which the panel puts right under the item's name with the Material ▾ (above the item's own rows, so the colour is never
+below a fold, whatever groups the item has open); every other row
+(the other groups and their names) is in `rows`, under the item's rows. One split by importance, the same for every kind.
+
 Every click is an operation through the bridge (material.assign / material.from / material.split), one undo step each.
 The inline rows edit the MATERIAL (material.set through the bridge's edit_call), so every item sharing it changes:
 that is what sharing means. InspectorRow talks to this object as its `bridge` (setValue, scrubs, toggleGroup). A drag of a number or a colour is
@@ -37,7 +42,8 @@ class Materials3D(QObject):
         self.b, self.balls = bridge, balls
         self._open, self._scrub, self._mat = {}, None, ""
         self._live = None                               # a live drag (material_live.Drag): the view only, until the release
-        self.model = RowsModel(rows.ROLES, self)
+        self.model = RowsModel(rows.ROLES, self)       # the secondary rows, under the item's own
+        self.headModel = RowsModel(rows.ROLES, self)   # the primary ones, over them
         bridge.outlineChanged.connect(self._refresh)
         bridge.frameChanged.connect(self._on_frame)
         if balls is not None:
@@ -84,6 +90,7 @@ class Materials3D(QObject):
         return {**e, "shared": e["users"] > 1}
 
     rows = Property(QObject, lambda self: self.model, constant=True)
+    head = Property(QObject, lambda self: self.headModel, constant=True)
 
     # ---- the picker's clicks: each one operation ----------------------------------------------------------------
     def _run(self, call: dict, label: str):
@@ -142,12 +149,16 @@ class Materials3D(QObject):
         self._mat = mid if mat else ""
         if mat is None:
             self.model.reset([])
+            self.headModel.reset([])
         else:
             op = self.b.doc.kind.registry.field_op("material")
             static = sections.layout(op, "material")
             out = rows.evaluate(static, route.shown_values(mat, self.b.time), self.b.facts_of(mat),
                                 False, opened=self._open)
-            self.model.reset(out) if new else self.model.update(out)
+            top = [r for r in out if r["row"] == "param" and r.get("in") == ""]      # the essentials: primary params and their group's rest
+            rest = [r for r in out if r not in top]
+            for model, part in ((self.headModel, top), (self.model, rest)):
+                model.reset(part) if new else model.update(part)
         self.rowsChanged.emit()
 
     def _own_first(self):

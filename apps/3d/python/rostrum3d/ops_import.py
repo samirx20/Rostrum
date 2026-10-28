@@ -126,9 +126,9 @@ def read_file(values: dict, keep_size: bool = False) -> tuple[dict, list[str]]:
 
 
 @R.operation("import.add", "Bring in a 3D file by reference: USD (.usd .usda .usdc .usdz), glTF (.gltf .glb: its first "
-             "animation plays with the shot, skinned meshes too), OBJ, FBX (rest pose) or Alembic (.abc, animation plays "
-             "with the shot); the file is never rewritten. In the app and through "
-             "MCP the file is read first: x y z is where its base (bottom middle) lands, a file in another unit is "
+             "animation plays with the shot, skinned meshes too), OBJ, FBX (its first animation plays, skins and blend "
+             "shapes too) or Alembic (.abc, animation plays with the shot); the file is never rewritten. In the app and "
+             "through MCP the file is read first: x y z is where its base (bottom middle) lands, a file in another unit is "
              "scaled to metres (fileUnit keeps what it was in; import.keep_size undoes it; keepSize skips it), a Z-up "
              "file is stood upright, and its meshes are listed as parts (each can get its own material or be hidden). "
              "`parts`: extra prim paths (from inspect_model_file) to list.", label="Import",

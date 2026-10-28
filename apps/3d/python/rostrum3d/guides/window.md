@@ -171,7 +171,7 @@ selected item. The rail only shows tools that work today. Simulation appears whe
 
 ## Import
 
-Bring in a model made elsewhere: glTF or GLB (its first animation plays with the shot, a skinned character too), OBJ, FBX (at its rest pose), Alembic (its animation plays with the shot) or USD. The file is
+Bring in a model made elsewhere: glTF or GLB (its first animation plays with the shot, a skinned character too), OBJ, FBX (its first animation plays with the shot, skins and blend shapes too), Alembic (its animation plays with the shot) or USD. The file is
 used where it is and never changed.
 
 - **The Import list** (Build page, under Type & logo; **Ctrl+I**): **glTF / GLB…**, **OBJ…**, **FBX…**, **Alembic…**,
@@ -287,9 +287,10 @@ camera that spot is. **Pick** (beside Focus on), then click the item (or Alt+cli
 it sharp as it moves; **Focus on** names it and Focus distance goes (it is worked out every frame). Set Focus on back to
 None to type a distance again. Each click is one undo step.
 
-**An item's material** sits under its settings: the **Material** row (click its ball to pick another, or start a new one
-from a substance), and under it the material's own settings, including "Used by 3 items" and **Make its own** when the
-material is shared. See the guide *materials*.
+**An item's material** sits at the top of its settings, right under the name: the **Material** row (click its ball to
+pick another, or start a new one from a substance), then **Base colour**, **Metallic** and **Roughness** (with "Used by 3
+items" and **Make its own** when the material is shared), so the colour is always in view, whatever else the item has
+open. The material's other settings (Glass, Coat, Lines …) follow the item's own rows. See the guide *materials*.
 
 **Several things selected.** Pick more in the scene list: Ctrl+click adds one (or takes it out), Shift+click picks the
 run from the first one. The panel then shows the settings they share, and a change goes to all of them. With two or

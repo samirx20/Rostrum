@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <thread>
 
 #include "clay_store.h"
 #include "gpu_mem.h"
@@ -76,6 +77,7 @@ class Core {
 
   PXR_NS::UsdStageRefPtr stage_;
   bool borrow_gl_ = false;
+  std::thread::id gl_thread_;  // borrowed: the thread whose GL context Hydra draws with (hydra() refuses others)
   ViewTarget target_;
   int views_drawn_ = 0;
   std::unique_ptr<Hydra> hydra_;

@@ -2,10 +2,12 @@
 // whose renderer holds the engine's Core (core/src/window_core.h) on Qt Quick's render thread: the same requests and
 // replies as the engine program (ENGINE_CONTRACT.md), with `view` pictures drawn straight into this item's texture.
 //
-// Threading: the render thread owns the stage, the clay and Hydra; nothing else touches them. Requests come in from
-// any thread (post / show), wait in a queue, are moved over in synchronize() and answered in render(), in order, then
-// the newest picture is drawn. Replies go back to the GUI thread as signals. A request asks for a frame at once
-// (draw on input: an UpdateRequest, not Qt's next frame tick).
+// Threading: the render thread owns the stage, the clay and Hydra; nothing else touches them, except a slow request
+// that needs no GL (a stroke's end, a scene holding a clay: WindowCore::runs_aside), which render() hands to a worker
+// and holds every later request and picture until it is answered, so the window keeps drawing meanwhile. Requests come
+// in from any thread (post / show), wait in a queue, are moved over in synchronize() and answered in render(), in
+// order, then the newest picture is drawn. Replies go back to the GUI thread as signals. A request asks for a frame at
+// once (draw on input: an UpdateRequest, not Qt's next frame tick).
 #pragma once
 #include <QtQml/qqmlregistration.h>
 #include <QtQuick/QQuickRhiItem>

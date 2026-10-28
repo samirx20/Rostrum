@@ -87,7 +87,9 @@ class Renderer : public QQuickRhiItemRenderer {
     for (; done < in_.size() && !ending_.valid(); ++done) {
       const auto& [id, line] = in_[done];
       const double t0 = now_ms();
-      if (r3d::WindowCore::is_stroke_end(line)) {  // the slow one, on a worker: the window keeps going meanwhile
+      // the slow ones (a stroke's end, a scene's clays brought to their steps) on a worker: the window keeps drawing
+      // meanwhile, the view its last picture; the next frame after the worker is done collects the answer and draws
+      if (r3d::WindowCore::runs_aside(line)) {
         endingId_ = id;
         endingT0_ = t0;
         r3d::WindowCore* core = core_.get();
@@ -107,7 +109,7 @@ class Renderer : public QQuickRhiItemRenderer {
     in_.erase(in_.begin(), in_.begin() + done);
     QString drawn;
     // the newest picture; the last one again on a new texture (a resize) unless a request (a dab) just drew one.
-    // Nothing while a stroke's end runs on its worker: the core is its alone (the texture keeps the last picture)
+    // Nothing while a request runs on its worker: the core is its alone (the texture keeps the last picture)
     if (ending_.valid()) {
     } else if (!view_.empty() && (newView_ || ((fresh || restaged) && core_->views_drawn() == before))) {
       const double t0 = now_ms();
@@ -144,7 +146,7 @@ class Renderer : public QQuickRhiItemRenderer {
 
   std::unique_ptr<r3d::WindowCore> core_;
   std::vector<std::pair<int, std::string>> in_;
-  std::future<std::string> ending_;  // a stroke's end running on its worker (WindowCore::answer_without_gl)
+  std::future<std::string> ending_;  // a request running on its worker (WindowCore::runs_aside, answer_without_gl)
   int endingId_ = 0;
   double endingT0_ = 0;
   std::string view_;
