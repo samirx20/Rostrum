@@ -47,7 +47,7 @@ def test_the_chosen_format_is_written_and_the_silent_end_is_cut_from_every_file(
     doc = Document.new(KIND, folder=tmp_path, item="song")
     doc.apply([{"op": "track.add", "args": {"id": "drums", "name": "Big: Drums/1", "instrument": "model", "model": "guitar"}}], Who.person())
     doc.save()
-    r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test", options={"format": "wav16", "sampleRate": 44100})
+    r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test", options={"format": "wav16", "sampleRate": 44100, "trim": True})
     mix, stem = sf.info(r["file"]), sf.info(r["stems"]["drums"])
     assert (mix.subtype, mix.samplerate) == ("PCM_16", 44100) and Path(r["stems"]["drums"]).name == "Big_ Drums_1.wav"
     assert mix.frames == stem.frames and 1.7 < mix.duration < 1.9, "mix and stems stop together, just after the music"

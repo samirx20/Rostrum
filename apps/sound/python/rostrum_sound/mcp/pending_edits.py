@@ -17,8 +17,11 @@ def pending(jobs, item: str) -> list:
     """This server's jobs that edit `item` and have not ended yet."""
     names = {f"{w} {item}" for w in EDITS}
     try:
-        live = jobs.listing(others=False)     # its own: other programs' job files are never this song's edits
-    except (AttributeError, TypeError):             # a job queue that cannot list: nothing known to wait for
+        try:
+            live = jobs.listing(others=False)     # its own: other programs' job files are never this song's edits
+        except TypeError:                          # a queue that lists only its own
+            live = jobs.listing()
+    except AttributeError:             # a job queue that cannot list: nothing known to wait for
         return []
     return [j for j in live if j.owner is None and j.label in names and j.status in (WAITING, RUNNING)]
 
