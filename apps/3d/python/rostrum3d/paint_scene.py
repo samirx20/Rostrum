@@ -26,7 +26,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_paint import canvas, library
 
-from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_decal, stamp_turn, stamp_view
+from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_decal, stamp_turn, stamp_view, udim
 from .material_fields import DOC_ONLY, MATERIAL
 from .paint_fields import CHANNELS
 
@@ -82,6 +82,10 @@ def _under(channel: str, mat: dict) -> tuple:
     if channel == "glow" and mat.get("emissionRender"):
         return "value", [0.0, 0.0, 0.0]             # a playing 2D render can't be painted over yet: paint replaces it
     if mat.get(picture):
+        if udim.is_set(udim.as_set(mat[picture])):     # one paint picture can't hold several tiles: say so
+            raise ValueError(f"{picture}: paint can't sit over the UDIM set {udim.as_set(mat[picture])} (paint is one "
+                             f"picture on the item's 0..1 unfold). Empty {picture} on the painted item's material "
+                             f"(or give it a material with one picture) to paint this channel, or paint another channel")
         return "file", mat[picture]
     if channel == "glow":
         return "value", _rgb(mat["emissionColor"]) if mat["emissionStrength"] else [0.0, 0.0, 0.0]

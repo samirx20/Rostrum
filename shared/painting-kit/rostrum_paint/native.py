@@ -3,7 +3,8 @@ dabs (`brush.plan`) with the same pixels as `brush.dabs`, bit for bit, many time
 signature, so `brush.stamp_stroke(..., lay=native.lay)` uses it. `straight8`: premultiplied float -> straight RGBA8 for
 a box, `compose.straight8`'s bytes in one call (numpy's steps when the library isn't built). `spacing`: where a
 stroke's dabs go (`brush._spacing`, a walk of a Python step per dab: thousands a stroke); `fill`: a fill's paint laid
-(`marks.apply_paint` for a fill); the same numbers as the Python, which stays the reference (tests/test_native.py).
+(`marks.apply_paint` for a fill); `noise`, `blur`, `upsample`, `mix`: a wash's drying (`marks._noise`, `wash._blur`,
+`wash._upsample`, `wash.dry`'s per-pixel steps); the same numbers as the Python, which stays the reference (tests/test_native.py).
 
 The library: `ROSTRUM_STAMP_LIB`, else the engine's working build in this checkout. `available()` says whether it
 is built; `lay` fails loudly when it isn't. A build of another layout (its `rostrum2d_stamp_layout`, missing in builds
@@ -59,6 +60,19 @@ def _lib():
             f = lib.rostrum2d_stamp_fill
             f.restype = ctypes.c_int32
             f.argtypes = [ctypes.c_void_p] + [ctypes.c_size_t] * 3 + [ctypes.c_void_p] * 2
+        if hasattr(lib, "rostrum2d_stamp_noise"):       # added later still (an older one: the kit's Python dries)
+            f = lib.rostrum2d_stamp_noise
+            f.restype = ctypes.c_int32
+            f.argtypes = [ctypes.c_void_p] + [ctypes.c_size_t] * 2 + [ctypes.c_void_p]
+            f = lib.rostrum2d_stamp_blur
+            f.restype = ctypes.c_int32
+            f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] * 3
+            f = lib.rostrum2d_stamp_upsample
+            f.restype = ctypes.c_int32
+            f.argtypes = [ctypes.c_void_p] + [ctypes.c_size_t] * 3 + [ctypes.c_double, ctypes.c_void_p] + [ctypes.c_size_t] * 2
+            f = lib.rostrum2d_stamp_wash_mix
+            f.restype = ctypes.c_int32
+            f.argtypes = [ctypes.c_uint32, ctypes.c_size_t, ctypes.c_float, ctypes.c_void_p, ctypes.c_void_p]
         _LIB = lib
     return _LIB
 
@@ -97,6 +111,18 @@ def walks() -> bool:
     """Whether the built library has `spacing` and `fill` (a build from before them hasn't: the kit's Python does
     them then, the same numbers, slower)."""
     return available() and hasattr(_lib(), "rostrum2d_stamp_spacing")
+
+
+_DRIES = None
+
+
+def dries() -> bool:
+    """Whether the built library has the wash's drying (`noise`, `blur`, `upsample`); else the kit's Python does it,
+    the same numbers, slower."""
+    global _DRIES
+    if _DRIES is None:
+        _DRIES = available() and hasattr(_lib(), "rostrum2d_stamp_noise")
+    return _DRIES
 
 
 def _ptr(a):
@@ -206,3 +232,54 @@ def fill(region, c, col) -> None:
         raise ValueError(f"fill takes one colour (3 float32), got {col.shape}")
     if h and w and _lib().rostrum2d_stamp_fill(_ptr(region), region.strides[0] // 4, h, w, _ptr(c), _ptr(col)):
         raise RuntimeError("the native stamper refused a fill")
+
+
+def noise(h, w, cell, seed, salt, origin, wrap) -> np.ndarray:
+    """`marks._noise(h, w, cell, seed, salt, origin, wrap)`, native: h x w float32."""
+    if wrap:
+        nk = (max(1, round(w / cell)), max(1, round(h / cell)))
+        div = (w / nk[0], h / nk[1])
+    else:
+        nk, div = (0, 0), (float(cell), float(cell))
+    k = np.array([float(origin[0]), float(origin[1]), div[0], div[1],
+                  (int(seed) * 0x9E3779B1 + int(salt) * 0x85EBCA6B) & 0xFFFFFFFF, nk[0], nk[1]], np.float64)
+    out = np.empty((h, w), np.float32)
+    if _lib().rostrum2d_stamp_noise(_ptr(out), h, w, _ptr(k)):
+        raise RuntimeError(f"the native stamper refused noise {h}x{w} cell {cell}")
+    return out
+
+
+def blur(a, r) -> np.ndarray:
+    """`wash._blur(a, r)`, native: `a` h x w float32, a new array."""
+    a = np.ascontiguousarray(a, np.float32)
+    out = np.empty_like(a)
+    if a.ndim != 2 or r < 0:
+        raise ValueError(f"blur takes h x w float32 and r >= 0, got {a.shape} {r}")
+    _lib().rostrum2d_stamp_blur(_ptr(a), _ptr(out), a.shape[0], a.shape[1], int(r))
+    return out
+
+
+def upsample(small, f, H, W, at) -> np.ndarray:
+    """`wash._upsample(small, f, H, W, at)`, native: H x W float32."""
+    small = np.ascontiguousarray(_f32(small, small.shape))
+    out = np.empty((H, W), np.float32)
+    if small.ndim != 2 or _lib().rostrum2d_stamp_upsample(_ptr(small), small.shape[0], small.shape[1], int(f), float(at), _ptr(out), H, W):
+        raise RuntimeError(f"the native stamper refused upsample {small.shape} x{f} -> {H}x{W}")
+    return out
+
+
+MIX = ("edge", "granulation", "pooling", "wet", "bloom")     # stamp/src/wash.rs `mix`: its kinds, in order
+
+
+def mix(kind, k, fields, out) -> None:
+    """One effect's per-pixel steps of `wash.dry` (stamp/src/wash.rs `mix`: which fields, which outputs, += or =):
+    `fields` and `out` float32 arrays of one shape (made C-ordered), `k` the effect's NumPy f32 strength."""
+    shape = out[0].shape
+    fields = [_f32(np.ascontiguousarray(f), shape) for f in fields]
+    for o in out:
+        if o.dtype != np.float32 or o.shape != shape or not o.flags.c_contiguous or not o.flags.writeable:
+            raise ValueError(f"mix writes C-ordered float32 {shape}, got {o.dtype} {o.shape}")
+    fp = (ctypes.c_void_p * 4)(*[_ptr(f) for f in fields], *[None] * (4 - len(fields)))
+    op = (ctypes.c_void_p * 2)(*[_ptr(o) for o in out], *[None] * (2 - len(out)))
+    if _lib().rostrum2d_stamp_wash_mix(MIX.index(kind), out[0].size, float(k), fp, op):
+        raise RuntimeError(f"the native stamper refused the wash's {kind}")

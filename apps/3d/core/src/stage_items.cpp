@@ -26,6 +26,7 @@
 #include "materials.h"
 #include "mesh_build.h"
 #include "skin.h"
+#include "udim_usd.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -145,6 +146,7 @@ void build_import(Item& it, const SdfPath& path) {
     fail(p.at(inner.empty() ? "file" : "prim"),
          "nothing came in: the file did not open, or has no " + (inner.empty() ? "default prim" : "prim " + inner),
          "a file and prim that inspect_usd lists");
+  udim::list_tiles_under(prim);  // a UDIM set in the file: Cycles told its tiles too (udim_usd.h)
 
   const std::string mat = p.str("material");
   bind_material(it, prim, mat, p.at("material"), UsdShadeTokens->strongerThanDescendants);

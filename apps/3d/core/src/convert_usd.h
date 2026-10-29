@@ -75,7 +75,7 @@ void write_mesh_sample(pxr::UsdGeomMesh mesh, const MeshArrays& m, pxr::UsdTimeC
 struct MaterialDesc {
   std::string name;
   pxr::GfVec3f base_color{0.8f, 0.8f, 0.8f};
-  std::string base_texture;  // an absolute file path, or ""
+  std::string base_texture;  // an absolute file path, or "" (one tile of a UDIM set is written as the set, udim.h)
   float metallic = 0.0f, roughness = 0.5f;
   pxr::GfVec3f emissive{0.0f, 0.0f, 0.0f};
   float opacity = 1.0f;

@@ -9,6 +9,7 @@ file. Cancel stops the engine (never restarted); a failed or cancelled run leave
 from __future__ import annotations
 
 import re
+from contextlib import nullcontext
 from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
@@ -16,7 +17,7 @@ from rostrum_core import project
 from rostrum_core.errors import RostrumError
 from rostrum2d import fields as F, project_sound, retime
 from rostrum2d.io import formats as table, gif_size
-from rostrum2d.mcp import export_area, export_name, exporting
+from rostrum2d.mcp import export_area, export_engine, export_name, exporting
 from rostrum_gui.export_sheet import ExportSheet
 
 from . import export_rows, gif_guess
@@ -147,7 +148,9 @@ class Exporter(ExportSheet):
             def made(done, total):
                 self.phase(f"Preparing the painted pictures · {done} of {total}")
                 progress(done / total)
-            scene = scene(made, lambda: self._stopping)
+            # The export engine boots (its card connection, its fonts) while the scene is made, as render_export's does.
+            with export_engine.ready() if self._engine_factory is None else nullcontext():
+                scene = scene(made, lambda: self._stopping)
             self.phase("")
             progress(0.0)
 

@@ -30,4 +30,7 @@ void restyle_material(const PXR_NS::UsdStageRefPtr& stage, const std::string& id
 // An image path from the scene: "" or an absolute path to a file that exists, else r3d::Error at `where`.
 void check_file(const std::string& path, const std::string& where, const char* what);
 
+// A material picture (v1.34): check_file, or a UDIM set (`<UDIM>` in the name, udim.h) with at least one tile there.
+void check_picture(const std::string& path, const std::string& where);
+
 }  // namespace r3d

@@ -341,4 +341,10 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | blitz-paint | `runs.rs`: `Run::Keep(k)` (the node painted between `begin_kept(k)` and `end_kept`), `viewport()` made public | one paint makes every picture a step's streaks read |
 | blitz-paint | `runs.rs`: `Run::Streaks(k, s, n)` (picture `k` drawn through each of streaks `s..s + n`, each over its own `rect`), dispatched in `render_node` (round 5) | a group whose children each move their own way (rising bubbles) is one kept picture and a streak per child, not a paint per step |
 | blitz-paint | `ink.rs`: `page_ink(dom, node)` (public): the node's subtree ink (`descend`, following turned children and svgs) in page px, through its ancestors' places, grown by their filters' spread (round 5) | a text's or path's streak needs where it paints before it is painted; without it such a layer crossing the frame's edge was painted at every step (~4 paints a frame on Undertow) |
+| anyrender | `tape.rs`: `Tape`, a `PaintScene` that keeps every call with its exact arguments (shapes as the Skia backend reads them: kurbo's own shapes as themselves, any other at the 0.1 and 0.01 tolerances it asks for) and `play`s them on another scene; calls that need the backend's answer (held, kept and streaked pictures, glows, comp-cache taps) mark it `unfit` (export round 5) | an export's drawing workers lay out and walk frames on the processor; one thread owning the graphics card plays them, bit for bit the picture painted straight on the card |
+
+## Blur halving without shimmer (2D blur round 6; 2026-10-30)
+
+| Crate | Patch | Why |
+|---|---|---|
 | anyrender_skia | `gaussian_blur` (round 6): each halving level is first blurred by σ 1 (its own px) and the last blur takes only the rest of σ (variances add) | a plain bilinear halving read each 2 × 2 block at a point set by the layer's sub-pixel place, so a sharp source aliased: Undertow's title glow came out 56-62/255 as it moved by a px (shimmer in any moving glow), and a glow kept as one streak picture differed from its painted steps. Now 58-60 at every step, as Skia's full-rate blur (58-60) |

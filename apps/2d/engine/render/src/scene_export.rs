@@ -98,7 +98,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
     let span = Span { start, fps, n };
-    let (rows, costs, worker_start_s, workers_made, turn_s) = export_crew::draw_all(held, s, req, span, workers, saves.iter().map(|(e, f, _)| (*e, f.clone())).collect(), progress)?;
+    let (rows, costs, worker_start_s, workers_made, turn_s, card) = export_crew::draw_all(held, s, req, span, workers, saves.iter().map(|(e, f, _)| (*e, f.clone())).collect(), progress)?;
     let kept = s.sink.as_ref().is_some_and(Sink::is_kept);
     if kept {
         serve::drain(s)?;
@@ -145,6 +145,8 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     timing.insert("workersMade".into(), json!(workers_made));
     timing.insert("turn".into(), json!({ "convertS": turn_s[0], "waitS": turn_s[1], "handS": turn_s[2] }));
     timing.insert("saveWaitS".into(), json!(save_wait_s));
+    // The card thread's share (export_crew.rs `own`): frames it played from the workers' paint calls, and its time.
+    timing.insert("card".into(), card);
     timing.insert("repeatedFrames".into(), json!(rows.iter().filter(|r| r.repeat).count()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);

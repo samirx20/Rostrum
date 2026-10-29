@@ -41,6 +41,7 @@ const HALF_RGBA: u32 = 0x881A;
 
 #[path = "gpu_output_queue.rs"]
 mod queue;
+pub use queue::SLOTS;
 
 /// The output target's format: RGBA16UI (`deep`) or RGBA8UI.
 fn out_format(deep: bool) -> u32 {

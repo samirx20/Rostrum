@@ -50,6 +50,20 @@ def _box(nonzero: np.ndarray) -> tuple[int, int, int, int] | None:
     return int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
 
 
+def _set_box(px: np.ndarray) -> tuple[int, int, int, int] | None:
+    """`_box` of the pixels with any bit set (bits, not values: -0.0 counts), from the OR of whole rows, then of the
+    rows in the box down each column (~15 ms on a 2432 x 1336 layer; `any` over each pixel's 4 floats took ~150)."""
+    h, w = px.shape[:2]
+    v = np.ascontiguousarray(px).view(np.uint64).reshape(h, w * 2)
+    rows = np.flatnonzero(np.bitwise_or.reduce(v, axis=1))
+    if not len(rows):
+        return None
+    y0, y1 = int(rows[0]), int(rows[-1]) + 1
+    c = np.bitwise_or.reduce(v[y0:y1], axis=0).reshape(w, 2)
+    cols = np.flatnonzero(c[:, 0] | c[:, 1])
+    return y0, y1, int(cols[0]), int(cols[-1]) + 1
+
+
 def has(chain: str) -> bool:
     """Whether the state is on disk (cheap: one file's presence, no use counted; a miss is remembered until this
     process keeps it)."""
@@ -93,7 +107,7 @@ def save(chain: str, px: np.ndarray, top: np.ndarray) -> None:
     with _LOCK:
         _PENDING.add(chain)
     h, w = top.shape
-    pbox = _box(px.view(np.uint32).any(axis=2))        # bits, not values: -0.0 comes back as -0.0
+    pbox = _set_box(px)                                 # bits, not values: -0.0 comes back as -0.0
     tbox = _box(top >= 0)
     parts = {"px": (pbox, px[pbox[0]:pbox[1], pbox[2]:pbox[3]].copy() if pbox else None),
              "top": (tbox, top[tbox[0]:tbox[1], tbox[2]:tbox[3]].copy() if tbox else None)}

@@ -17,6 +17,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 const BAND: usize = 4;
 const PAR_PIXELS: usize = 64 * 1024;
 const PAR_DAB: usize = 2048;
+/// A dry stroke's threads never wait for each other (no reservoir): smaller dabs are worth sharing out.
+const PAR_DAB_DRY: usize = 256;
 
 /// Lays `dabs` into `layer` (H×W×4) and fills `cov` (the stroke's bbox [x0, y0, x1, y1]). `carried`: the reservoir
 /// (D×D×4) written back after the last dab, and whether it is also where it starts (a stroke laid in pieces).
@@ -62,7 +64,8 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
     let areas: Vec<usize> = dabs.iter().map(|b| ((b.bx[1] - b.bx[0]).max(0) * (b.bx[3] - b.bx[2]).max(0)) as usize).collect();
     let total: usize = areas.iter().sum();
     let lit = areas.iter().filter(|&&a| a > 0).count().max(1);
-    let threads = if total < PAR_PIXELS || total / lit < PAR_DAB {
+    let per_dab = if wet { PAR_DAB } else { PAR_DAB_DRY };
+    let threads = if total < PAR_PIXELS || total / lit < per_dab {
         1
     } else {
         std::thread::available_parallelism().map_or(1, |n| n.get()).clamp(1, 8)
