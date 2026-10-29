@@ -5,7 +5,7 @@ import copy
 from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp import Reply, Tools, brief_keep, faults
+from rostrum_core.mcp import Reply, Tools, faults
 
 from rostrum2d import project_sound
 
@@ -100,7 +100,7 @@ def render_export(ctx, args):
         found, notes = film_faults.of_export(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]),
                                              s["start"], s["end"], ctx.tool, pixels, cuts)
         if is_final:                # open faults: the file is held back as <name>.NOT-DONE<ext> and this raises
-            notes += faults.deliver(found, brief_keep.screen(found, keep, data_now), ctx.tool, facts["file"])
+            notes += film_faults.deliver(found, keep, data_now, ctx.tool, [facts["file"]])
         else:
             say += ". A part of the film is a preview: its faults are named, never refused (a whole-film export is refused while one is open)"
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]], warnings=notes, faults=found)

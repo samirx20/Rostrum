@@ -11,7 +11,11 @@ quoting the brief (rostrum_core.mcp.brief_keep). Anything less (a png, a part of
 preview and is never refused. The screen's Export button is the person's: never gated (exporting.py)."""
 from __future__ import annotations
 
-from rostrum_core.mcp.brief_keep import register
+from pathlib import Path
+
+from rostrum_core.errors import RostrumError
+from rostrum_core.mcp import faults as F
+from rostrum_core.mcp.brief_keep import register, screen
 from rostrum_core.mcp.faults import fault
 
 from . import edge_cut, look_empty, review
@@ -140,3 +144,17 @@ def of_export(doc_data: dict, comp: dict, start: float, end: float, where: str, 
     rows = [r for r in review.ranked(list(pixels) + rows, comp.get("duration", 5.0))
             if "start" not in r or (r["start"] < end + 1e-6 and r.get("end", r["start"]) > start - 1e-6)]
     return as_faults(rows), notes + advice(rows)
+
+
+def deliver(found: list[dict], keep: dict | None, data: dict, where: str, files: list) -> list[str]:
+    """The gate for a final: `keep` screened against the brief, then the shared faults.deliver. Open faults: every
+    file of the delivery (a project render and its copy) is held back as <name>.NOT-DONE<ext> and this raises."""
+    files = [Path(f) for f in files if f and Path(f).is_file()]
+    try:
+        return F.deliver(found, screen(found, keep, data), where, files[0] if files else None)
+    except RostrumError:
+        for p in files[1:]:
+            held = p.with_name(f"{p.stem}.NOT-DONE{p.suffix}")
+            held.unlink(missing_ok=True)
+            p.replace(held)
+        raise
