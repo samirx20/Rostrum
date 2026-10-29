@@ -23,7 +23,7 @@ from rostrum_core.tree import walk
 from rostrum_core.errors import codes
 from rostrum_core.keys import layers as anim_layers
 
-from . import clay_dabs, clay_fields, clay_layers, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
+from . import garment, clay_dabs, clay_fields, clay_layers, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
 
 LISTS = anim_layers.with_lists({**F.LISTS, **rostrum_paint.LISTS})   # a mesh is a paint canvas (the shared kit); doc › animLayers
 HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",),
@@ -158,6 +158,8 @@ def check(data: dict) -> list[str]:
             clay_layers.check(item, problems)
         if t in ("mesh", "clay"):
             paint_fields.check_strokes(item, problems)
+        if t == "mesh" and item.get("shape") == "pattern":
+            problems += garment.problems(item)
         if t == "mesh" and item.get("mirror"):
             try:
                 mirror.targets({i["id"]: i for i in everything}, item["id"])

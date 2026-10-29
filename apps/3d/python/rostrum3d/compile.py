@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_faces, clay_scene, shot_layer, copies_fields, copies_path, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, garment, clay_faces, clay_scene, shot_layer, copies_fields, copies_path, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -32,7 +32,7 @@ FILE_UNIT = "fileUnit"                         # an import's: what its file was 
 COPIES_DATA = {copies_fields.HELD, copies_fields.COPY_KEYS, copies_fields.COPY_KEYS_FROM}   # held / keyed copies go as `held` rows, never as props
 SIMULATION = SIM_FIELDS.NAMES                   # what a body is made of: the simulation reads it (sim/), never sent as a prop
 RESOLVED = SIMULATION | COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
-DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize", "backdrop"}   # words, font, file, a floor's backdrop mark … never sent
+DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize", "backdrop", "pieces", "seams"}   # words, font, file, a floor's backdrop mark, a pattern … never sent
 
 
 def _shot(data: dict, shot_id: str) -> dict:
@@ -171,6 +171,19 @@ def _outline_props(id_: str, values: dict, props: dict, folder):
     props["shape"], props["outline"] = "outline", outline
 
 
+def _pattern_props(id_: str, values: dict, props: dict):
+    """A sewing pattern goes to the core as an editable mesh ("poly") of triangles, its points in garment.py's order (the
+    seam pairs sim/inputs.py sends index into them)."""
+    try:
+        made = garment.make(values)
+    except garment.PatternError as e:
+        raise RequestFault(codes.BAD_ARGUMENT, id_, "", str(e), hint="garment.piece / garment.sew change it") from e
+    for name in DOCUMENT_ONLY:
+        props.pop(name, None)
+    props.update(shape="poly", points=[list(p) for p in made["points"]], faceCounts=[3] * len(made["triangles"]),
+                 faceIndices=[i for t in made["triangles"] for i in t])
+
+
 def _node(item: dict, fr: _Frames) -> dict:
     if item["type"] == "rig":
         return _rig_node(item, fr)
@@ -185,6 +198,8 @@ def _node(item: dict, fr: _Frames) -> dict:
         node["props"].pop("guide", None)       # sent only when on: a combine's inputs, a cloth, every older reader
     if type_ == "mesh" and v0["shape"] in OUTLINE_SHAPES:
         _outline_props(item["id"], v0, node["props"], fr.folder)
+    elif type_ == "mesh" and v0["shape"] == "pattern":
+        _pattern_props(item["id"], v0, node["props"])
     elif type_ == "mesh":
         for name in DOCUMENT_ONLY:
             node["props"].pop(name)

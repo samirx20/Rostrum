@@ -110,6 +110,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `import_usd(id, file=, parts=[…], **fields)` | a 3D file by reference: USD, glTF / GLB, OBJ, FBX or Alembic (also a holder) |
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `copies(id, source, layout=, count=, **fields)` | one thing many times: `source` (an item or list made earlier in the same list) goes inside; or `with copies(...):` and make it inside (guide `copies`) |
+| `garment(id, pieces=[…], seams=[…], sewTime=, **fields)` | a garment from flat sewing-pattern pieces sewn at their edges; it is cloth, and its pieces' `at` are heights in the scene (it is not set on the ground) (guide `simulate` › Garments from patterns) |
 | `copies.effector(kind=, near=, radius=, amount=)` | change the copies near an item: `scale turn push colour` |
 | `clay(id, radius=, at=, to=, **fields)` | a clay starting as a ball of `radius` (a capsule from `at` to `to`); with neither, empty for `.lump` / `.draw`. No `at` / `y`: the ball stands on the ground, the clay's origin on the ground under it, so piece positions are heights above the ground; a piece below the ground lifts the figure (and what is attached) onto it (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |

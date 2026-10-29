@@ -13,10 +13,12 @@ from .paint_fields import MESH as PAINT_MESH
 
 SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
 ROUND_SEGMENTS = 64      # a round shape's steps around when made: its outline stays smooth filling the frame (24 shows facets)
+PATTERN = IS("shape", "pattern")      # a sewing pattern (garment.py): pieces and seams, made into cloth when compiled
 SHAPE_DEFAULTS = {s: {"segments": ROUND_SEGMENTS} for s in ("sphere", "cylinder", "cone", "capsule", "disc", "torus")}
 
 MESH = [
-    dataclasses.replace(CH("shape", [*SHAPES, "poly"], "Shape", "Shape", "box"), labels={"poly": "Editable mesh"}),
+    dataclasses.replace(CH("shape", [*SHAPES, "poly", "pattern"], "Shape", "Shape", "box"),
+                        labels={"poly": "Editable mesh", "pattern": "Sewing pattern"}),
     N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0,
       help="Along X. A plane lies flat, facing up: width (X) × depth (Z)"),
     N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder", "cone", "capsule"), default=1.0,
@@ -30,7 +32,7 @@ MESH = [
     *OUTLINE_FIELDS,
     N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder", *OUTLINE_SHAPES),
       help="Rounded edges this wide; real products almost never have razor edges"),
-    N("segments", "Segments", "Shape", 1, 256, 1, "", D, {"all": [NOT("shape", "plane"), NOT("shape", "poly")]}, integer=True, default=24,
+    N("segments", "Segments", "Shape", 1, 256, 1, "", D, {"all": [NOT("shape", "plane"), NOT("shape", "poly"), NOT("shape", "pattern")]}, integer=True, default=24,
       help=f"Box: steps around each bevel (24 when made). Round shapes: steps around ({ROUND_SEGMENTS} when made, so "
       "an outline stays smooth even filling the frame; fewer = lighter, facets show on big shapes)"),
     T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets. An editable mesh keeps "
@@ -47,6 +49,13 @@ MESH = [
                help="Edges that stay sharp when the surface is smoothed, as point pairs a, b, a, b …"),
     Param.list("faceMaterials", "text", label="Face materials", group="Mesh data", importance=D, valid_when=POLY,
                default=[], help='A material id per face ("" = the item\'s); empty = every face the item\'s'),
+    # A sewing pattern's own data (garment.py; the garment.* operations change it): JSON text, never rows
+    dataclasses.replace(X("pieces", "Pattern pieces", "Mesh data", "", D, PATTERN,
+                          help='The flat pieces, as JSON: [{"name", "outline": [[x, y], …] m, "at": [x, y, z], "turn": °, '
+                               '"wrap": m}, …] (guide simulate › Garments from patterns)'), shown="script"),
+    dataclasses.replace(X("seams", "Seams", "Mesh data", "", D, PATTERN,
+                          help='Which piece edges are sewn together, as JSON: [{"a": [piece, edge], "b": [piece, edge], '
+                               '"flip": false}, …]; edge i runs from outline point i to the next'), shown="script"),
     N("subdivide", "Smooth surface", "Shape", 0, 3, 1, "", S, POLY, integer=True, default=0,
       help="Rounds the whole mesh (OpenSubdiv Catmull-Clark), 1 to 3 times; sharp edges stay sharp. 0 = off"),
     T("skinned", "Bend with bones", "Bones", True, S, {"fact": "boned"},
