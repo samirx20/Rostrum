@@ -73,7 +73,8 @@ def test_the_file_is_exactly_the_length_asked_whatever_rings_on_or_is_silent(tmp
     assert not r["trimmed"] and not any("ring out until" in w for w in r["warnings"])
     if seconds > asked:
         x, rate = sf.read(r["file"])
-        assert abs(x[-100:]).max() < 0.01 and "faded" in r["warnings"][-1]       # the tail went to nothing inside the length
+        assert abs(x[-10:]).max() < 0.02 and abs(x[-2000:-1000]).max() > 0.3    # cut at the length: a 10 ms de-click, never a fade
+        assert "stops while ringing" in r["warnings"][-1] and "not faded" in r["warnings"][-1]   # (Sam, 2026-10-29)
 
 
 def test_a_resumed_agent_session_gets_its_song_back(tmp_path, monkeypatch):

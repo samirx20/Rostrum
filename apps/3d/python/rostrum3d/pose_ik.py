@@ -27,6 +27,9 @@ LIMB, TRUNK = 0.5, 0.15                 # share of the wanted turn per pass: lim
 SPREAD = 6                              # damped passes before the finishing ones
 STEP_CAP = math.radians(40)             # never more than this per bone per pass (no flips on a far target)
 TRUNK_MAX = math.radians(8)             # a drag out of the limb's reach turns the body's first bone at most this much
+CLEAR = 0.8                             # clear_of_head: a limb's surface keeps 0.3 of its radius + its blend (half its
+                                        # radius by default) from the head's, else the two read as one melted lump
+CLEAR_STEP, CLEAR_MAX = math.radians(2), math.radians(40)   # … turning the limb this much at a time, at most this far
 
 
 def _sub(a, b):
@@ -276,6 +279,67 @@ def solve_rig(r: Rig, grab: int, local, to, held: set[int] = frozenset(), iterat
             turns[r.ids[b]] = dict(zip(TURN, (round(x, 6) + 0.0 for x in e)))
             moved.append(r.ids[b])
     return {"turns": turns, "moved": moved, "miss": round(best, 6), "point": [round(x, 6) for x in eff]}
+
+
+def clear_of_head(r: Rig, grab: int, out: dict, gap: float | None = None) -> tuple[dict, dict | None]:
+    """A script pose keeps a limb clear of the head (gaps7 Hello: a raised arm against the head read as melted into it):
+    while the solved limb (the grabbed bone up to the body bone it hangs from) comes nearer the head's surface than `gap`
+    (clay units; None: CLEAR of each ball's radius; never nearer than at rest, and not the balls by the shoulder, which
+    no turn moves), the limb's top bone turns about its joint, level and away from the head, CLEAR_STEP at a time (the
+    hand goes with it). (out, None) when it was clear (or there is no head); else (out with the top bone's new turn,
+    {"gap": the surface gap reached, "turned": degrees, "way": "out" / "forward" / "back"})."""
+    from .pose_body import rest_balls
+    head = next((n for n, j in enumerate(r.joint) if j == "head"), -1)
+    limb, n = [], grab
+    while n >= 0 and not r.trunk[n]:
+        limb.append(n)
+        n = r.parent[n]
+    if head < 0 or not limb or head in limb:
+        return out, None
+    balls = rest_balls(r.item)
+    top, pivot = limb[-1], r.rest[limb[-1]][1]
+    hb = [(p, rad) for p, rad, b in balls if b == head]
+    lb = [(p, rad, b) for p, rad, b in balls if b in limb and math.dist(p, pivot) > max(2 * rad, 0.35 * r.length[top])]
+    if not hb or not lb:
+        return out, None
+    tr = list(r.turn)
+    for id_, v in out["turns"].items():
+        tr[r.index[id_]] = _as_turn(v)
+
+    def short():             # (how far the limb is inside its clearance, its ball, the head's ball, the surface gap)
+        fr = r.frames(tr)
+        moves = {b: aim.compose(fr[b], aim.invert(r.rest[b])) for b in {head, *limb}}
+        best = (-math.inf, None, None, math.inf)
+        for p, ra, b in lb:
+            a = aim.point(moves[b], p)
+            for q, rh in hb:
+                h = aim.point(moves[head], q)
+                d = math.dist(a, h) - ra - rh
+                over = min(CLEAR * ra if gap is None else gap, math.dist(p, q) - ra - rh) - d
+                if over > best[0]:
+                    best = (over, a, h, d)
+        return best, fr
+
+    (over, a, h, d), fr = short()
+    if over <= 0:
+        return out, None
+    start, turned = fr[top], 0.0
+    while over > 0 and turned < CLEAR_MAX:
+        away = [a[0] - h[0], 0.0, a[2] - h[2]]                       # level, away from the head (never up or down)
+        axis = _cross(_sub(a, fr[top][1]), away)
+        s = math.sqrt(_dot(axis, axis))
+        if s < 1e-12:
+            break
+        world = _mm(_turn([x / s for x in axis], CLEAR_STEP), fr[top][0])
+        p = r.parent[top]
+        tr[top] = _near(aim.euler(_mm(_t(fr[p][0]), world) if p >= 0 else world), tr[top])
+        turned += CLEAR_STEP
+        (over, a, h, d), fr = short()
+    turns = dict(out["turns"], **{r.ids[top]: dict(zip(TURN, (round(x, 6) + 0.0 for x in tr[top])))})
+    moved = _sub(_at(fr[top], [0.0, r.length[top] or 1.0, 0.0]), _at(start, [0.0, r.length[top] or 1.0, 0.0]))
+    side = 1.0 if pivot[0] >= r.head[0][0] else -1.0
+    way = "out" if abs(moved[0]) >= abs(moved[2]) and moved[0] * side > 0 else "forward" if moved[2] > 0 else "back"
+    return dict(out, turns=turns), {"gap": max(d, 0.0), "turned": math.degrees(turned), "way": way}
 
 
 # --- what the Pose tool calls (pose_link.py)

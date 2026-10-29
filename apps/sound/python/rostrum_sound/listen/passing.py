@@ -8,7 +8,7 @@ drop_gap.py, faults.py), read from there, never copied.
 
     gaps(raw_fault) -> [{"what", "now", "passes", "near", "ok": now passes, "close": within near}]
     near(raw_fault) -> True when every failing number is within its stated distance
-    words(raw_fault) -> "passes at: attack 2.5x a normal note or more (now 1.9x; keepable from 2.2x)"
+    words(raw_fault) -> "passes at: attack 2.5x a normal note or more (now 1.9x; near passing from 2.2x)"
 """
 from __future__ import annotations
 
@@ -89,4 +89,4 @@ def words(f) -> str:
         return f"passes with {need} (no number to be near, so it cannot be kept: fix it, or move the moment itself in the script)"
     side = {">=": "or more", "<=": "or less"}
     return "passes at: " + "; ".join(f"{x['what']} {_n(x['passes'], x['unit'])} {side[x['op']]} (now {_n(round(x['now'], 2), _short(x['unit']))}; "
-                                     f"keepable from {_n(x['near'], _short(x['unit']))})" for x in g)
+                                     f"near passing from {_n(x['near'], _short(x['unit']))})" for x in g)

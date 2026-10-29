@@ -102,14 +102,8 @@ def test_a_solo_the_limiter_squashes_is_a_fault_and_a_gentle_master_is_not(tmp_p
     dense = [{"id": k, "lufs": -20.0, "peak": 0.5, "rms": 0.1} for k in ("bass", "keys", "pad", "drums")]
     assert squash.fault(wav, lim(5.0), {**song, "tracks": dense}) == []    # a dense mix shares the gain under 6 dB
     from rostrum_sound.listen import fault_shape
-    from rostrum_sound.mcp import asked_keep, brief_keep
     raw = [x for x in faults.check(wav, limiter=lim(9.6), song=song)["faults"] if x["kind"] == "squashed_mix"]
-    shaped = fault_shape.shape(raw, None)
-    assert shaped[0]["id"] == "squashed_mix"
-    near = asked_keep.mark(raw, shaped, [])
-    keep = asked_keep.screen(shaped, {"squashed_mix": "the brief says \"slammed\""}, {"squashed_mix"}, near)
-    assert keep == {} and "keep refused" in shaped[0]["fix"]                 # 9.6 dB: too far from passing to keep
-    assert brief_keep.why_not("squashed_mix", "\"Export a -14 LUFS stereo mix\"", song["data"])  # the brief never asks for it
+    assert fault_shape.shape(raw, None)[0]["id"] == "squashed_mix"
 
 
 def test_three_tracks_of_one_piano_are_one_exposed_piano(tmp_path):

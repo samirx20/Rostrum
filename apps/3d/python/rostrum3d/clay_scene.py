@@ -14,10 +14,10 @@ from pathlib import Path
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import clay_dabs, clay_detail, clay_shapes
+from . import clay_dabs, clay_detail, clay_reach, clay_shapes
 from .clay_fields import CLAY, STEP as CLAYSTEP
 
-VERSION = "rostrum3d-clay@7"          # bump when the core builds the same steps differently (the cache key holds it)
+VERSION = "rostrum3d-clay@8"          # bump when the core builds the same steps differently (the cache key holds it)
 BRUSH = {p.name for p in CLAY if p.group == "Brush"}          # the next stroke's settings: never sent
 STROKE = ("falloff", "spacing", "frontOnly", "invert")       # CL2's stroke settings (a CL1 step has the defaults)
 _DEFAULT = {p.name: p.default for p in CLAYSTEP if p.name in STROKE}
@@ -75,13 +75,14 @@ def _items(data: dict | None) -> dict:
 
 def chain(steps: list[dict], data: dict | None = None) -> list[dict]:
     """The shown steps as the core reads them, each with its key: sha256 of (previous key + the step's canonical
-    JSON), first 24 hex. Inline dabs are left out of the hashed text (their name stands for them). `data`: the
+    JSON), first 24 hex. A piece's blend is held off the pieces it doesn't touch (clay_reach.py). Inline dabs are left out of the hashed text (their name stands for them). `data`: the
     document, where a piece made from an item finds it (else its stored sourceKey stands)."""
     out, prev, items = [], "", _items(data)
-    for s in steps:
+    reach = clay_reach.blends(steps)                     # a blend never reaches a piece it doesn't touch
+    for n, s in enumerate(steps):
         if s.get("hidden"):
             continue
-        step = _step(s, items)
+        step = _step({**s, "blend": reach[n]} if n in reach else s, items)
         canon = json.dumps({k: v for k, v in step.items() if k != "dabList"}, sort_keys=True, separators=(",", ":"))
         prev = hashlib.sha256((prev + canon).encode("utf-8")).hexdigest()[:24]
         out.append({"key": prev, **step})

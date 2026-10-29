@@ -29,15 +29,30 @@ def rest_balls(item: dict) -> list[tuple[list[float], float, int]]:
     """[(point, radius, bone index in skin.bones_of's order)] of a clay with bones, at rest in its own space; [] without."""
     if not skin.bones_of(item) or not item.get("skinned", True):
         return []
+    out = _rest(item)
+    return [(p, r, b) for (p, r, _), b in zip(out, _bones(item, [p for p, _, _ in out]))]
+
+
+def rest_pieces(item: dict) -> list[tuple[str, float, int]]:
+    """[(the piece's name or "", its blend, its step's index)] of each of rest_balls' balls, in the same order: which lump
+    a ball is and how far its smooth join reaches."""
+    if not skin.bones_of(item) or not item.get("skinned", True):
+        return []
+    steps = item.get("steps", [])
+    return [(steps[n].get("name") or "", float(steps[n].get("blend") or 0.0), n) for _, _, n in _rest(item)]
+
+
+def _rest(item: dict) -> list:
+    """(point, radius, step index) of every added piece's balls, mirrored ones after their own."""
     out = []
-    for s in item.get("steps", []):
+    for n, s in enumerate(item.get("steps", [])):
         if s.get("step") != "piece" or s.get("hidden") or s.get("mode", "add") != "add" or not (s.get("at") or s.get("plane")):
             continue
         own = _ends(s)
         if s.get("symmetry") == "x":
             own += [([-p[0], p[1], p[2]], r) for p, r in own if abs(p[0]) > 1e-9]
-        out += [(p, r) for p, r in own]
-    return [(p, r, b) for (p, r), b in zip(out, _bones(item, [p for p, _ in out]))]
+        out += [(p, r, n) for p, r in own]
+    return out
 
 
 def _bones(item: dict, points: list) -> list[int]:

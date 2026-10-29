@@ -9,11 +9,13 @@ a time and a colour), so "a marker meant as a sync point" is a marker whose name
 climax, lift, drums back ...; weakest.NAMES): `no_<kind>` = nothing starts within 30 ms of it."""
 from __future__ import annotations
 
+import re
+
 import numpy as np
 from rostrum_core.mcp import faults as shared
 
-from .. import dialogue
-from . import arc, end_check, stall
+from .. import brief, dialogue
+from . import arc, end_check, hit_room, stall
 from .core import db, load
 
 LOUD_LU = 0.5          # the mix this far off the master's loudness target is a fault
@@ -50,16 +52,48 @@ def shape(found: list[dict], doc) -> list[dict]:
     return out
 
 
-def loudness_fault(measured, target, push=None) -> list[dict]:
-    """The mix off the master's loudness target (`target` None: no target, nothing to miss) by more than LOUD_LU."""
-    if not isinstance(target, (int, float)) or measured is None or abs(measured - target) <= LOUD_LU:
+_AIM = re.compile(r"(-\d+(?:\.\d+)?) ?lufs")
+_TOL = re.compile(r"(?:within|±|\+/-|\+-|plus or minus) ?(\d+(?:\.\d+)?) ?(?:lu|db)\b")
+
+
+def brief_range(data) -> tuple[float | None, float | None]:
+    """The loudness the brief itself states: (its LUFS number or None, its tolerance in LU or None), e.g. "about -16
+    LUFS integrated (within 1 LU)" -> (-16.0, 1.0). Round sound-endings, Vault: the brief allowed ±1 LU, the check
+    allowed 0.5, and agents lifted the bed after the hit to close the gap."""
+    text = brief.text(data).lower()
+    aim, tol = _AIM.search(text), _TOL.search(text)
+    return (float(aim.group(1)) if aim else None), (float(tol.group(1)) if tol else None)
+
+
+def loudness_fault(measured, target, push=None, data=None, hit=False) -> list[dict]:
+    """The mix off the master's loudness target (`target` None: no target, nothing to miss) by more than LOUD_LU, or by
+    the brief's own tolerance when it states one (brief_range: then read against the brief's own number when it gives
+    one). `hit`: the piece has an asked hit the bars around it must leave room for (hit_room.py): a short mix is then
+    fixed by the hit and the brief's range, never by lifting the quiet parts, which buries the hit."""
+    if not isinstance(target, (int, float)) or measured is None:
         return []
-    short = measured < target
+    aim, tol = brief_range(data)
+    goal = aim if aim is not None and tol is not None else target
+    allowed = tol if tol is not None else LOUD_LU
+    if abs(measured - goal) <= allowed + 1e-9:
+        return []
+    short = measured < goal
+    said = f"the brief allows {goal - allowed:g} to {goal + allowed:g}" if tol is not None else f"over {allowed:g} allowed"
+    what = f"{measured:.1f} LUFS, the target is {goal:g} ({measured - goal:+.1f} LU, {said})"
     raise_to = f"raise master maxLimit to {push:g} (in a script master(maxLimit={push:g}))" if push else "raise master maxLimit"
-    fix = (f"{raise_to} (edit_loudness {{\"apply\": \"best\"}} measures it) or the quietest parts' volumes to gain "
-           f"{target - measured:.1f} dB" if short else
-           f"lower the master volume or loudness target by {measured - target:.1f} dB (a mix this far over the target is over-limited)")
-    return [shared.fault("loudness", f"{measured:.1f} LUFS, the target is {target:g} ({measured - target:+.1f} LU, over {LOUD_LU:g} allowed)", fix)]
+    if short and hit:
+        low = goal - allowed
+        fix = ("keep the bed after the hit quiet: the hit carries the loudness, so never lift the quiet parts after it; "
+               + (f"aim at the quiet end of the brief's range, master(loudness={low:g}) (passes from {low:g}); " if aim is not None and tol is not None else "")
+               + "let the hit hold its full level 2–2.5 s before it falls into the quiet (a held low chord, ringing timpani "
+               f"or piano) and keep the build's peaks 4–6 dB under the ceiling; then {raise_to}, only while the hit's "
+               "limiting stays under 4 dB (squashed_hit)")
+    elif short:
+        fix = (f"{raise_to} (edit_loudness {{\"apply\": \"best\"}} measures it) or the quietest parts' volumes to gain "
+               f"{goal - measured:.1f} dB")
+    else:
+        fix = f"lower the master volume or loudness target by {measured - goal:.1f} dB (a mix this far over the target is over-limited)"
+    return [shared.fault("loudness", what, fix)]
 
 
 VOICE_DBFS = -45.0     # a 50 ms window of the voice's stem above this is speaking
@@ -165,8 +199,11 @@ def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None, ring_s
     """Every check, shaped: the listening faults, then loudness, the file's peak and clipping, ducks and the end (the
     end read after the ring a render allowed: ring_past_length; `faded`: the delivery's fade of a ring past the length,
     one bad_ending for every way the ending fails (silence, cut, fade, unresolved, parts out early), end_check.py; an opening or ending the brief asks to be quiet, arc.py;
-    a build that goes flat in the bars before its peak, stall.py: `moments` the asked ones, else the song's markers)."""
-    out = (shape(found, doc) + loudness_fault(measured_lufs, target, push) + peak_faults(peak, clipped)
+    a build that goes flat in the bars before its peak, stall.py: `moments` the asked ones, else the song's markers; the
+    loudness fault's fix leaves room for an asked hit, hit_room.py)."""
+    hit = any(f["kind"] == "buried_hit" for f in found) or bool(
+        hit_room.guard_spans(doc.data, moments) or (brief.asks(doc.data, "loudest_hit") and any(m.get("kind", "hit") == "hit" for m in moments or [])))
+    out = (shape(found, doc) + loudness_fault(measured_lufs, target, push, doc.data, hit) + peak_faults(peak, clipped)
            + duck_faults(doc.data, ducks, stems) + end_check.fault(doc, faded, wav, end_second(doc)) + arc.fault(doc, wav)
            + stall.fault(doc, wav, stems, moments))
     try:

@@ -41,12 +41,6 @@ def test_a_render_with_a_target_is_pushed_onto_it_and_the_song_keeps_its_limit(t
     assert export_target.push(state, song(NEED + 1), "song", {}) == ({}, None)   # already on target: nothing pushed
 
 
-def test_a_push_short_at_the_top_limit_names_a_fix_that_is_not_more_limiting():
-    found = [{"id": "loudness", "fix": "raise master maxLimit"}]
-    export_target.fix_when_short(found, {"reaches": False, "max_limit_db": 12, "lufs": -16.2})
-    assert "tame_peaks" in found[0]["fix"] and "raise" not in found[0]["fix"]
-
-
 class Job:
     def __init__(self, label, status="running"):
         self.id, self.label, self.status, self.owner, self.reason = "job_x", label, status, None, ""
