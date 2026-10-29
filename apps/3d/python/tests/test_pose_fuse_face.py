@@ -32,7 +32,7 @@ def _head_blend(b: float) -> str:
 
 
 def test_a_head_blend_reaching_the_shoulder_webs_head_and_arm_and_a_tight_one_does_not():
-    found = _found(_arm(-60), _head_blend(0.04))
+    found = _found(_arm(-60), _head_blend(0.06))   # its arm 5.2 cm from the head: inside a 6 cm blend
     hit = found.get("fused:buddy.head~arm")
     assert hit and "web of clay" in hit["what"] and 'name="head", blend=' in hit["fix"], found
     assert not [k for k in _found(_arm(-60), _head_blend(0.008)) if k.startswith("fused:")]
