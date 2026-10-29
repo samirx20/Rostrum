@@ -66,6 +66,7 @@ def look_frame(ctx, args):
     t, frame = time_of(ctx, comp, args)
     if "area" in args:
         return _area(ctx, doc, comp, t, frame, args)
+    masks = _beside(lambda: look_wash.masks(comp, t))     # the flat-wash check's masks made while the scene is described
     # times=[t]: only this moment's painted-on pictures are made (warm.scene); the edge warnings come with the reply facts
     scene, width, quality = render.look_scene(doc, comp["id"], times=[t]), args.get("width", FRAME_WIDTH), args.get("quality")
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
@@ -73,6 +74,9 @@ def look_frame(ctx, args):
     def job_fn(job):
         draw_w = min(width, comp_size(comp)[0])     # drawn at the size asked (the engine scales), never a full frame shrunk after
         part = dest.with_name(dest.stem + ".partial.png")
+        # The flat-wash check reads the drawings' own pictures, not the frame: measured while the engine draws (a new
+        # painted drawing's masks take ~1 s the first time), on a thread of its own (geometry.memo is per thread).
+        washes_at = _beside(lambda: masks() or look_wash.facts(comp, t))
         size = render.small_stills(ctx.tool, scene, [(t, part)], draw_w, samples=look_quality.samples(quality), rgb=True)
         if size:                                    # written once, as the look's own file
             part.replace(dest)
@@ -82,13 +86,34 @@ def look_frame(ctx, args):
                 part.replace(raw := Path(tmp) / "raw.png")
                 w, h = sheet.scaled_copy(raw, width, dest)
         with geometry.memo():                       # the reply's facts share one evaluation of the layers at t
-            cut, seen, washes = render.edge_warnings(doc.data, comp, t), shown_ids(comp, t), look_wash.facts(comp, t)
+            cut, seen, washes = render.edge_warnings(doc.data, comp, t), shown_ids(comp, t), washes_at()
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.'
                      + look_wash.words(washes) + " " + look_quality.line(comp, quality),
                      {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen, "washes": washes, "quality": quality or look_quality.PREVIEW}, [dest], [dest],
                      [*scene.get("warnings", []), *cut])
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
+
+
+def _beside(fn):
+    """`fn` run on a thread of its own now; the returned call waits for its result (its error raised there)."""
+    import threading
+    got: dict = {}
+
+    def run():
+        try:
+            got["v"] = fn()
+        except BaseException as e:  # noqa: BLE001  (raised in the caller's thread)
+            got["e"] = e
+    th = threading.Thread(target=run, name="look-facts", daemon=True)
+    th.start()
+
+    def result():
+        th.join()
+        if "e" in got:
+            raise got["e"]
+        return got["v"]
+    return result
 
 
 def _area(ctx, doc, comp, t, frame, args):

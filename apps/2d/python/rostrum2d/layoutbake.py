@@ -10,6 +10,10 @@ Each top-level layer's layout is solved on its own and kept (_KEPT) while it is 
 copy on write: an edit makes new objects only for what it touched), in the same composition settings, with the same
 expression keys inside it: a script re-run that changed one section solves only that section again (a 70 s film:
 ~4 s for every frame of every section, before).
+
+A look asks only for the frames it draws (`frames`): only those are solved, and the keys it gets are exact at those
+frames (between them the keys are not the layout's: nothing draws there). What a solve finds is kept, so the next look
+or the export solves only the frames still missing (Tally's first look: every frame of a 30 s film, ~6 s, before).
 """
 from __future__ import annotations
 
@@ -36,8 +40,9 @@ def uses_layout(comp: dict) -> bool:
     return any(has_layout(i) for i in items_of(comp).values())
 
 
-def bake(comp: dict, fps: float, baked: dict | None = None) -> dict[str, dict[str, list]]:
-    """{item id: {field: keys}} for every field an auto layout sets; `baked` = the expressions' keys (exprbake)."""
+def bake(comp: dict, fps: float, baked: dict | None = None, frames=None) -> dict[str, dict[str, list]]:
+    """{item id: {field: keys}} for every field an auto layout sets; `baked` = the expressions' keys (exprbake).
+    `frames`: the only frame numbers that will be drawn (None: every frame); the keys are exact at those."""
     if not uses_layout(comp):
         return {}
     baked = baked or {}
@@ -46,55 +51,75 @@ def bake(comp: dict, fps: float, baked: dict | None = None) -> dict[str, dict[st
     for layer in comp.get("layers", []):
         if not laid_out(layer):
             continue
-        mine = {i: baked[i] for i in items_of(layer) if i in baked}
+        mine = {i: dict(baked[i]) for i in items_of(layer) if i in baked}   # a copy: the caller adds the layout's keys to its own
         kept = _KEPT.get(layer["id"])
         if not (kept and kept[0] is layer and kept[1] == settings and kept[2] == mine):
-            kept = (layer, settings, mine, _solve({**comp, "layers": [layer]}, fps, baked))
+            kept = (layer, settings, mine, _solve({**comp, "layers": [layer]}, fps, mine))
             _KEPT.pop(layer["id"], None)
             _KEPT[layer["id"]] = kept
             while len(_KEPT) > KEEP:
                 _KEPT.pop(next(iter(_KEPT)))
-        out.update({i: dict(fields) for i, fields in kept[3].items()})
+        out.update(kept[3].tracks(frames))
     return out
 
 
-def _solve(comp: dict, fps: float, baked: dict) -> dict[str, dict[str, list]]:
-    """bake's work for the layers of `comp`, every frame. A frame whose layout inputs are the same as the frame before
-    (`_same_as_before`: no key of any layer in it moves between the two, no layer comes or goes) has the same layout:
-    its values are the frame before's, not solved again (a 30 s film of mostly still rows: 900 solves -> a few dozen)."""
+def _solve(comp: dict, fps: float, baked: dict) -> "_Solved":
+    """A top-level layer's layout (`comp` holds that layer alone), solved frame by frame as asked."""
+    return _Solved(comp, fps, baked)
 
-    def props(item, t):
+
+class _Solved:
+    """bake's work for the layers of `comp`. A frame whose layout inputs are the same as the frame before
+    (`_same_as_before`: no key of any layer in it moves between the two, no layer comes or goes) has the same layout:
+    its values are the solved frame's it follows (`_from`), not solved again (a 30 s film of mostly still rows: 900
+    solves -> a few dozen). Solved frames are kept: each call solves only the ones it needs and doesn't have."""
+
+    def __init__(self, comp: dict, fps: float, baked: dict):
+        self.comp, self.baked, self.items = comp, baked, items_of(comp)
+        duration = comp.get("duration", F.defaults("comp")["duration"])
+        self.n = max(1, math.ceil(duration * fps - 1e-9))
+        self.times = [round(min(i / fps, duration), 6) for i in range(self.n + 1)]
+        same = _same_as_before(comp, baked, self.times)
+        self._from, last = [], 0
+        for i, s in enumerate(same):
+            last = last if s else i
+            self._from.append(last)
+        self.results: dict[int, dict] = {}
+        self._whole = None
+
+    def props(self, item, t):
         p = resolve(item, t)
-        for prop, keys in baked.get(item["id"], {}).items():
+        for prop, keys in self.baked.get(item["id"], {}).items():
             p[prop] = track_value(keys, t)
         return p
 
-    duration = comp.get("duration", F.defaults("comp")["duration"])
-    n = max(1, math.ceil(duration * fps - 1e-9))
-    times = [round(min(i / fps, duration), 6) for i in range(n + 1)]
-    same = _same_as_before(comp, baked, times)
-    solved = [i for i in range(len(times)) if not same[i]]
-    results: dict[int, dict] = {}
-    for at in range(0, len(solved), FRAMES):
-        with textsize.kept_keys():                                     # a frame's text dicts are never changed
-            _solve_some(comp, times, solved[at:at + FRAMES], props, results)
-    tracks: dict[str, dict[str, list]] = {}
-    last: dict = {}
-    for i, t in enumerate(times):
-        last = results.get(i, last)
-        for item_id, values in last.items():
-            for prop, v in values.items():
-                tracks.setdefault(item_id, {}).setdefault(prop, []).append({"t": t, "v": v, "ease": "linear"})
-    items = items_of(comp)
-    for item_id, fields in tracks.items():
-        for prop, keys in fields.items():
-            if len(keys) < n + 1:                # set at some frames only (a text narrowed for a while): its own
-                have = {k["t"] for k in keys}    # value at the others, so no key reaches across them
-                keys += [{"t": t, "v": props(items[item_id], t)[prop], "ease": "linear"} for t in times if t not in have]
-                keys.sort(key=lambda k: k["t"])
-            if len(keys) == n + 1 and all(k["v"] == keys[0]["v"] for k in keys):
-                fields[prop] = keys[:1]
-    return tracks
+    def tracks(self, frames=None) -> dict[str, dict[str, list]]:
+        """The keys exact at `frames` (None: every frame)."""
+        if frames is None and self._whole is not None:
+            return self._whole
+        at = range(len(self.times)) if frames is None else sorted({f for f in frames if 0 <= f < len(self.times)})
+        need = sorted({self._from[i] for i in at} - self.results.keys())
+        for k in range(0, len(need), FRAMES):
+            with textsize.kept_keys():                                 # a frame's text dicts are never changed
+                _solve_some(self.comp, self.times, need[k:k + FRAMES], self.props, self.results)
+        tracks: dict[str, dict[str, list]] = {}
+        for i in at:
+            t = self.times[i]
+            for item_id, values in self.results[self._from[i]].items():
+                for prop, v in values.items():
+                    tracks.setdefault(item_id, {}).setdefault(prop, []).append({"t": t, "v": v, "ease": "linear"})
+        for item_id, fields in tracks.items():
+            for prop, keys in fields.items():
+                if len(keys) < len(at):              # set at some frames only (a text narrowed for a while): its own
+                    have = {k["t"] for k in keys}    # value at the others, so no key reaches across them
+                    keys += [{"t": self.times[i], "v": self.props(self.items[item_id], self.times[i])[prop], "ease": "linear"}
+                             for i in at if self.times[i] not in have]
+                    keys.sort(key=lambda k: k["t"])
+                if all(k["v"] == keys[0]["v"] for k in keys):
+                    fields[prop] = keys[:1]
+        if frames is None:
+            self._whole = tracks
+        return tracks
 
 
 def _solve_some(comp: dict, times: list[float], frames: list[int], props, results: dict) -> None:
