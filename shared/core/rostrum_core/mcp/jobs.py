@@ -231,15 +231,15 @@ class InProcessJobs:
             self._order = others + waiting
         return job
 
-    def listing(self) -> list[Job]:
+    def listing(self, others: bool = True) -> list[Job]:
         """Every job in order: the running ones, the waiting ones (in the order they will run), then the ended ones,
-        newest first."""
+        newest first. `others` False: this program's own only (no job files read: a day of them takes seconds)."""
         with self._cv:
             rank = {RUNNING: 0, WAITING: 1}
             live = sorted((j for j in self._order if j.status in rank), key=lambda j: rank[j.status])   # sorted here: a job ending later can't fall out of `rank`
             ended = sorted((j for j in self._order if j.status in ENDED), key=lambda j: -(j.ended or 0))
-        others = [_seen(s) for s in job_files.others()] if self._shared else []
-        return live + others + ended
+        seen = [_seen(s) for s in job_files.others()] if self._shared and others else []
+        return live + seen + ended
 
 
 def outcome(job: Job, where: str) -> Reply:
