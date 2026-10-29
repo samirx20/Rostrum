@@ -26,7 +26,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_paint import canvas, library
 
-from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_decal, stamp_turn
+from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_decal, stamp_turn, stamp_view
 from .material_fields import DOC_ONLY, MATERIAL
 from .paint_fields import CHANNELS
 
@@ -292,6 +292,10 @@ def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
     item = _filled(job["item"])
     stamps = {}
     if surface is not None:
+        if pics:                    # a view stamp on a clay: found on its surface through its view, then a decal
+            item = {**item, "paints": [{**p, "strokes": [_on_clay(s, pics, item["id"], surface) for s in p.get("strokes", [])]}
+                                       for p in item.get("paints", [])]}
+            item["paints"] = [{**p, "strokes": [s for s in p["strokes"] if s is not None]} for p in item["paints"]]
         stamps = {p["id"]: [s for s in p.get("strokes", []) if stamp_decal.is_stamp(s)] for p in item.get("paints", [])}
         stamps = {k: v for k, v in stamps.items() if v}
         if stamps:
@@ -307,6 +311,15 @@ def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
         splats[lid] = _over(splats[lid], decal) if lid in splats else decal
         keys[lid] = [keys.get(lid, ""), stamp_decal.key(surface, strokes)]
     return held, splats, keys
+
+
+def _on_clay(stroke: dict, pics: dict, item_id: str, surface) -> dict | None:
+    """A view stamp as the anchored stamp it lands as on the clay (stamp_view.py; None: not seen there); any other
+    stroke as it is."""
+    v = paint_view.view_of(stroke)
+    if v is None or stroke.get("stampTurn") is None:
+        return stroke
+    return stamp_view.on_surface(stroke, pics[paint_view.texel_key(paint_view.req_of(v))], item_id, surface)
 
 
 def _filled(canvas: dict) -> dict:

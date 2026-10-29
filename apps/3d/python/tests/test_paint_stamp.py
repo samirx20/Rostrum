@@ -137,3 +137,33 @@ def test_a_clay_stamp_lands_whole_however_its_surface_is_cut(tmp_path):
     outside = np.abs(mid[:, :2]).max(1) > 0.045
     assert inside.sum() > 100 and (px[inside] > 0.9).all()                  # all of the picture, on every piece
     assert (px[outside] < 0.05).all()
+
+
+def test_a_view_stamp_on_a_clay_lands_whole_and_upright_as_seen(tmp_path):
+    """paint.stamp with viewPoint on a clay: found on the clay through its view and laid as a decal (whole, however
+    the clay's surface is cut), the picture's top toward the screen's up."""
+    from rostrum3d import paint_scene
+    surface = _scattered_plane(tmp_path)
+    d = _doc(tmp_path)
+    pic = np.zeros((64, 64), np.uint8)
+    pic[:32] = 255                                                          # white on top only
+    Image.fromarray(pic).save(tmp_path / "top.png")
+    view = {"eye": [0, 0, 1], "target": [0, 0, 0], "fov": 30, "width": 64, "height": 64}
+    d.apply({"op": "paint.stamp", "target": ["head"], "args": {"picture": "top.png", "viewPoint": [32, 32],
+                                                               "size": 25.6, "depth": 1, **view}}, SAM)
+    item = {**d.item("head"), "paintSize": 512}
+    s = item["paints"][0]["strokes"][0]
+    x, y = np.meshgrid(-0.1 + 0.2 * (np.arange(64) + 0.5) / 64, 0.1 - 0.2 * (np.arange(64) + 0.5) / 64)
+    spots = np.stack([x.ravel(), y.ravel(), np.zeros(x.size)], 1)          # the plane fills the view, x right, y up
+    tri, bary = surface.nearest(spots, np.tile([0, 0, 1.0], (len(spots), 1)))
+    uv = np.einsum("aj,ajk->ak", bary, surface.uv[tri]).reshape(64, 64, 2)
+    texel = Picture(np.dstack([uv, np.zeros((64, 64)), np.ones((64, 64))]).astype(np.float32), ["head"])
+    pics = {paint_view.texel_key(paint_view.req_of(paint_view.view_of(s))): texel}
+    held, splats, _ = paint_scene._laid({"item": item}, surface, pics)
+    a = splats[item["paints"][0]["id"]][..., 3]
+    assert not held["paints"][0]["strokes"]                                 # a decal, not a dab
+    mid, tuv = surface.points[surface.tris].mean(1), surface.uv.mean(1)
+    px = a[np.clip(((1 - tuv[:, 1]) * 512).astype(int), 0, 511), np.clip((tuv[:, 0] * 512).astype(int), 0, 511)]
+    top = (np.abs(mid[:, 0]) < 0.034) & (mid[:, 1] > 0.006) & (mid[:, 1] < 0.034)
+    bottom = (np.abs(mid[:, 0]) < 0.034) & (mid[:, 1] < -0.006) & (mid[:, 1] > -0.034)
+    assert top.sum() > 30 and (px[top] > 0.9).all() and (px[bottom] < 0.05).all()

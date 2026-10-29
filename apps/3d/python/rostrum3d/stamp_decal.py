@@ -29,11 +29,16 @@ def key(surface, strokes: list) -> str:
     return hashlib.sha1(json.dumps([surface.key, strokes], sort_keys=True, default=str).encode()).hexdigest()
 
 
-def frame(normal, turn: float) -> tuple[np.ndarray, np.ndarray]:
-    """(up, right) on the surface: upright, turned clockwise by `turn` degrees as seen from outside."""
+def frame(normal, turn: float, toward=None) -> tuple[np.ndarray, np.ndarray]:
+    """(up, right) on the surface: upright (or along `toward` laid on the surface: a view stamp's screen up,
+    stamp_view.py), turned clockwise by `turn` degrees as seen from outside."""
     n = np.asarray(normal, np.float64)
     n = n / max(np.linalg.norm(n), 1e-12)
     up = surface_up(n)
+    if toward is not None:
+        t = np.asarray(toward, np.float64)
+        t = t - (t @ n) * n
+        up = t / np.linalg.norm(t) if np.linalg.norm(t) > 1e-12 else up
     right = np.cross(up, n)
     c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
     return c * up + s * right, c * right - s * up
@@ -73,7 +78,7 @@ def layer_rgba(surface, strokes: list, size: int) -> np.ndarray:
         on = tri >= 0
         corners = surface.points[surface.tris[ids[tri[on]]]]
         d = np.einsum("aj,ajk->ak", bary[on], corners) - p
-        up, right = frame(n, float(s["stampTurn"]))
+        up, right = frame(n, float(s["stampTurn"]), s.get("stampUp"))
         x, y = d @ right / reach, d @ up / reach
         alpha = _sample(pictures.tip(s["texture"]), x, y) * float(s.get("opacity", 1.0))
         alpha = np.where(np.abs(d @ n) < reach, alpha, 0.0)
