@@ -10,14 +10,14 @@ effects), sections, markers and a master. You build it from ONE Python script an
    target.
 2. **Run it with `run_script` and `look: true`**, under one `name` for the song. It merges the script, renders the mix and
    listens.
-3. **Read the faults.** The reply opens `NOT DONE:` (each fault with its id, its time and a fix) or `DONE:`.
+3. **Read the faults.** The reply opens `NOT DONE:` (each fault is a note with its id, its time and a fix) or `DONE:`.
+   The notes are for you to read; nothing is blocked.
 4. **Fix the script, not the song**, and run it again **under the same name**. A removed track, note or marker disappears;
    nothing is copied. A new name that makes the same tracks is refused (it would double every note).
-5. Repeat until the reply says `DONE:`, then deliver with `render_mix` (`name`, `folder`, `format`). A delivery is refused
-   while a fault is open, unless `keep: {"fault_id": "why"}` explains it by quoting the brief's words that ask for it
-   (`"dull_top": "the brief asks for \"dark, muffled\""`); any other why is refused. A fault on the moment the brief
-   asked for is kept only after a render that tried the fix, and only when it measures near passing (the fault says what passes); else
-   fix it, or move the moment itself in the script when the brief allows.
+5. Repeat until the notes say what you want, then deliver with `render_mix` (`name`, `folder`, `format`). The file is
+   always written where you ask; the reply lists any open faults as notes. A note you leave on purpose can be marked
+   with `keep: {"fault_id": "why"}` (`"dull_top": "dark, muffled was asked"`): it only records your reason, it is never
+   refused. Else fix the script, or move the moment itself when the brief allows.
 
 ## Bars first
 
@@ -37,7 +37,7 @@ effects), sections, markers and a master. You build it from ONE Python script an
   articulation. A build that goes flat before its climax is a fault; a part that never changes in a build is a warning
   (`inspect_guide 'writing-music'` › Keep it moving).
 - **The ending:** `ending("ring", at="#end")` lands every part together on the home chord and sets the length so it
-  rings out; `"button"` is a short hit, `"fade"` a written fade. The reply says where it lands, where the ring dies and
+  rings out (a length the script set before stays); `"button"` is a short hit, `"fade"` a written fade. The reply says where it lands, where the ring dies and
   the file's length: with an asked length, put `at` so the ring dies by it. A loop takes no ending (`inspect_guide 'script'` › Ending a song).
 - **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
   rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).

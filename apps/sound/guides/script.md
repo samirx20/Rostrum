@@ -5,7 +5,7 @@ check in the reply (loudness, the weakest asked moments with their fixes, faults
 the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
 touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it, and every why quotes the brief (in quotes, or 3 or more of its words in a row) where it asks for that fault: `brief("...")` in the script stores the brief's own words on the song (a dull top is kept for "dark, muffled", never for "a piano chord progression"); with no brief stored, or a why that does not quote it, the keep is refused and the fault's fix says why; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, and only when it measures within the stated distance of passing (its words say what passes and from where it may be kept); further off, fix it, or move the moment itself in the script (`moment(name, at=...)` or `expect`) when the brief allows another time.
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`), and any open fault is listed in the reply as a note for you to read. `keep: {id: "why"}` only marks a note as left on purpose (any why, no brief quote needed); it is stored, never refused. `brief("...")` in the script stores the brief's own words on the song, which the notes use. To clear a note, fix the script, or move the moment itself (`moment(name, at=...)` or `expect`) when the brief allows another time.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
@@ -136,7 +136,7 @@ master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
 `master(...)` takes `volume` (gain 0 to 4), `normalize`, `loudness` (LUFS, -60 to 0: giving it turns `normalize` on),
 `truePeak` (dBTP, -12 to 0), `gentle` (on by default) and `maxLimit` (dB, 0 to 12, default 2: with `gentle` on, the
 limiter never pulls the loudest moment down by more than this; a mix that would need more is turned down as a whole,
-so playback lands under its loudness target; a render (`render_mix`, `look`) is pushed onto the target for that file and says how many dB of limiting it took, the song keeping this value), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
+so playback lands under its loudness target; a render (`render_mix`, `look`) uses it as written, never raises it, and says how many dB of limiting it took), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
 `safetyClip`. Effects on the whole mix go on the master the same way as on a track: `master.effect("eq", bands=[{"shape":
 "highshelf", "freq": 4000, "gain": 4, "q": 0.7}])` (the dull-top fault names the gain that clears it).
 
@@ -183,8 +183,7 @@ colour is already on the keys.
 **One call: `ending(kind, at="#end")`.** Write it anywhere in the script; it is applied when the script ends, after every
 note is written. Every part playing in the 2 bars before `at` (or `parts=[piano, strings]`) lands together on `at`;
 notes ringing across `at` end on it, notes and hits starting after it are dropped, and the song's `length` and Ring out
-are set so the end can't be cut or left silent by accident (an earlier `length(...)` is replaced; the reply says when it
-moved by more than a second). Which ending fits the piece is yours to choose:
+are set so the end can't be cut or left silent by accident (it sets the length only when the script set none; a `length(...)` set before stays). Which ending fits the piece is yours to choose:
 
 | Call | What it writes |
 |---|---|
@@ -209,7 +208,7 @@ moved by more than a second). Which ending fits the piece is yours to choose:
 - **By hand** (the fallback, when none of the three is the ending you want): end the notes yourself (`end="#end"`), set
   `length(...)` past the last let-go by the tail (measured: about 1 s for piano, strings and pads, 2 s for a crash), keep
   Ring out on. The one ending check, `bad_ending`, reads every way an ending fails in one fault (near silence or dead
-  air before the end, a cut, the delivery's fade of sound still loud, and, when an ending is asked, an unresolved last
+  air before the end, a cut, a fade of sound still loud, and, when an ending is asked, an unresolved last
   chord or parts stopping early); its fix is the one line to paste, filled in for your song (the kind the brief asks,
   `at` your end marker or the length), e.g. `ending("ring", at="#end")`: paste it, don't hand-write last bars
   (inspect_guide 'listening' has the numbers).
@@ -218,7 +217,7 @@ moved by more than a second). Which ending fits the piece is yours to choose:
 - **Ring out** (the song field `ringOut`, on in every new song): a sound still ringing at `length` plays on until it dies
   away (under -60 dBFS, at most 6 s more); a note held past `length` is let go at it, and a note that starts at or after
   `length` is not heard (both are warned, in `run_script` and `render_mix`). **The file `render_mix` delivers is exactly
-  `length` long**: a ring that would run past it is faded out over the last second inside it (a loop brief: cut at the length with a 10 ms de-click, never faded), and the reply's warnings
+  `length` long**: what still sounds there is cut at it with a 10 ms de-click, never faded, and the reply's warnings
   say how much was cut off. That is why `ending(...)` puts the tail inside the length. `render_mix` with
   `ring_past_length: true` lets the file run on up to 2 s past it (a number: up to that many seconds). Songs saved
   before 2026-10-25 open with Ring out off: there the file stops at `length`.
