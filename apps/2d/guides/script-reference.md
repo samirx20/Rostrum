@@ -266,4 +266,7 @@ and what to write instead.
 
 A failed call says `ok: false` and the one line `Error: <where>: <subject> <what is wrong>. Accepted: … <hint>`. Read **Accepted**:
 it lists what would have worked; a wrong argument name also says which one you meant (`from` → "Did you mean start?").
+A script that stops on a wrong name, call or argument names the closest real ones at its line, with no list:
+`script "intro" line 12: TypeError: "att" isn't an argument of pivot(); did you mean at?`. Nothing is guessed or
+applied: fix the line and run again.
 Edits are all or nothing, so nothing changed.

@@ -32,6 +32,7 @@ import math
 import re
 
 from rostrum_core import ids
+from rostrum_core import nearest
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
@@ -93,7 +94,8 @@ class Item:
         known = [p.name for p in F.FIELDS.get(node["type"], [])]
         if name in known or name == "name":
             return node.get(name, F.defaults(node["type"]).get(name))
-        raise NoField(f'{node["id"]}.{name}: a {node["type"]} has no field "{name}".{_hint(name, known)} Its fields: {", ".join(known)}')
+        calls = [n for n in dir(type(self)) if not n.startswith("_")]
+        raise NoField(f'{node["id"]}.{name}: a {node["type"]} has no field "{name}".{_hint(name, known + calls)} Its fields: {", ".join(known)}')
 
     def set(self, **values) -> "Item":
         self._b.fill(self.node, values)
@@ -602,11 +604,19 @@ def _failed(e: Exception, name: str, scope: dict) -> RostrumError:
         return RostrumError(codes.BAD_ARGUMENT, where, "", str(e.args[0]) if e.args else str(e))
     hint = None
     if isinstance(e, NameError) and getattr(e, "name", None):
-        hint = (f"Write {W.NOT_A_NAME[e.name]}" if e.name in W.NOT_A_NAME
-                else did_you_mean(e.name, [k for k in scope if not k.startswith("_")]))
+        hint = f"Write {W.NOT_A_NAME[e.name]}" if e.name in W.NOT_A_NAME else None
     elif isinstance(e, TypeError) and (m := re.search(r"unexpected keyword argument '(\w+)'", str(e))):
         hint = W.NOT_A_FIELD.get(m.group(1))
+    near = None if hint else nearest.script_hint(e, scope, _item_names)      # "did you mean …": names only, in place of the list
+    if near:
+        return RostrumError(codes.BAD_ARGUMENT, where, f"{type(e).__name__}:", near)
     return RostrumError(codes.BAD_ARGUMENT, where, f"{type(e).__name__}:", str(e) + (f". {hint}" if hint else ""), API)
+
+
+def _item_names(obj) -> list[str]:
+    """An item handle's fields, for "did you mean" (dir() shows only its calls)."""
+    node = obj.__dict__.get("node") if isinstance(obj, Item) else None
+    return [p.name for p in F.FIELDS.get(node["type"], [])] if node else []
 
 
 def _frames(e):
