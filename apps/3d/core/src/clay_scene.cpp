@@ -136,11 +136,11 @@ clay::StepNode read_step(const JsValue& value, const std::string& where) {
     }
     p.blend = float(s.num_min("blend", 0.0, true));
     if (s.has("pairs")) {
-      auto near = rows<5>(s, "pairs", 0, "[x, y, z, r, most blend]: a ball of a piece it doesn't touch (metres)");
-      for (size_t i = 0; i < near.size(); ++i)
-        if (!(near[i][3] >= 0 && near[i][4] >= 0))
+      auto keepOff = rows<5>(s, "pairs", 0, "[x, y, z, r, most blend]: a ball of a piece it doesn't touch (metres)");
+      for (size_t i = 0; i < keepOff.size(); ++i)
+        if (!(keepOff[i][3] >= 0 && keepOff[i][4] >= 0))
           fail(s.at("pairs") + "[" + std::to_string(i) + "]", "a negative radius or blend", "r >= 0 and most blend >= 0");
-      if (!near.empty()) p.pairs = std::make_shared<const std::vector<std::array<float, 5>>>(std::move(near));
+      if (!keepOff.empty()) p.pairs = std::make_shared<const std::vector<std::array<float, 5>>>(std::move(keepOff));
     }
     p.mirror = s.flag("mirror");
   } else {
