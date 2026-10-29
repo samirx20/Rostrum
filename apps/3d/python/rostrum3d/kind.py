@@ -23,10 +23,10 @@ from rostrum_core.tree import walk
 from rostrum_core.errors import codes
 from rostrum_core.keys import layers as anim_layers
 
-from . import garment, clay_dabs, clay_fields, clay_layers, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
+from . import garment, clay_dabs, clay_fields, clay_layers, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, recipe, shot_layer
 
 LISTS = anim_layers.with_lists({**F.LISTS, **rostrum_paint.LISTS})   # a mesh is a paint canvas (the shared kit); doc › animLayers
-HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",),
+HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",), "recipes": ("recipe",),
          "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), "sculptLayers": ("claylayer",), **rostrum_paint.HOLDS,
          **anim_layers.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
@@ -115,7 +115,7 @@ def check(data: dict) -> list[str]:
     by_type = lambda *types: {i["id"] for i in everything if i.get("type") in types}  # noqa: E731
     materials, items, cameras = by_type("material"), by_type(*F.ITEMS), by_type("camera")
     collections, by_id = by_type("collection"), {i["id"]: i for i in everything}
-    problems += collection_kit.problems(data, LISTS)
+    problems += collection_kit.problems(data, LISTS) + recipe.problems(data)
     for item in everything:
         for key in LISTS.get(item.get("type"), []):
             for child in item.get(key, []):

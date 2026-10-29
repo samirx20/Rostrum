@@ -5,6 +5,9 @@ so the usual way to work is "write the whole scene as one script, look, edit, re
   failed run): this run takes it over and replaces it, field by field; never a second copy, never "already in this
   document". A field a person changed since is kept (held back by the merge, or here when no script holds it).
 - Ids counted for things the script leaves unnamed (mesh_1 …) skip ids other things in the scene already use.
+- Undo or redo of the script's own run moves the scene, not the script's record of what it made last: before a re-run
+  that record is brought to the scene for whatever an undo / redo of this script's run touched last (`rewind`), so the
+  run after an undo lands in full and nothing the undo put back reads as a person's edit.
 - A re-run that leaves out most of what its last run made (2 or more things, more than half) goes through and its reply
   names them, so a one-line tweak sent under the script's name by mistake is seen at once (edit_undo brings them back).
 """
@@ -17,6 +20,7 @@ from rostrum_core.tree import walk
 from .kind import KIND
 
 ROOT_LISTS = ("items", "materials", "shots")
+REWOUND = (*ROOT_LISTS, "recipes")             # recipe.py: a recipe's values move with its run's undo too
 
 
 def in_scene(doc, lst: str, id_: str) -> dict | None:
@@ -91,3 +95,32 @@ def keep_fields(b, ids: set) -> None:
             for k, v in now.items():
                 if k not in given and k not in ("id", "type") and not isinstance(v, list):
                     n[k] = copy.deepcopy(v)
+
+
+def _undid_mine(doc, c, name: str) -> bool:
+    """Change `c` is an undo or redo of a run of script `name`."""
+    for seq in (*c.undoes, *c.redoes):
+        done = doc.history.get(seq)
+        if any(k.get("op") == "run_script" and (k.get("args") or {}).get("script") == name for k in done.calls):
+            return True
+    return False
+
+
+def rewind(doc, name: str) -> None:
+    """The script's last output (its merge base) brought to the scene where an undo / redo of its own run changed it last:
+    a thing it took away is dropped from the record (made again, it is added), a field it set back is the scene's."""
+    base = doc.script_bases.get(name)
+    if not base:
+        return
+    for lst in REWOUND:
+        for n in list(base.get(lst, [])):
+            now = in_scene(doc, lst, n["id"])
+            if now is None:
+                c = doc.who_changed(n["id"])
+                if c is not None and _undid_mine(doc, c, name):
+                    base[lst].remove(n)
+                continue
+            for k in list(n):
+                c = doc.who_changed(n["id"], k) if k in now and now[k] != n[k] else None
+                if c is not None and _undid_mine(doc, c, name):
+                    n[k] = copy.deepcopy(now[k])
