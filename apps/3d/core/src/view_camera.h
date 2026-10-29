@@ -20,6 +20,11 @@ struct ViewCamera {
   double fov = 30;         // free camera, vertical, degrees
 };
 
+// The f-stop a camera with depth of field off is written with: a lens closed so far nothing blurs. Not 0 (USD's "no
+// depth of field"): Cycles' Hydra camera skips an f-stop of 0 and keeps the aperture of the last camera that had one, so a
+// camera switched off after a render with depth of field on rendered blurred in the same engine (Drop, 2026-10-29).
+constexpr double kClosedFStop = 1e7;
+
 // a scene camera's lens, for the viewport's depth of field (scene units)
 struct Lens {
   double fStop = 0, focusDistance = 0, focalLength = 0, sensorWidth = 0;

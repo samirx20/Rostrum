@@ -33,7 +33,8 @@ its base above it (`y_world=` for its origin's world height); place by relation 
 with shot(frame=…) and light in stops with light(brightness=…) (script_shot.py).
 
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
-script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
+script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line;
+a field that doesn't apply to the item (seenByCamera on a strip light) is not used and said in the reply, the rest applied.
 """
 from __future__ import annotations
 
@@ -72,7 +73,7 @@ class Item:
         if "y_world" in values:                          # its origin at a world height: no longer grounded
             script_ground.release(self._b, self.id)
             values["y"] = values.pop("y_world")
-        build.fill(self.node, _ids(values), f"script › {self.id}")
+        build.fill(self.node, _ids(values), f"script › {self.id}", self._b.notes)
         self._b.given.setdefault(self.id, set()).update(values)
         if self.id in self._b.grounded:                  # y = its base's height above the ground (script_ground.py)
             script_ground.settle(self._b, self.node, "y" in values)
@@ -119,7 +120,7 @@ class Item:
                 near = nearest.did_you_mean(wrong[0], ["v", "ease", *CURVE])
                 raise ValueError(f'{where}: {", ".join(wrong)} is not a key setting; '
                                  f'a key takes v, ease and {", ".join(CURVE)}' + (f". {near}" if near else ""))
-            build.fill(k, own, where)                      # checked, and loud when a setting doesn't fit the ease
+            build.fill(k, own, where, self._b.notes)       # checked; a setting that doesn't fit the ease is said, not used
             self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
         if self.id in self._b.grounded and prop != "y":    # a turn or a size keyed: its base measured again
             script_ground.settle(self._b, self.node, False)
@@ -223,7 +224,7 @@ class Item:
         if self.node["type"] != "import":
             raise ValueError(f"{self.id} is a {self.node['type']}; .part() is for an import")
         node = build.make("part", self._b.new_id(build.part_id(self.id, path), loose=True),
-                          {"name": path, "path": path, **_ids(values)}, f"script › {self.id}")
+                          {"name": path, "path": path, **_ids(values)}, f"script › {self.id}", self._b.notes)
         self.node["parts"].append(node)
         return Item(self._b, node)
 
@@ -304,7 +305,7 @@ class Item:
                                  "the shape before it and stay as they are (shown as out of date); make the whole shape "
                                  "before the first .pose / .bend to have them found from all of it")
         step_id = self._b.new_id(f"{self.id}.s{len(self.node['steps']) + 1}", loose=True)   # an operation's: .step_N
-        self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}"))
+        self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}", self._b.notes))
         return self
 
     def __enter__(self):
@@ -500,7 +501,7 @@ class Build:
 
     def add(self, type_: str, id_, values: dict, into: list) -> Item:
         node = build.make(type_, self.new_id(type_, id_), _ids(values),
-                          f"script › {type_} {id_ or ''}".strip())
+                          f"script › {type_} {id_ or ''}".strip(), self.notes)
         self.given[node["id"]] = set(values)
         into.append(node)
         return Item(self, node)
