@@ -1,6 +1,6 @@
 """What agents rely on for their time (the 3D benchmark's agents used 2 of 12 minutes): the clock line after a video counts the
-look-fix-export passes the time left allows, and render_video's estimate_only and over-budget refusal answer at once with
-figures and settings, never as a failed job to ask about later."""
+look-fix-export passes the time left allows, and render_video's estimate_only and an over-budget render answer at once with
+figures and settings (over the budget it renders anyway), never as a job to ask about later."""
 import pytest
 from rostrum_core import Document, Who
 from rostrum_core.errors import RostrumError
@@ -68,8 +68,9 @@ def test_estimate_only_returns_the_figures_even_over_budget(runtime, monkeypatch
     assert reply["data"]["over_budget"] is True and reply["data"]["fits"]
 
 
-def test_over_budget_refusal_is_an_error_at_once_naming_settings(runtime, monkeypatch):
+def test_over_budget_renders_anyway_and_says_the_estimate_at_once(runtime, monkeypatch):
     monkeypatch.setattr(render, "_estimate", _measured(1320.0))
+    monkeypatch.setattr(render, "video", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("drawing started")))
     reply, _ = runtime.call("render_video", {"budget_min": 9}, Who.agent("t"))
-    assert not reply["ok"] and "over the 9.0 min budget" in reply["summary"] and "Try one of" in reply["summary"]
-    assert "Nothing was rendered" in str(reply)
+    assert reply["ok"] and "job" in reply["summary"], reply          # never refused: the render is a job like any other
+    assert "Rendering anyway" in reply["summary"] and "over the 9.0 min budget" in reply["summary"] and "Try one of" in reply["summary"]

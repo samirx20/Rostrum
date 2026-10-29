@@ -31,7 +31,6 @@ def wave_faults(track, info: dict, id_: str, item: dict, balls, posed, keyed) ->
     out, bones = [], skin.bones_of(item)
     par, names = PB.parents(item), PB.joint_names(item)
     rest = skin.transforms(bones)
-    scale = PB.scale_of(track.fr.world(id_, info["start"]))
     for joint in sorted(n for n in keyed if _swings(bones[n][0]) and _limb(names[n])):
         sub = [n for n in range(len(par)) if joint in _chain(par, n)]
         moved = _moves(track, posed, balls, sub)
@@ -47,23 +46,15 @@ def wave_faults(track, info: dict, id_: str, item: dict, balls, posed, keyed) ->
         name, h = names[joint], info["height"]
         when = f"{span[0]:.1f}–{span[1]:.1f} s"
         if w["sweep"] < SMALL * h:
-            k = SMALL * h * 1.15 / max(w["sweep"], 0.5)
-            lever = math.dist(balls[tip][0], root) * scale
-            out.append(F.fault(
+            out.append(F.note(
                 f"wave_small:{id_}.{name}",
-                f"{id_}'s {name} swings {w['swings']} times but each swing moves its end only {w['sweep']:.0f} px "
-                f"({w['sweep'] / h * 100:.1f} % of the picture's height): on screen it reads as a twitch, not a wave",
-                f"swing {name} about {deg * (k - 1):.0f}° more end to end (now {deg:.0f}°), or put its end about "
-                f"{lever * (k - 1) * 100:.0f} cm farther from the joint (pose it farther out), so each swing sweeps at least "
-                f"{SMALL * 100:.0f} % of the picture's height; if a small move is meant, keep it", when))
+                f"{id_}'s {name} swings {w['swings']} times, {deg:.0f}° end to end; each swing moves its end "
+                f"{w['sweep']:.0f} px ({w['sweep'] / h * 100:.1f} % of the picture's height)", when))
         if w["spread"] is not None and w["spread"] < IN_STEP * w["sweep"]:
-            out.append(F.fault(
+            out.append(F.note(
                 f"wave_in_step:{id_}.{name}",
                 f"{id_}'s {name} swings every {w['period']:.2f} s: stills one second apart (at {w['grid']}) catch its end "
-                f"within {w['spread']:.0f} px of the same place ({w['sweep']:.0f} px swing), so every still shows the same pose",
-                f"key the swing so it does not repeat on the whole or half second: turning points every 0.35 s (a 0.7 s "
-                f"swing) or 0.65 s (1.3 s), e.g. c.bend(\"{name}\", {{t0 + 0.35 * i: …}}); if a still pose is meant, keep it",
-                when))
+                f"within {w['spread']:.0f} px of the same place ({w['sweep']:.0f} px swing)", when))
     return out
 
 

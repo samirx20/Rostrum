@@ -252,6 +252,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   std::vector<std::vector<DabShape>> dabShapes(n);
   std::vector<float> shift(n, 0), reachOf(n, 0);
   float k = 0;
+  struct NearBall {  // a piece this one doesn't touch (voxel units): within k of it the blend eases down to `most`
+    V3 c;
+    float r, most;
+  };
+  std::vector<NearBall> nearBalls;
   if (piece) {
     if (!s0.field) {
       const float r = s0.radius * iv;
@@ -262,6 +267,9 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     // join, so none: the ball is its exact size, and only its thin shell is worked (CL1b: with the blend, a new 10 cm
     // clay widened and re-levelled a 30-million-voxel box and took 5 s to appear)
     k = grid_->tree().empty() ? 0.0f : s0.blend * iv;
+    if (k > 0 && s0.pairs)
+      for (const auto& q : *s0.pairs)
+        if (q[4] * iv < k) nearBalls.push_back({V3{q[0] * iv, q[1] * iv, q[2] * iv}, q[3] * iv, q[4] * iv});
   } else {
     for (size_t j = 0; j < n; ++j) {
       const Step& s = steps[j];
@@ -449,13 +457,25 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     par(extList, [&](int ci) {
       std::optional<FieldEval> fe;  // CL3: one reader per chunk (an item's caches the grid's nodes)
       if (s0.field) fe.emplace(*s0.field, s0.mirror);
+      // the near balls that can reach this chunk (a chunk's centre to its farthest voxel is hd)
+      int cx, cy, cz;
+      b.corner(ci, cx, cy, cz);
+      const V3 cc = add(P(cx, cy, cz), V3{3.5f, 3.5f, 3.5f});
+      std::vector<const NearBall*> nb;
+      for (const NearBall& q : nearBalls)
+        if (len(sub(cc, q.c)) - q.r < k + hd) nb.push_back(&q);
       b.each(ci, [&](int x, int y, int z, size_t i) {
         const V3 p = P(x, y, z);
         float d = 1e30f;
         if (fe) d = (*fe)(p);
         for (const Shape& sh : pieceShapes) d = std::min(d, seg_dist(p, sh.a, sh.b) - sh.r);
-        if (s0.op == Op::Add) V[i] = smin(O[i], d, k);
-        else if (s0.op == Op::Carve) V[i] = -smin(-O[i], d, k);
+        float kp = k;  // the blend here: as asked, easing down to a near ball's most within k of it (smooth in p)
+        for (const NearBall* q : nb) {
+          const float t = std::max(0.0f, len(sub(p, q->c)) - q->r) / k;
+          if (t < 1.0f) kp = std::min(kp, q->most + (k - q->most) * t * t * (3.0f - 2.0f * t));
+        }
+        if (s0.op == Op::Add) V[i] = smin(O[i], d, kp);
+        else if (s0.op == Op::Carve) V[i] = -smin(-O[i], d, kp);
       });
     });
     par(extList, [&](int ci) { b.copy(ci, V, A); });

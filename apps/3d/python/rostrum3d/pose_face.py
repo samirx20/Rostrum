@@ -29,16 +29,12 @@ def face_faults(track, info, id_, item, balls, posed, features) -> list[dict]:
     for (a, sa, on, ra), (b, sb, _, rb) in _pairs(track, id_, posed, features):
         when = "at rest"
         if abs(sa - sb) > SIZE * max(sa, sb):
-            small, big = (a, b) if sa < sb else (b, a)
-            out.append(F.fault(f"face_unmatched:{a}~{b}", f"{a} and {b} are a pair on {id_} but differ in size: radius "
-                               f"{sa * 100:.2f} cm vs {sb * 100:.2f} cm", f"give {small} radius {max(sa, sb):.4f}, as {big}; "
-                               "if the difference is meant, keep it", when))
+            out.append(F.note(f"face_unmatched:{a}~{b}", f"{a} and {b} are a pair on {id_} but differ in size: radius "
+                              f"{a} {sa * 100:.2f} cm, {b} {sb * 100:.2f} cm", when))
             continue
         if abs(ra[1] - rb[1]) > HEIGHT * (sa + sb) / 2:
             low, high, dy = (a, b, rb[1] - ra[1]) if ra[1] < rb[1] else (b, a, ra[1] - rb[1])
-            out.append(F.fault(f"face_unmatched:{a}~{b}", f"{a} sits {dy * 100:.1f} cm lower than {b} on {id_}: the pair "
-                               "reads lopsided", f"raise {low} by {dy:.3f} (its y), level with {high}; if the tilt is meant, "
-                               "keep it", when))
+            out.append(F.note(f"face_unmatched:{a}~{b}", f"{low} sits {dy * 100:.1f} cm lower than {high} on {id_}", when))
             continue
         seen = _seen(track, info, id_, item, balls, posed, a, sa, b, sb, on)
         if seen:
@@ -90,17 +86,13 @@ def _seen(track, info, id_, item, balls, posed, a, sa, b, sb, on) -> dict | None
     what = f"{eye} shows {(1 - share) * 100:.0f} % smaller than its pair on the picture at {t:.1f} s"
     if lump is not None and lump != main and pieces[lump][0]:
         name = pieces[lump][0]
-        fix = (f"the {name} lump covers it: move the {name} about {2 * own * (1 - share) * 100:.1f} cm off the eye "
-               f"(up for a brow), or make it smaller; if it is meant (a squint), keep it")
         what += f" (the {name} lump covers it)"
     else:
         head = posed[f][main][0]
         toward = [e - h for e, h in zip(track.cams[f].eye, head)]
         deg = (_angle(c, head, toward) - _angle(other, head, toward)) / 2
-        fix = (f"turn the {names[on]} about {max(deg, 5):.0f}° less at {t:.1f} s (c.bend(\"{names[on]}\", …)), or turn the "
-               "camera toward the face; if the side view is meant, keep it")
-        what += f" (the {names[on]} turned so it sinks)"
-    return F.fault(f"face_unmatched:{a}~{b}", what, fix, f"frame {f}, {t:.2f} s")
+        what += f" (the {names[on]} turned so it sinks: it faces about {max(deg, 0):.0f}° farther from the camera than its pair)"
+    return F.note(f"face_unmatched:{a}~{b}", what, f"frame {f}, {t:.2f} s")
 
 
 def _main_ball(balls, on) -> int:

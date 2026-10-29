@@ -9,7 +9,8 @@ from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.faults import NOTES, asked
 from rostrum_core.mcp.files import look_path
 
-from rostrum3d import through as thru
+from rostrum3d import through as thru, view_look
+from rostrum3d.resolve import Frames
 from rostrum3d.sim.fall_view import fall_note
 
 from . import draw, onion_look, paint_canvas, picture_facts, shot_faults, step_look, text_facts
@@ -25,6 +26,30 @@ def _settings(renderer: str) -> dict:
 
 
 THROUGH = {"through": {"type": "string", "description": "A light's id: look from the light the way it shines, to aim it."}}
+VIEW = {"view": {"type": "object", "description": "Look from here, without moving the shot camera or changing the document: "
+                 '{"from": [x, y, z], "to": [x, y, z] or a part} or {"around": a part, "turn_deg": walk round it to the camera\'s '
+                 'right, "tilt_deg": from higher up, "distance": m (default the camera\'s)}; "lens_mm" (default the shot camera\'s). '
+                 'A part: an item id or a clay joint "buddy.hand.L".',
+                 "properties": {"from": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                                "to": {"type": ["array", "string"], "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                                "around": {"type": "string"}, "turn_deg": {"type": "number"}, "tilt_deg": {"type": "number"},
+                                "distance": {"type": "number", "exclusiveMinimum": 0}, "lens_mm": {"type": "number", "exclusiveMinimum": 0}},
+                 "additionalProperties": False}}
+
+
+def view_of(ctx, doc, info: dict, spec: dict, frame: int) -> dict:
+    """The view (view_look.place) at `frame`, read from the document; a view that can't stand is a BAD_ARGUMENT."""
+    try:
+        return view_look.place(Frames(doc.data, range(info["start"], frame + 1), info["fps"], ctx.app.folder), info["camera"], spec, frame)
+    except ValueError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "view", str(e)) from None
+
+
+def _add_camera(ctx, scene: dict, cam: dict) -> str:
+    if any(n["id"] == cam["id"] for n in scene["items"]):
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "view", f'an item is already called "{cam["id"]}"; rename it')
+    scene["items"].append(cam)
+    return cam["id"]
 
 
 def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
@@ -39,19 +64,24 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
     return cam["id"]
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **NOTES, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
+@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **NOTES, **THROUGH, **VIEW, **onion_look.ONION, **step_look.HIGHLIGHT}})
 def look_frame(ctx, args):
-    """One frame (`through` a light, `onion` ghosts, `highlight` clay steps); says what is clipped, how texts read."""
+    """One frame (`through` a light, `view` from anywhere, `onion` ghosts, `highlight` clay steps); says what is clipped, how texts read."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), look_renderer(args, doc, [info])
     w, h = size_of(info, args)
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
-    if args.get("through"):
+    if args.get("through") and args.get("view"):
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"through" and "view"', "were both given", ["through", "view"], "Give one.")
+    away = bool(args.get("through") or args.get("view"))      # not the shot camera's picture
+    view = view_of(ctx, doc, info, args["view"], frame) if args.get("view") else None
+    if away:
         scene = {**scene, "items": list(scene["items"])}       # the document's compiled scene stays as it was
-        info = {**info, "camera": _through(ctx, scene, args["through"], frame, w / h)}
+        info = {**info, "camera": _through(ctx, scene, args["through"], frame, w / h) if args.get("through")
+                else _add_camera(ctx, scene, view_look.as_camera(view))}
     wanted = step_look.chosen(ctx, doc, args["highlight"]) if args.get("highlight") else None
     ghosts = onion_look.ghosts_of(ctx, doc, info, frame, args["onion"], renderer) if args.get("onion") else None
-    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_f{frame}_{renderer}' + ("_onion" if args.get("onion") else ""), project=doc.folder)
+    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_f{frame}_{renderer}' + ("_onion" if args.get("onion") else "") + ("_view" if view else ""), project=doc.folder)
 
     def job_fn(job):
         what = f"frame {frame} of {info['id']}"
@@ -67,13 +97,15 @@ def look_frame(ctx, args):
         said, facts = said + more, {**facts, **more_facts}
         miss, miss_facts = picture_facts.storm_misses(doc.data, renderer)
         said, facts = said + miss, {**facts, **miss_facts}
-        if not args.get("through"):                    # a light's view has no shot camera to read the text through
+        if not away:                                   # a light's view or a view has no shot camera to read the text through
             words, text = text_facts.sentence(text_facts.seen_texts(doc, info, frame, w / h))
             said, facts = said + words, {**facts, **text}
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
-        found = None if args.get("through") or not asked(args) else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
-        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
+        found = None if away or not asked(args) else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
+        seat = f'from a view {view_look.words(view)} (the shot camera and document unchanged)' if view else f'through camera {info["camera"]}'
+        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} {seat}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
+                      **({"view": {k: [round(c, 4) for c in view[k]] if k in ("eye", "target") else round(view[k], 3) for k in view}} if view else {}),
                       **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts},
                      [dest], [dest], engine.take_notices(), faults=found)
 

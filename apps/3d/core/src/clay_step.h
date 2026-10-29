@@ -2,8 +2,11 @@
 // clay item's own space, metres. Moved from proofs/3d-clay (clay.h, session.h).
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace r3d::clay {
 
@@ -38,6 +41,10 @@ struct Step {
   V3 n;                  // stamp: surface normal at a (out of the clay)
   float radius = 0.1f;   // clay space, metres (a stamp: the brush's radius x radiusScale)
   float blend = 0.0f;    // piece: smooth join distance, metres
+  // piece: balls of earlier pieces it doesn't touch, [x, y, z, r, most blend] (clay space, metres): near each ball the
+  // blend eases down to that ball's most, so a join only reaches the pieces it touches (decided per pair, not one blend
+  // for the whole piece; Python's clay_reach.py). Empty: the blend everywhere.
+  std::shared_ptr<const std::vector<std::array<float, 5>>> pairs;
   float strength = 0.5f; // stamp: 0..1 (the brush's strength x strengthScale)
   bool mirror = false;   // also at x -> -x (the same step, mirrored, in the same pass)
   uint32_t stroke = 0;   // stamp: the stroke it belongs to; 0 = alone

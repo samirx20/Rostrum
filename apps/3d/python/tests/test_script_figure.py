@@ -98,12 +98,13 @@ def test_bend_from_the_script_keys_that_joint_at_every_time():
     r = pose_ik.Rig(clay)
     held = r.held(["body"])
     assert {r.joint[n] for n in held} == {"body", "chest"}                     # a held body holds the trunk, not the head
-    with pytest.raises(Exception, match="already posed"):                         # a piece after posing: loud
-        ops_pose.use_grid(lambda doc, id_, cells: _figure_grid(cells))
-        try:
-            run_source(src + 'c.lump((0, 0.2, 0), 0.01)\n', "f.py")
-        finally:
-            ops_pose.use_grid(None)
+    ops_pose.use_grid(lambda doc, id_, cells: _figure_grid(cells))            # a piece after posing: made, with a note
+    try:
+        after = run_source(src + 'c.lump((0, 0.2, 0), 0.01)\n', "f.py")
+    finally:
+        ops_pose.use_grid(None)
+    assert len(_items(after)["buddy"]["steps"]) == len(clay["steps"]) + 1
+    assert any("after .pose / .bend" in n for n in after.notes)
 
 
 def test_a_joint_bent_later_in_the_script_keeps_only_its_own_keys():

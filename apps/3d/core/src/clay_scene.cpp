@@ -32,17 +32,18 @@ double positive(Reader& s, const char* key) {
   return d;
 }
 
-// a list of [x, y] number pairs, at least `least`
-std::vector<std::array<float, 2>> pairs(Reader& s, const char* key, size_t least, const char* what) {
+// a list of N-number rows, at least `least`
+template <size_t N>
+std::vector<std::array<float, N>> rows(Reader& s, const char* key, size_t least, const char* what) {
   const JsArray& list = s.list(key);
   if (list.size() < least)
     fail(s.at(key), std::to_string(list.size()) + " points", "at least " + std::to_string(least) + " " + what);
-  std::vector<std::array<float, 2>> out;
+  std::vector<std::array<float, N>> out;
   for (size_t i = 0; i < list.size(); ++i) {
     const std::string at = s.at(key) + "[" + std::to_string(i) + "]";
-    if (!list[i].IsArray() || list[i].GetJsArray().size() != 2) fail(at, "is not a list of 2", what);
-    std::array<float, 2> q;
-    for (int k = 0; k < 2; ++k) {
+    if (!list[i].IsArray() || list[i].GetJsArray().size() != N) fail(at, "is not a list of " + std::to_string(N), what);
+    std::array<float, N> q;
+    for (size_t k = 0; k < N; ++k) {
       const JsValue& x = list[i].GetJsArray()[k];
       if (!is_number(x) || !std::isfinite(to_number(x))) fail(at, "holds " + x.GetTypeName(), what);
       q[k] = float(to_number(x));
@@ -50,6 +51,11 @@ std::vector<std::array<float, 2>> pairs(Reader& s, const char* key, size_t least
     out.push_back(q);
   }
   return out;
+}
+
+// a list of [x, y] number pairs, at least `least`
+std::vector<std::array<float, 2>> pairs(Reader& s, const char* key, size_t least, const char* what) {
+  return rows<2>(s, key, least, what);
 }
 
 // twice the signed area of the closed polygon (shoelace)
@@ -129,6 +135,13 @@ clay::StepNode read_step(const JsValue& value, const std::string& where) {
       read_shape(s, shape, st.spec);
     }
     p.blend = float(s.num_min("blend", 0.0, true));
+    if (s.has("pairs")) {
+      auto keepOff = rows<5>(s, "pairs", 0, "[x, y, z, r, most blend]: a ball of a piece it doesn't touch (metres)");
+      for (size_t i = 0; i < keepOff.size(); ++i)
+        if (!(keepOff[i][3] >= 0 && keepOff[i][4] >= 0))
+          fail(s.at("pairs") + "[" + std::to_string(i) + "]", "a negative radius or blend", "r >= 0 and most blend >= 0");
+      if (!keepOff.empty()) p.pairs = std::make_shared<const std::vector<std::array<float, 5>>>(std::move(keepOff));
+    }
     p.mirror = s.flag("mirror");
   } else {
     clay::Brush& b = st.brush;

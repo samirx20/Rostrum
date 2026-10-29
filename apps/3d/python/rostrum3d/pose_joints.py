@@ -323,7 +323,22 @@ def _carry(nodes, kids, radius0, side) -> int | None:
     return middle[0] if middle and len(middle) < len(kids) else None
 
 
-TALL = 1.4                     # a body this many times its ball's radius above the ball's middle carries a head
+def _split(nodes, k, smallest, width) -> list[int]:
+    """The limbs in branch k: one, unless it forks within its own thickness (in cells; `width` cells a band) of its start. Then the band ring
+    it starts in is still the body's and holds the starts of two limbs (an arm and a leg leaving the body side by side:
+    whether they share a ring depends on where the bands fall, so the same clay sampled a hair differently found both
+    arms on one run and none on the next); each fork is its own limb, split the same way. Forks farther out (fingers,
+    toes) stay in their limb."""
+    j, kids = k, _bumps(nodes, nodes[k].kids, smallest)
+    while len(kids) == 1:
+        j = kids[0]
+        kids = _bumps(nodes, nodes[j].kids, smallest)
+    if len(kids) < 2 or (nodes[j].band - nodes[k].band) * width > _thick(nodes, k):
+        return [k]
+    return [s for c in kids for s in _split(nodes, c, smallest, width)]
+
+
+TALL = 1.4                    # a body this many times its ball's radius above the ball's middle carries a head
 BACK = 2.5                     # a limb's base is at most this many times its thickness (radius) behind its first point
 
 
@@ -400,14 +415,15 @@ def find_parts(grid: dict, mirror: bool | None = None) -> tuple[list[dict], dict
     radius0 = float(dist[root_cell])
     g = walk(occ, root_cell)
     occ = occ & np.isfinite(g)                                  # a loose crumb the root can't reach is left out
-    nodes, node_of = _tree(occ, dist, g, max(1.0, min(2.0, radius0 / 4)))
+    width = max(1.0, min(2.0, radius0 / 4))                    # cells per band
+    nodes, node_of = _tree(occ, dist, g, width)
     root = next(n.id for n in nodes if n.parent is None and n.band == 0)
     smallest = max(6, int(0.003 * occ.sum()))
     # the body: from the root, at each branching one piece carries on (_carry); the others are limbs
     body, limbs, i = [root], [], root
     while kids := sorted(_bumps(nodes, nodes[i].kids, smallest), key=lambda k: -_thick(nodes, k)):
         nxt = kids[0] if len(kids) == 1 else _carry(nodes, kids, radius0, side)
-        limbs += [(i, k) for k in kids if k != nxt]
+        limbs += [(i, s) for k in kids if k != nxt for s in _split(nodes, k, smallest, width)]
         if nxt is None:
             break
         i = nxt
