@@ -71,3 +71,21 @@ def test_the_gizmo_stands_where_a_followed_or_stuck_item_is_seen(tmp_path):
         moved = _where(d.data, id_, f, pivot)
         step = aim.point(m, [own["x"] + 0.1, own["y"], own["z"]])
         assert all(abs(a - b) < 1e-6 for a, b in zip(step, moved)), id_
+
+
+def test_a_pose_follower_rides_the_bone_as_an_animation_layer_turns_it(tmp_path):
+    src = '''
+strap = mesh("strap", shape="capsule", radius=0.05, height=1.2)
+bud = mesh("bud", shape="sphere", radius=0.03, y_world=1.15)
+cam = camera("cam", z=3, y=0.6)
+shot("s", camera=cam, fps=24, start=0, end=1)
+'''
+    d = Document.new(KIND, folder=tmp_path, item="scene")
+    d.run_script("t.py", run_source(src, "t.py"))
+    d.apply({"op": "bone.chain", "target": ["strap"], "args": {"points": [[0, 0, 0], [0, 0.4, 0], [0, 0.8, 0],
+                                                                          [0, 1.2, 0]]}}, SAM)
+    d.apply({"op": "follow.add", "target": ["bud"], "args": {"item": "strap", "pose": True}}, SAM)
+    d.apply({"op": "animlayer.add", "target": [], "args": {"id": "wave"}}, SAM)
+    d.apply({"op": "key.add", "target": ["strap_bone3"], "args": {"prop": "rz", "t": 0, "v": 90, "layer": "wave"}}, SAM)
+    at = _where(d.data, "bud", 10)
+    assert abs(at[0] + 0.35) < 1e-6 and abs(at[1] - 0.8) < 1e-6        # the top bone turned 90° about its head (0.8)

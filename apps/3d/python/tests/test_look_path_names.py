@@ -16,7 +16,7 @@ def _fr():
     arm = {"id": "b_arm_R", "type": "bone", "joint": "arm.R", "length": 0.3, "bones": [
         {"id": "b_forearm_R", "type": "bone", "joint": "forearm.R", "length": 0.25, "y": 0.3, "bones": [], "keys": []}], "keys": []}
     body = {"id": "b_body", "type": "bone", "joint": "body", "length": 0.5, "bones": [arm], "keys": []}
-    return types.SimpleNamespace(items={"buddy": {"id": "buddy", "type": "clay", "bones": [body]}}, fps=24,
+    return types.SimpleNamespace(items={"buddy": {"id": "buddy", "type": "clay", "bones": [body]}}, fps=24, stack=[],
                                  held=lambda owner, f: f, world=lambda owner, f: (IDENT, [0, 0, 0]))
 
 

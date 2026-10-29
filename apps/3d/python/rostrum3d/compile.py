@@ -183,7 +183,7 @@ def _node(item: dict, fr: _Frames) -> dict:
             anim["focusDistance"] = [_out(p, x) for x in focus]
     if anim:
         node["anim"] = anim
-    moves = (lambda i: follow.moves(fr, item["id"], fr.frames[i])) if not fr.stack else None   # shared with follow.ride
+    moves = lambda i: follow.moves(fr, item["id"], fr.frames[i])    # one pose, layers and all, shared with follow.ride
     if type_ in ("mesh", "clay") and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]), fr.stack, moves)):
         node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "clay":

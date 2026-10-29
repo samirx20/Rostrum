@@ -144,12 +144,12 @@ def bone_move(fr, target: str, bone: int, g: int):
 
 
 def moves(fr, target: str, g: int) -> list:
-    """Every bone's move at frame g (its held frame's), in skin.bones_of's order; the clay's own skin reads them too
-    (compile.py, with no animation layers: the same numbers)."""
+    """Every bone's move at frame g (its held frame's), in skin.bones_of's order, with the document's animation layers
+    laid over (fr.stack, as the skin bends the surface); the clay's own skin reads these same numbers (compile.py)."""
     key = (target, fr.held(target, g))
     if key not in fr.poses:
         if (rest := fr.poses.get(target)) is None:             # its chain and the inverse of each bone's rest, once
-            pose = skin.poser(skin.bones_of(fr.items[target]))
+            pose = skin.poser(skin.bones_of(fr.items[target]), fr.stack)
             rest = fr.poses[target] = (pose, [aim.invert(r) for r in pose(None)])
         pose, back = rest
         fr.poses[key] = [aim.compose(n, r) for n, r in zip(pose(key[1] / fr.fps), back)]

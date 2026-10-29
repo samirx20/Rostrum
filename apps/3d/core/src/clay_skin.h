@@ -6,13 +6,17 @@
 // A new pose re-poses only the blocks one of whose bones moved, never re-meshes. The posed triangles answer rays
 // (a stroke on a posed clay, cast()) from memory: nothing here reads or writes the stage.
 //
-// Weights are made when a block is kept (CL5b; in parallel over its points), so the first move of a drag weighs
+// Weights are made when a block is kept (smoothed over a ball, worked out on a lattice kept per rig and blended per
+// point: clay_skin.cpp grid_share; CL5b: in parallel over its points), so the first move of a drag weighs
 // nothing. A clay's weights are pruned (clay_skin.cpp prune_share: influences under 2 % dropped, renormalised), so a
 // move re-writes only the blocks near the bones that moved. Zero-area placeholder blocks are never kept.
 #pragma once
 #include <array>
 #include <map>
+#include <cstdint>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 #include <optional>
 #include <vector>
 
@@ -92,6 +96,9 @@ class Skinning {
   void weigh(Block& b) const;
   // n points' weights averaged over a ball of `radius` round each (clay_skin.cpp smooth_share)
   void smooth_weights(const float* xyz, size_t n, double radius, int* idx, float* w) const;
+  // the same, worked out on a lattice of `step` (clay_skin.cpp grid_share) and blended per point from the 8 corners
+  // of its cell; each corner is worked out once for this rig and kept (every block, and later dabs, reuse it)
+  void grid_weights(const float* xyz, size_t n, double radius, double step, int* idx, float* w) const;
   void pose_block(Block& b) const;
   Affine blend_at(const Block& b, int tri, const double bary[3]) const;
   // one point's move from its influences (bone, weight): dual quaternions mixed with a share of the linear blend
@@ -106,6 +113,12 @@ class Skinning {
   bool dual_ = false;             // blend the moves as dual quaternions (every move rigid, not switched off)
   bool posed_ = false;
   std::map<BlockKey, Block> blocks_;
+  struct Corner {
+    int idx[kSkinMost];
+    float w[kSkinMost];
+  };
+  mutable std::mutex gridMu_;
+  mutable std::unordered_map<std::uint64_t, Corner> grid_;  // a lattice corner's smooth weights, by its cell key
 };
 
 }  // namespace r3d::clay

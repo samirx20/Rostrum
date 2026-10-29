@@ -9,7 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp import faults as F
 from rostrum_core.motion.report import LIMIT, capped, examples, stem
 
-from ..motion_track import Track
+from ..motion_track import Track, track_of
 from ..sim import fall_view
 from ..sim.cut_note import cut_lines
 from . import motion_found as M, motion_sim, path_look, shot_faults
@@ -92,8 +92,7 @@ def look_motion(ctx, args):
     if args.get("path"):
         return path_look.measure(ctx, doc, info, args)
     frames = _range(ctx, info, args)
-    sim = motion_sim.moves(doc.data, info, ctx.app.folder)
-    track = Track(doc.data, info, frames, ctx.app.folder, sim)
+    track, sim = track_of(doc, info, frames, ctx.app.folder, lambda: motion_sim.moves(doc.data, info, ctx.app.folder))
     ids = _pick(ctx, track, args.get("items"))
     every = track.ids()
     rows = {i: track.rows(i) for i in every}
