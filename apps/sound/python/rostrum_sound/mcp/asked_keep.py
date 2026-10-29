@@ -26,6 +26,10 @@ def mark(raw: list[dict], shaped: list[dict], moments) -> dict:
     times = [(float(m["at"]), m.get("kind", "hit")) for m in moments or [] if m.get("at") is not None]
     near = {}
     for r, f in zip(raw, shaped):
+        if r["kind"] in passing.KEPT_NEAR:          # a whole-piece fault kept only within its stated distance (squashed_mix)
+            f["near_rule"] = True
+            near[f["id"]] = passing.near(r)
+            continue
         if r["kind"] in WHOLE:
             continue
         hit = next((k for t, k in times if abs(t - float(r.get("at_s") or 0.0)) <= NEAR_S), None)
@@ -42,6 +46,10 @@ def screen(found: list[dict], keep: dict | None, seen_before: set, near: dict | 
     `near`: mark()'s {id: within the stated distance of passing} (an asked fault missing from it is not near)."""
     keep, near = dict(keep or {}), near or {}
     for f in found:
+        if f.get("near_rule") and f["id"] in keep and not near.get(f["id"]):
+            del keep[f["id"]]
+            f["fix"] = f"{f['fix']} (keep refused: it measures too far from passing, see its what; fix it)"
+            continue
         if not f.get("asked") or f["id"] not in keep:
             continue
         missing = []

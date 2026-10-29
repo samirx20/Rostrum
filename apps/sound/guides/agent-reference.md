@@ -230,7 +230,9 @@ the `render_mix` reply says how far and names the best of three ways to reach it
   flatter, denser master; 4 to 6 dB is a loud, pressed one. The balance between tracks does not change.
 
 `{"apply": "best"}` takes the one the reply names best: keep_balance when it raises `maxLimit` by 1 dB or less and leaves at most ~3 dB of limiting, else
-tame_peaks (the master stays transparent). Raise `maxLimit` further only when the dense sound is what the piece wants.
+tame_peaks (the master stays transparent). Raise `maxLimit` further only when the dense sound is what the piece wants: over 3 dB
+on an exposed part (a solo instrument carrying most of the signal), or over 6 dB on any mix, the render names `squashed_mix`, a
+fault kept only when the brief asks for a squashed sound.
 
 **Under the target: call `edit_loudness` first.** It reads the last render and answers three ways with measured numbers
 and the exact `edit_document` call for each: `keep_balance` (the `maxLimit` that reaches the target, no track moves),

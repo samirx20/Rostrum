@@ -10,7 +10,7 @@ def test_capped_limiter_lands_under_and_offers_the_push():
     land = fit.landing(MASTER, R)
     assert not land["reaches"] and abs(land["lufs"] - -16.36) < 0.05 and abs(land["need_db"] - 4.36) < 0.05
     assert land["push"]["ops"][0]["args"]["maxLimit"] == 4.5        # measured after the push: -14.21 LUFS
-    assert "−16.4 LUFS" in land["words"] and "4.4 dB of limiting" in land["words"] and "acoustic" in land["words"]
+    assert "-16.4 LUFS" in land["words"] and "4.4 dB of limiting" in land["words"] and "acoustic" in land["words"]
 
 
 def test_reaches_when_allowed_and_says_nothing_without_a_target():

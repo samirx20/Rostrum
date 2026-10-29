@@ -15,11 +15,11 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
-from . import drop_gap, ending, lead_in, rise_gap, rival, shelf_try, stop_fall, stop_soft, tempo_fit
+from . import drop_gap, ending, lead_in, rise_gap, rival, shelf_try, squash, stop_fall, stop_soft, tempo_fit
 
 NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words,
              "drums_in_gap": drop_gap.words, "early_rival": rival.words,
-             "dead_air_end": ending.dead_air_words, "gap_before": rise_gap.words}
+             "dead_air_end": ending.dead_air_words, "gap_before": rise_gap.words, "squashed_mix": squash.words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -76,15 +76,18 @@ def _correlation(y):
     return float(np.corrcoef(L, R)[0, 1]) if L.std() > 0 and R.std() > 0 else 1.0
 
 
-def _squashed(y, sr, limiter) -> list[dict]:
-    """From the render's limiter result: the deepest moment, if it was held down SQUASH_DB or more, and how far the
-    10 s before it sat under it (a short loud moment cannot carry the loudness target, so the build does and the
-    limiter holds the moment down)."""
+def _squashed(y, sr, limiter, asked=()) -> list[dict]:
+    """From the render's limiter result: the deepest moment, if it was held down SQUASH_DB or more on an asked moment
+    (`asked`: their times; within 1 s), and how far the 10 s before it sat under it (a short loud moment cannot carry
+    the loudness target, so the build does and the limiter holds the moment down). A squashed stretch with no asked
+    moment on it is the whole mix's (squash.py)."""
     from .bs1770 import integrated
     w = (limiter or {}).get("worst") or []
     if not w or (w[0].get("reduced_db") or 0) < SQUASH_DB:
         return []
     t = float(w[0]["time_s"])
+    if not any(abs(t - a) <= 1.0 for a in asked):
+        return []
     at = integrated(y[max(0, int((t - 0.2) * sr)):int((t + 0.2) * sr)], sr)
     before = integrated(y[max(0, int((t - 10) * sr)):max(1, int((t - 1) * sr))], sr)
     drv = [d["track"] for d in w[0].get("drivers") or []][:2]
@@ -231,11 +234,12 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None) -> dict:
+def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, song=None) -> dict:
     """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
     is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
     the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
-    drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them)."""
+    drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them). `song`: {"tracks":
+    the render's track meters, "data": the document's data}, for a mix the limiter squashes (squash.py)."""
     timed = [m for m in moments or [] if m.get("kind") != "tempo"]
     found = moment_faults(wav, timed, drums) if timed else []
     found = stop_soft.merge(found, limiter, peaky) + [f for m in moments or [] if m.get("kind") == "tempo" for f in tempo_fit.faults(m)]
@@ -244,7 +248,12 @@ def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None) -
         if limiter:
             y, sr = load(wav)
             stops = [f["at_s"] for f in found if f["kind"] == "soft_stop"]     # a soft stop already names the limiter there
-            found += [f for f in _squashed(y, sr, limiter) if all(abs(f["at_s"] - s) > 1.0 for s in stops)]
+            hit = [f for f in _squashed(y, sr, limiter, [float(m["at"]) for m in timed if m.get("at") is not None])
+                   if all(abs(f["at_s"] - s) > 1.0 for s in stops)]
+            mix = squash.fault(wav, limiter, song)
+            if hit and mix and mix[0]["measured"]["seconds_over"] < 3.0:
+                mix = []                  # the limiter works only on the asked moment: squashed_hit says it
+            found += hit + mix
     found = sorted(found, key=lambda f: f["at_s"])
     for f in found:
         f["words"] = _words(f)

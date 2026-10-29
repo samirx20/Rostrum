@@ -107,6 +107,15 @@ Give every part its own range and its own job, and the mix sorts itself out:
 - **A build to one big moment** under a loudness target (a crescendo, a hit, a tutti): how wide to make it, how long
   the loud moment must last so the limiter doesn't flatten it, and how to stage the hit: `inspect_guide
   'scoring-to-picture'` › "Builds, hits and climaxes under a loudness target".
+- **How far a build travels** is the script's, not the master's: a loudness target turns the whole file up or down,
+  so the distance between the opening and the peak stays as written. Velocity moves recorded instruments a long way
+  (measured on a held chord, against velocity 1.0): built-in `strings` 0.6 → −8.5 dB, 0.5 → −10, 0.3 → −16,
+  0.2 → −22; `horn` 0.5 → −11, 0.3 → −21. A swell that reads as one over 30 s or more (strings alone at 0.2–0.3 under
+  a `t.dynamics` lane rising to 1.0, parts added on the way up, the peak a tutti) travels about 25–35 LU from its
+  first bars to its peak; one written at 0.5–0.6 from the start travels about 15.
+  Coming down is the same in reverse: parts drop out, the lane falls, a soft last chord dies away inside the file.
+  `look_sound` shows the short-term curve; when the brief asks for a quiet start or ending the render measures it
+  (`loud_opening`, `loud_ending`: 20 LU or more under the loudest 3 s passes).
 - **Sustained instruments** (strings, brass, pads) need long notes and slow swells. Short notes on a pad sound like a
   keyboard demo. **Plucked and struck instruments** (piano, guitar, marimba) need movement: broken chords, arpeggios,
   pedal.

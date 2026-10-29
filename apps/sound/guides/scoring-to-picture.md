@@ -134,8 +134,8 @@ hit, onset strength 1.0× a normal note). The cure is in the writing, not in the
 **A long crescendo (20–40 s).** The measured range of strong orchestral swells is wide: the first seconds 20–30 LU under
 the climax (short-term loudness, 3 s windows). Ways to get there with the tools:
 
-- Velocity is level: on a recorded instrument the gain follows velocity squared, so velocity 0.3 plays about 21 dB
-  under 1.0 and 0.5 about 12 dB under, and the soft samples are darker too. Start the sustained parts low (0.2–0.35).
+- Velocity is level (measured on a held chord against velocity 1.0): built-in `strings` 0.5 about 10 dB under,
+  0.3 about 16, 0.2 about 22; `horn` 0.5 about 11, 0.3 about 21; and the soft samples are darker too. Start the sustained parts low (0.2–0.35).
 - Swell held notes with the track's expression lane, `t.dynamics([(0, 0.3), (bar(9), 0.7), (38.0, 1.2)])`: it
   moves the level inside a note, as a bow or breath does. A note's own `dynamics` is a fraction of that note
   (`[(0, 0.4), (1, 1.0)]` swells one note to its end), not song time.

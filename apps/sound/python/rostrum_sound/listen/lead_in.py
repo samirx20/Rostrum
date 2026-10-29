@@ -36,5 +36,7 @@ def faults(y, sr) -> list[dict]:
 def words(f) -> str:
     t = f["measured"]["first_sound_s"]
     return (f"silent start: nothing is heard for {t:g} s (the first sound over {AUDIBLE_DBFS:g} dBFS); a listener hears a "
-            "dead start. Start the music at once; to land a beat on a sync time, play a pickup before bar 1 with "
+            "dead start. Start the music at once (a quiet start is fine: it only has to be heard at once, so open on a "
+            "soft note that speaks at once, a harp, piano, pizzicato or low pedal note, rather than playing louder; "
+            "sampled strings at low velocity swell in over a second); to land a beat on a sync time, play a pickup before bar 1 with "
             "downbeat(bar(1), at=<seconds>) or place the sync moment in seconds instead of moving the music")

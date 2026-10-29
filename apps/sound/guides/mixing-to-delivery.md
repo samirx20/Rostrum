@@ -16,7 +16,11 @@ much and what to do. Every mastered `render_mix` reply has `data.loudness`: what
 (`predicted_lufs`), what this one measured (`measured_lufs`) and the limiting it took (`limiting_db`); under the target
 it adds the sentence the Export sheet shows ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting") and
 `push_max_limit`, the `maxLimit` that reaches it. How much is a lot: over ~3 dB of limiting starts to flatten acoustic
-drums and piano, so for acoustic music tame the peaks (`edit_loudness tame_peaks`) rather than push the limiter. `maxLimit` is in dB, 0 to 12 in the
+drums and piano, so for acoustic music tame the peaks (`edit_loudness tame_peaks`) rather than push the limiter. Over
+3 dB the reply names the limiter (how much, where, which part drives it), and when one part plays exposed there (a solo
+piano, a voice, 60 % or more of the signal) or a dense mix takes over 6 dB, `squashed_mix` is a fault: the delivery is
+refused until the quiet parts come up, the arrangement thickens where it is thin, the driving part is tamed, or the
+target comes down (listening.md › Faults). Raising `maxLimit` until the target is met is not the fix. `maxLimit` is in dB, 0 to 12 in the
 document (`master.set`; the screen's **Most limiting**).
 
 **A render reaches the target by itself.** A mastered `render_mix` (and `run_script` `look`) measures the song first and,

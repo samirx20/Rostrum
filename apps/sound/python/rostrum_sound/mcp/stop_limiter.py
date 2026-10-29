@@ -1,8 +1,9 @@
-"""The render's limiter, read for the listening check only when an asked stop could be flattened by it.
+"""The render's limiter, read for the listening check when it pulled more than a few dB.
 
-A stop the master limiter pulls 3 dB or more cannot land hard (round 2's jazz stop: 8.7 dB from the ride's peaks).
-Naming the track that drives the limiter needs the stems (listen/limiter.py, the same reading look_sound uses), so it is
-read only when the render limited that much and a stop was asked; otherwise the check runs without it."""
+A stop the master limiter pulls 3 dB or more cannot land hard (round 2's jazz stop: 8.7 dB from the ride's peaks), and
+a mix it pulls over fit_loudness.LOT_DB is flattened (canary task 7: a solo piano under 9.6 dB, listen/squash.py).
+Naming the track that drives the limiter uses the stems when the render has them (listen/limiter.py, the same reading
+look_sound uses), else the tracks' meters; under the line the check runs without it."""
 from __future__ import annotations
 
 from rostrum_core import RostrumError
@@ -16,8 +17,8 @@ from .tools_look import _limiter_inputs
 def read(ctx, doc, r: dict, moments) -> tuple[dict | None, str | None]:
     """-> (listen.limiter's result or None, the most peaked track of the render or None)."""
     peaky = fit.peakiest_track(r) if r.get("tracks") else None
-    hard = ((r.get("master") or {}).get("limiterMaxReductionDb") or 0) >= HARD_DB
-    if not (hard and any(m.get("kind") == "stop" for m in moments)):
+    pulled = (r.get("master") or {}).get("limiterMaxReductionDb") or 0
+    if not (pulled > fit.LOT_DB or (pulled >= HARD_DB and any(m.get("kind") == "stop" for m in moments))):
         return None, peaky
     lim = _limiter_inputs(ctx, doc)
     if not lim:

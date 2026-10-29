@@ -45,6 +45,14 @@ register("clean_ending", ["ends cleanly", "end cleanly", "clean ending", "clean 
                           "final chord", "final hit", "sting"], "a clean ending")
 
 
+# a fault the clean-ending check raises may be kept only when the brief asks for that ending (round sound-ascent: a
+# delivery fade was kept with "settles and decays to a quiet ending", which asks for a decay, not a fade)
+register("faded_end", ["fade out", "fades out", "fade-out", "fading out", "fade away", "fades away", "fade to silence",
+                       "fades to silence", "fade to black"], "a fade-out")
+register("chopped_end", ["cut off", "cuts off", "abrupt end", "abrupt ending", "ends abruptly", "hard cut", "cut to silence",
+                         "stops mid", "mid note", "mid-note"], "an abrupt cut")
+
+
 def norm(text: str) -> str:
     """Lower case, every run of punctuation and space one space ("Lo-Fi, dark!" -> "lo fi dark")."""
     return " ".join(re.sub(r"[^0-9a-z]+", " ", (text or "").lower()).split())
