@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from rostrum3d import aim, pose_joints as PJ, through
+from rostrum3d import aim, clay_detail, pose_joints as PJ, through
 
 from . import pose_link as L, pose_view as PV
 from .pose_drag import PoseDrag
@@ -150,9 +150,10 @@ class Pose(PoseDrag, QObject):
         def job(eng):
             try:
                 eng.ensure_scene(scene)
-                grid = eng.clay_grid(cid, L.CELLS)
+                span = clay_detail.span(clay)                    # cells sized from the pieces, not the grain
+                grid = eng.clay_grid(cid, L.CELLS, span)
                 more = PJ.finer_cells(clay, grid, L.CELLS)       # a thin part (a small foot) needs a finer sample
-                self.gridded.emit((cid, eng.clay_grid(cid, more) if more > L.CELLS else grid))
+                self.gridded.emit((cid, eng.clay_grid(cid, more, span) if more > L.CELLS else grid))
             except Exception as e:  # noqa: BLE001  said on the status line
                 self.gridded.emit((cid, str(e)))
         self.v._r.call(job)

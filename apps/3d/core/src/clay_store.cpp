@@ -976,7 +976,7 @@ PoseReply Store::pose(const std::string& item, const std::vector<BoneMove>& move
   return r;
 }
 
-GridReply Store::grid(const std::string& item, int cells) const {
+GridReply Store::grid(const std::string& item, int cells, double span) const {
   const Impl& s = *p_;
   const auto t0 = std::chrono::steady_clock::now();
   Entry& e = p_->entry(item, "clay_grid.item");
@@ -986,18 +986,26 @@ GridReply Store::grid(const std::string& item, int cells) const {
   e.vol->tree().evalActiveVoxelBoundingBox(bb);
   if (bb.empty()) throw Error("clay_grid.item: \"" + item + "\" holds no clay yet. Accepted: a clay with a shape");
   const double vx = e.vol->voxel();
-  double lo[3], size[3], longest = 0;
+  double lo[3], hi[3], longest = 0;
   for (int c = 0; c < 3; ++c) {
     lo[c] = double(bb.min()[c]) * vx;
-    size[c] = double(bb.max()[c] - bb.min()[c]) * vx;
-    longest = std::max(longest, size[c]);
+    hi[c] = double(bb.max()[c] + 1) * vx;
+    longest = std::max(longest, hi[c] - lo[c]);
   }
+  // 3d-clay-once: the cells are the same whatever the clay's grain. Their size comes from the pieces (`span`, the
+  // longest side round them, from the caller) and they sit on a lattice fixed in clay space (cell centres at
+  // (i + 0.5) x cell), so a coarse and a fine build of one clay are sampled at the same points: only what the band
+  // adds round the surface differs, and that is empty cells at the edges. Sized from the band's box, as before, a
+  // grain of a third of a cell moved every cell centre and Hello's legs lost their joints.
   GridReply g;
-  g.cell = longest > 0 ? longest / cells : vx;
+  g.cell = span > 0 ? span / cells : longest > 0 ? longest / cells : vx;
   for (int c = 0; c < 3; ++c) {
-    g.dims[c] = std::max(1, int(std::ceil(size[c] / g.cell - 1e-9))) + 2;  // one cell of room each side
-    g.origin[c] = lo[c] - g.cell;
+    const long long a = (long long)std::floor(lo[c] / g.cell) - 1, b = (long long)std::ceil(hi[c] / g.cell) + 1;
+    g.dims[c] = int(std::max(1LL, b - a));  // one cell of room each side
+    g.origin[c] = double(a) * g.cell;
   }
+  if (std::max({g.dims[0], g.dims[1], g.dims[2]}) > 4 * cells + 4)  // a span far short of the clay (strokes far out)
+    return grid(item, cells, 0.0);
   const size_t nx = size_t(g.dims[0]), ny = size_t(g.dims[1]), nz = size_t(g.dims[2]);
   g.inside.assign(nx * ny * nz, 0);
   const Volume& vol = *e.vol;

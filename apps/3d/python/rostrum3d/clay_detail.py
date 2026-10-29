@@ -98,6 +98,15 @@ def reach(item: dict) -> list[list[float]]:
     return out
 
 
+def span(item: dict) -> float:
+    """The longest side of the box round `reach`: what the joint finder's grid divides into cells (clay_grid `span`),
+    so its cells don't change with the clay's grain; 0 for a clay with no pieces."""
+    pts = reach(item)
+    if not pts:
+        return 0.0
+    return max(max(p[i] for p in pts) - min(p[i] for p in pts) for i in range(3))
+
+
 def _frames(start: int, end: int) -> list[int]:
     n = min(SAMPLES, end - start + 1)
     return sorted({start + round(i * (end - start) / (n - 1)) for i in range(n)}) if n > 1 else [start]

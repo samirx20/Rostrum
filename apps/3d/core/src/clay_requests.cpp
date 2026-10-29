@@ -323,11 +323,13 @@ JsObject Core::clay_pose(const JsObject& o) {
 
 // CL5: the rest clay's inside on a grid, for the joint finder (clay_store.h Store::grid)
 JsObject Core::clay_grid(const JsObject& o) {
-  Args a(o, "clay_grid", {"item", "cells"});
+  Args a(o, "clay_grid", {"item", "cells", "span"});
   need_scene("clay_grid");
   const int cells = a.whole("cells", 48);
   if (cells < 8 || cells > 128) throw Error("clay_grid.cells: " + std::to_string(cells) + " is out of range. Accepted: 8..128");
-  const clay::GridReply g = clay_->grid(a.str("item"), cells);
+  const double span = a.num("span", 0.0);
+  if (!(span >= 0.0) || span > 1e5) throw Error("clay_grid.span: out of range. Accepted: 0 (the clay's own bounds) .. 1e5 m");
+  const clay::GridReply g = clay_->grid(a.str("item"), cells, span);
   return JsObject{{"ok", JsValue(true)},
                   {"origin", vec3(GfVec3d(g.origin[0], g.origin[1], g.origin[2]))},
                   {"cell", JsValue(g.cell)},

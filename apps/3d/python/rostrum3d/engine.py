@@ -243,11 +243,12 @@ class Engine:
         its skin's order. The clay is drawn so until the next scene (or clay_pose). Gives `blocks` re-posed and `ms`."""
         return self._request({"clay_pose": {"item": item, "pose": pose}})
 
-    def clay_grid(self, item: str, cells: int = 48) -> dict:
-        """The rest clay's inside sampled on a grid (v1.18), `cells` (8..128) along its longest side: `origin` (the
+    def clay_grid(self, item: str, cells: int = 48, span: float = 0.0) -> dict:
+        """The rest clay's inside sampled on a grid (v1.18), `cells` (8..128) along `span` (metres, the longest side
+        round its pieces: clay_detail.span; 0: along its own bounds), on a lattice fixed in clay space: `origin` (the
         grid's low corner, clay space), `cell` (metres), `dims` [nx, ny, nz] and `inside` (base64, one byte per cell, 1
         inside, x fastest, then y, then z; cell centres at origin + (i + 0.5) × cell)."""
-        return self._request({"clay_grid": {"item": item, "cells": cells}})
+        return self._request({"clay_grid": {"item": item, "cells": cells, **({"span": span} if span > 0 else {})}})
 
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
