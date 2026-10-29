@@ -39,12 +39,13 @@ def step_label(doc, step: dict) -> str:
 
 
 class StepRows(QObject):
-    """One step's rows for InspectorRow: `pick(step)` says which step and refreshes them."""
+    """One step's rows for InspectorRow: `pick(step)` says which step and refreshes them. `kind`: whose fields (a
+    sculpt layer's too, clay_layers_qt.py)."""
 
-    def __init__(self, b, names=None, parent=None):
+    def __init__(self, b, names=None, parent=None, kind="claystep"):
         super().__init__(parent)
         self.b, self.step, self._scrub = b, "", None
-        params = [p for p in F.FIELDS["claystep"]
+        params = [p for p in F.FIELDS[kind]
                   if (p.name in names if names else p.name not in OFF_ROWS and p.group != "Step data")]
         self._static = rows.layout(SimpleNamespace(params=params), "Step")
         self.model = RowsModel(rows.ROLES, self)

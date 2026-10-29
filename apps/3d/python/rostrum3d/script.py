@@ -292,6 +292,25 @@ class Item:
         script_figure.bend(self._b, self._clay_node("bend"), joint, keys, ease)
         return self
 
+    def layer(self, name: str | None, amount: float = 1.0, on: bool = True) -> "Item":
+        """A clay's sculpt layer (claylayer.add): the lumps, draws, spins and strokes after it go on the layer `name`
+        (made the first time, with `amount` 0..1 and `on`), applied after the Base at its Amount; .layer(None) goes back
+        to the Base. Key it like any item: the layer's id is "<clay>.<name>" (spaces as _)."""
+        node = self._clay_node("layer")
+        if name is None:
+            node["sculptLayer"] = ""
+            return self
+        lay_id = f"{self.id}.{'_'.join(str(name).split())}"
+        lays = node.setdefault("sculptLayers", [])
+        found = next((x for x in lays if x["id"] == lay_id), None)
+        if found is None:
+            lays.append(build.make("claylayer", self._b.new_id(lay_id, loose=True),
+                                   {"name": str(name), "amount": amount, "on": on}, f"script › {self.id}", self._b.notes))
+        else:
+            found.update(amount=amount, on=on)
+        node["sculptLayer"] = lay_id
+        return self
+
     def _clay_node(self, what: str) -> dict:
         if self.node["type"] != "clay":
             raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() poses a clay")
@@ -584,7 +603,7 @@ def _import(name, *args, **kw):
 
 API = ["y = height of the base above the ground (mesh, import, group made in the scene); y_world= for the origin's world height",
        "group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, brightness= stops, at_distance=, replace_start_lights=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour|path, count=, spacingX=, columns=, radius=, surface=, path= (a text/svg/path2d mesh), alongPath=, pathShift=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|move|hide|colour, near=, field=sphere|plane|noise, radius=, amount=, axis=, seed=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour|path, count=, spacingX=, columns=, radius=, surface=, path= (a text/svg/path2d mesh), alongPath=, pathShift=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|move|hide|colour, near=, field=sphere|plane|noise, radius=, amount=, axis=, seed=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "clay.layer(name, amount=1): the strokes after it go on a sculpt layer (None: the Base)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
        "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other, gap=) / place_on(other, beside=\"left\"|\"right\"|\"front\"|\"back\", gap=) / place_on(in_front_of=other) / place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(seconds, **{\"right hand\": (x, y, z) or {\"up\": m, \"out\": m, \"forward\": m}, \"head\": …}, holds=): one pose per call, chain for motion; names hand.R / right hand / picture-left hand", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]

@@ -272,7 +272,12 @@ The time left is a number to use, not a reason to stop early.
   pinches to a ridge, mask takes the mask away). Left out, they are the clay's brush settings (`clay.set brush brushSize
   brushStrength brushFalloff brushSpacing frontOnly symmetry accumulate`). Positions are in the clay's
   own space; `symmetry: "x"` (the default) mirrors across its X = 0. Each step is one undo step; `claystep.remove` takes
-  one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). Detail (the smallest grain) follows the shot cameras:
+  one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). **Sculpt layers**:
+  `claylayer.add` (target the clay; `name`, `amount` 0..1) makes a group of strokes with an Amount and makes it the
+  clay's `sculptLayer`, so the next `clay.stroke` / pieces go on it (a step's `layer`; `clay.stroke layer=` names one,
+  `""` = the Base; `clay.set sculptLayer=""` goes back to the Base); `claylayer.set amount|on|name`;
+  `claylayer.bake` (into the Base, as it shows now); `claylayer.remove` (with its strokes). The Base is made first,
+  then each layer at its Amount; in a script `c.layer("smile", amount=0.5).stroke(…)`, `c.layer(None)` back to the Base. Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
   they need, never finer than the clay's size allows in memory (a 50 cm clay stops near 1.4 mm; `look_frame what "shape"`
   says "Detail held at …" when a close shot asks for more); `clay.set detailMode=fixed detail=0.001` fixes it (finer is

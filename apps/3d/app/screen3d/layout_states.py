@@ -20,7 +20,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-picker-low", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-curves", "animate-curves-picked", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-curves", "animate-curves-picked", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-layers", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "shot-only-light", "collections-row", "anim-layers-two", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
          "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-stylize", "sim-render-sheet", "sim-context", "sim-body-selected")
@@ -286,6 +286,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # CL3: a drawn clay (Puff on top until the next stroke; 3d-v4: the Steps list under Size and Strength, above the
         # More fold, in sight at 900 high), and Turn into clay on the Make tiles while an exact part is selected
         ("clay-drawn", drawn_clay(), ["select buddy", "settled", "press Q", "settled"]),
+        # PR4: the drawn clay with a sculpt layer made by a real click on the Steps head's "+ Layer": the Layers list
+        # (Base, Layer 1 chosen, its Amount row and ⋯ under it) above Steps
+        ("clay-layers", drawn_clay(), ["select buddy", "settled", "press Q", "settled", "clickon clayLayerAdd", "settled"]),
         # Pose (Shift+P, pose_qt.py): its joints found on the drawn clay, the bones, the panel's three rows; the right-click menu
         ("pose-tool", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled"]),
         ("pose-context", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled", "context buddy"]),

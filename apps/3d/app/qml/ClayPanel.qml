@@ -5,7 +5,8 @@ import RostrumKit
 // name and kind; then Make (Lump) and, with a clay selected, Brush: the six that shape (Add, Carve, Smooth / Pull,
 // Flatten, Crease: two full rows of three) and Mask on a row of its own a little apart (it protects, it does not shape).
 // One choice across all of them: what a drag in the viewport does. Then the brush's rows, the clay's own fields drawn by
-// the kit's rows (clay.set, one undo step each): Size and Strength; then Steps, the clay's steps (ClaySteps.qml); then
+// the kit's rows (clay.set, one undo step each): Size and Strength; then Layers once the clay has a sculpt layer
+// (ClayLayers.qml); then Steps, the clay's steps (ClaySteps.qml); then
 // the kit's More fold (closed at first, kept as left for the session) with Falloff, Spacing, Front faces only and
 // Mirror. Steps sits above the fold so a 900 px high window shows it without scrolling (3d-v4).
 // After a Draw, the drawn shape's Puff sits under the name until the next stroke (claystep.set puff on that step).
@@ -89,6 +90,8 @@ Item {
                                              instant: viewport.clay.brushObj.rows.instant }
                 }
                 Item { width: 1; height: panel.groupSpace }
+                ClayLayers { id: sculptLayers; width: col.width; inner: col.width - Theme.keyGutter }   // once the clay has one
+                Item { width: 1; height: sculptLayers.visible ? panel.groupSpace : 0 }
                 ClaySteps { width: col.width; inner: col.width - Theme.keyGutter }   // the list ends where the fields do
                 Item { width: 1; height: panel.groupSpace }
                 Repeater {      // More, then Falloff, Spacing, Front faces only, Mirror behind it (clay_brush_qt.py)

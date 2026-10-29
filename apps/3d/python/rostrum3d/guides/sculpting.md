@@ -89,6 +89,26 @@ Box", "Lump", "Stroke · Add").
   (Add or Carve), a lump's Radius, a stroke's Size and Strength. Changing an old step rebuilds the clay from there on,
   with every later step on top. Each change is one undo step.
 
+## Sculpt layers
+
+A **sculpt layer** is a group of strokes with an **Amount**: a smile, a frown, a raised brow, a swelling. Sculpt it once,
+then dial it from nothing (0 %) to as sculpted (100 %), or switch it off, without touching the rest of the clay.
+
+1. With the Clay tool on and the clay selected, click **+ Layer** at the right of the Steps head. A **Layers** group
+   appears above Steps: **Base** (everything sculpted so far) and **Layer 1**, chosen (blue): the next strokes and lumps
+   go on it.
+2. Sculpt the smile (Pull the mouth's corners up, Add for the cheeks).
+3. Under the list, drag or type the layer's **Amount**: 50 % shows the smile half way. The number beside each layer's
+   name is its Amount; the eye switches it off and on; double-click its name to rename it ("smile").
+4. Click **Base** to sculpt on the Base again; click a layer to add to it. Make another layer for a frown: both can show
+   at once, at their own Amounts.
+5. **⋯** under the Amount: **Bake into Base** keeps the strokes as they show now and removes the layer; **Remove layer**
+   takes the layer and its strokes away. Each is one undo step.
+
+How it is made: the Base's steps first, then each layer's, top to bottom. A layer's strokes work at their strength ×
+Amount (a lump on a layer grows with it); at 0 % or off, the clay is as if the layer weren't there. Changing an Amount
+redoes only that layer and the ones below it, never the Base.
+
 ## Fine detail: Relief
 
 The clay's grain sets how small a sculpted detail can be. For what is finer (wrinkles, pores, scratches, the weave of

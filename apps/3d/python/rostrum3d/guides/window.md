@@ -129,8 +129,9 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Draw: drag an outline and it puffs into
   clay, on a clay it joins; Spin: drag half a profile beside the vertical line; Lump: a click drops a ball of clay;
   Turn into clay, with an exact part or import selected) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull,
-  Flatten, Crease, and Mask on its own row), Size and Strength, the **Steps** list (an eye hides a step, double-click
-  names it, a click shows its settings), then **More** (closed at first: Falloff, Spacing, Front faces only, Mirror). A drag on the clay sculpts (Ctrl: the
+  Flatten, Crease, and Mask on its own row), Size and Strength, **Layers** once the clay has a sculpt layer (Base and each layer with its Amount; a click says
+  where the next stroke goes), the **Steps** list (an eye hides a step, double-click
+  names it, a click shows its settings; **+ Layer** at its head makes a sculpt layer), then **More** (closed at first: Falloff, Spacing, Front faces only, Mirror). A drag on the clay sculpts (Ctrl: the
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
   the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select, and so does picking a shape from
   Shapes (the next click places it). The guide `sculpting` has it all.
