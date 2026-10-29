@@ -9,7 +9,9 @@ as NOT DONE and hold back a final render the same way (round 4 of the 3D gaps: j
   cut_edge:<cloth|copies>  a cloth's simulated points, or falling copies where they land, on or past the frame edge (sim/sim_faults.py:
                         the shape boxes don't follow a simulation, so these replace shot_faults' entry of the same id);
   no_floor:<shot>       no ground or floor anywhere in the picture: whatever stands reads as hanging in a void (round 5: Hello r1);
-  backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py).
+  backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py);
+  through_body:<clay>.<joint> / off_body:<item> / reads_still:<clay>.<joint>  a posed figure's part through another, a feature
+                        sliding off it, a keyed swing too small to see (pose_faults.py).
 
 Read from the document as look_motion reads it (motion_track.Track, falls where the stored simulation has them), on about SAMPLES
 frames of the shot (look_frame: the frame and its neighbours): nothing is rendered.
@@ -22,6 +24,7 @@ from rostrum_core.mcp import faults as F
 
 from .backdrop import backdrop_edge
 from .motion_track import Camera, Track
+from .pose_faults import pose_faults
 
 SAMPLES = 10            # frames looked at over a shot (look_frame: the frame and its neighbours)
 TOUCH_M = 0.005         # boxes closer than this touch
@@ -131,7 +134,8 @@ def _faults(track: Track, info: dict, fs: list[int], at: int | None) -> list[dic
     subj = [i for i in boxes if i not in back]
     check = [at] if at is not None else fs
     return _separations(track, info, boxes, subj, s0, check) + _leaving(track, info, boxes, subj, fs, check) + \
-        _no_floor(track, info, boxes, back, subj, check) + backdrop_edge(track, info, boxes, check)
+        _no_floor(track, info, boxes, back, subj, check) + backdrop_edge(track, info, boxes, check) + \
+        pose_faults(track, info, check)
 
 
 def _separations(track, info, boxes, subj, s0, check) -> list[dict]:

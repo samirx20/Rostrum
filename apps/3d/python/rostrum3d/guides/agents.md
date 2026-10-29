@@ -7,7 +7,7 @@ replaces what the script made (values, keys, things you deleted from it) and kee
 script in a .py file (`run_script` `path`) so each edit is the whole scene. `edit_document` is for one-off fixes a script can't
 reach. Guide `script`: the API on one page.
 
-**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_frame what "sheet"`, `look_frame what "shots"`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground, a part come apart from its figure (`separated:arm`: shapes joined or grouped and touching at the start, apart later), a moving subject leaving the picture (`leaves_frame:cube`), no floor anywhere in the picture (`no_floor:<shot>`), a photographed sky seen past the floor (`backdrop_edge:<dome>`), and a cloth or falling copies on the frame's edge where the stored simulation has them. `look_motion` names the same faults from the document alone. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
+**Faults first.** Replies that checked the picture or scene (`run_script` with `look`, `look_frame`, `look_frame what "sheet"`, `look_frame what "shots"`, `render_still`, `render_video`) open `NOT DONE:` with each fault (id, when, fix) or `DONE:`: a frame too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground, a part come apart from its figure (`separated:arm`: shapes joined or grouped and touching at the start, apart later), a moving subject leaving the picture (`leaves_frame:cube`), no floor anywhere in the picture (`no_floor:<shot>`), a photographed sky seen past the floor (`backdrop_edge:<dome>`), a posed figure's part passing into another (`through_body:buddy.forearm.R`: the joint to turn and about how many degrees, when), a small thing on a figure sliding off the part it sits on (`off_body:eye_l`: attach it with `attach_to=`), a keyed back-and-forth swing too small to see on screen (`reads_still:buddy.forearm.R`: how many times bigger), and a cloth or falling copies on the frame's edge where the stored simulation has them. `look_motion` names the same faults from the document alone. `render_still` / `render_video` refuse open faults (the file is kept as `<name>.NOT-DONE`) unless `keep: {id: why}` explains them.
 
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
 scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
@@ -298,8 +298,10 @@ The time left is a number to use, not a reason to stop early.
   (`followPose`): an eye on a turning head. Parts placed on a clay get it already (`place_on`, `edit_place_on`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_frame what "sheet"` shows whether the rider stays put after it is let go.
-- **Posing a clay.** In the script: `buddy.pose(0, **{"picture-right hand": {"up": 0.1}}).pose(0.4, …)`, one pose
-  per call, the joints found for you (guide `posing`). As operations: `pose.find_joints` finds its joints from its
+- **Posing a clay.** In the script: `buddy.pose(t, **{"picture-right hand": {"up": 0.22, "out": -0.15}})`, one pose
+  per call, the joints found for you. A gesture reads on camera only when the part travels a good share of the
+  figure's height, several times, to the shot's end (a wave: the hand over the head swinging about half the figure's
+  height; guide `posing` › For agents has the example; a 2 cm move reads as still). As operations: `pose.find_joints` finds its joints from its
   shape (body, chest, arm.L, forearm.L, foot.R …), `pose.hold` keeps spots still, `pose.drag(part="hand.R", to=[x,
   y, z], at=t)` bends the chain back to the body and keys the Turn of every joint that moved, `pose.rest` takes the pose off, `pose.move_joint`
   places a joint by hand. Guide `posing` has the details (names, holds, keys, sculpting while posed).

@@ -17,7 +17,9 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               falling, has not landed yet (Drape, 3E round: "sheet floats 0.49 m above box" on a cloth's first
                               frame). A cloth's folds, and a fall not computed yet, aren't measured here: run_simulation's reply
                               says what each cloth ends on.
-  separated:<part> / leaves_frame:<item> / no_floor:<shot>, and cut_edge:<cloth|copies> from the stored simulation: from the
+  flat_light:<item>           the biggest subject's lit and dark sides under light_faults.FLAT_STOPS apart in the picture
+                              (light_faults.py; first picture only, not Stylized).
+  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / off_body / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
                               document over the whole shot (rostrum3d/faults.py), in the same list.
 """
 from __future__ import annotations
@@ -31,7 +33,7 @@ from rostrum3d.faults import doc_faults
 from rostrum3d.motion_track import Track
 from rostrum3d.sim.inputs import MOVING, bodies, value
 
-from . import motion_sim
+from . import light_faults, motion_sim
 
 from .facts import measure
 from .shot import seconds
@@ -234,11 +236,15 @@ def _own_y(data: dict, id_: str) -> float:
     return float(it.get("y", 0.0) or 0.0) if it else 0.0
 
 
-def check(data: dict, info: dict, frames: list[int], pngs: dict, folder=None) -> list[dict]:
-    """Every fault of the shot at `frames`: pictures (`pngs`: {frame: path}, a frame may be missing) and geometry. Ids are unique."""
+def check(data: dict, info: dict, frames: list[int], pngs: dict, folder=None, renderer: str | None = None) -> list[dict]:
+    """Every fault of the shot at `frames`: pictures (`pngs`: {frame: path}, a frame may be missing) and geometry. Ids are unique.
+    flat_light is judged on the first picture only (light_faults.py), never on a Stylized one."""
     found = []
     for f, png in pngs.items():
         found += picture(png, info["id"], when_of(info, f))
+    if pngs and renderer != "stylized":
+        f, png = next(iter(sorted(pngs.items())))
+        found += light_faults.flat(data, info, f, png, folder, when_of(info, f))
     found += scene(data, info, frames, folder)
     unique = {}
     for x in found:
