@@ -9,12 +9,15 @@ working on one page; the topic guides at the end hold the detail.
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
 2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet.
    Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
-3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look takes well under a second once the session's first one has run (about 0.2 s a frame or a sheet on a 70 s film), so look often.
+3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look is
+   what the canvas shows at that moment, like a screenshot of the window while scrubbing: well under a second on any
+   film, so look often. It needs no export: transitions, camera, depth of field, paint and text are drawn as the
+   export draws them; only motion blur is left out (`quality: "final"` adds it for one look).
 4. **Change the script**, not the document.
 5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
    by hand stays. A new name adds a second copy of everything.
-6. **Export once** with `render_export {"what": "video"}`: it waits for the file and always writes what you asked
-   under the name you gave. `notes: true` adds what the checks measured; they are observations, never required.
+6. **Export once**, when the looks say it is done, with `render_export {"what": "video"}`: it waits for the file and
+   always writes what you asked under the name you gave. An export is for delivering, not for checking a moment. `notes: true` adds what the checks measured; they are observations, never required.
 
 Every reply ends with a clock line. Use the time to look and refine in passes; `inspect_project` with
 `what: "session"` lists what you have not checked yet.

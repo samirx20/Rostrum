@@ -204,7 +204,8 @@ does. Every saved brush is its own brush, even with the same settings as another
 - `look_drawing (what "at") x y`: the colour there, each paint layer's colour, the top stroke and who drew it.
 - `look_drawing (what "landed") stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with
   where you meant it to go.
-- `look_frame`, `look_frame` (`what: "sheet"`), `render_export` (`what: "video"`): the whole composition, drawn by the engine exactly as it exports.
+- `look_frame`, `look_frame` (`what: "sheet"`): the whole composition as the canvas shows it (the export's picture
+  without its motion blur; `quality: "final"` adds it); `render_export` (`what: "video"`): the film itself.
 - `look_drawing (what "coverage") layer time=…`: how much is painted at that time (as far as `drawnSoFar` has got), per paint
   layer and together (painted = at least 60 % opaque, thin = 15–60 %, bare = less), and each bare area named with its box
   ("bare paper: a 1920×104 px strip along the bottom edge, the full width, canvas x 0–1920, y 976–1080 (composition x 0–1920,

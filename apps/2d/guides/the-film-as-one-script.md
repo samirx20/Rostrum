@@ -49,9 +49,10 @@ You can't judge motion from the script. Look.
 
 **The loop: write → run → look → change → export once.** Export replies end with the time left; add `notes: true` to
 list what the checks measured. Give the brief's timed moments as `beats` ("the lamp is
-revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`) if you want them measured. Also look at a sheet of the finished piece (`look_frame` `what: "sheet"` with `video` = the
-mp4's path, after your last edit): the review names what can be measured, your eyes judge the rest. A sheet from
-before your last edit doesn't count.
+revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`) if you want them measured. Look at the
+composition after your last edit (`look_frame` `times: [..]`, or `what: "sheet"`): it is the export's picture without
+an export, back in well under a second (only motion blur is left out; `quality: "final"` adds it). The review names
+what can be measured, your eyes judge the rest. A sheet with `video` shows a file you already delivered.
 
 ## Using your time
 

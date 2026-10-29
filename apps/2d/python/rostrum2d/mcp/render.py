@@ -89,18 +89,19 @@ def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=No
         raise _fail(where, "the engine", e) from e
 
 
-def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width: int, progress=None) -> None:
+def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width: int, progress=None, samples: int | None = None) -> None:
     """Draw each (time, png path) `width` px wide: the same frame drawn smaller by the engine (Engine.pixels' scale, as
-    the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. Full width or more: stills."""
+    the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. `samples`: motion-blur steps
+    (1: preview quality, look_quality.py; None: the composition's, as the export). Full width at final quality: stills."""
     from PIL import Image
     fps, comp_w = scene["comp"]["props"]["fps"], scene["comp"]["props"]["width"]
-    if width >= comp_w:
+    if width >= comp_w and samples is None:
         return stills(where, scene, items, progress)
     try:
         with warm.engine(scene) as eng:
             for i, (t, png) in enumerate(items):
                 try:
-                    view, w, h, stride = eng.pixels(t, scale=width / comp_w)
+                    view, w, h, stride = eng.pixels(t, samples, scale=min(1.0, width / comp_w))
                     data = bytes(view)                   # copied out: the engine's memory is reused next frame
                     view.release()
                     Image.frombuffer("RGBA", (w, h), data, "raw", "RGBA", stride, 1).save(png, "PNG")
@@ -114,14 +115,14 @@ def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width
         raise _fail(where, "the engine", e) from e
 
 
-def area_still(where: str, scene: dict, t: float, area, width: int, png: Path) -> tuple[int, int]:
+def area_still(where: str, scene: dict, t: float, area, width: int, png: Path, samples: int | None = None) -> tuple[int, int]:
     """Only `area` [x, y, w, h] (comp px) of the frame at `t`, drawn by the engine at `width` px wide (sharp: a zoom,
-    not a crop of a small picture), as `png`. Returns its size."""
+    not a crop of a small picture), as `png`. Returns its size. `samples` as small_stills'."""
     from PIL import Image
     x, y, w, h = (float(v) for v in area)
     try:
         with warm.engine(scene) as eng:
-            view, pw, ph, stride = eng.pixels(t, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
+            view, pw, ph, stride = eng.pixels(t, samples, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
             data = bytes(view)
             view.release()
             Image.frombuffer("RGBA", (pw, ph), data, "raw", "RGBA", stride, 1).save(png, "PNG")

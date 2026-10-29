@@ -8,7 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import look_wash, render, video_frames
+from . import look_quality, look_wash, render, video_frames
 from .geometry import comp_size, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
@@ -33,10 +33,13 @@ AREA = {"area": {"type": "array", "items": {"type": "number"}, "minItems": 4, "m
                                                                                 "(fewer when there are fewer times)."}}
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, **AREA, **video_frames.VIDEO, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
+@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, **AREA, **look_quality.QUALITY, **video_frames.VIDEO, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
                                                                           "description": "Picture width in px (never larger than the composition; with `area`, any up to 4096: the zoom). Default 960; with `times`, the width of the whole sheet, which its tiles share (default 1600: ~390 px tiles 4 across; fewer times give bigger tiles)."}}})
 def look_frame(ctx, args):
-    """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
+    """One frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see: what
+    the canvas shows at that moment, back in well under a second, so look as often as you like; no export is needed to
+    check a moment (transitions, camera, depth of field, paint and text are all drawn as the export draws them). At the
+    default quality "preview" only motion blur is left out; quality "final" draws the frame exactly as the export will.
     Give `times: [0.5, 1.2, 3.0]` for one contact sheet of exactly those moments in one call; what "sheet" makes the same
     sheet from `start`, `end`, `count` (evenly spaced). A sheet is for the whole motion at a glance; for detail look at
     one frame (960 px, or `width` up to the comp's), a sheet of 2-4 moments, or `area` [x, y, w, h] (comp px): only that
@@ -46,8 +49,9 @@ def look_frame(ctx, args):
     size: its lightness spread, how much darker its edge is and its grain, in % (`washes` in the data, every area). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait.
     `video`: the path of a finished mp4 (render_export's `video`) with `times` (or one `time`): the sheet is made of the film's
-    own frames, so you look at the export itself."""
+    own frames, to check the file you delivered (its sound is not shown either way)."""
     if "video" in args:
+        _no_quality(ctx, args)
         if "area" in args or "frame" in args:
             raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"video" with "area" or "frame"', "is not supported", ["times", "time"], "A film is looked at by seconds: times [..] (or one time).")
         return video_frames.video_sheet(ctx, args, args["times"] if "times" in args else [args.get("time", 0.0)])
@@ -62,19 +66,19 @@ def look_frame(ctx, args):
     t, frame = time_of(ctx, comp, args)
     if "area" in args:
         return _area(ctx, doc, comp, t, frame, args)
-    scene, width = render.look_scene(doc, comp["id"], t), args.get("width", FRAME_WIDTH)
+    scene, width, quality = render.look_scene(doc, comp["id"], t), args.get("width", FRAME_WIDTH), args.get("quality")
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
     seen = shown_ids(comp, t)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_look_") as tmp:
             raw = Path(tmp) / "raw.png"         # drawn at the size asked (the engine scales), never a full frame shrunk after
-            render.small_stills(ctx.tool, scene, [(t, raw)], min(width, comp_size(comp)[0]))
+            render.small_stills(ctx.tool, scene, [(t, raw)], min(width, comp_size(comp)[0]), samples=look_quality.samples(quality))
             w, h = sheet.scaled_copy(raw, width, dest)
         washes = look_wash.facts(comp, t)
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.'
-                     + look_wash.words(washes),
-                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen, "washes": washes}, [dest], [dest],
+                     + look_wash.words(washes) + " " + look_quality.line(comp, quality),
+                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen, "washes": washes, "quality": quality or look_quality.PREVIEW}, [dest], [dest],
                      scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
@@ -91,10 +95,11 @@ def _area(ctx, doc, comp, t, frame, args):
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}_area', project=doc.folder)
 
     def job_fn(job):
-        pw, ph = render.area_still(ctx.tool, scene, t, (x, y, w, h), width, dest)
+        pw, ph = render.area_still(ctx.tool, scene, t, (x, y, w, h), width, dest, look_quality.samples(args.get("quality")))
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, area [{x:g}, {y:g}, {w:g}, {h:g}] (comp px) drawn {pw}×{ph} '
-                     f'({pw / w:.2g}× zoom).', {"time": t, "frame": frame, "area": [x, y, w, h], "width": pw, "height": ph,
-                                               "zoom": round(pw / w, 3)}, [dest], [dest], scene.get("warnings", []))
+                     f'({pw / w:.2g}× zoom). ' + look_quality.line(comp, args.get("quality")),
+                     {"time": t, "frame": frame, "area": [x, y, w, h], "width": pw, "height": ph,
+                      "zoom": round(pw / w, 3), "quality": args.get("quality") or look_quality.PREVIEW}, [dest], [dest], scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame} area', job_fn)
 
@@ -116,7 +121,7 @@ def _times_sheet(ctx, doc, comp, args: dict):
     return _sheet_of(ctx, doc, comp, sorted(set(frames)), args)
 
 
-@tools.tool("look_sheet", {"properties": {**ITEM_COMP, **video_frames.VIDEO, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
+@tools.tool("look_sheet", {"properties": {**ITEM_COMP, **look_quality.QUALITY, **video_frames.VIDEO, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                            "end": {"type": "number", "minimum": 0, "description": "Seconds. Default (and the comp's duration): the last frame."},
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
@@ -125,11 +130,13 @@ def _times_sheet(ctx, doc, comp, args: dict):
 def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over a time range (`start`, `end` in seconds) in one image `width` px wide,
     each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
-    a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick.
+    a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, at preview quality (the canvas's
+    picture, only motion blur left out; quality "final" for the export's), so a big sheet stays quick.
     For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet.
     `video`: the path of a finished mp4 (render_export's `video`): the sheet is made of the film's own frames (start / end /
-    count in the film's seconds), so you look at the export itself, not the composition."""
+    count in the film's seconds), to check the file you delivered, not the composition."""
     if "video" in args:
+        _no_quality(ctx, args)
         return video_frames.video_sheet(ctx, args, None)
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
@@ -153,11 +160,20 @@ def _sheet_of(ctx, doc, comp, frames: list[int], args: dict):
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_sheet_") as tmp:
             items = [(f / fps, Path(tmp) / f"f{f}.png") for f in frames]
-            render.small_stills(ctx.tool, scene, items, tile_w, job.progress)
+            render.small_stills(ctx.tool, scene, items, tile_w, job.progress, look_quality.samples(args.get("quality")))
             tiles = [(png, f"{t:.2f} s   f{f}") for (t, png), f in zip(items, frames)]
             w, h = sheet.contact_sheet(tiles, tile_w, cols, dest)
-        return Reply(f'Contact sheet of {comp["id"]}: {len(frames)} frames from {frames[0] / fps:.2f} to {frames[-1] / fps:.2f} s, {w}×{h}.',
-                     {"frames": frames, "times": [round(f / fps, 4) for f in frames], "width": w, "height": h, "cols": cols}, [dest], [dest],
+        return Reply(f'Contact sheet of {comp["id"]}: {len(frames)} frames from {frames[0] / fps:.2f} to {frames[-1] / fps:.2f} s, {w}×{h}. '
+                     + look_quality.line(comp, args.get("quality")),
+                     {"frames": frames, "times": [round(f / fps, 4) for f in frames], "width": w, "height": h, "cols": cols,
+                      "quality": args.get("quality") or look_quality.PREVIEW}, [dest], [dest],
                      scene.get("warnings", []))
 
     return ctx.long(f'look_frame (what: sheet) {comp["id"]}', job_fn)
+
+
+def _no_quality(ctx, args: dict) -> None:
+    """A finished film's frames are what they are: `quality` is for looks at the composition."""
+    if "quality" in args:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"quality" with "video"', "has no effect: a video's frames are the file's own",
+                           ["quality", "video"], 'Leave out video to look at the composition (quality "final" draws it as the export will).')

@@ -28,9 +28,10 @@ def nothing_showing(comp: dict) -> bool:
 
 
 def next_steps(look: str, has_sound: bool, folder) -> str:
-    """What an export's reply points to (render_video and render_export's mp4): how to see the file, and how to put music
+    """What an export's reply points to (render_video and render_export's mp4): how to see the file (optional: a look at the
+    composition is the same picture, so no export is needed to check a moment), and how to put music
     under a silent video (in the fair benchmark agents left 3 of 7 films silent, not knowing how)."""
-    said = f"See it: {look}."
+    said = f"The file's own frames, if you want to check the file: {look}. A look at the composition (look_frame) is the same picture, without an export."
     if not has_sound and folder:
         said += (f' It is silent. For music under it: on rostrum-sound, run_open_project {{"folder": "{folder}"}}, write the '
                  "music with run_script (its inspect_guide 'scoring-to-picture'), run_set_main_mix; the next export here "

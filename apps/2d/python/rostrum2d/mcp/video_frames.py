@@ -25,7 +25,8 @@ def probe(mp4: Path, where: str) -> tuple[float, float]:
 
 
 VIDEO = {"video": {"type": "string", "description": "A finished mp4 to look at instead of drawing the composition (absolute path, e.g. render_export's `video`): with `times`, or what \"sheet\" "
-                                                    "with start / end / count (seconds in the film). The pictures are the film's own frames, so the export is what you judge; no item / comp needed."}}
+                                                    "with start / end / count (seconds in the film). The pictures are the file's own frames: for checking a file you delivered. While you work, leave it out: "
+                                                    "a look at the composition is the same picture without an export, back in well under a second."}}
 
 
 def video_sheet(ctx, args: dict, times: list[float] | None):
