@@ -32,8 +32,9 @@ class PaintStroke:
         self._pts, self._trail, self._busy, self._next, self._up = [], [], False, None, False
         self._anchors, self._moved, self._mpp = [], [0.0, 0.0], None      # a clay's: anchors, 3D / screen run, m per px
         self._scene, self._cam = self.v.sent()        # one scene for the whole drag: the engine loads it once
-        if self._by_view():
+        if self._by_view() or self._stamping():          # (a clay's stamp: its size in screen px, by this view)
             self._pose = self.v.drawn_pose()
+        self._pick_dist = None
         self._add(x, y)
 
     @Slot(float, float)
@@ -199,6 +200,8 @@ class PaintStroke:
             return self.b.fail_line("Error: paint: the engine's pick gave no point on the clay's surface (`local`); "
                                     "the 3D core is older than this app: build it again")
         a = [*(round(v, 6) for v in r["local"]), *(round(v, 5) for v in r["localNormal"]), 1.0]
+        if self._pick_dist is None:
+            self._pick_dist = r.get("distance")        # metres from the eye: a stamp's screen px → metres there
         if r.get("rest"):                   # a posed clay: the stroke is kept on the rest shape, as sculpting is
             normal = P.clay_rest_normal(self._scene, self._id, r["rest"], a[3:6])
             a = [*(round(v, 6) for v in r["rest"]), *(round(v, 5) for v in normal), 1.0]
@@ -223,7 +226,7 @@ class PaintStroke:
             self._clear_trail()
             return self.b.say(f"Paint lands on {self._name()} only: start the stroke on it." if it else "")
         if self._stamping():                      # one whole picture where the press was
-            reach = P.clay_reach(self.brush.values["size"], self._mpp, self._mpp_screen) if clay else 0.0
+            reach = P.clay_stamp_reach(self.brush.values["size"], self._pick_dist, self._pose) if clay else 0.0
             calls = P.stamp_calls(it, self._active, self.brush.stamp, anchors, reach)
             self._holding = True
             if not self.b._guard(lambda: self.b._apply(calls, f"Stamp on {self._name()}")):

@@ -127,6 +127,14 @@ def start_stamp() -> dict:
             "depth": DEPTH.default, "turn": TURN.default}
 
 
+def clay_stamp_reach(size_px: float, distance, pose) -> float:
+    """A clay stamp's reach (metres): its Size in screen px at the click (the pick's distance through the view the
+    press was in), as a mesh's or a From-the-view stamp's Size is; GUESS_MPP a px when either is missing."""
+    from rostrum3d.stamp_view import metres_per_screen_px
+    mps = metres_per_screen_px(distance, pose["fov"], pose["height"]) if distance and pose else GUESS_MPP
+    return round(max(1e-5, size_px / 2 * mps), 6)
+
+
 def stamp_calls(item: dict, layer: str, stamp: dict, anchors: list, reach: float) -> list[dict]:
     """One click's stamp on a clay as one call, at its anchor (the picture's width 2 × reach, metres). A mesh's is
     kept as clicked in the view (view_stamp_calls), so it stands upright as seen."""

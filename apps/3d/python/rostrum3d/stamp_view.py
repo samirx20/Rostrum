@@ -15,6 +15,15 @@ from . import paint_view
 STEP = 2.0                        # screen px round the click its up and size are measured over
 
 
+def metres_per_screen_px(distance: float, fov: float, height: int) -> float:
+    """How many metres one px of a `height` px picture spans at `distance` metres from the eye (vertical `fov`°): a
+    stamp's size in screen px on a clay (the screen's Size there). A clay's paint picture is no measure: the core lays
+    its pieces at different scales (the same paint px spans 2-3× more on one part of a clay than another) and its
+    triangles are mostly smaller than a paint px."""
+    import math
+    return float(distance) * 2 * math.tan(math.radians(float(fov)) / 2) / max(1, int(height))
+
+
 def _holding(surface, xy) -> tuple[int, np.ndarray] | None:
     """(triangle, barycentric) of the surface's unfolding holding canvas px `xy`, or None."""
     if getattr(surface, "_uvcentres", None) is None:

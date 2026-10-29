@@ -37,6 +37,7 @@ class PaintMode(PaintStroke, QObject):
         self._anchors, self._moved, self._mpp, self._mpp_screen = [], [0.0, 0.0], None, None   # a clay's (paint_stroke)
         self._where, self._pose, self._holding = "surface", None, False     # From the view: its pose; trail held
         self._how = "stroke"                                                # Brush | Stamp (on a Relief layer)
+        self._pick_dist = None                                              # a clay stamp click: metres from the eye
         self.layerRows = PaintLayerRows(self, self)             # the chosen layer's Fill and Mask rows
         self.answered.connect(self._on_answer)
         bridge.docChanged.connect(self._refresh)
@@ -54,7 +55,7 @@ class PaintMode(PaintStroke, QObject):
     coverageObj = Property(QObject, lambda s: s.coverage, constant=True)   # "Seen by Hero 01: 62 % painted" + tint
     layerRowsObj = Property(QObject, lambda s: s.layerRows, constant=True)   # the chosen layer's Fill, Mask
     trail = Property("QVariantList", lambda s: s._trail, notify=trailChanged)       # parts of the viewport, 0..1
-    cursorRadius = Property(float, lambda s: max(2.0, s.brush.values["size"] / 2 * (1.0 if s._by_view() else s._ratio)),
+    cursorRadius = Property(float, lambda s: max(2.0, s.brush.values["size"] / 2 * (1.0 if s._by_view() or s._stamping() else s._ratio)),
                             notify=trailChanged)
     where = Property(str, lambda s: s._where, notify=changed)          # "surface" | "view" (the Brush group's switch)
     wheres = Property("QVariantList", lambda s: P.WHERE, constant=True)

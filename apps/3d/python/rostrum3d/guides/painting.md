@@ -77,9 +77,9 @@ scale pattern, a stitched seam, a coin's face.
      **Load picture…** at the end of its list brings in your own picture file: it is kept in the project and picked.
      A loaded picture raises where it is **bright** and stays flat where it is black (a picture with see-through parts
      raises where it is opaque). Grey raises part of the way.
-   - **Size**: how wide the whole picture lands (its longest side): on a mesh and From the view in pixels of the
-     screen, on a clay in pixels of the paint picture. The disc at the pointer shows it. The picture's corners are
-     always kept: nothing of it is cut off.
+   - **Size**: how wide the whole picture lands (its longest side), in pixels of the screen where you click: the
+     disc at the pointer shows it. On a clay it keeps that size in metres afterwards, whatever you do to the view.
+     The picture's corners are always kept: nothing of it is cut off.
    - **Depth**: how far it raises the surface; below 0 % it sinks it instead (pressed in).
    - **Turn**: the picture's turn in degrees, clockwise. At 0 the picture stands upright: on a mesh (and From the
      view) the way it stands on your screen; on a clay with the clay's own up (towards its top, or towards its back
