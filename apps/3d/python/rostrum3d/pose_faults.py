@@ -4,8 +4,6 @@ entries of the shot's one fault list (faults.py):
   through_body:<clay>.<joint>  a part of the figure passes into another part that is not its neighbour (a waving hand through
                                the head) deeper than it did at rest; names the joint to turn and about how far (pose_touch.py).
   touches_body:<clay>.<joint>  such a part comes up against the other (within the blend) and they meet on the picture: one lump.
-  fused:<clay>.<a>~<b>         two lumps on parts that aren't neighbours sit inside each other's blend at rest: a web of clay
-                               joins them and stretches when posed (pose_fuse.py).
   face_unmatched:<a>~<b>       a mirrored pair of features (two eyes) differ in size or height, or one shows much smaller
                                on the picture: covered by a lump (a brow) or sunk by a turn (pose_face.py).
   off_body:<item>              a small thing attached to the figure (an eye, a nose, a hat) that leaves its posed surface or slides
@@ -24,7 +22,6 @@ from rostrum_core.mcp import faults as F
 
 from . import aim, follow, pose_body as PB, skin
 from .pose_face import face_faults
-from .pose_fuse import fused
 from .pose_rim import on_rim
 from .pose_touch import chain as _chain, through_touch
 from .pose_wave import wave_faults
@@ -59,7 +56,6 @@ def pose_faults(track, info: dict, check: list[int]) -> list[dict]:
             continue
         fs = sorted(set(frames(info)) | set(check)) if len(check) > 1 else check
         posed = {f: PB.posed(track.fr, id_, balls, f) for f in fs}
-        out += fused(track, info, id_, item, balls, keyed)
         out += through_touch(track, info, id_, item, balls, posed, keyed)
         out += _still(track, info, id_, item, balls, posed, keyed)
         out += wave_faults(track, info, id_, item, balls, posed, keyed)

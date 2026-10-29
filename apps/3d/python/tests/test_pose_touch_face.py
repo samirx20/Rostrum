@@ -1,4 +1,4 @@
-"""rostrum3d/pose_fuse.py, pose_touch.py, pose_face.py: gaps7 Hello's judges saw the raised arm "melt into the side of the
+"""rostrum3d/pose_touch.py, pose_face.py: gaps7 Hello's judges saw the raised arm "melt into the side of the
 head" and two eyes of different size ("the brow shrinks one eye"); each fault fires there and stays silent on a good figure."""
 from rostrum_core import Document
 
@@ -29,13 +29,6 @@ def _arm(deg: float) -> str:
 
 def _head_blend(b: float) -> str:
     return SHAPE.replace('name="head"', f'name="head", blend={b}')
-
-
-def test_a_head_blend_reaching_the_shoulder_webs_head_and_arm_and_a_tight_one_does_not():
-    found = _found(_arm(-60), _head_blend(0.06))   # its arm 5.2 cm from the head: inside a 6 cm blend
-    hit = found.get("fused:buddy.head~arm")
-    assert hit and "web of clay" in hit["what"] and 'name="head", blend=' in hit["fix"], found
-    assert not [k for k in _found(_arm(-60), _head_blend(0.008)) if k.startswith("fused:")]
 
 
 def test_a_raised_arm_grazing_the_head_touches_it_and_one_held_out_does_not():

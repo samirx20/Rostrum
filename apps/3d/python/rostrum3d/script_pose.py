@@ -6,9 +6,9 @@ offset from where it is at rest, solved by the drag solve (pose_ik) and written 
   part's end is at rest, along the figure's own up, away from its middle (a left or right part only) and the way it
   faces (+Z at rest); negative goes down / in / back. Names: pose_names.py.
 - `buddy.pose("hand.R", {t: (x, y, z), …})`: the older form, one part at several times (world points or offsets).
-- A limb kept clear of the head by default (pose_ik.clear_of_head: a raised arm against the head reads as melted into
-  it): the arm turns out / forward about the shoulder just enough, with a note naming the gap and the turn. clear=0 lets it
-  touch; clear=m keeps that many metres. c.bend stays exact (the checks name the degrees there).
+- clear=m, only when asked (pose_ik.clear_of_head): the limb turns out / forward about the shoulder just enough to stay m
+  metres from the head, with a note naming the gap and the turn. Never by default: the pose is what the script says
+  (Sam, 2026-10-29: Rostrum never corrects an agent's work; a mistake shows in the picture and the checks' notes).
 - Notes for the reply (Build.notes): a target out of reach (how far it is, the reach, it stops short) and a target on
   the far side of the body (did you mean the other hand?). Not errors: the pose is still made.
 """
@@ -22,7 +22,7 @@ AXES = ("up", "out", "forward")
 ROOT = {"arm": "shoulder", "forearm": "shoulder", "hand": "shoulder", "leg": "hip", "shin": "hip", "foot": "hip", "toe": "hip"}
 
 
-def pose_at(b, node: dict, t, parts: dict, holds=None, ease: str = "smooth", clear=True):
+def pose_at(b, node: dict, t, parts: dict, holds=None, ease: str = "smooth", clear=None):
     """One pose at time t (seconds): each named part's end to its target, in the order given."""
     owner = f"{node['id']}.pose"
     if not isinstance(t, (int, float)):
@@ -41,17 +41,17 @@ def pose_at(b, node: dict, t, parts: dict, holds=None, ease: str = "smooth", cle
         out = pose_ik.solve_rig(r, g, [0.0, r.length[g], 0.0], local, held)
         miss, kept = out["miss"], None
         if clear:
-            gap = None if clear is True else float(clear) / scale
+            gap = float(clear) / scale
             out, kept = pose_ik.clear_of_head(r, g, out, gap)
         _put(node, out["turns"], t, ease)
         notes = _notes(b, r, g, name, local, miss, scale, world, f)
         if kept:
             notes.append(f"kept the {name} {kept['gap'] * scale * 100:.1f} cm clear of the head (turned "
-                         f"{kept['turned']:.0f}° {kept['way']}); pass clear=0 to let it touch")
+                         f"{kept['turned']:.0f}° {kept['way']})")
         b.notes.extend(f"{node['id']} at {t:g} s: {n}" for n in notes)
 
 
-def pose(b, node: dict, part: str, keys, holds=None, ease: str = "smooth", clear=True):
+def pose(b, node: dict, part: str, keys, holds=None, ease: str = "smooth", clear=None):
     """The older form: one part, {seconds: target}."""
     for t, to in _times(f"{node['id']}.pose", keys):
         pose_at(b, node, t, {part: to}, holds, ease, clear)

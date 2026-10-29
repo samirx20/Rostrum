@@ -94,8 +94,8 @@ for i in range(8):                                                              
   pose: the checks say `wave_in_step`), and the motion runs to the shot's last frame (a wave that stops early reads as a
   pose). The numbers above fit `guide script`'s figure (its arm reaches 0.15 m from the shoulder); on another figure,
   scale them to its size and read the reply's notes ("stops short"). Keep the hand beside the head and a little forward
-  (`"forward"`), not over its middle: an arm against the head reads as melted into it. `pose` keeps the arm clear of the
-  head by itself (the reply says how far it turned it; `clear=0` lets it touch). Look at a sheet (`run_script`
+  (`"forward"`), not over its middle: an arm against the head reads as melted into it. The pose is exactly what you
+  ask; `clear=0.015` (optional) turns the arm out just enough to stay that far from the head and says how far it turned. Look at a sheet (`run_script`
   `look: true`) to see the swing; `wave_small` names a swing too small to read.
 
 - `pose(seconds, **{part: target, …}, holds=, ease=)` moves each named part's end to its target at that time (the

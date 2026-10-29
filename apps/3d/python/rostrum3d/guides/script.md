@@ -27,8 +27,8 @@ c.lump((0, 0.175, 0), 0.055, name="head", blend=0.012) # every position: x, HEIG
 c.lump((0.06, 0.095, 0), 0.02, to=(0.17, 0.02, 0), name="arm")   # held a little out; Mirror makes the other side
 c.lump((0.035, 0.015, 0), 0.026, to=(0.04, -0.04, 0), name="leg")             # legs read as legs, not blobs under a ball
 c.lump((0.042, -0.048, 0.012), 0.02, to=(0.045, -0.05, 0.045), name="foot")   # a foot pointing forward, flat on the floor
-# Keep the shoulder clear of the head: two parts that bend apart (head, arm) closer than a blend at rest are joined by a
-# web of clay that stretches when the arm rises (the reply's fused: fault names the gap and the blend to use).
+# A blend joins only what a piece touches: it never reaches across a gap to a piece it doesn't touch (the head's blend
+# stops short of the arm under it), so a raised arm comes away from the head cleanly.
 # a wave that reads on camera: the hand goes up BESIDE the head, a little in front of it (never over its middle), and
 # swings side to side by a good share of the figure's height (here ~12 cm), three swings and more, until the shot ends;
 # the other arm hangs relaxed. A 2 cm move reads as still. Turning points every 0.35 s, not 0.5 or 1 s: stills one

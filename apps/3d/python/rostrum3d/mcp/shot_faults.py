@@ -19,14 +19,13 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               says what each cloth ends on.
   flat_light:<item>           the biggest subject's lit and dark sides under light_faults.FLAT_STOPS apart in the picture
                               (light_faults.py; first picture only, not Stylized).
-  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / touches_body / fused / face_unmatched / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
+  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / touches_body / face_unmatched / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
                               document over the whole shot (rostrum3d/faults.py), in the same list.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import faults as F
 
 from rostrum3d.faults import doc_faults
@@ -263,13 +262,12 @@ def sample(info: dict, count: int = 3) -> list[int]:
 
 
 def deliver(found: list[dict], keep: dict | None, where: str, files: list) -> list[str]:
-    """faults.deliver for several files: every file that is there is held back as <name>.NOT-DONE<ext> when a fault is open."""
-    files = [Path(f) for f in files if f and Path(f).is_file()]
-    try:
-        return F.deliver(found, keep, where, files[0] if files else None)
-    except RostrumError:
-        for p in files[1:]:
-            held = p.with_name(f"{p.stem}.NOT-DONE{p.suffix}")
-            held.unlink(missing_ok=True)
-            p.replace(held)
-        raise
+    """The checks on a final file are notes, never a refusal (Sam, 2026-10-29: "what if it's deliberate? we only provide
+    tools"): the files stay under their names, `keep` marks the faults left on purpose, and the reply's NOT DONE line
+    lists the rest. Returns apply_keep's notes plus one saying which faults the delivered file still shows."""
+    notes = F.apply_keep(found, keep)
+    left = F.still_open(found)
+    if left:
+        notes.append(f"{where}: written with {len(left)} open fault(s) as notes ({', '.join(f['id'] for f in left)}); "
+                     "look at the file and decide")
+    return notes

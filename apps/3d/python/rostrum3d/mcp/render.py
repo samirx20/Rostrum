@@ -174,8 +174,8 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
     """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. Checked first (as look_frame):
-    the reply opens NOT DONE: with each fault or DONE:, and a file with open faults is kept as <name>.NOT-DONE unless
-    `keep` explains each. A job: inspect_job shows progress. Guide 'rendering'."""
+    the reply opens NOT DONE: with each fault or DONE: (notes: the file is always written; `keep` marks faults
+    left on purpose). A job: inspect_job shows progress. Guide 'rendering'."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, s = frame_of(ctx, info, args), render_settings(doc, info)
@@ -197,7 +197,7 @@ def render_still(ctx, args):
                                  _cycles(args, renderer, s), ctx.app.folder, passes, step=drawn)
         png = next((f for f in files if f.suffix == ".png"), None)       # an EXR-only still: only the geometry is judged
         found = shot_faults.check(doc.data, info, [frame], {frame: png} if png else {}, ctx.app.folder, renderer)
-        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, files)     # open faults: the files are held back as .NOT-DONE and this raises
+        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, files)     # open faults: notes, the files stay
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
                       "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=[*engine.take_notices(), *notes], faults=found)
@@ -216,8 +216,8 @@ def render_still(ctx, args):
 def render_video(ctx, args):
     """An mp4 of a shot (or `start`–`end`), plus a small <name>-share.mp4; `exr` keeps EXR frames, `output_folder` copies
     the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` / `estimate_only`
-    measure first. First, middle and last frames are checked (NOT DONE: / DONE:; refused unless `keep` explains each
-    fault). A job. Guide 'rendering'."""
+    measure first. First, middle and last frames are checked (NOT DONE: / DONE:, as notes; the mp4
+    is always written). A job. Guide 'rendering'."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
     if gate is None or not gate.wait(ESTIMATE_WAIT_S):
@@ -421,7 +421,7 @@ def video_job(ctx, args, gate: Gate | None = None):
                                peek=lambda pngs: seen.update(pngs=[x for f, p in pngs.items() for x in shot_faults.picture(p, info["id"], shot_faults.when_of(info, f))]))
         found = shot_faults.check(doc.data, info, sorted({f0, (f0 + f1) // 2, f1}), {}, ctx.app.folder)
         found = list({x["id"]: x for x in [*seen.get("pngs", []), *found]}.values())
-        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, paths[:2])      # open faults: the mp4 and its share copy are held back, this raises
+        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, paths[:2])      # open faults: notes, the mp4 stays
         learn_key = estimate_learn.key(ctx.app.folder, item, info["id"], renderer)
         if est is not None and todo > 0:         # what the guess missed, for the next guess of this shot
             estimate_learn.record(learn_key, est / estimate_learn.factor(learn_key), time.perf_counter() - t_draw)

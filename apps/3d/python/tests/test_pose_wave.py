@@ -1,4 +1,4 @@
-"""rostrum3d/pose_wave.py and the pose solve's arm clear of the head (gaps7 Hello: judges saw "no wave" when a swing keyed
+"""rostrum3d/pose_wave.py and the pose solve's optional clear= (an arm kept off the head only when asked) (gaps7 Hello: judges saw "no wave" when a swing keyed
 on the half second showed the same pose in every still one second apart, and a raised arm against the head read as
 melted into it); silent on the guide's wave."""
 from rostrum_core import Document
@@ -64,7 +64,7 @@ def _guide(wave: str):
     return tree.notes, {f["id"]: f for f in doc_faults(doc.data, shot_info(doc.data, "s"))}
 
 
-def test_the_guides_wave_reads_and_a_hand_over_the_head_is_kept_clear_of_it():
+def test_the_guides_wave_reads_and_clear_keeps_a_hand_over_the_head_off_it_only_when_asked():
     notes, found = _guide('''for i in range(8):
     c.pose(0.8 + 0.35 * i, **{"picture-right hand": {"up": 0.17, "out": -0.11, "forward": 0.06} if i % 2 == 0
                               else {"up": 0.12, "out": 0, "forward": 0.06}})
@@ -74,8 +74,8 @@ def test_the_guides_wave_reads_and_a_hand_over_the_head_is_kept_clear_of_it():
     c.pose(0.8 + 0.35 * i, **{"picture-right hand": {"up": 0.22, "out": -0.15, "forward": 0.03} if i % 2 == 0
                               else {"up": 0.17, "out": 0, "forward": 0.03}}CLEAR)
 '''
-    notes, found = _guide(over.replace("CLEAR", ""))
-    assert notes and all("clear of the head (turned" in n and "clear=0" in n for n in notes), notes
+    notes, _ = _guide(over.replace("CLEAR", ""))
+    assert not notes, notes                                 # never corrected by default: the pose is what the script says
+    notes, found = _guide(over.replace("CLEAR", ", clear=0.015"))
+    assert notes and all("clear of the head (turned" in n for n in notes), notes
     assert not [k for k in found if k.startswith("through_body:") and "head" in found[k]["what"]], found
-    touching, _ = _guide(over.replace("CLEAR", ", clear=0"))
-    assert not touching, touching
