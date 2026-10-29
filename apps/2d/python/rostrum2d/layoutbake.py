@@ -19,7 +19,7 @@ from bisect import bisect_left, bisect_right
 from rostrum_core.keys import animated, keys_of, track_value
 from rostrum_core.keys.after import after_of
 
-from . import fields as F
+from . import fields as F, textsize
 from .evaluate import placed, resolve
 from .exprbake import items_of
 from .layout import Plan, has_layout, laid_out, lay_out, prime_texts
@@ -76,15 +76,8 @@ def _solve(comp: dict, fps: float, baked: dict) -> dict[str, dict[str, list]]:
     solved = [i for i in range(len(times)) if not same[i]]
     results: dict[int, dict] = {}
     for at in range(0, len(solved), FRAMES):
-        plans = [Plan(comp, times[i], props) for i in solved[at:at + FRAMES]]
-        answers = lay_out([tree for plan in plans for tree in plan.trees])
-        pairs, i = [], 0
-        for plan in plans:
-            pairs.append((plan, answers[i:i + len(plan.trees)]))
-            i += len(plan.trees)
-        prime_texts(pairs)                                              # the frames' texts in two engine trips
-        for frame, (plan, got) in zip(solved[at:at + FRAMES], pairs):
-            results[frame] = plan.result(got, primed=True)
+        with textsize.kept_keys():                                     # a frame's text dicts are never changed
+            _solve_some(comp, times, solved[at:at + FRAMES], props, results)
     tracks: dict[str, dict[str, list]] = {}
     last: dict = {}
     for i, t in enumerate(times):
@@ -102,6 +95,19 @@ def _solve(comp: dict, fps: float, baked: dict) -> dict[str, dict[str, list]]:
             if len(keys) == n + 1 and all(k["v"] == keys[0]["v"] for k in keys):
                 fields[prop] = keys[:1]
     return tracks
+
+
+def _solve_some(comp: dict, times: list[float], frames: list[int], props, results: dict) -> None:
+    """Solve these frames (numbers into `times`) together, into `results` {frame: Plan.result}."""
+    plans = [Plan(comp, times[i], props) for i in frames]
+    answers = lay_out([tree for plan in plans for tree in plan.trees])
+    pairs, i = [], 0
+    for plan in plans:
+        pairs.append((plan, answers[i:i + len(plan.trees)]))
+        i += len(plan.trees)
+    prime_texts(pairs)                                              # the frames' texts in two engine trips
+    for frame, (plan, got) in zip(frames, pairs):
+        results[frame] = plan.result(got, primed=True)
 
 
 def _same_as_before(comp: dict, baked: dict, times: list[float]) -> list[bool]:
