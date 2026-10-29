@@ -5,7 +5,6 @@ looks and export draw is laid in once, in the scene (rostrum2d/layerbake.py).
 """
 from __future__ import annotations
 
-from rostrum_core.keys.layers import stack_of
 from rostrum_gui.anim_layers import AnimLayers
 
 
@@ -14,14 +13,8 @@ def make(bridge) -> AnimLayers:
     at = model.route
     bridge.doc.routes[bridge.doc.routes.index(at)] = lambda calls: at(_own_times(bridge, model, calls))
     model.picked.connect(bridge.outlineChanged)
-    bridge.timeChanged.connect(lambda: model.changed.emit() if _faded(bridge) else None)
+    bridge.timeChanged.connect(model.changed)     # a faded layer's weight shown follows the playhead (rows update in place)
     return model
-
-
-def _faded(bridge) -> bool:
-    """Some layer's weight has keys: the weights shown change with the playhead. Only the playhead, never a new picture
-    (2D draws one per drag step: the popover's rows made again then would drop a weight drag under the pointer)."""
-    return any(k.get("prop") == "weight" for x in stack_of(bridge.doc.data) for k in x.get("keys", []))
 
 
 def _own_times(bridge, model, calls):
