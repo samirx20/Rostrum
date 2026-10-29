@@ -36,7 +36,7 @@ def _ids(got):
 def test_a_silent_tail_is_dead_air_and_a_ring_into_the_end_passes(tmp_path):
     silent = _wav(tmp_path / "silent.wav", lambda s: np.where(s < 4.8, 10 ** (-15 / 20), 0.0))   # gone 1.2 s early
     got = end_check.fault(_doc(), None, silent)
-    assert _ids(got) == ["bad_ending"] and "dead air" in got[0]["what"] and 'ending("ring"' in got[0]["fix"]
+    assert _ids(got) == ["bad_ending"] and "dead air" in got[0]["what"] and 'ending("ring"' in got[0]["what"]
     ring = _wav(tmp_path / "ring.wav", lambda s: 10 ** ((-20 - 3 * s) / 20), seconds=13.0)   # -20 dB dying to -35 at the end
     assert end_check.fault(_doc(), None, ring) == []
     assert end_check.fault(_doc(), None, silent, end_s=12.4) == []          # the silence is past the asked end: a ring may run on
@@ -45,7 +45,7 @@ def test_a_silent_tail_is_dead_air_and_a_ring_into_the_end_passes(tmp_path):
 def test_a_piece_that_sits_near_silent_long_before_its_end_dies_early(tmp_path):
     early = _wav(tmp_path / "early.wav", lambda s: np.full_like(s, 10 ** (-36 / 20)))   # 6 s at -36 dB under the body
     got = end_check.fault(_doc(), None, early)
-    assert _ids(got) == ["bad_ending"] and "dies early" in got[0]["what"] and "velocity" not in got[0]["fix"]
+    assert _ids(got) == ["bad_ending"] and "dies early" in got[0]["what"] 
 
 
 def test_a_loop_must_not_drop_at_its_end(tmp_path):
@@ -54,7 +54,7 @@ def test_a_loop_must_not_drop_at_its_end(tmp_path):
     assert end_check.fault(loop, None, full) == []                           # still playing: what a loop wants
     dropped = _wav(tmp_path / "dropped.wav", lambda s: np.where(s < 5.3, 1.0, 0.0))
     got = end_check.fault(loop, None, dropped)
-    assert _ids(got) == ["bad_ending"] and "loop drops" in got[0]["what"] and "into bar 1" in got[0]["fix"]
+    assert _ids(got) == ["bad_ending"] and "loop drops" in got[0]["what"] 
 
 
 def test_a_file_that_stops_while_playing_is_cut(tmp_path):
@@ -98,3 +98,14 @@ def test_a_quiet_ring_passes_the_quiet_ending_arc_and_the_ending_check(tmp_path)
     ring = _wav(tmp_path / "quiet.wav", lambda s: 10 ** ((-22 - 3 * s) / 20), seconds=13.0)
     doc = _doc("It settles and decays to a quiet ending.")
     assert arc.fault(doc, ring) == [] and end_check.fault(doc, None, ring) == []
+
+
+def test_the_fix_is_the_one_line_to_paste_filled_in_for_this_song(tmp_path):
+    """sound-vault: 7 of 10 agents read "write ending(...)" as advice and hand-wrote endings; the fix is the line itself."""
+    silent = _wav(tmp_path / "silent.wav", lambda s: np.where(s < 4.8, 10 ** (-15 / 20), 0.0))
+    what = end_check.fault(_doc(), None, silent, end_s=13.5)[0]["what"]
+    assert what.endswith("the tool for a landed ending: ending(\"ring\", at=13.5)")
+    assert end_check.call(_doc("then an unresolved low drone to the end"), 45.0) == 'ending("ring", at=45, chord="V")'
+    assert end_check.call(_doc("A bed that should fade out at the end"), 30.0) == 'ending("fade", at=30)'
+    marked = SimpleNamespace(data={"markers": [{"id": "m1", "name": "end", "at": 12.0}]}, folder=None)
+    assert end_check.call(marked, 13.5) == 'ending("ring", at="#end")'

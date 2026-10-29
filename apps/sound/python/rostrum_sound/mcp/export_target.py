@@ -1,4 +1,4 @@
-"""A render whose master names a loudness target lands on it (3E audit: master(loudness=-14) rendered -16.9 because the
+"""Asked with render_mix `limit_to_target: true` (Sam, 2026-10-29: never by itself): a render whose master names a loudness target lands on it (3E audit: master(loudness=-14) rendered -16.9 because the
 gentle limiter stops at `maxLimit`, and reaching it took an edit_loudness job and another render).
 
 Before the file is written the song is measured as it is now and, when it would land more than fit_loudness.REACH_OK
@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from .. import fit_loudness as fit
 from ..compile import compile as compile_doc
 
-AUTO_MOST_DB = 6.0     # the most a render raises the limiter by itself: past it a hit or a stop loses its attack (3E bench,
+AUTO_MOST_DB = 6.0     # the most limit_to_target raises the limiter: past it a hit or a stop loses its attack (3E bench,
                        # Vault r2: pushed to 12 dB, both judges heard the 31.5 s hit as soft); more is the song's own maxLimit
 
 
@@ -43,19 +43,6 @@ def words(got: dict) -> str:
     if got["reaches"]:
         return f" Pushed to the target: {got['words'].rstrip('.')}, {got['limit_db']:.1f} dB of limiting.{keep}"
     return f" {got['words']}{keep}"
-
-
-def fix_when_short(found: list[dict] | None, got: dict) -> None:
-    """The loudness fault after a push that stopped at AUTO_MOST_DB short of the target: the fixes that need less limiting."""
-    if not got or got.get("reaches"):
-        return
-    for f in found or []:
-        if f["id"] == "loudness":
-            f["fix"] = (f"reaching it needs more than the {got['max_limit_db']:g} dB of limiting a render adds by itself (more "
-                        f"flattens the hits): tame the peaks "
-                        f"(edit_loudness {{\"apply\": \"tame_peaks\"}}), turn the most peaked track down (edit_loudness "
-                        f"{{\"apply\": \"trim_track\"}}), lower the master's loudness target to {got['lufs']:.0f}, or, for a "
-                        f"dense sound on purpose, set master(maxLimit=...) yourself")
 
 
 def master_as_rendered(master: dict, got: dict) -> dict:
