@@ -67,7 +67,8 @@ fn key(mix: &Path) -> Result<(u64, f64), String> {
     Ok((m.len(), t.as_secs_f64()))
 }
 
-/// Every strip's windows, in the file's time: the tracks and buses (measured in song time) from `from` frames on.
+/// Every strip's windows, in the file's time: the tracks as measured (over the file's frames, placed.rs), the buses
+/// (measured in song time) from `from` frames on.
 pub struct Levels {
     pub hop: f64,
     pub strips: Vec<(String, Vec<[f32; 2]>)>,
@@ -77,7 +78,8 @@ impl Levels {
     pub fn of(mix: &super::stats::Mix, sr: f64, from: usize) -> Levels {
         let skip = (from as f64 * PER_SECOND / sr).round() as usize;
         let cut = |w: &[[f32; 2]]| w.get(skip..).unwrap_or(&[]).to_vec();
-        let mut strips: Vec<(String, Vec<[f32; 2]>)> = mix.tracks.iter().chain(&mix.buses).map(|t| (t.name.clone(), cut(&t.levels))).collect();
+        let tracks = mix.tracks.iter().map(|t| (t.name.clone(), t.levels.clone()));
+        let mut strips: Vec<(String, Vec<[f32; 2]>)> = tracks.chain(mix.buses.iter().map(|t| (t.name.clone(), cut(&t.levels)))).collect();
         strips.push(("master".into(), mix.levels.clone()));
         Levels { hop: 1.0 / PER_SECOND, strips }
     }
