@@ -57,6 +57,11 @@ Roughness, Metallic, Glow colour, Normal, Style.
 - **Pattern** lays checks, stripes or a plain weave on the surface's unfolded square (its UVs), the same in Quick and
   Final; on a cloth it moves with the cloth as it folds.
 - **Brightness in Quick:** a material with blocks is as bright in Quick as in Final under bulbs, spots and panels.
+- **Show a setting on the material.** Built a pattern and want to change just one number later (a Noise's Scale, a
+  Pattern's Repeats) without opening the blocks? Pick the block, click **Show on material ▾** under its settings and
+  tick the setting. It appears with the material's own settings, under the item, as "Noise · Scale"; drag or type it
+  there. Tick it again in the same menu to take it away. Surface's and the stylized blocks' settings are the
+  material's own rows already, so those blocks have no such menu.
 
 ## For agents: the same, as operations
 
@@ -70,6 +75,8 @@ Roughness, Metallic, Glow colour, Normal, Style.
     `metallic`, `emissionColor`, `normal`, `style`. A new wire into an input replaces its old one. Refused: a wire between
     kinds that don't join (a normal or style into a colour), a loop, a name that isn't there (the reply lists the right ones).
   - `graph.set` `block`, then `values` and / or `x`, `y`. `block: "surface"` changes the material's own fields.
+    `show: ["scale"]` / `hide: […]` put a block's settings on the material's own panel as plain rows (look_material
+    lists them as "shown on the material").
   - `graph.remove` `blocks: ["noise_1"]` (their wires go too) and / or `wires: ["surface.roughness"]` (the input whose wire goes).
   - What each block offers: Image (`file`, `colourData` colour / data → `colour`, `value`), Noise (`scale`, `detail`,
     `roughness`, `distortion` → `value`, `colour`), Pattern (`shape` checks / stripes / weave, `a`, `b` colours,

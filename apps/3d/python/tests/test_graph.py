@@ -182,3 +182,17 @@ def test_a_stylized_setting_without_its_block_shows_one():
     assert graph.style_chain(g) == ["halftone_1", "lines_1"] and graph.toggles(g) == {"halftone": True, "lines": True}
     _op(d, "graph.remove", blocks=["lines_1"])                    # taking it out switches Lines off, for good
     assert d.item("ball")["lines"] is False and graph.style_chain(graph.graph_of(d.item("ball"))) == ["halftone_1"]
+
+
+def test_shown_settings_are_one_step_each_and_refuse_the_material_s_own():
+    """PR5: a block's setting shown on the material (graph.set show / hide), each one undo step; Surface's can't be."""
+    d = _doc()
+    _op(d, "graph.add", type="noise")
+    _op(d, "graph.set", block="noise_1", show=["scale", "detail"])
+    assert [n for _, _, n in graph.shown(d.item("ball"))] == ["scale", "detail"]
+    _op(d, "graph.set", block="noise_1", hide=["scale", "detail"])
+    assert "shown" not in graph.graph_of(d.item("ball"))["blocks"][0]          # none left: the key goes too
+    d.undo(SAM)
+    assert [n for _, _, n in graph.shown(d.item("ball"))] == ["scale", "detail"]
+    with pytest.raises(RostrumError):
+        _op(d, "graph.set", block="surface", show=["roughness"])

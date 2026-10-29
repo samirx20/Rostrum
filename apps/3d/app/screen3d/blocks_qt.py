@@ -149,6 +149,25 @@ class Blocks3D(QObject):
 
     rows = Property(QObject, lambda self: self.model, constant=True)
 
+    @Property("QVariantList", notify=changed)
+    def showMenu(self):
+        """The picked block's settings that can be shown on the material (PR5), each ✓ while it is: [] for Surface
+        and stylized blocks (theirs are the material's own rows already), so the button is absent there."""
+        mat, kind = self._material(), self._kind(self._picked) if self._picked else None
+        if mat is None or kind is None:
+            return []
+        shown = set((self._block(self._picked) or {}).get("shown") or ())
+        return [{"value": n, "label": kind.input(n).param.label, "checked": n in shown} for n in G.showable(kind)]
+
+    @Slot(str)
+    def toggleShown(self, name):
+        """Show the setting on the material, or take it away (graph.set show / hide, one undo step)."""
+        if not self._mat or not self._picked:
+            return
+        on = name in set((self._block(self._picked) or {}).get("shown") or ())
+        self._run([self._call("graph.set", {"block": self._picked, ("hide" if on else "show"): [name]})],
+                  "Hide from material" if on else "Show on material")
+
     # ---- opening and closing ------------------------------------------------------------------------------------
     @Slot(str)
     def edit(self, material_id):
