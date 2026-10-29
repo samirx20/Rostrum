@@ -53,17 +53,18 @@ frame-by-frame drawing never shows two drawings at once; only the layer's moveme
 Exports go through the same `frame` request, so preview ≡ export.
 
 **Steps follow the motion** (engine `motion/steps.rs`, as After Effects' adaptive sample limit). `shutterSamples` is the
-fewest. Before a blurred frame is staged, the comp is evaluated (no stage, no paint) at the edges of k equal slices of
-the open shutter (k = `shutterSamples`, 2..4), each as a sub-frame of the frame (so a cut is never a move); every
+fewest. Before a blurred frame is staged, the comp is evaluated (no stage, no paint) at the edges of 4 equal slices of
+the open shutter (`streak.rs` `probe_times`; the middle one is the frame's own time, and the streaks below read the same
+5 evaluations), each as a sub-frame of the frame (so a cut is never a move); every
 layer's box corners (a text's estimated as for smears) are carried to the output through its own x, y, rotation and
 scale, its groups' and the frame's (`frame/mod.rs` `map`: pan, zoom, roll, depth). The fastest corner's move across one
-slice, × k, is that layer's px per shutter at its fastest; the frame takes
+slice, × 4, is that layer's px per shutter at its fastest; the frame takes
 
     n = clamp(ceil(px per shutter / GAP_PX), shutterSamples, MOST)      GAP_PX = 1, MOST = 128
 
 so two neighbouring copies are at most about 1 px apart: a smooth streak, not a ladder of copies. Nothing moving (or
-moving under 1 px per step) keeps `shutterSamples`, at no extra cost but the probe (k + 1 evaluations, well under a
-millisecond each on a typical scene). Not measured: what moves inside a layer (a path's shape, letters playing their
+moving under 1 px per step) keeps `shutterSamples`, at no extra cost but the probe (4 evaluations beside the frame's
+own, a few ms each on a busy scene). Not measured: what moves inside a layer (a path's shape, letters playing their
 keys, a rig's warp, tilt's perspective); raise `shutterSamples` for those.
 
 **A layer that barely moves is drawn once** (engine `motion/hold.rs`). The steps are the frame's, set by its fastest
@@ -79,25 +80,30 @@ a fast title): 39 s → 31.5 s; worst frame 29 levels on one title edge, average
 
 **One streak per layer** (engine `motion/streak.rs`, `blurred.rs`; 2026-10-29). Each sub-frame's comp is evaluated
 (no stage, no layout). A top-level layer that, in every sub-frame, is the same layer but for where it is placed (its x,
-y, turn and scale, and the frame's move, zoom and roll on it at its depth; any other field within 0.25; no matte, no
-smear, no turn or scale change under a tilt) is the same picture moved: the page is laid out once, at the frame's own
+y, turn and scale, and the frame's move, zoom and roll on it at its depth; any other field within 0.25; its matte, if
+it has one, the same picture moved alike, within 0.25 px; no smear, no turn or scale change under a tilt) is the same picture moved: the page is laid out once, at the frame's own
 time, that layer is painted once (with its depth-of-field blur) and drawn as its **streak**: the average of the picture
 under each sub-frame's move, one GPU pass of up to 128 reads a pixel (anyrender `draw_cached_streak`), one read per px
 of its longest path. Turning and scaling streak per pixel as they should (each read goes through the whole move, not a
-slide). Layers in a row that move alike (the same depth under a pan) are one picture and one streak. What a layer
+slide). Layers in a row that move alike (the same depth under a pan) are one picture and one streak. Streaks that don't read
+each other's pictures share one picture, painted together (`blurred.rs` `shares`): where a streak reads is its reach
+inside the frame, rounded out to whole device px and pulled back through every one of its moves (each sub-frame's
+picture px it averages), held inside the frame; two runs share only when neither reads where the other's picture is. What a layer
 streaks over is what lies under it, so this is each layer's own motion blur laid over the others, as After Effects
 blurs each layer: where two layers that move differently overlap, it differs a little from averaging whole sub-frames.
 A layer that only moves but blends (a blend mode, glow, frosted glass) is painted as laid out, moved to each
 sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. A moving layer whose
 picture runs past the frame's edge (or whose size isn't known before layout: a text, a path) is built the same way,
 alone, so what lies past the edge streaks in; one that covers the whole frame (a backdrop) takes its edge px for the few
-px a move pulls in; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 sub-frames spread over the shutter (`streak.rs` `PROBES`) and the
-moves in between read off them; a fade or a colour change within one shutter opening is taken at the frame's time (its
+px a move pulls in; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 times spread over
+the open shutter (`streak.rs` `probe_times`, shared with the step count) and the moves at each sub-frame read off them,
+straight between the two probes around it; a fade or a colour change within one shutter opening is taken at the frame's time (its
 average). A layer still staged per sub-frame gets as many sub-frames as its own corners (and its matte's) travel in px,
-at least `shutterSamples`, not the frame's count.
+at least `shutterSamples`, not the frame's count; only its own pieces are written at each sub-frame (`stage.rs`
+`parts_of`). A frame's `timing.evalSplit` says where its evaluation ms went (probes, moves, staged sub-frames, holds).
 
-A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer with a
-matte) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
+A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer whose
+matte changes or moves differently) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
 sub-frame, alone, over the picture of the layers under it, and averaged; the layers above it are drawn once over that.
 Only such layers cost a layout per step. When the sub-frames draw different layers (one starts or ends inside the
 shutter), every sub-frame is drawn whole, as before. At most `KEPT_BYTES` (serve.rs, 768 MB) of streak pictures are kept
