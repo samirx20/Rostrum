@@ -180,7 +180,7 @@ def check(item: dict, problems: list, items: set, by_id: dict | None = None) -> 
             problems.append(f"{where}: can't be scattered over itself or over what it copies")
         elif surface not in items:
             problems.append(f'{where}.surface: no item "{surface}" (there are: {", ".join(sorted(items)) or "none"})')
-    if item.get("layout") == "path":
+    if item.get("layout") == "path" and item.get("path"):       # none yet: allowed (the screen picks Layout, then Path); nothing is drawn
         why = path_problem(item, by_id if by_id is not None else {i: {"type": "mesh", "shape": "text"} for i in items})
         if why:
             problems.append(f"{where}: {why}")

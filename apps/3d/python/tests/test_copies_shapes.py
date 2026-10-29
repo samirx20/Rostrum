@@ -63,6 +63,9 @@ def test_a_path_that_is_no_outline_or_inside_the_copies_is_refused(doc):
         doc.apply({"op": "copies.make", "target": ["ball"], "args": {"layout": "path", "path": "ground"}}, SAM)
     with pytest.raises(Exception, match="can't run along itself or along what it copies"):
         doc.apply({"op": "copies.set", "target": ["buds"], "args": {"path": "bud"}}, SAM)
-    with pytest.raises(Exception, match="path names no item"):
-        doc.apply({"op": "copies.set", "target": ["buds"], "args": {"path": ""}}, SAM)
     assert node(doc)["props"]["path"] == "word"                              # refused: nothing changed
+    with pytest.raises(Exception, match="path names no item"):              # an agent's make names its path
+        doc.apply({"op": "copies.make", "target": ["ball"], "args": {"layout": "path"}}, SAM)
+    doc.apply({"op": "copies.set", "target": ["buds"], "args": {"path": ""}}, SAM)    # the screen: Layout first, then Path
+    props = node(doc)["props"]
+    assert props["visible"] is False and "pathPoints" not in props                    # nothing drawn until a path is picked

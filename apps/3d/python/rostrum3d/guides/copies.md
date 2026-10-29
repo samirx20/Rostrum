@@ -108,7 +108,7 @@ brightens petals as it passes. Key the effector's `amount`, `radius` or `colour`
 Techniques with the shapes:
 - **A sweep that builds or clears a field of copies:** `field="plane"` with `kind="hide"` (or `scale`, amount −1) and a
   handle you key across the copies: the wall passes and everything behind it is gone (or, turn the handle round, everything
-  behind it appears). `kind="move"` with `axis="y"` instead lifts them as the wall passes; a `radius` gives the edge a soft ramp.
+  behind it appears). `kind="move"` with `axis="y"` instead lifts them as the wall passes; a `radius` gives the edge a soft ramp. A hide cuts where the change is half: with a plane that is half the radius in front of the wall (radius 0 cuts right at it), with a sphere about half the radius from the centre.
 - **Uneven, natural variety:** `field="noise"` with `scale`, `turn` or `colour`: patches of bigger, tilted or tinted copies
   instead of a round blob. Key the handle slowly and the patches drift through the copies.
 - **Turn a plane** by turning its `near` item (its up is the wall's facing): rx 90 makes a wall that faces +Z, for a sweep

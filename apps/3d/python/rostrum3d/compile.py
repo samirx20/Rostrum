@@ -149,6 +149,9 @@ def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
     if node["props"]["layout"] != "pour":                       # a pour's own, likewise
         for k in copies_fields.POUR_KEYS:
             node["props"].pop(k, None)
+    if node["props"]["layout"] == "path" and not node["props"]["path"]:   # no path picked yet: nothing to draw
+        node["props"].update(layout="line", visible=False)
+        node.get("anim", {}).pop("visible", None)
     if node["props"]["layout"] == "path":                       # the path's points, once (copies_path.py)
         node["props"]["pathPoints"], node["props"]["pathClosed"] = copies_path.points(item, fr)
     else:

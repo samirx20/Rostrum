@@ -157,7 +157,7 @@ def effector_add(ctx, targets, args):
             continue
         kind = given.get("kind", "scale")
         item = new_item(ctx, "effector", {"id": args.get("id") if len(targets) == 1 else None,
-                                          "name": args.get("name") or f"{kind.capitalize()} near {near or t}"},
+                                          "name": args.get("name")},     # none given: named by what it does now (outline)
                         {**({"amount": CF.STARTING_AMOUNT[kind]} if kind in CF.STARTING_AMOUNT else {}), **given})
         ctx.insert(t, "children", item)
         out.append(item)
