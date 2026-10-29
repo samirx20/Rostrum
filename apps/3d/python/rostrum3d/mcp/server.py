@@ -33,7 +33,7 @@ from rostrum3d.kind import KIND
 from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
 from rostrum3d.start_scene import SOURCE as START
-from . import project_tool, script_look, session_clock, tool_groups, tool_text
+from . import project_tool, script_look, session_clock, tool_groups, tool_text, warm
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: meshes, sculpted clay, imports, lights and cameras, animated by keys, rendered by Storm (quick) "
@@ -100,6 +100,7 @@ def main(argv=None):
     start = project_tool.start_choice(a.project, a.item)
     app = make_app(start.folder, start.items)
     agent_start.settle(app, start)                  # on disk, remembered, and said in the instructions and first reply
+    warm.start(app)                                 # the engine and its first frame, while the agent reads the guides
     anyio.run(_serve, app)
 
 
