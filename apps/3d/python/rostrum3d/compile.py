@@ -212,7 +212,7 @@ def _node(item: dict, fr: _Frames) -> dict:
     if anim:
         node["anim"] = anim
     moves = lambda i: follow.moves(fr, item["id"], fr.frames[i])    # one pose, layers and all, shared with follow.ride
-    if type_ in ("mesh", "clay") and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]), fr.stack, moves)):
+    if type_ in ("mesh", "clay") and v0[SKINNED] and not getattr(fr, "no_skin", False) and (bent := skin.skin(item, skin.frame_times(fr, item["id"]), fr.stack, moves)):
         node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "clay":
         clay_scene.finish(node, item, fr.folder, fr.data)      # its steps, keyed, and its cache (clay_scene.py)

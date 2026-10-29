@@ -20,7 +20,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import keys_of, layers, track_value
 
-from . import aim, build, compile as C, pose_ik, pose_joints as PJ, resolve
+from . import aim, build, clay_detail, compile as C, compile_clays, pose_ik, pose_joints as PJ, resolve
 from .kind import REGISTRY as R
 from .ops_poses import LAYER, put_shown
 
@@ -36,8 +36,11 @@ def use_engine(engine, folder=None):
         shots = doc.get("shots") or []
         if not shots:
             raise ValueError("the document has no shot yet, so the engine can't build the scene (shot.add first)")
-        engine.ensure_scene(_with_held_skins(C.describe(doc, shots[0]["id"], folder), getattr(engine, "_held", None)))
-        return engine.clay_grid(id_, cells)
+        clay = _clays(doc.get("items", [])).get(id_)
+        span = clay_detail.span(clay) if clay else 0.0
+        scene = compile_clays.describe_clays(doc, shots[0]["id"], folder) or C.describe(doc, shots[0]["id"], folder)
+        engine.ensure_scene(_grid_scene(scene, getattr(engine, "_held", None), id_, grid_grain(clay, span / cells)))
+        return engine.clay_grid(id_, cells, span)
     _GRID = grid if engine is not None else None
 
 
@@ -64,6 +67,35 @@ def _with_held_skins(scene: dict, held: dict | None) -> dict:
                 and old["props"].get("detail") == n["props"].get("detail")):
             n["skin"] = old["skin"]
     return scene
+
+
+# 3d-clay-once: the grid's cells come from the pieces and sit on a lattice fixed in clay space (clay_grid `span`), so
+# the clay can be built coarser for it: a grain of 1 / GRID_GRAIN of a cell, or of its thinnest part
+GRID_GRAIN = 2
+
+
+def grid_grain(clay: dict | None, cell: float) -> float:
+    """The grain a clay is built at for its grid (0: its own): GRID_GRAIN grains a cell or across its thinnest part."""
+    if not clay or cell <= 0:
+        return 0.0
+    return round(min(cell, PJ.thinnest(clay) or math.inf) / GRID_GRAIN, 4)
+
+
+def _grid_scene(scene: dict, held: dict | None, id_: str, grain: float) -> dict:
+    """The scene sent for clay `id_`'s grid (`grain`: grid_grain; 0 its own). A shape the engine already holds (same
+    steps) goes at the detail it holds it at, with its bones (_with_held_skins): nothing is built again. A changed
+    shape goes at that coarse grain when it is coarser than its own, without its cache file (that one is for its own
+    detail): a script's look builds it once at full detail afterwards, where the finder's own build at full detail
+    cost as much again (Hello: 0.8 then 1.2 mm, 3.5 + 1.4 s)."""
+    n = _clays(scene.get("items", [])).get(id_)
+    old = _clays(held.get("items", [])).get(id_) if held else None
+    if n is not None and old is not None and old.get("steps") == n.get("steps"):
+        n["props"] = {**n["props"], "detail": old["props"].get("detail")}
+        n["cache"] = old.get("cache", n.get("cache", ""))
+    elif n is not None and grain > float(n["props"].get("detail", 0.0)):
+        n["props"] = {**n["props"], "detail": grain}
+        n["cache"] = ""
+    return _with_held_skins(scene, held)
 
 
 def use_grid(fn):

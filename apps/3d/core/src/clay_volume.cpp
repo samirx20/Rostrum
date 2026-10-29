@@ -418,7 +418,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   for (size_t j = 0; j < n && !piece; ++j) needStart |= !steps[j].accumulate;
 
   const double tpC = prof_on() ? ms_since(t0) : 0;
-  double tpE = 0;
+  double tpE = 0, tpD = 0, tpP = 0;  // (a piece) after widening, after the piece and its seeds
   // 3d-v4: where the stroke began, taken here on the calling thread. C reads it inside a parallel loop, and read there
   // tl_start was the worker thread's own (null): a replay's chunks done by other threads used live_ (off: none) and
   // took the current values as the start, so a Build up off stroke replayed differently from live, and differently
@@ -444,13 +444,15 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     }
   });
 
+  const double tpF = prof_on() ? ms_since(t0) : 0;
   if (piece) {
     readLock.unlock();
     // D. widen the distances to what the blend reads (the stored band is trusted)
     if (wpre > 0) {
       par(extList, [&](int ci) { b.each(ci, [&](int, int, int, size_t i) { F[i] = std::fabs(V[i]) < kBand - 0.5f; }); });
-      relevel(b, V, NX, F, wpre, extList, extList, preList);  // swaps V / NX: V stays the current values
+      relevel(b, V, NX, F, wpre, extList, extList, reached(b, F, wpre, extList, preList));  // swaps V / NX
     }
+    tpD = prof_on() ? ms_since(t0) : 0;
     // E. the piece, then back to the stored band: unchanged band voxels stay; changed ones next to the surface are
     //    re-scaled to a distance by their own gradient (value / |gradient|, central differences: smooth, no
     //    voxel-scale ripples); the rest is re-levelled
@@ -503,7 +505,9 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
         F[i] = f;
       });
     });
-    relevel(b, V, NX, F, kBand, extList, extList, workList);
+    tpP = prof_on() ? ms_since(t0) : 0;
+    relevel(b, V, NX, F, kBand, extList, extList, reached(b, F, kBand, extList, workList));
+    tpE = prof_on() ? ms_since(t0) : 0;
   } else {
     // E0. the mask, where the unit paints or reads one (a clay with no mask and no Mask dab: none, as in CL1)
     bool painting = false;
@@ -667,6 +671,12 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   if (prof_on() && !piece)
     std::fprintf(stderr, "clayprof box=%.2f setup=%.2f fill=%.2f dabs=%.2f write=%.2f nch=%d work=%zu ext=%zu written=%zu\n",
                  tpA, tpC - tpA, tpE - tpC, tpG - tpE, ms_since(t0) - tpG, nch, workList.size(), extList.size(), writeList.size());
+  if (prof_on() && piece)
+    std::fprintf(stderr,
+                 "clayprof piece box=%.2f setup=%.2f fill=%.2f widen=%.2f shape=%.2f relevel=%.2f write=%.2f all=%.2f "
+                 "nch=%d work=%zu pre=%zu ext=%zu k=%.1f\n",
+                 tpA, tpC - tpA, tpF - tpC, tpD - tpF, tpP - tpD, tpE - tpP, ms_since(t0) - tpG, ms_since(t0), nch,
+                 workList.size(), preList.size(), extList.size(), k);
   t.ms = ms_since(t0);
   return t;
 }

@@ -34,20 +34,33 @@ def bones_of(mesh: dict) -> list[tuple[dict, int]]:
 
 
 def _plan(chain: list[tuple[dict, int]]) -> list:
-    """Each bone with its parent's index, its written head and turn, and its Turn keys (read and sorted once)."""
-    return [(bone, parent, {k: float(bone.get(k, 0.0)) for k in (*HEAD, *TURN)}, [(k, keys_of(bone, k)) for k in TURN])
-            for bone, parent in chain]
+    """Each bone with its parent's index, its written head and turn, its Turn keys (read and sorted once), and its
+    own transform when nothing turns it (no Turn key on it or on a layer): the same at every time, made once."""
+    out = []
+    for bone, parent in chain:
+        written = {k: float(bone.get(k, 0.0)) for k in (*HEAD, *TURN)}
+        turn = [(k, keys_of(bone, k)) for k in TURN]
+        still = not any(keys for _, keys in turn) and not (layers.layered(bone) & set(TURN))
+        out.append((bone, parent, written, turn, _own(written) if still else None))
+    return out
+
+
+def _own(v: dict):
+    return aim.local({**v, "sx": 1.0, "sy": 1.0, "sz": 1.0})
 
 
 def _at(plan: list, t: float | None, stack: list[dict]) -> list:
     out = []
-    for bone, parent, written, turn in plan:
-        v = dict(written)
-        for k, keys in turn if t is not None else ():
-            if keys:
-                v[k] = float(track_value(keys, t))
-            v[k] = float(layers.value(bone, k, t, stack, v[k]))      # its animation layers (none: unchanged)
-        own = aim.local({**v, "sx": 1.0, "sy": 1.0, "sz": 1.0})
+    for bone, parent, written, turn, still in plan:
+        if still is not None:
+            own = still
+        else:
+            v = dict(written)
+            for k, keys in turn if t is not None else ():
+                if keys:
+                    v[k] = float(track_value(keys, t))
+                v[k] = float(layers.value(bone, k, t, stack, v[k]))      # its animation layers (none: unchanged)
+            own = _own(v)
         out.append(aim.compose(out[parent], own) if parent >= 0 else own)
     return out
 

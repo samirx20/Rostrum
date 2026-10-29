@@ -187,8 +187,9 @@ def _spread(f: np.ndarray, free: np.ndarray, count: np.ndarray, steps: int) -> n
     lo, hi = np.maximum(where.min(0) - 1, 0), np.minimum(where.max(0) + 2, f.shape)
     box = tuple(slice(a, b) for a, b in zip(lo, hi))
     g, fr, ct = f[box], free[box], count[box]
+    p = np.zeros(tuple(n + 2 for n in g.shape), g.dtype)         # g with a border of zeros (np.pad's), made once
     for _ in range(steps):
-        p = np.pad(g, 1)
+        p[1:-1, 1:-1, 1:-1] = g
         s = g.astype(np.float64)
         for a in range(3):
             for d in (-1, 1):
@@ -217,30 +218,40 @@ def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.
     count = 1 + sum(pad_in[tuple(slice(1 + d * (a == k), pad_in.shape[k] - 1 + d * (a == k)) for k in range(3))]
                     for a in range(3) for d in (-1, 1)).astype(np.float64)
     out = np.full((len(parts["pieces"]) - 1, *cells.shape), np.nan, dtype=np.float32)
+    out[:] = np.where(valued > 0, 0.0, np.nan)                    # what a limb leaves far from it: 0 inside and round
     reaches = [0.0] * len(parts["pieces"])
+    centre = np.asarray(parts["origin"]) + (np.indices(cells.shape).transpose(1, 2, 3, 0) + 0.5) * parts["cell"]
     for n in range(1, len(parts["pieces"])):
         f = ((cells == n) & inside).astype(np.float32)
         pc = parts["pieces"][n]
         if 0 <= pc["first"] < len(rest) and pc["blend"] > 0:
             sigma = max(SHARE_WIDTH * pc["blend"] / parts["cell"], 0.5)
-            centre = np.asarray(parts["origin"]) + (np.indices(cells.shape).transpose(1, 2, 3, 0) + 0.5) * parts["cell"]
             own = (cells == n) | (inside & root_cells(parts, cells, n, rest, centre))
             f = own.astype(np.float32)
             reaches[n] = root_reach(parts, cells, n, rest[pc["first"]][:3])
             free = inside & ~own & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
-            free &= bone_dist(rest[pc["first"]], centre) <= TUBE * pc["blend"] / 1.5   # 3d-gaps2: never into the head beside it
+            free[free] = bone_dist(rest[pc["first"]], centre[free]) <= TUBE * pc["blend"] / 1.5   # 3d-gaps2: never into the head beside it
             f = _spread(f, free, count, min(SHARE_MOST, int(np.floor(3.5 * sigma * sigma + 0.5))))
-        g = np.where(inside, f, np.nan).astype(np.float32)
+        # 3d-clay-once: the rings worked only round the limb's share (KEEP + 2 cells more each side); farther out every
+        # cell is 0 inside or round the clay, as the whole grid gives (a ring cell there takes the mean of zeros)
+        where = np.argwhere(f != 0)
+        if not len(where):
+            continue
+        lo, hi = np.maximum(where.min(0) - KEEP - 2, 0), np.minimum(where.max(0) + KEEP + 3, cells.shape)
+        box = tuple(slice(a, b) for a, b in zip(lo, hi))
+        shape, vb, ins = tuple(hi - lo), valued[box], inside[box]
+        g = np.where(ins, f[box], np.nan).astype(np.float32)
         for r, ring in enumerate(rings):                          # the mean of the neighbours valued before the ring
-            before = np.pad((valued > 0) & (valued < 2 + r), 1)
-            vals = np.pad(np.where((valued > 0) & (valued < 2 + r), np.nan_to_num(g), 0), 1)
-            s, c = np.zeros(cells.shape), np.zeros(cells.shape)
+            ring = ring[box]
+            before = np.pad((vb > 0) & (vb < 2 + r), 1)
+            vals = np.pad(np.where((vb > 0) & (vb < 2 + r), np.nan_to_num(g), 0), 1)
+            s, c = np.zeros(shape), np.zeros(shape)
             for o in [(0, 0, 0)] + PJ._OFFSETS:
-                sl = tuple(slice(1 + o[k], cells.shape[k] + 1 + o[k]) for k in range(3))
+                sl = tuple(slice(1 + o[k], shape[k] + 1 + o[k]) for k in range(3))
                 s += vals[sl]
                 c += before[sl]
             g[ring] = np.where(c[ring] > 0, s[ring] / np.maximum(c[ring], 1), 0)
-        out[n - 1] = g
+        out[n - 1][box] = g
     return out, reaches
 
 

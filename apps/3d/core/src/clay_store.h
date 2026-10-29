@@ -116,8 +116,9 @@ class Store {
   // clay_pose: the clay drawn with these bone moves until the next sync (or the next pose). Loud when the clay has no
   // bones or the count differs. Writes the stage.
   PoseReply pose(const std::string& item, const std::vector<BoneMove>& moves);
-  // clay_grid: the rest clay's inside, `cells` (8..128) along the longest side of its bounds padded by one cell
-  GridReply grid(const std::string& item, int cells) const;
+  // clay_grid: the rest clay's inside, `cells` (8..128) along `span` (metres, the longest side round its pieces;
+  // 0: its own bounds), on a lattice fixed in clay space, its bounds padded by one cell
+  GridReply grid(const std::string& item, int cells, double span = 0.0) const;
   bool skinned(const std::string& item) const;
   // a picked spot on block prim `prim`, triangle `face`, at `local` (drawn, clay space) -> the same spot at rest;
   // none when the clay has no bones or the prim is none of its blocks

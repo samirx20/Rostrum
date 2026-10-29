@@ -252,8 +252,8 @@ class ItemEngine:
     def clay_pose(self, item: str, pose: list) -> dict:
         return self.link.ask({"clay_pose": {"item": item, "pose": pose}})
 
-    def clay_grid(self, item: str, cells: int = 48) -> dict:
-        return self.link.ask({"clay_grid": {"item": item, "cells": cells}})
+    def clay_grid(self, item: str, cells: int = 48, span: float = 0.0) -> dict:
+        return self.link.ask({"clay_grid": {"item": item, "cells": cells, **({"span": span} if span > 0 else {})}})
 
     def show(self, req: dict):
         self.link.show(req)
