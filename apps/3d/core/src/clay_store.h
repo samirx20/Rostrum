@@ -38,6 +38,9 @@ struct SculptReply {
   double ms = 0;
   double applyMs = 0, meshMs = 0, usdMs = 0;  // where `ms` went: the dabs, meshing the changed blocks, writing them
   int blocks = 0;                             // blocks changed by this event
+  // 3d-dab-viewer: when the event's clay work started and ended, and (a dab started early) when it was asked for
+  // (steady-clock ms, the window's clock: clay_hops' timeline)
+  double tStart = 0, tEnd = 0, tAsked = 0;
   std::string file;     // end: "clay/<hash>.dabs", or "" when no dab landed
 };
 
