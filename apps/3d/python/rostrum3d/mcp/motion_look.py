@@ -16,8 +16,9 @@ from . import motion_found as M, motion_sim, shot_faults
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
 tools = Tools()
-OVERLAP_TEST = ("oriented boxes: each shape's own box turned and scaled with it (a ball: an upright box round it, however it rolls; a clay: the box its pieces reach), so a hollow "
-                "shape such as an open case counts as full")
+OVERLAP_TEST = ("exact forms for spheres, boxes, cylinders, cones, capsules and tori (touching is not overlapping); any other shape by "
+                "oriented boxes: its own box turned and scaled with it (a clay: the box its pieces reach), so a hollow shape such as "
+                "an open case counts as full")
 _ORDER = {"passes_through": 0, "jumps": 1, "leaves_frame": 2}
 _ASK = "ask with `all: true`, a bigger `limit`, or `items` for the ones you are tuning."
 
@@ -103,7 +104,7 @@ def look_motion(ctx, args):
                            (f' among {", ".join(ids)}' if args.get("items") else "") + unseen + (f'. {sim["line"]}' if sim and sim["line"] else "") +
                            "".join(f" {r['line']}" for r in falls) + (f" {F.headline(faults)}" if faults else ""),
                            hint="Check the keys with inspect_animations, or measure other frames.")
-    found = [*M.passing_through(rows, moving, info), *M.jump_findings(facts, info),
+    found = [*M.passing_through(rows, moving, info, track.fr), *M.jump_findings(facts, info),
              *[x for i in ids for x in M.leaving(i, rows[i], info)]]
     if args.get("items"):
         found = [x for x in found if set(_who(x)) & set(ids)]
@@ -134,7 +135,7 @@ def look_motion(ctx, args):
         if warn else "No findings: nothing passes through anything, jumps, or leaves the picture." if not faults else
         "No overlap, jump or leaving finding (see the faults at the top)."]
     keep = ("id", "moves", "frames", "path", "moving", "peak", "stops") + (("jumps", "speed_m_s", "screen_speed_px_s") if args.get("full") else ())
-    data = {"shot": info["id"], "frames": [frames[0], frames[-1]], "fps": info["fps"], "renderer": None, "overlap_test": "oriented boxes",
+    data = {"shot": info["id"], "frames": [frames[0], frames[-1]], "fps": info["fps"], "renderer": None, "overlap_test": "exact forms, else oriented boxes",
             "items": [{k: f[k] for k in keep if k in f} for f in facts if f["moves"] or args.get("full")], "findings": groups,
             "not_measured": track.skipped, "simulation": sim["state"] if sim else None,
             "fallsOnScreen": [{k: r[k] for k in ("item", "kind", "moving", "drop", "movingFrames", "onScreen", "offScreen", "enters", "lands",

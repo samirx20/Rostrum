@@ -5,6 +5,7 @@ entries of the shot's one fault list (faults.py):
                                the head) deeper than it did at rest; names the joint to turn and about how far.
   off_body:<item>              a small thing attached to the figure (an eye, a nose, a hat) that leaves its posed surface or slides
                                over it (it rides one bone while the part it sits on turns with another).
+  on_rim:<item>                such a feature seen on or past the outline of the part it sits on: reads as beside it (pose_rim.py).
   reads_still:<clay>.<joint>   a keyed joint whose whole motion moves its part less than STILL of the picture's width: on screen it
                                reads as no motion (a "wave" of 2 cm).
 
@@ -17,6 +18,7 @@ import math
 from rostrum_core.mcp import faults as F
 
 from . import aim, follow, pose_body as PB, skin
+from .pose_rim import on_rim
 
 STEP_S = 0.25            # frames checked: one every this many seconds
 THROUGH_M = 0.004        # a part this much deeper into another than at rest …
@@ -61,7 +63,9 @@ def pose_faults(track, info: dict, check: list[int]) -> list[dict]:
         posed = {f: PB.posed(track.fr, id_, balls, f) for f in fs}
         out += _through(track, info, id_, item, balls, posed, keyed)
         out += _still(track, info, id_, item, balls, posed, keyed)
-        out += _off_body(track, info, id_, balls, posed)
+        feats = _features(track, id_, balls, posed)
+        out += _off_body(track, info, id_, posed, feats)
+        out += on_rim(track, info, id_, item, balls, posed, [(i, own, on) for i, own, on, _ in feats])
     return out
 
 
@@ -138,30 +142,39 @@ def _moves(track, posed, balls, bones) -> float | None:
     return best if seen else None
 
 
-def _off_body(track, info, id_, balls, posed) -> list[dict]:
-    """A small mesh on the figure at the first frame (attached to it, or just placed there) that later is not where the part
-    it sits on takes it: left behind, or riding the wrong part."""
-    out, fr = [], track.fr
+def _features(track, id_, balls, posed) -> list[tuple]:
+    """Small meshes on the figure at the first frame (attached to it, or just placed there): [(id, own size, the bone of the
+    part it sits on, where it is then)]."""
+    fr, (f0, first) = track.fr, next(iter(posed.items()))
     size = max(math.dist(p, q) + r for p, r, _ in balls for q, _, _ in balls)
-    names = PB.joint_names(fr.items[id_])
-    f0, first = next(iter(posed.items()))
+    out = []
     for it in fr.items.values():
         if it["type"] != "mesh" or it["id"] in track.skipped or fr.parent.get(it["id"]) is not None                 or it.get("follow") not in (id_, "", None) or (own := _own_size(it)) is None or own > SMALL * size:
             continue
         here0 = aim.point(fr.world(it["id"], f0), [0.0, 0.0, 0.0])
         gap0, on = PB.surface_gap(first, here0)
-        if gap0 > OFF * own:
-            continue                                        # not on the figure to begin with
+        if gap0 <= OFF * own:
+            out.append((it["id"], own, on, here0))
+    return out
+
+
+def _off_body(track, info, id_, posed, features) -> list[dict]:
+    """A feature that later is not where the part it sits on takes it: left behind, or riding the wrong part."""
+    out, fr = [], track.fr
+    names = PB.joint_names(fr.items[id_])
+    f0 = next(iter(posed))
+    for iid, own, on, here0 in features:
+        it = fr.items[iid]
         back = aim.invert(aim.compose(fr.world(id_, f0), follow.bone_move(fr, id_, on, f0)))
-        for f, now in posed.items():
-            here = aim.point(fr.world(it["id"], f), [0.0, 0.0, 0.0])
+        for f in posed:
+            here = aim.point(fr.world(iid, f), [0.0, 0.0, 0.0])
             want = aim.point(aim.compose(fr.world(id_, f), follow.bone_move(fr, id_, on, f)), aim.point(back, here0))
             if (slid := math.dist(want, here)) <= OFF * own:
                 continue
             how = ("it is not attached, so it stays where it was put" if it.get("follow") != id_ else
                    "it rides the figure as a whole, not its parts (followPose off)" if not it.get("followPose") else
-                   f"it rides {names[follow.nearest_bone(fr.items[id_], follow.rest_spot(fr, it['id'], id_))]}")
-            out.append(F.fault(f"off_body:{it['id']}", f"{it['id']} slides {slid * 100:.1f} cm off {id_}'s {names[on]}: {how}",
+                   f"it rides {names[follow.nearest_bone(fr.items[id_], follow.rest_spot(fr, iid, id_))]}")
+            out.append(F.fault(f"off_body:{iid}", f"{iid} slides {slid * 100:.1f} cm off {id_}'s {names[on]}: {how}",
                                f"attach it where it sits: attach_to={id_} (it then rides the posed {names[on]}); "
                                "if it is meant to come off, keep it", _when(info, f)))
             break

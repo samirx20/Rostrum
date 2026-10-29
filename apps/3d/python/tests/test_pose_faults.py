@@ -48,3 +48,12 @@ def test_an_eye_left_unattached_while_the_head_turns_slides_off_and_an_attached_
     found = _found(turn, loose)
     assert "off_body:eye" in found and "not attached" in found["off_body:eye"]["what"], found
     assert "off_body:eye" not in _found(turn), "attach_to=c rides the head"
+
+
+def test_an_eye_on_the_rim_of_a_turned_head_reads_beside_it_and_one_at_the_front_does_not():
+    """gaps6 Hello r1 still 1: the head turned ~40°, the attached eye on its rim stuck out past the head's outline."""
+    turned = _found('c.bend("head", {0: (0, 45, 0), 3: (0, 45, 0)})\n')
+    assert "on_rim:eye" in turned and "pokes" in turned["on_rim:eye"]["what"], turned
+    assert "less toward that side" in turned["on_rim:eye"]["fix"] and "x " in turned["on_rim:eye"]["fix"], turned
+    front = _found('c.bend("head", {0: (0, 5, 0), 3: (0, 5, 0)})\n')
+    assert "on_rim:eye" not in front, front
