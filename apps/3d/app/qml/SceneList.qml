@@ -7,14 +7,16 @@ import RostrumKit
 // kind icon, name, material), on the right the item's keys: a slim bar from its first key to its last, a diamond per
 // key (click picks it, drag moves it, a box picks several; a selected item opens a row per animated setting), and a
 // stretch between two keys of one setting: click it and the settings panel is that animation (AnimPanel.qml, Main.qml).
-// Keys and stretches snap to marker flags while dragged. 3D has no curve view yet and the page sets the height, so
-// the Keys | Curves switch, the height switch and the grab edge are absent. Under the rows, while the scene has bodies: the
-// Simulate row (SimRow.qml).
+// Keys and stretches snap to marker flags while dragged. Keys | Curves (once something is animated): the kit's curve
+// view (CurveEditor.qml, backend.curves: curves3d.py) in the rows' place. The page sets the height, so the height switch
+// and the grab edge are absent. Under the rows, while the scene has bodies: the Simulate row (SimRow.qml).
 LayerTimeline {
     id: tl
-    canCurves: false; canCompact: false; canResize: false
+    canCompact: false; canResize: false
     emptyText: "Your scene's items appear here, their keys on the same rows."
     rows: SceneRows { ruler: tl.ruler; labelWidth: tl.labelWidth }
+    layers: AnimLayers {}               // animation layers (layers3d.py): ⧉ until the first, then the chosen layer's name
+    curves: CurveEditor { visible: backend.curves.on; ruler: tl.ruler; labelWidth: tl.labelWidth }
     // the Simulate row (SimRow.qml) at the bottom while the scene has bodies, under the rows' box: the kit's `footer` keeps
     // its room, so no row ever passes under it
     SimRow { id: simRow; x: 0; width: tl.width - Theme.gap; z: 4; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.gap

@@ -35,6 +35,8 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         self._written = None                            # storage.Written: where the history file ends, as we left it
         self.notes: list[str] = []                      # plain sentences from opening (a step cut off by a crash)
         self._intent = None                             # how to make the step being made again (pending.py; live.py)
+        self.routes: list = []                          # a window's own routing of a person's calls: route(calls) -> calls
+                                                        # (the timeline's chosen animation layer: rostrum_gui/anim_layers.py)
 
     @classmethod
     def new(cls, kind, folder=None, item=None, start=(), **kw) -> "Document":
@@ -93,6 +95,7 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         """Run a list of operations as one change, all or nothing. Nothing changed = nothing recorded (None).
         `join=False`: never merge into the person's previous change (an arrow-key press is one step each)."""
         self.make_way("apply")
+        calls = self.routed(calls, who)
         if self.kind.tidy:
             calls = self.kind.tidy(run.normalize(calls), self.folder)
         work, edits, calls, idx = run.plan_indexed(self.kind, self.data, calls, self.locked_by, who, self._index())
@@ -132,6 +135,15 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         with joint.within(c.step):          # what a listener changes now (a marker following a layer) is this step
             self._emit(Event("change", c))
         return c
+    def routed(self, calls, who: Who):
+        """A person's calls through the window's routes (`routes`); an agent's, a script's: as they are."""
+        if who.kind != "person" or not self.routes or callable(calls):
+            return calls
+        calls = run.normalize(calls)
+        for route in self.routes:
+            calls = route(calls)
+        return calls
+
     # gestures and listeners
     def gesture(self, label, who: Who):
         from .gesture import Gesture

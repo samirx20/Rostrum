@@ -15,7 +15,7 @@ p_now = M·p_rest + (x, y, z), M row-major as listed: the bone's transform now t
 """
 from __future__ import annotations
 
-from rostrum_core.keys import keys_of, track_value
+from rostrum_core.keys import keys_of, layers, track_value
 
 from . import aim
 
@@ -33,19 +33,21 @@ def bones_of(mesh: dict) -> list[tuple[dict, int]]:
     return out
 
 
-def _local(bone: dict, t: float | None):
+def _local(bone: dict, t: float | None, stack: list[dict] = ()):
     v = {k: float(bone.get(k, 0.0)) for k in (*HEAD, *TURN)}
     for k in TURN if t is not None else ():
         if keys := keys_of(bone, k):
             v[k] = float(track_value(keys, t))
+        v[k] = float(layers.value(bone, k, t, stack, v[k]))          # its animation layers (none: unchanged)
     return aim.local({**v, "sx": 1.0, "sy": 1.0, "sz": 1.0})
 
 
-def transforms(chain: list[tuple[dict, int]], t: float | None = None) -> list:
-    """Each bone's transform in the mesh's own space: at rest (t None) or at time t (seconds)."""
+def transforms(chain: list[tuple[dict, int]], t: float | None = None, stack: list[dict] = ()) -> list:
+    """Each bone's transform in the mesh's own space: at rest (t None) or at time t (seconds), with the document's
+    animation layers (`stack`, layers.stack_of) laid over."""
     out = []
     for bone, parent in chain:
-        own = _local(bone, t)
+        own = _local(bone, t, stack)
         out.append(aim.compose(out[parent], own) if parent >= 0 else own)
     return out
 
@@ -60,14 +62,14 @@ def _deform(now, rest) -> list[float]:
     return [round(x, 6) for x in (*lin[0], *lin[1], *lin[2], *t)]
 
 
-def skin(mesh: dict, times: list[float]) -> dict | None:
+def skin(mesh: dict, times: list[float], stack: list[dict] = ()) -> dict | None:
     """The core's `skin` for a mesh at these times (seconds, one per frame), or None: no bones, or Bend with bones off."""
     chain = bones_of(mesh)
     if not chain or not mesh.get("skinned", True):
         return None
     rest = transforms(chain)
     segs = [[round(x, 6) for x in segment(m, b)] for m, (b, _) in zip(rest, chain)]
-    out = {"rest": segs, "pose": [[_deform(n, r) for n, r in zip(transforms(chain, t), rest)] for t in times]}
+    out = {"rest": segs, "pose": [[_deform(n, r) for n, r in zip(transforms(chain, t, stack), rest)] for t in times]}
     if mesh.get("jointParts"):                                 # a clay's pieces (skin_parts.py): each bends with its own
         from . import skin_parts
         if parts := skin_parts.for_core(mesh["jointParts"], chain, segs):

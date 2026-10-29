@@ -416,6 +416,16 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
     ("Turn · lid · Turn X"); then From and To, Start, Length, the easing presets **Linear, Smooth, In, Out, Spring, Bounce, Hold**,
     the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc
     goes back to the item.
+  - **Curves** (the header's **Keys | Curves**, there once something is animated): the value curves on the same time
+    scale. With nothing picked, every animated item's curves; pick an item to see only its own; **Picked | All curves**
+    switches between the two (the animation panel's **All curves** opens it with everything). Click a setting's name to
+    hide or show its line, an item's name for all its lines; each line fills the view's height. Drag a diamond to change
+    a key's time and value (it snaps like the rows; Ctrl moves freely). Click a key for its handles and drag one to shape
+    the ease (it becomes Custom). Right-click a key for the Ease list. Each drag is one undo step. Agents:
+    `key.set {ease: "custom", x1, y1, x2, y2}` does what a handle drag does.
+  - **Animation layers (⧉, at the left of the timeline's header):** a stack of moves laid over the keys you have, each
+    with a weight, Add or Replace, and an on switch (a breath over a walk). While a layer is chosen the rows show its
+    keys and what you key goes on it. See guide *animation-layers*.
 
 ## The bottom panel: a material's blocks
 

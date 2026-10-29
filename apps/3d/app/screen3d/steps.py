@@ -2,6 +2,7 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
+    curves on|off|all|mine | curvedrag <key> <dt s> <dv> | handledrag <key> <1|2> <dx> <dy> (the timeline's Curves: curve_steps.py)
     keydrag <key id> <frame> | keys-stretch <grabbed key> <frame> <picked key> … | keys-menu <key id> (key_steps.py) | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu) | lipsync <mouth group id> (its Lip sync… sheet) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
@@ -36,6 +37,7 @@ from __future__ import annotations
 import functools, json, operator, time  # noqa: E401
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
+from rostrum_gui import curve_steps
 from rostrum_gui.lazy_qtest import QTest   # never at import: a person's launch must not count as scripted (lazy_qtest.py)
 from rostrum_gui.settle import save_snap
 
@@ -112,6 +114,8 @@ def do_step(bridge, win, step):
             raise RuntimeError(f"step {step!r}: {bridge.status}")
         bridge.keyDragTo(float(rest[1]) / bridge.shot_info()["fps"])
         bridge.endDrag()
+    elif word in curve_steps.WORDS:            # curves on|off|all|mine | curvedrag … | handledrag … (the kit's curve_steps.py)
+        curve_steps.step(bridge.curves, step, rest)
     elif word == "fold":
         bridge.toggleFold(rest[0])
     elif word == "press":                      # a real key on the window: press Tab | K | Return | Escape | 2 | Alt+Z

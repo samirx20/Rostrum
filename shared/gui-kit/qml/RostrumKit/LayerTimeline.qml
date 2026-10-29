@@ -5,7 +5,7 @@ import RostrumKit
 // TIMELINE.md › The key timeline: what `backend` offers it). One header row: play and the time over the names, the
 // ruler over the rows (it scrubs; the project's marker flags sit on it), Keys | Curves and the height switch at its
 // right end (the height switch is in the bottom-right corner). Under it one row per item, plugged in by the app (`rows`: a Flickable of rows, each a name and a
-// LayerTrack.qml); Curves (`curves`) shows the selected item's value curves in the same place; `overlay` draws over
+// LayerTrack.qml); Curves (`curves`: the kit CurveEditor.qml) shows the value curves in the same place; `overlay` draws over
 // the rows (2D: beat lines). The thin strip above the top edge drags to make the timeline taller.
 // Compact (DESIGN.md › two heights): only the selected layer's row; its name opens a list of every layer, so another
 // is one click away. The button in the bottom-right corner switches; the app remembers it per tool.
@@ -17,7 +17,7 @@ Rectangle {
     property bool compact: false
     property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent
     property bool canResize: true               // false where the app sets the height itself (3D's pages): no grab edge
-    property bool canCurves: true               // false where the app has no curve view yet (3D): Keys | Curves is absent
+    property bool canCurves: true               // false where the app has no curve view (backend.curves): Keys | Curves is absent
     property string emptyText: ""               // an app with no rows yet words its items here (3D); 2D never has none: the Frame row is always there
     readonly property bool curvesOn: canCurves && backend.curves.on   // the app's one fact: chosen and something to see
     readonly property bool canPickRows: compact || backend.rowFacts.layerIds.includes(backend.selected)   // the height button: a layer is picked (or it is how back out of the one-row view)
@@ -25,6 +25,7 @@ Rectangle {
     property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
     property Item curves                        // the app's curve view, in the same place while Curves is on
     property Item overlay                       // drawn over the rows, under the markers and the playhead (2D: BeatLines.qml)
+    property Item layers                        // the app's animation layers (AnimLayers.qml), last in the play cell
     property real compactExtra: 0               // rows that stay in compact too (2D: the Sound row)
     property real footer: 0                     // room the app keeps under the rows for a row of its own (3D: the Simulate row)
     property bool frameTicks: false             // one tick per frame on the ruler (2D: a drawing selected)
@@ -36,6 +37,7 @@ Rectangle {
     onRowsChanged: plug(rows, rowsBox, -1)          // under the fade and scroll bar that share its box
     onCurvesChanged: plug(curves, curvesBox, 0)
     onOverlayChanged: plug(overlay, overlayBox, 0)
+    onLayersChanged: if (layers) { layers.parent = playCell; layers.anchors.verticalCenter = playCell.verticalCenter }
     color: Theme.panel; radius: Theme.radiusPanel
 
     MouseArea {  // the top edge: in the gap above the timeline, so it never takes a click meant for the canvas

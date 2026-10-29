@@ -91,7 +91,7 @@ stops it. Every tool, by verb, with its arguments: `inspect_tools`. Every tool i
 - `getting-started`: a small clay character, step by step through the tools.
 - `script`: every script helper, field and rule for ids and re-runs.
 - `agents`: the look tools in depth, render settings and the time estimate, techniques, errors.
-- `modelling`, `sculpting`, `posing`: shapes, clay, bending it.
+- `modelling`, `sculpting`, `posing`: shapes, clay, bending it. `animation-layers`: moves laid over moves, with a weight.
 - `materials`, `lighting`, `camera-rigs`, `copies`, `simulate`, `painting`: one topic each.
 - `rendering`: stills, videos, passes, handing a shot to 2D.
 - `window`: the screen, every control and key, for helping a person who clicks.

@@ -34,9 +34,9 @@ class SceneMixin:
         kept = getattr(self, "_rows_kept", None)
         if kept is None:
             self.outlineChanged.connect(self._forget_scene_rows)
-        key = (frozenset(self._folded), self.selectedOwner, self._info["fps"])
+        key = (frozenset(self._folded), self.selectedOwner, self._info["fps"], self._anim_layers.rows_layer())
         if not kept or kept[0] != key:
-            kept = self._rows_kept = (key, outline.scene_rows(self.doc.data, self._folded, key[1], key[2]))
+            kept = self._rows_kept = (key, outline.scene_rows(self.doc.data, self._folded, *key[1:]))
         return kept[1]
 
     def _forget_scene_rows(self):
