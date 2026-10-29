@@ -163,7 +163,7 @@ humanize by hand.
 
 You can't hear the result, so check what you can measure and say plainly what you can't.
 
-1. **Before rendering:** `look_arrangement` shows every part by pitch over the bars and sections. Check that the parts
+1. **Before rendering:** `look_arrangement` shows every part by pitch over the numbered bars and sections, shaded by its written level (velocity × volume), with each part's level in dB and its lowest and highest note. Check that the parts
    enter where you meant, that registers don't pile up, and that the peak looks like a peak.
 2. **Harmony:** `look_music` with `what: "harmony"` reports the chord in each bar and checks the written notes: notes
    out of the instrument's range, voices crossing, close intervals too low, and notes outside the key. Fix every one
