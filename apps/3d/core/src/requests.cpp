@@ -167,7 +167,8 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
                                                           : std::vector<std::string>{};
   if (!passes.empty() && exr.empty()) throw Error("render.passes: passes are layers of the EXR; give exr too");
   if (!passes.empty() && renderer != "cycles") throw Error("render.passes: only the cycles renderer makes passes");
-  s.aovs = aovs_for(passes);
+  s.aovs = aovs_for(passes, stage_);
+  s.motionPass = needs_motion(passes);  // the picture renders sharp then (passes.h)
   const bool report = a.flag("progress", false);
   float bg[3];
   background(stage_, bg);

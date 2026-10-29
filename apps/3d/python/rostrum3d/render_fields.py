@@ -7,11 +7,11 @@ numbers themselves; Stylized renders with the stylized renderer (lines, halftone
 supersampling, the same renderer as the viewport's Look: Stylized (screens offer it while a material has Lines or
 Halftone on; agents may always ask for it). Size is the shot's own frame size, half or double. Range: the whole shot or a stretch of it.
 Save as: PNG, EXR (for the Editor) or both; with an EXR, the Passes it carries as layers (SPEC §11.2, core passes.h),
-each a switch that exists only while the shot saves an EXR (absent for PNG, never greyed).
+each a switch that exists only while the shot saves an EXR with Cycles (absent for PNG and Stylized, never greyed).
 """
 from __future__ import annotations
 
-from .field_kit import ANY, CH, D, IS, N, S, T
+from .field_kit import ANY, CH, D, IS, N, NOT, S, T
 
 QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128, "denoise": True},
              "final": {"samples": 512, "denoise": True}}
@@ -21,14 +21,22 @@ CUSTOM, RANGE = IS("renderQuality", "custom"), IS("renderRange", "range")
 BLUR = IS("motionBlur", True)
 FORMATS = {"png": ["png"], "exr": ["exr"], "both": ["png", "exr"]}
 EXR = ANY("renderFormat", "exr", "both")
+PASS_ROWS = {"all": [EXR, NOT("renderQuality", "stylized")]}   # passes are Cycles' layers of the EXR
 # pass name (the core's) -> its switch on the shot, its label, on by default; Beauty is always in the EXR
 PASSES = {"light": ("passLight", "Light", False), "shadow": ("passShadow", "Shadow", False),
           "reflections": ("passReflections", "Reflections", False), "masks": ("passMasks", "Masks per item", True),
-          "depth": ("passDepth", "Depth", False), "normal": ("passNormal", "Surface direction", False)}
+          "depth": ("passDepth", "Depth", False), "normal": ("passNormal", "Surface direction", False),
+          "lightGroups": ("passLightGroups", "Each light on its own", False),
+          "cryptomatte": ("passCryptomatte", "Masks for compositing (Cryptomatte)", False),
+          "motion": ("passMotion", "Motion for blur in the Editor", False)}
 PASS_HELP = {"light": "Light on matte surfaces. Light + Reflections + Rest (written with them: glass, glow, sky) = the picture",
              "shadow": "0 lit to 1 in full shadow, on matte surfaces. Renders each frame twice",
              "reflections": "Reflections and highlights", "masks": "One white-on-black matte per item, named by its id",
-             "depth": "Distance from the camera in metres", "normal": "Which way each surface faces (world space)"}
+             "depth": "Distance from the camera in metres", "normal": "Which way each surface faces (world space)",
+             "lightGroups": "A layer per light with its share of the picture, to make one brighter or dimmer in the "
+                            "Editor. Together they make the picture (less surfaces that glow on their own)",
+             "cryptomatte": "Soft-edged masks per item that Nuke, Resolve and Natron pick by the item's name",
+             "motion": "Which way each pixel moves, so the Editor can add the blur. The picture itself renders sharp"}
 
 RENDER = [
     CH("renderQuality", [*QUALITIES, "stylized", "custom"], "Quality", "Render", "good", S,
@@ -44,7 +52,7 @@ RENDER = [
       help="Seconds from the start of the shot; the frame at this time is the last one"),
     CH("renderFormat", list(FORMATS), "Save as", "Render", "png", S,
        help="PNG picture, EXR layers for the Editor (scene-linear, with the passes below), or both"),
-    *[T(field, label, "Passes", on, S, EXR, help=PASS_HELP[name]) for name, (field, label, on) in PASSES.items()],
+    *[T(field, label, "Passes", on, S, PASS_ROWS, help=PASS_HELP[name]) for name, (field, label, on) in PASSES.items()],
     T("motionBlur", "Motion blur", "Motion blur", False, S,
       help="Things that move smear along their path, as in a real camera. Shows only in Final and in renders"),
     N("shutter", "Shutter", "Motion blur", 1, 360, 1, "°", S, BLUR, default=180.0,

@@ -86,7 +86,11 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
       cam.GetShutterOpenAttr().Get(&open);
       cam.GetShutterCloseAttr().Get(&close);
     }
-  set("cycles:integrator:motion_blur", VtValue(close > open));
+  // the Motion pass (passes.h): Cycles makes vectors only with its motion blur off, from each move sampled a frame
+  // either side (our patch -r5 samples the camera over this shutter too)
+  const bool blur = close > open && !s.motionPass;
+  if (s.motionPass) open = -1, close = 1;
+  set("cycles:integrator:motion_blur", VtValue(blur));
   if (close > open) {
     set("rostrum:shutterOpen", VtValue(open));
     set("rostrum:shutterClose", VtValue(close));

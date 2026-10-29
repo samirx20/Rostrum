@@ -213,4 +213,4 @@ The colour still goes back through CPU memory and the host uploads it again. Han
 
 ## 9. Build
 
-`build.bat` (through the lock; see its header) builds against the library folder's `sdk\` (`%USERPROFILE%\.rostrum\libs\3d\5.2.2-cycles-a456b76-r4\sdk`, or `%ROSTRUM3D_SDK%`) into `apps\3d\stylized\.build\install\` (`hdRostrum.dll`, `plugInfo.json`, `hdRostrum\resources\{plugInfo.json,shaders}`). The core puts that folder on `PXR_PLUGINPATH_NAME` (override `ROSTRUM3D_STYLIZED`).
+`build.bat` (through the lock; see its header) builds against the library folder's `sdk\` (`%USERPROFILE%\.rostrum\libs\3d\5.2.2-cycles-a456b76-r5\sdk`, or `%ROSTRUM3D_SDK%`) into `apps\3d\stylized\.build\install\` (`hdRostrum.dll`, `plugInfo.json`, `hdRostrum\resources\{plugInfo.json,shaders}`). The core puts that folder on `PXR_PLUGINPATH_NAME` (override `ROSTRUM3D_STYLIZED`).

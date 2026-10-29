@@ -1,5 +1,55 @@
+diff --git a/src/hydra/camera.cpp b/src/hydra/camera.cpp
+index 58ccd249..c97b7131 100644
+--- a/src/hydra/camera.cpp
++++ b/src/hydra/camera.cpp
+@@ -52,7 +52,7 @@ HdDirtyBits HdCyclesCamera::GetInitialDirtyBitsMask() const
+ }
+ 
+ void HdCyclesCamera::Sync(HdSceneDelegate *sceneDelegate,
+-                          HdRenderParam * /*renderParam*/,
++                          HdRenderParam *renderParam,
+                           HdDirtyBits *dirtyBits)
+ {
+   if (*dirtyBits == DirtyBits::Clean) {
+@@ -76,6 +76,14 @@ void HdCyclesCamera::Sync(HdSceneDelegate *sceneDelegate,
+   if (auto ds = cameraSchema.GetShutterClose()) {
+     shutterClose = float(ds->GetTypedValue(0.0f));
+   }
++  /* Rostrum (-r5): the session's shutter when it has one. The engine sets it to the camera's own for motion blur,
++   * and to a frame either side for the motion pass, so the camera's own moves reach the motion vectors too. */
++  if (const auto *const session = static_cast<const HdCyclesSession *>(renderParam)) {
++    if (session->GetShutterClose() > session->GetShutterOpen()) {
++      shutterOpen = session->GetShutterOpen();
++      shutterClose = session->GetShutterClose();
++    }
++  }
+ 
+   if (*dirtyBits & DirtyBits::DirtyTransform) {
+     HdXformSchema xformSchema = HdXformSchema::GetFromParent(primDs);
+@@ -91,7 +99,9 @@ void HdCyclesCamera::Sync(HdSceneDelegate *sceneDelegate,
+         }
+       }
+       if (!transform_found && _transformSamples.count) {
+-        _transform = _transformSamples.values[0];
++        /* Rostrum (-r5): the transform at the frame itself, not at the shutter's open (a camera moving
++         * between keys was drawn where it was a frame before with the motion pass's shutter) */
++        _transform = matrixDs->GetTypedValue(0.0f);
+         _data.SetTransform(_transform);
+       }
+     }
+@@ -216,6 +226,10 @@ void HdCyclesCamera::ApplyCameraSettings(HdRenderParam *renderParam,
+     focalLength = data.GetFocalLength() * GfCamera::FOCAL_LENGTH_UNIT * metersPerUnit;
+ 
+     cam->set_fov(GfDegreesToRadians(data.GetFieldOfView(GfCamera::FOVVertical)));
++    /* Rostrum (-r5): the motion pass projects the frames before and after with these; left at Cycles'
++     * 45 degree default, every still pixel got a zoom-shaped vector. (A zoom itself makes no vectors.) */
++    cam->set_fov_pre(cam->get_fov());
++    cam->set_fov_post(cam->get_fov());
+   }
+ 
+   cam->set_sensorwidth(data.GetHorizontalAperture() * GfCamera::APERTURE_UNIT * metersPerUnit);
 diff --git a/src/hydra/geometry.h b/src/hydra/geometry.h
-index 5ac38e6da..f9b10e02c 100644
+index 5ac38e6d..f9b10e02 100644
 --- a/src/hydra/geometry.h
 +++ b/src/hydra/geometry.h
 @@ -8,6 +8,7 @@
@@ -20,7 +70,7 @@ index 5ac38e6da..f9b10e02c 100644
  
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/geometry.inl b/src/hydra/geometry.inl
-index 9c1f3e454..dcad3809d 100644
+index 9c1f3e45..5b025297 100644
 --- a/src/hydra/geometry.inl
 +++ b/src/hydra/geometry.inl
 @@ -111,8 +111,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
@@ -101,8 +151,16 @@ index 9c1f3e454..dcad3809d 100644
    // Must happen after material ID update, so that attribute decisions can be made
    // based on it (e.g. check whether an attribute is actually needed)
    bool rebuild = false;
+@@ -229,6 +275,7 @@ void HdCyclesGeometry<Base, CyclesBase>::InitializeInstance(int index)
+ {
+   Object *instance = _instances[index];
+   instance->set_geometry(_geom);
++  instance->name = _geom->name; /* Rostrum (-r5): Cryptomatte's object id is the hash of this name */
+ 
+   instance->attributes.emplace_back(HdAovTokens->instanceId.GetString(),
+                                     _instances.size() == 1 ? -1.0f : static_cast<float>(index));
 diff --git a/src/hydra/instancer.cpp b/src/hydra/instancer.cpp
-index ad0772ede..629f78da0 100644
+index ad0772ed..629f78da 100644
 --- a/src/hydra/instancer.cpp
 +++ b/src/hydra/instancer.cpp
 @@ -58,6 +58,9 @@ void HdCyclesInstancer::SyncPrimvars()
@@ -187,7 +245,7 @@ index ad0772ede..629f78da0 100644
 +
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/instancer.h b/src/hydra/instancer.h
-index 844ca77f1..6da25ba3a 100644
+index 844ca77f..6da25ba3 100644
 --- a/src/hydra/instancer.h
 +++ b/src/hydra/instancer.h
 @@ -25,6 +25,9 @@ class HdCyclesInstancer final : public PXR_NS::HdInstancer {
@@ -209,7 +267,7 @@ index 844ca77f1..6da25ba3a 100644
  
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
-index 1457e7752..39b31f7aa 100644
+index 1457e775..9c33cca4 100644
 --- a/src/hydra/light.cpp
 +++ b/src/hydra/light.cpp
 @@ -31,6 +31,7 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
@@ -284,7 +342,16 @@ index 1457e7752..39b31f7aa 100644
  
    if (!keep_nodes) {
      /* Delete the object before the light, since the object references the light. */
-@@ -396,7 +427,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
+@@ -370,6 +401,8 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
+ 
+   _object = lock.scene->create_node<Object>();
+   _object->name = GetId().GetString();
++  /* Rostrum (-r5): each light is its own light group, named as its prim (the "lightgroup:<name>" passes) */
++  _object->set_lightgroup(ustring(GetId().GetName()));
+ 
+   if (_lightType == HdPrimTypeTokens->domeLight) {
+     _light = lock.scene->create_node<BackgroundLight>();
+@@ -396,7 +429,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
  
    _object->set_geometry(_light);
    _object->set_random_id(hash_uint2(hash_string(_light->name.c_str()), 0));
@@ -297,7 +364,7 @@ index 1457e7752..39b31f7aa 100644
    Shader *const shader = lock.scene->create_node<Shader>();
    array<Node *> used_shaders;
 diff --git a/src/hydra/render_delegate.cpp b/src/hydra/render_delegate.cpp
-index 3cda4a573..6dc3b9465 100644
+index 3cda4a57..b14e308a 100644
 --- a/src/hydra/render_delegate.cpp
 +++ b/src/hydra/render_delegate.cpp
 @@ -18,6 +18,7 @@
@@ -324,7 +391,7 @@ index 3cda4a573..6dc3b9465 100644
  }
  
  const TfTokenVector &HdCyclesDelegate::GetSupportedRprimTypes() const
-@@ -369,6 +370,14 @@ HdAovDescriptor HdCyclesDelegate::GetDefaultAovDescriptor(const TfToken &name) c
+@@ -369,6 +370,21 @@ HdAovDescriptor HdCyclesDelegate::GetDefaultAovDescriptor(const TfToken &name) c
    {
      return HdAovDescriptor(HdFormatInt32, false, VtValue(-1));
    }
@@ -336,10 +403,17 @@ index 3cda4a573..6dc3b9465 100644
 +      return HdAovDescriptor(HdFormatFloat32Vec3, false, VtValue(GfVec3f(0.0f)));
 +    }
 +  }
++  /* Rostrum (-r5): a light group's light, motion vectors and Cryptomatte ranks (session.cpp) */
++  if (name.GetString().rfind("lightgroup:", 0) == 0) {
++    return HdAovDescriptor(HdFormatFloat32Vec3, false, VtValue(GfVec3f(0.0f)));
++  }
++  if (name.GetString() == "motion" || name.GetString().rfind("CryptoObject", 0) == 0) {
++    return HdAovDescriptor(HdFormatFloat32Vec4, false, VtValue(GfVec4f(0.0f)));
++  }
  
    return HdAovDescriptor();
  }
-@@ -413,6 +422,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+@@ -413,6 +429,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
      _renderParam->SetStageMetersPerUnit(
          VtValue::Cast<double>(value).GetWithDefault(_renderParam->GetStageMetersPerUnit()));
    }
@@ -358,7 +432,7 @@ index 3cda4a573..6dc3b9465 100644
    else if (key == HdCyclesRenderSettingsTokens->timeLimit) {
      session->set_time_limit(
          VtValue::Cast<double>(value).GetWithDefault(session->params.time_limit));
-@@ -436,6 +457,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+@@ -436,6 +464,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
        const ustring socketName(keyString, sizeof("cycles:integrator:") - 1);
        if (const SocketType *socket = scene->integrator->type->find_input(socketName)) {
          SetNodeValue(scene->integrator, *socket, value);
@@ -377,7 +451,7 @@ index 3cda4a573..6dc3b9465 100644
          ++_settingsVersion;
        }
      }
-@@ -450,6 +483,15 @@ VtValue HdCyclesDelegate::GetRenderSetting(const TfToken &key) const
+@@ -450,6 +490,15 @@ VtValue HdCyclesDelegate::GetRenderSetting(const TfToken &key) const
    if (key == HdCyclesRenderSettingsTokens->stageMetersPerUnit) {
      return VtValue(_renderParam->GetStageMetersPerUnit());
    }
@@ -394,7 +468,7 @@ index 3cda4a573..6dc3b9465 100644
      return VtValue(TfToken(Device::string_from_type(session->params.device.type)));
    }
 diff --git a/src/hydra/render_delegate.h b/src/hydra/render_delegate.h
-index f61484811..3b9848669 100644
+index f6148481..3b984866 100644
 --- a/src/hydra/render_delegate.h
 +++ b/src/hydra/render_delegate.h
 @@ -14,7 +14,7 @@ HDCYCLES_NAMESPACE_OPEN_SCOPE
@@ -407,10 +481,18 @@ index f61484811..3b9848669 100644
      ((threads, "cycles:threads")) \
      ((timeLimit, "cycles:time_limit")) \
 diff --git a/src/hydra/session.cpp b/src/hydra/session.cpp
-index ae1ede13b..979ae5c84 100644
+index ae1ede13..5ebe4d4b 100644
 --- a/src/hydra/session.cpp
 +++ b/src/hydra/session.cpp
-@@ -24,6 +24,16 @@ const std::unordered_map<TfToken, PassType, TfToken::HashFunctor> kAovToPass = {
+@@ -9,6 +9,7 @@
+ // Have to include shader.h before background.h so that 'set_shader' uses the correct 'set'
+ // overload taking a 'Node *', rather than the one taking a 'bool'
+ #include "scene/background.h"
++#include "scene/film.h"
+ #include "scene/light.h"
+ #include "scene/shader_graph.h"
+ #include "scene/shader_nodes.h"
+@@ -24,6 +25,18 @@ const std::unordered_map<TfToken, PassType, TfToken::HashFunctor> kAovToPass = {
      {HdAovTokens->normal, PASS_NORMAL},
      {HdAovTokens->primId, PASS_OBJECT_ID},
      {HdAovTokens->instanceId, PASS_AOV_VALUE},
@@ -424,10 +506,12 @@ index ae1ede13b..979ae5c84 100644
 +    {TfToken("emission"), PASS_EMISSION},
 +    {TfToken("background"), PASS_BACKGROUND},
 +    {TfToken("diffuseDirect"), PASS_DIFFUSE_DIRECT},
++    /* Rostrum (-r5): motion vectors (to the frame before in X Y, to the next in Z W, pixels) */
++    {TfToken("motion"), PASS_MOTION},
  };
  
  }  // namespace
-@@ -100,6 +110,7 @@ void HdCyclesSession::UpdateScene()
+@@ -100,6 +113,7 @@ void HdCyclesSession::UpdateScene()
    // Update background depending on presence of a background light
    if (scene->light_manager->need_update()) {
      Light *background_light = nullptr;
@@ -435,7 +519,7 @@ index ae1ede13b..979ae5c84 100644
      bool have_lights = false;
      for (Object *object : scene->objects) {
        if (!object->get_geometry()->is_light()) {
-@@ -111,6 +122,7 @@ void HdCyclesSession::UpdateScene()
+@@ -111,6 +125,7 @@ void HdCyclesSession::UpdateScene()
        Light *light = static_cast<Light *>(object->get_geometry());
        if (light->is_background_light()) {
          background_light = light;
@@ -443,7 +527,7 @@ index ae1ede13b..979ae5c84 100644
          break;
        }
      }
-@@ -130,7 +142,11 @@ void HdCyclesSession::UpdateScene()
+@@ -130,7 +145,13 @@ void HdCyclesSession::UpdateScene()
      }
      else {
        scene->background->set_shader(background_light->get_shader());
@@ -453,17 +537,63 @@ index ae1ede13b..979ae5c84 100644
 +      scene->background->set_visibility(seen ? PATH_RAY_VISIBILITY_ALL :
 +                                               PATH_RAY_VISIBILITY_ALL & ~PATH_RAY_VISIBILITY_CAMERA);
 +      scene->background->set_transparent(!seen);
++      /* Rostrum (-r5): the dome's light group is the background's (light.cpp) */
++      scene->background->set_lightgroup(background_object->get_lightgroup());
      }
  
      scene->background->tag_update(scene);
-@@ -162,9 +178,26 @@ void HdCyclesSession::SyncAovBindings(const HdRenderPassAovBindingVector &aovBin
+@@ -147,22 +168,60 @@ void HdCyclesSession::SyncAovBindings(const HdRenderPassAovBindingVector &aovBin
+ 
+   // Update passes with requested AOV bindings
+   _aovBindings = aovBindings;
++  int cryptoObject = 0;
+   for (const HdRenderPassAovBinding &aovBinding : aovBindings) {
+-    const auto cyclesAov = kAovToPass.find(aovBinding.aovName);
+-    if (cyclesAov == kAovToPass.end()) {
+-      // TODO: Use PASS_AOV_COLOR and PASS_AOV_VALUE for these?
+-      TF_WARN("Unknown pass %s", aovBinding.aovName.GetText());
+-      continue;
++    /* Rostrum (-r5): "lightgroup:<group>" is the light of that group's lights (light.cpp), as seen;
++     * "CryptoObject00" .. are Cryptomatte's object ranks, two a pass (ids hashed from the objects'
++     * names, geometry.inl). Neither is cleaned of noise. */
++    const std::string &aovName = aovBinding.aovName.GetString();
++    PassType type = PASS_NONE;
++    ustring lightgroup;
++    if (aovName.rfind("lightgroup:", 0) == 0) {
++      type = PASS_COMBINED;
++      lightgroup = ustring(aovName.substr(sizeof("lightgroup:") - 1));
++    }
++    else if (aovName.rfind("CryptoObject", 0) == 0) {
++      type = PASS_CRYPTOMATTE;
++      ++cryptoObject;
++    }
++    else {
++      const auto cyclesAov = kAovToPass.find(aovBinding.aovName);
++      if (cyclesAov == kAovToPass.end()) {
++        // TODO: Use PASS_AOV_COLOR and PASS_AOV_VALUE for these?
++        TF_WARN("Unknown pass %s", aovBinding.aovName.GetText());
++        continue;
++      }
++      type = cyclesAov->second;
+     }
+ 
+-    const PassType type = cyclesAov->second;
+-    const PassMode mode = PassMode::DENOISED;
++    const bool noisy = !lightgroup.empty() || type == PASS_CRYPTOMATTE || type == PASS_MOTION;
++    const PassMode mode = noisy ? PassMode::NOISY : PassMode::DENOISED;
+ 
+     Pass *pass = scene->create_node<Pass>();
      pass->set_type(type);
      pass->set_mode(mode);
-     pass->set_name(ustring(aovBinding.aovName.GetString()));
+-    pass->set_name(ustring(aovBinding.aovName.GetString()));
++    pass->set_name(ustring(aovName));
++    pass->set_lightgroup(lightgroup);
 +    pass->set_include_albedo(true); /* Rostrum: light passes as seen, not divided by the colour */
-   }
- }
- 
++  }
++  scene->film->set_cryptomatte_passes(cryptoObject ? CRYPT_OBJECT : CRYPT_NONE);
++  scene->film->set_cryptomatte_depth(cryptoObject);
++}
++
 +void HdCyclesSession::SetCastShadows(const bool on)
 +{
 +  if (on == _castShadows) {
@@ -476,15 +606,13 @@ index ae1ede13b..979ae5c84 100644
 +    if (light->is_modified()) {
 +      light->tag_update(lock.scene);
 +    }
-+  }
+   }
 +  lock.scene->light_manager->tag_update(lock.scene, LightManager::LIGHT_MODIFIED);
-+}
-+
+ }
+ 
  void HdCyclesSession::RemoveAovBinding(HdRenderBuffer *renderBuffer)
- {
-   for (HdRenderPassAovBinding &aovBinding : _aovBindings) {
 diff --git a/src/hydra/session.h b/src/hydra/session.h
-index 4c4e8ff66..368489cf6 100644
+index 4c4e8ff6..368489cf 100644
 --- a/src/hydra/session.h
 +++ b/src/hydra/session.h
 @@ -10,6 +10,12 @@

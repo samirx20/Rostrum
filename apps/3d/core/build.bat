@@ -5,7 +5,7 @@ REM Needs: the library folder from  python -I apps\3d\libs\lay_out.py  (its sdk\
 REM and for the in-window view module (Rostrum3DView) the Qt C++ SDK of PySide6's Qt version (QT_DIR; R3D_VIEW=OFF builds the engine program alone).
 setlocal
 set HERE=%~dp0
-if "%ROSTRUM3D_SDK%"=="" set ROSTRUM3D_SDK=%USERPROFILE%\.rostrum\libs\3d\5.2.2-cycles-a456b76-r4\sdk
+if "%ROSTRUM3D_SDK%"=="" set ROSTRUM3D_SDK=%USERPROFILE%\.rostrum\libs\3d\5.2.2-cycles-a456b76-r5\sdk
 if "%QT_DIR%"=="" set QT_DIR=%USERPROFILE%\.rostrum\libs\qt\6.12.0-msvc2022_64
 if "%R3D_VIEW%"=="" set R3D_VIEW=ON
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
