@@ -49,7 +49,8 @@ space is the scene's: every `.lump` / `.stroke` / `.draw` position, `attach_to` 
 the ground, z). A piece reaching below the ground lifts the whole figure (and what is attached) to stand on it. With
 `at=` (or `y=`) the clay's origin is there instead, and its pieces are measured from that point.
 
-Pose after the last piece (the first `bend` / `pose` finds the joints; a piece added after fails). Names: `body`,
+Pose after the last piece (the first `bend` / `pose` finds the joints from the shape so far; a piece added after is made, its
+joints stay as found, shown as out of date, and the reply says so). Names: `body`,
 `chest`, `head`, `arm.R`, `forearm.R`, `hand.R` (the arm's end), `foot.L` …; `.R` is the −x side; in words `"right
 hand"`, or `"picture-left hand"` (the one on the picture's left); a wrong name fails listing the ones found. `holds` takes joint names: holding `"body"` keeps the whole trunk upright (the head still
 turns), holding the feet keeps them planted. Guide `posing`.

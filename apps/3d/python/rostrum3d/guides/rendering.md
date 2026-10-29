@@ -158,15 +158,15 @@ The sheet is built on the same pieces agents use: `render_estimate` (the same te
 and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".
 
-`render_video` with `estimate_only` answers at once with the measured figures (also over `budget_min`); with `budget_min` alone, over it
-is an immediate error naming settings that fit. The estimate counts what a changing scene costs each frame (a cloth or a fall's new shape sent in, animation: one extra small frame at the
+`render_video` with `estimate_only` answers at once with the measured figures (also over `budget_min`); with `budget_min` alone it
+renders either way, and over it the reply says the estimate against the budget and the settings that fit. The estimate counts what a changing scene costs each frame (a cloth or a fall's new shape sent in, animation: one extra small frame at the
 next frame is timed by the probe), and learns from your own renders: when the last full render of a shot took 10 % or more over its
 estimate, the next estimate of that shot (same project, same session) is raised by that much (never lowered) and its reply says
 "raised ×1.6". It is still a guide, not a promise: leave margin under a tight `budget_min`, and a many-polygon cloth or a busy card
 runs over. A cloth itself costs little in Cycles (an 18k-triangle drape adds about 0.6 s a frame at 1280×720, 16 samples, over the
 same scene without it); the samples, the picture's size and the lights are what cost the time. A refine export with no `quality`,
-`renderer` or `samples` never renders lower than your last export of the shot (its reply says "Rendered as your last export …");
-asking for lower is done, and the reply names what it loses (Storm: no fabric sheen, no soft bounce light, hard shadows).
+`renderer` or `samples`, of a shot whose Quality was never set, never renders lower than your last export of the shot (its reply
+says "Rendered as your last export …"); asking for lower, or a shot Quality set lower, is done as written, and the reply names what it loses (Storm: no fabric sheen, no soft bounce light, hard shadows).
 A finished video's reply asks for a look-and-fix pass (`look_frame what "sheet"`, `look_frame`,
 `look_motion`), and every reply ends with a time line that counts the passes the time left allows ([Working with an AI agent](agents.md), "Your time").
 

@@ -209,12 +209,12 @@ def render_still(ctx, args):
                                              "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as EXR (with passes) for the Editor."},
                                              "output_folder": {"type": "string", "description": "An absolute folder to copy the mp4 and share copy into (made if missing)."},
                                              "file_name": {"type": "string", "description": "The copy's name in output_folder. Default: the render's name."},
-                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend; over it nothing renders and the error names settings that fit."},
+                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend: the reply says the estimate against it (over it, settings that fit); it renders either way."},
                                              "estimate_only": {"type": "boolean", "default": False, "description": "Only measure the time (render_estimate's probe); render nothing."}}})
 def render_video(ctx, args):
     """An mp4 of a shot (or `start`–`end`), plus a small <name>-share.mp4; `exr` keeps EXR frames, `output_folder` copies
-    the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` / `estimate_only`
-    measure first. `notes: true` also lists what the checks measured on the first, middle and last frames. A job.
+    the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` measures first and
+    the reply says the estimate against it (it renders either way); `estimate_only` only measures. `notes: true` also lists what the checks measured on the first, middle and last frames. A job.
     Guide 'rendering'."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
@@ -222,6 +222,9 @@ def render_video(ctx, args):
         return reply
     if gate.error is not None:
         raise gate.error
+    if gate.reply is None and gate.note:                  # over the budget: rendering anyway, the estimate said at once
+        reply.summary = f"{reply.summary} {gate.note}"
+        reply.warnings.append(gate.note)
     return gate.reply or reply
 
 
@@ -229,16 +232,18 @@ ESTIMATE_WAIT_S = 25.0
 
 
 class Gate:
-    """What render_video's budget / estimate_only wait for: the job's estimate is decided (a refusal, the estimate_only figures, or
-    "go ahead") while the job itself goes on. Then the tool's reply is that answer at once, not a job to ask about later."""
+    """What render_video's budget / estimate_only wait for: the job's estimate is decided (a failed probe, the estimate_only
+    figures, or "go ahead", with the estimate against the budget when over it) while the job itself goes on. Then the tool's
+    reply is that answer at once, not a job to ask about later."""
 
     def __init__(self):
         self.error: RostrumError | None = None
         self.reply: Reply | None = None
+        self.note = ""
         self._decided = threading.Event()
 
-    def decide(self, error: RostrumError | None = None, reply: Reply | None = None):
-        self.error, self.reply = error, reply
+    def decide(self, error: RostrumError | None = None, reply: Reply | None = None, note: str = ""):
+        self.error, self.reply, self.note = error, reply, note
         self._decided.set()
 
     def decided(self) -> bool:
@@ -372,8 +377,8 @@ def video_job(ctx, args, gate: Gate | None = None):
     scene0, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
-    last_key = render_last.key(ctx.app.folder, item, info["id"])     # a refine is never quietly worse than the last export
-    renderer, cycles, same_note = render_last.keep(last_key, renderer, _cycles(args, renderer, s), args)
+    last_key = render_last.key(ctx.app.folder, item, info["id"])     # a refine left at the defaults is never quietly worse than the last export
+    renderer, cycles, same_note = render_last.keep(last_key, renderer, _cycles(args, renderer, s), args, s["quality"])
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
     exposure = args.get("exposure", 0)
     said = [same_note] if same_note else []
@@ -391,9 +396,8 @@ def video_job(ctx, args, gate: Gate | None = None):
             note = (f"estimated {est:.0f} s" if est is not None else "not estimated") + (f"; {cont.lower()}" if cont else "")
             over = budget_s is not None and est > budget_s
             fits = estimate.fitting_settings(est, budget_s, renderer, cycles.get("samples", 0), w, at) if over else []
-            if over and not args.get("estimate_only"):
-                raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{todo} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
-                                   hint="Nothing was rendered.")
+            if over and not args.get("estimate_only"):    # never refused: rendered as asked, the estimate against the budget said
+                said.append(f"Rendering anyway: {todo} frames at {w}×{h}, {renderer} {estimate.over_budget_text(est, budget_s, fits)}")
             kept_words = f" {cont} (kept from a stopped or failed render of the same thing)." if cont else ""
             if args.get("estimate_only"):                 # the figures, also over the budget (then with the settings that fit)
                 got = Reply(f'Estimate for {info["id"]}: {todo} frames to draw, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), '
@@ -404,12 +408,12 @@ def video_job(ctx, args, gate: Gate | None = None):
                 if gate:
                     gate.decide(reply=got)
                 return got
-        except RostrumError as e:                         # a refusal (over the budget, a failed probe): the tool answers with it at once
+        except RostrumError as e:                         # a failed probe the call needed: the tool answers with it at once
             if gate:
                 gate.decide(error=e)
             raise
         if gate:
-            gate.decide()
+            gate.decide(note=said[-1] if over else "")
         job.progress(kept, count, f"frame {kept} of {count}; {note}")
         t_draw = time.perf_counter()
         seen, asked = {}, faults.asked(args)              # notes asked for: the first, middle and last picture's, read before the PNGs go

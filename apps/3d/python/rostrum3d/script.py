@@ -275,7 +275,7 @@ class Item:
         (the figure's own up / away from its middle / the way it faces). Names: "hand.R", "right hand", "picture-left
         hand" (as the shot's camera sees it). holds= joints that stay put. The older .pose("hand.R", {seconds: target})
         still works. Out of reach / far side of the body: a note in the reply. clear=m (asked for, never by
-        default): turn the limb out just enough to keep m metres from the head, with a note saying how far it turned. Pose after the last lump."""
+        default): turn the limb out just enough to keep m metres from the head, with a note saying how far it turned. Pose after the last lump (a lump after is made; the joints stay as found)."""
         node = self._clay_node("pose")
         if isinstance(at, str):
             script_pose.pose(self._b, node, at, keys, holds, ease, clear)
@@ -298,8 +298,10 @@ class Item:
         if self.node["type"] != "clay":
             raise ValueError(f"{self.id} is a {self.node['type']}; .lump(), .draw(), .spin() and .stroke() are for "
                              "a clay")
-        if self.node.get("bones"):
-            raise ValueError(f"{self.id}: already posed; make its whole shape (every lump, draw, stroke) before .pose / .bend")
+        if self.node.get("bones"):                         # made as written; its joints stay as found (out of date)
+            self._b.notes.append(f"{self.id}: a lump, draw, spin or stroke after .pose / .bend: its joints were found from "
+                                 "the shape before it and stay as they are (shown as out of date); make the whole shape "
+                                 "before the first .pose / .bend to have them found from all of it")
         step_id = self._b.new_id(f"{self.id}.s{len(self.node['steps']) + 1}", loose=True)   # an operation's: .step_N
         self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}"))
         return self
