@@ -26,7 +26,7 @@ NOT_FAULTS = ("empty_edge",)                         # a blank second at the ver
 # review's rows (a held framing, a held pose, a crowded lock-up ...) may be meant: named as advice, never refused.
 CLIENT_VISIBLE = ("empty", "sparse", "text_edge", "text_margin", "text_crossed", "text_clipped", "text_spill", "text_on_text", "ghost_text",
                   "pointer_on_text", "device_cut", "push_cut", "push_bars", "screen_spill", "outside", "speck", "end_small",
-                  "painted_over", "edge_cut", "rig_cut", "layout_jump")
+                  "painted_over", "edge_cut", "rig_cut", "layout_jump", "panel_overlap", "off_screen", "text_tight")
 PASSING = ("edge_cut", "rig_cut")      # a subject cut by the edge counts only when it stays cut ...
 PASS_S = 2.0                           # ... this long or more (walking in or out of the picture takes about a second)
 SUBJECTS = ("group", "image", "video", "rig")   # ... and is a card, a picture, a clip or a character: a plain shape, path or
@@ -60,6 +60,9 @@ FIX = {
     "text_spill": "make the group the text runs out of bigger (the row gives the size) or leave its w / h out so it fits its text",
     "text_on_text": "move one text off the other, or fade the first out before the second shows",
     "pointer_on_text": "aim the pointer beside the label (tap(spot=)) or move it away after the tap",
+    "panel_overlap": "move the lower block down to the y the row gives, or put the blocks in a column(gap=…) so they never overlap",
+    "off_screen": "move the layer into the frame (or take it out if it is not meant to show)",
+    "text_tight": "give the words room on their card: a smaller size, fewer words, or a bigger card",
     "end_small": "scale the end card's mark / lock-up up so it reads in the frame",
     "end_held": "end the scene sooner, or keep something moving in the last picture",
     "alike_open": "make the opening shots differ: another layout, size or background per shot",
@@ -78,7 +81,7 @@ _OVER = ["overlap", "overlapping", "layered", "on top of", "superimposed", "doub
          "through the text", "over the text", "behind the text", "crossing"]
 for _k in ("edge_cut", "rig_cut", "device_cut", "push_cut", "push_bars", "text_edge", "text_margin"):
     register(_k, _CROP, "a crop at the frame edge")
-for _k in ("text_crossed", "text_on_text", "pointer_on_text", "painted_over", "ghost_text", "text_clipped", "text_spill"):
+for _k in ("text_crossed", "text_on_text", "pointer_on_text", "painted_over", "ghost_text", "text_clipped", "text_spill", "panel_overlap"):
     register(_k, _OVER, "things laid over each other")
 for _k in ("empty", "sparse"):
     register(_k, ["black", "blank", "empty", "negative space", "minimal", "fade to black", "darkness", "void", "pause"],
@@ -87,6 +90,8 @@ register("end_small", ["small", "tiny", "subtle", "discreet", "understated"], "a
 for _k in ("screen_spill", "outside"):
     register(_k, ["spill", "spills", "breaks out", "break out", "out of the screen", "pops out", "beyond the screen"],
              "a layer breaking out of its screen")
+register("text_tight", ["edge to edge", "full width", "full-bleed", "full bleed", "fills the card", "touching the edge"],
+         "words running to their card's edge")
 register("speck", ["dot", "point", "speck", "spark", "grows from"], "a dot that grows")
 OTHER = "look at it at that time (look_frame) and move, resize or re-time the layer it names"
 

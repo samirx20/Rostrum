@@ -78,7 +78,8 @@ Next: [first-animation.md](first-animation.md), [files.md](files.md).
 blank stretch, a device off the frame, …) and its reply opens `NOT DONE:` with each fault and its fix, or `DONE:`.
 A fault is what a client sees as broken: a text cut by the frame edge or too near it, crossed by a layer (a ring or a
 stroked line counts where its outline runs through the letters, not its whole box), on another
-text or cut by its box; a faint old heading behind a new one; a pointer on a label; a device, a group (a card), a
+text or cut by its box; a faint old heading behind a new one; a pointer on a label; two cards or panels holding words running into each other; words with no padding on
+their card; a group, picture or card never once in the picture; a device, a group (a card), a
 picture or a character cut by the edge for 2 s or more (passing in or out is not; a plain shape bleeding off the edge
 is scenery); a blank or near-empty stretch mid-film; a layer hanging
 off its screen or outside it; a parked dot; a tiny end card; a painted patch shown in front of a shape it should be

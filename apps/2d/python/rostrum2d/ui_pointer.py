@@ -3,8 +3,8 @@
     cur = pointer()                              # an arrow, its tip at the group's (0, 0): it moves, scales and lands by the tip
     tap(cur, layer("pay"), at=2.0)              # glides there, presses (pointer and button), a ripple under the tip (its colour the pointer's outline)
 
-`pointer(id="cursor", kind="arrow"|"touch", x=, y=, size=, color=, outline=, shadow=)` is a group made of plain
-layers (`<id>_arrow` a path, or `<id>_dot`), so it is restyled or keyed like any other. `tap(pointer, target, at)`
+`pointer(id="cursor", kind="arrow"|"touch", x=, y=, size=, color=, outline=, shadow=)` is a group (named "pointer", so
+the look knows it whatever its id) made of plain layers (`<id>_arrow` a path, or `<id>_dot`), so it is restyled or keyed like any other. `tap(pointer, target, at)`
 moves the tip from where it was onto the target's CENTRE with keys on the pointer's x / y, eased. `spot=(fx, fy)`
 gives the spot as a share of the target's box instead; `spot="beside"` the spot beside the target's words (right
 part of a button, lower right of a card): each candidate is tried and the first where the pointer's whole shape
@@ -40,13 +40,13 @@ def for_script(build) -> dict:
         x, y = float(pw * 0.78 if x is None else x), float(ph * 0.82 if y is None else y)
         over = {"apart": True} if in_layout(build) else {}       # over a container's layers, taking no room
         if kind == "arrow":
-            g = L("group", id, x=x, y=y, w=s * 0.6, h=s, anchorX=0, anchorY=0, **over)
+            g = L("group", id, name="pointer", x=x, y=y, w=s * 0.6, h=s, anchorX=0, anchorY=0, **over)
             with g:
                 d = "M " + " L ".join(f"{px * s:.2f} {py * s:.2f}" for px, py in ARROW) + " Z"
                 part = L("path", f"{id}_arrow", d=pathdata.check(d, id), x=0, y=0, w=s * 0.6, h=s * 0.96, anchorX=0, anchorY=0, fill=color, stroke=True, strokeColor=outline,
                          strokeWidth=max(s * 0.06, 1.5))
         else:
-            g = L("group", id, x=x, y=y, w=s, h=s, **over)
+            g = L("group", id, name="pointer", x=x, y=y, w=s, h=s, **over)
             with g:
                 part = L("shape", f"{id}_dot", shape="ellipse", x=s / 2, y=s / 2, w=s, h=s, fill=color, fillOpacity=0.55,
                          stroke=True, strokeColor=outline, strokeWidth=max(s * 0.04, 1.5))

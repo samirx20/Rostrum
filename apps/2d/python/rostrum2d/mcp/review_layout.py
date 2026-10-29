@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 
-from . import outline
+from . import outline, review_blocks
 from .geometry import covers, drawn_box
 from .review_cover import _in_front, _over, _related
 from .review_sample import Sampled, runs
@@ -28,12 +28,13 @@ TOUCH_H, TOUCH_W = 0.2, 0.25   # ... or two lines' whole boxes overlapping this 
 POINTER = re.compile(r"(^|[_\-\s])(cursor|pointer|mouse|finger|hand)s?($|[_\-\s\d])", re.I)
 POINTER_ON, POINTER_S = 0.2, 1.5    # a pointer resting over this share of a showing text's box this long (a tap's landing on a
                                     # button's centre covers its label briefly, as a real click does: not a fault)
+POINTER_OWN = 0.5         # ... or the pointer hiding this share of the letters' height across this share of its own width
+                          # (an arrow on a long label covers a few letters, a small share of its box: "AUTONO|MOUS", Argon)
 END_S = 1.5               # the end card: the last picture held this long or longer ...
 END_MARK, END_LOCKUP = 0.04, 0.07   # ... its biggest mark under this share of the frame (brief: "a logo under ~5 %"), or all of it in a box under this share
 # (measured: Tally's two end cards, a normal app lock-up, mark 1.8-2.2 %, lock-up 12.6-16.7 %; Lumen's lamp lock-up
 # mark ~5 %, ~60 %; a tiny wordmark alone on a big empty card, mark ~0.3 %, lock-up ~4 %)
 GLYPHS = 0.7             # the share of a text's box height its letters fill
-GAP = 16                  # the gap suggested between a block and the one above it (px)
 GRID = [(u, v) for u in (0.1, 0.3, 0.5, 0.7, 0.9) for v in (0.2, 0.5, 0.8)]
 
 
@@ -84,6 +85,24 @@ def _texts(s: Sampled, nodes: list[dict], by: dict):
             yield k, n, box, front
 
 
+def _panelled(s: Sampled, between: list[dict], box) -> bool:
+    """An opaque panel lies between a layer behind a text and the text, over the text's box: the layer is hidden there."""
+    return any(_in_front(s, o) and o["opacity"] >= OPAQUE and not outline.hollow(o) and _over(o, box) >= HIDDEN for o in between)
+
+
+def _pointer(o: dict, by: dict) -> bool:
+    """A pointer or a part of one: its id or name, or a group's it is in, says so (pointer() names its group "pointer",
+    whatever its id: "st7_cur")."""
+    return any(POINTER.search(n["id"]) or POINTER.search(n.get("name") or "") for n in (o, *(by[w] for w in o["within"] if w in by)))
+
+
+def _lies_on(b, glyphs) -> float:
+    """How much box b sits on a text's letters: the share of their height it hides, over at least that share of its own
+    width (an arrow over a word's letters hides all their height across most of the arrow)."""
+    w, h = min(b[2], glyphs[2]) - max(b[0], glyphs[0]), min(b[3], glyphs[3]) - max(b[1], glyphs[1])
+    return min(h / max(glyphs[3] - glyphs[1], 1.0), w / max(b[2] - b[0], 1.0)) if w > 0 and h > 0 else 0.0
+
+
 def _on_text(a, b, path_a=None, path_b=None) -> float:
     """How much two texts' letters sit on each other (a share of the smaller one), 0 when they don't: their letter boxes
     (_glyphs) overlapping ON_TEXT of the smaller one, or two lines whose whole boxes overlap TOUCH_H of the smaller one's
@@ -121,19 +140,8 @@ def _block(n: dict, o: dict) -> tuple[str, str]:
 
 
 def _fix(by: dict, a: str, b: str) -> str:
-    """'place <lower> below <upper> (…ends at y=…)' in the upper block's parent's own px, the units the script uses."""
-    na, nb = by.get(a), by.get(b)
-    if not na or not nb:
-        return f'move "{b}" off "{a}"'
-    up, low = (na, nb) if drawn_box(na)[1] <= drawn_box(nb)[1] else (nb, na)
-    par = by.get(up["within"][-1]) if up["within"] else None
-    bottom = drawn_box(up)[3]
-    if par is not None:
-        from .geometry import _apply, _invert
-        inv = _invert(par["matrix"])
-        bottom = _apply(inv, drawn_box(up)[0], bottom)[1] if inv else bottom
-    return (f'place "{low["id"]}" below "{up["id"]}" ("{up["id"]}" ends at y = {bottom:.0f}): e.g. y = {bottom:.0f} + {GAP}, '
-            f'or stack the blocks')
+    """'place <lower> below <upper> (…ends at y = …): set y = …' in the px the script types (review_blocks.below)."""
+    return review_blocks.below(list(by.values()), a, b)
 
 
 def _named(s: Sampled, hits: dict, least: float, line) -> list[dict]:
@@ -153,21 +161,23 @@ def overlaps(s: Sampled) -> list[dict]:
         by = {n["id"]: n for n in nodes}
         texts = list(_texts(s, nodes, by))
         for k, n, box, front in texts:
-            for o in nodes[k + 1:]:              # an outline drawn through the letters (its band, not its box)
+            for j, o in enumerate(nodes):        # an outline drawn through the letters (its band, not its box), in front
+                if j == k or j < k and _panelled(s, nodes[j + 1:k], box):    # or behind: it shows between the letters
+                    continue
                 if (outline.hollow(o) and o["opacity"] >= LINE_SEEN and _in_front(s, o) and not _related(n, o)
-                        and not POINTER.search(o["id"]) and (share := _through(o, _glyphs(box))) >= THROUGH):
+                        and not _pointer(o, by) and (share := _through(o, _glyphs(box))) >= THROUGH):
                     lined.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
             for o in front:
-                if outline.hollow(o) or not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
+                if outline.hollow(o) or not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or _pointer(o, by):
                     continue
                 share = max(_over(o, line) for line in _lines(n, box))     # a wrapped text: the line it cuts
                 if share >= PARTIAL[0] and _over(o, box) <= PARTIAL[1]:
                     crossed.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
-            tips = [o for o in nodes[k + 1:] if s.seen(o) and (POINTER.search(o["id"]) or POINTER.search(o["name"] or "")
-                                                               or any(POINTER.search(w) for w in o["within"]))]
-            if tips and (share := _share(tips, box)) >= POINTER_ON:
-                tip = next((w for w in tips[0]["within"] if POINTER.search(w)), tips[0]["id"])
-                pointed.setdefault((n["id"], tip), {})[i] = (share, None)
+            tips = [o for o in nodes[k + 1:] if s.seen(o) and _pointer(o, by)]
+            own = max((_lies_on(drawn_box(o), _glyphs(box)) for o in tips), default=0.0)    # a small arrow on a long label
+            if tips and ((share := _share(tips, box)) >= POINTER_ON or own >= POINTER_OWN):
+                tip = next((w for w in tips[0]["within"] if _pointer(by[w], {})), tips[0]["id"])
+                pointed.setdefault((n["id"], tip), {})[i] = (share, own)
         for x, (_, n, a, _) in enumerate(texts):
             for _, m, b, _ in texts[x + 1:]:
                 if share := _on_text(a, b, *(by.get(t["layer"].get("pathLayer")) for t in (n, m))):
@@ -183,7 +193,7 @@ def overlaps(s: Sampled) -> list[dict]:
         tid, lid = key
         return {"kind": "text_crossed", "start": t0, "end": t1, "id": tid, "ids": [tid, lid], "cover_pct": round(100 * share),
                 "text": f'{t0:g}–{t1:g} s: the outline of "{lid}" runs through the letters of text "{tid}": keep it clear of '
-                        f'the words: smaller or bigger, moved aside, or drawn under the text (listed before it)'}
+                        f'the words: smaller or bigger, or moved aside (drawn under the text it still shows between the letters)'}
 
     def on_text_line(key, t0, t1, share, blocks):
         return {"kind": "text_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "overlap_pct": round(100 * share),
@@ -193,7 +203,8 @@ def overlaps(s: Sampled) -> list[dict]:
 
     def pointer_line(key, t0, t1, share, _):
         return {"kind": "pointer_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "cover_pct": round(100 * share),
-                "text": f'{t0:g}–{t1:g} s: pointer "{key[1]}" rests on {100 * share:.0f} % of label "{key[0]}": move it on after '
+                "text": f'{t0:g}–{t1:g} s: pointer "{key[1]}" rests on the letters of label "{key[0]}" ({100 * share:.0f} % of '
+                        f'its box): move it on after '
                         f'the tap (the next tap() or a key on its x / y), or land beside the label: tap(..., spot="beside")'}
 
     def by_any(blocks):        # the blocks' nodes at the last frame they both show (for the fix's numbers)

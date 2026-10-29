@@ -13,20 +13,20 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from . import edge_cut, look_empty, render
-from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_jump, review_layout, review_paint_order, review_room, review_spill
+from . import edge_cut, geometry, look_empty, render
+from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_jump, review_layout, review_offscreen, review_padding, review_panels, review_paint_order, review_room, review_spill
 from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
-CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts, review_paint_order.facts, review_jump.facts)   # each (Sampled) -> faults: a new check registers here
+CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts, review_panels.facts, review_offscreen.facts, review_padding.facts, review_paint_order.facts, review_jump.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
         "text_crossed": 90, "text_clipped": 91, "text_spill": 90, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
-        "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
+        "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "panel_overlap": 89, "off_screen": 91, "text_tight": 80, "pointer_on_text": 87, "end_small": 85,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "painted_over": 86, "layout_jump": 84, "small_text_edge": 28, "washed": 25}
 
 
@@ -79,6 +79,11 @@ def ranked(faults: list[dict], duration: float) -> list[dict]:
 
 def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str, step: float = EVERY) -> tuple[list[dict], list[str]]:
     """Every fault the document alone shows, and notes for what could not be measured."""
+    with geometry.memo():               # the checks share one flattened picture per sampled time
+        return _doc_faults(doc_data, comp, beats, where, step)
+
+
+def _doc_faults(doc_data, comp, beats, where, step):
     duration = comp.get("duration", 5.0)
     times = [round(i * step, 4) for i in range(int(duration / step + 1e-9))]
     vectors, notes = rf.pose_vectors(doc_data, comp, times)
@@ -155,8 +160,8 @@ def look_review(ctx, args):
     a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film); opening shots that look alike (the same layers
     on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text partly crossed (10-85 %
     of it) by a layer in front for 1 s or more (a group's own background counts; fully under a panel or sheet is hidden, a frosted scrim never counts), with where to
-    place the block instead; the outline of a hollow ring, frame or stroked path in front running through a text's letters for 0.5 s or more, even faint (a ring around the words, clear of them, is fine); a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other (or one line printed into the next one's letters; a text on a path measured along its path); a pointer (a layer named cursor, pointer, mouse, finger or hand)
-    covering a fifth of a label; an end card whose mark or lock-up is tiny in the frame; a layer in a device's screen hanging past the screen's edge (the screen not clipping); a device (device()) cut by the frame edge
+    place the block instead (the y to type, in its parent's px); two blocks holding words (cards, panels) running into each other where they really draw, with the y that clears them; a group, picture or card that shows but is never once in the picture; words with no padding on the card behind them; the outline of a hollow ring, frame or stroked path running through a text's letters for 0.5 s or more, in front of it or behind it, even faint (a ring around the words, clear of them, is fine); a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other (or one line printed into the next one's letters; a text on a path measured along its path); a pointer (pointer(), or a layer named cursor, pointer, mouse, finger or hand)
+    covering a fifth of a label or resting on its letters; an end card whose mark or lock-up is tiny in the frame; a layer in a device's screen hanging past the screen's edge (the screen not clipping); a device (device()) cut by the frame edge
     where it is placed, or nibbled by a camera push-in while its sides show (with the camera key, the share of the film it is
     cut and a frame.fit fix; a deep push-in filling the picture is meant and only listed in data.info, with the screen texts it
     cuts); a character more than half hidden behind layers in front, or on a bare set (under 3 things or 15 % of the frame
