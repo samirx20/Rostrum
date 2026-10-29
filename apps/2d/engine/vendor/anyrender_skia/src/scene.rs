@@ -1435,9 +1435,13 @@ fn lerp_f32(a: f32, b: f32, t: f32) -> f32 {
 }
 
 /// Rostrum patch: a large Gaussian blur is run at a lower resolution. Above `FULL_RATE_SIGMA` the input is
-/// halved (bilinear at the 2 × 2 centres: a box average) until σ fits, blurred with σ / 2^k, and scaled back
-/// up. A Gaussian that wide has no detail at the scale the halving drops, so it looks the same, and it costs
-/// 1 / 4^k of the pixels: a 160 px glow at 1080p is blurred on a ~110 × 110 image instead of ~1800 × 1800.
+/// halved until σ fits, blurred with what is left of σ at 1 / 2^k, and scaled back up. It costs 1 / 4^k of the
+/// pixels: a 160 px glow at 1080p is blurred on a ~110 × 110 image instead of ~1800 × 1800.
+/// Rostrum patch (blur r6): each level is softened by σ 1 (its own px) before it is halved, so the halving drops no
+/// detail it would fold back (alias). A plain halving read each 2 × 2 block at a point set by where the layer sits to
+/// a fraction of a px: a sharp source (a glow's letters) came out up to 6/255 brighter or darker as it moved by a px,
+/// so a moving glow shimmered and a glow kept as one picture for a streak (blurred.rs) differed from its steps. The
+/// softening is part of σ: the last blur adds only the rest, so the blur is as wide as asked.
 fn gaussian_blur(sigma: f32, input: Option<ImageFilter>) -> Option<ImageFilter> {
     use skia_safe::{image_filters, FilterMode, Matrix, MipmapMode, SamplingOptions};
     const FULL_RATE_SIGMA: f32 = 8.0;
@@ -1454,10 +1458,14 @@ fn gaussian_blur(sigma: f32, input: Option<ImageFilter>) -> Option<ImageFilter> 
     let linear = SamplingOptions::new(FilterMode::Linear, MipmapMode::None);
     let mut f = input;
     for _ in 0..levels {
+        f = image_filters::blur((1.0, 1.0), None, f, None);
         f = image_filters::matrix_transform(&Matrix::scale((0.5, 0.5)), linear, f);
     }
     let k = (1u32 << levels) as f32;
-    f = image_filters::blur((sigma / k, sigma / k), None, f, None);
+    // The softenings' spread at the last level: level i's σ 1 is 2^i / k of its px; their variances add.
+    let soft = (0..levels).map(|i| ((1u32 << i) as f32 / k).powi(2)).sum::<f32>();
+    let rest = ((sigma / k).powi(2) - soft).max(0.0).sqrt();
+    f = image_filters::blur((rest, rest), None, f, None);
     image_filters::matrix_transform(&Matrix::scale((k, k)), linear, f)
 }
 
