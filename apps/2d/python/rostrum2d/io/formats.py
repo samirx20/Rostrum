@@ -86,7 +86,10 @@ def _mp4(out, w, h, fps, depth, first, rate):
     q = [] if rate.quality is None else [str(rate.quality)]
     # --tagged / repeat: a frame the same as the one before reaches the encoder as a one-byte mark (a still stretch costs
     # no drawing, read-back or pipe; engine export_crew.rs).
-    return {"program": exe, "args": ["encode-mp4", "--tagged", out, str(w), str(h), str(fps), str(rate.kbps), *q], "repeat": True}
+    # --nv12 / nv12: the engine's drawing workers turn each frame into the encoder's NV12 side by side, and the pipe
+    # carries 1.5 bytes a pixel instead of 4 (the encoder's one thread converting every frame was the export's narrowest step).
+    return {"program": exe, "args": ["encode-mp4", "--tagged", "--nv12", out, str(w), str(h), str(fps), str(rate.kbps), *q],
+            "repeat": True, "nv12": True}
 
 
 @functools.cache

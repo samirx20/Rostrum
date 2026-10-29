@@ -1,4 +1,4 @@
-//!   rostrum2d-render encode-mp4 [--tagged] <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
+//!   rostrum2d-render encode-mp4 [--tagged] [--nv12] <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
 //!   rostrum2d-render encode-mp4 --check     exit 0 when this computer can write MP4, else the reason on stderr
 //! RGBA8 frames (straight alpha, the framing of encode_cmd.rs) → an H.264 MP4 through the operating system's own
 //! encoder, never libx264 (GPL). Windows: Media Foundation's sink writer, the GPU's encoder when there is one, else
@@ -8,6 +8,7 @@
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
+//! `--nv12`: frames come as NV12 (w×h×3/2 bytes, nv12.rs's own conversion, made by the sender) instead of RGBA8.
 //! `--tagged`: each frame comes after a byte, 0 for a picture that follows, 1 for the picture before it again (sink.rs:
 //! a still stretch of an export costs no bytes in the pipe and no conversion; the encoder gets the same frame again).
 //! A thread reads the next frame while this one converts and writes the one before (three buffers going round); at the end
@@ -44,8 +45,9 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if args.first().map(String::as_str) == Some("--check") {
         return Ok(0);
     }
-    let tagged = args.first().map(String::as_str) == Some("--tagged");
-    let args = &args[tagged as usize..];
+    let flag = |f: &str, args: &[String]| args.iter().take(2).any(|a| a == f);
+    let (tagged, nv12) = (flag("--tagged", args), flag("--nv12", args));
+    let args = &args[tagged as usize + nv12 as usize..];
     let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]")?;
     let (w, h) = (num(args, 1, "width")?, num(args, 2, "height")?);
     let (fps, kbps) = (num(args, 3, "fps")?, num(args, 4, "bitrate (kbps)")?);
@@ -59,7 +61,7 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if quality.is_some_and(|q| !(1..=100).contains(&q)) {
         return Err(format!("quality is 1 to 100; got {}", quality.unwrap()));
     }
-    let done = mf::write(out, w, h, fps, kbps, quality, tagged); // the writer is released here, so the file can be removed
+    let done = mf::write(out, w, h, fps, kbps, quality, tagged, nv12); // the writer is released here, so the file can be removed
     if done.is_err() {
         let _ = std::fs::remove_file(out);
     }
@@ -152,7 +154,9 @@ mod mf {
                 }
                 None => p.SetUINT32(&CODECAPI_AVEncCommonRateControlMode, eAVEncCommonRateControlMode_UnconstrainedVBR.0 as u32)?,
             }
-            p.SetUINT32(&CODECAPI_AVEncCommonQualityVsSpeed, 100)?;
+            // ROSTRUM2D_MP4_SPEED (0-100, to measure): the encoder's quality-vs-speed; 100, its best, unless set.
+            let qvs = std::env::var("ROSTRUM2D_MP4_SPEED").ok().and_then(|v| v.trim().parse::<u32>().ok()).unwrap_or(100).min(100);
+            p.SetUINT32(&CODECAPI_AVEncCommonQualityVsSpeed, qvs)?;
             p.SetUINT32(&CODECAPI_AVEncMPVGOPSize, fps * 2)?;
             Ok(p)
         }
@@ -185,8 +189,10 @@ mod mf {
         }
     }
 
-    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>, tagged: bool) -> Result<u32, String> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>, tagged: bool, nv12_in: bool) -> Result<u32, String> {
         unsafe {
+            let t_start = std::time::Instant::now();
             step("starting COM (CoInitializeEx)", CoInitializeEx(None, COINIT_MULTITHREADED).ok())?;
             let mut session = Session { mf: false };
             step("starting Media Foundation (MFStartup)", MFStartup(MF_VERSION, MFSTARTUP_LITE))?;
@@ -195,6 +201,7 @@ mod mf {
             let attrs = step("making the writer's settings", attributes(2))?;
             step("allowing the GPU's encoder", attrs.SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, 1))?;
             step("choosing the MP4 container", attrs.SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4))?;
+            let t_mf = t_start.elapsed().as_secs_f64();
             let wide: Vec<u16> = out.encode_utf16().chain(Some(0)).collect();
             let writer = step(format!("creating {out} (MFCreateSinkWriterFromURL)"),
                 MFCreateSinkWriterFromURL(PCWSTR(wide.as_ptr()), None::<&IMFByteStream>, &attrs))?;
@@ -206,6 +213,8 @@ mod mf {
             step("connecting the encoder to NV12 frames (SetInputMediaType)", writer.SetInputMediaType(stream, &input, &params))?;
             step("starting to write (BeginWriting)", writer.BeginWriting())?;
             eprintln!("encode-mp4: encoder {}", encoder_name(&writer, stream));
+            eprintln!("encode-mp4: started in {:.2} s (Media Foundation {t_mf:.2} s, the writer and its encoder {:.2} s)",
+                      t_start.elapsed().as_secs_f64(), t_start.elapsed().as_secs_f64() - t_mf);
 
             let (wu, hu) = (w as usize, h as usize);
             let size = wu * hu * 3 / 2;
@@ -214,8 +223,10 @@ mod mf {
             // None: the picture before again (`--tagged`).
             let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Option<Vec<u8>>, String>>(3);
             let (free, free_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+            // `--nv12`: the frames come as NV12 already (the export's drawing workers convert them side by side, sink.rs).
+            let frame_bytes = if nv12_in { size } else { wu * hu * 4 };
             for _ in 0..3 {
-                let _ = free.send(vec![0u8; wu * hu * 4]);
+                let _ = free.send(vec![0u8; frame_bytes]);
             }
             std::thread::spawn(move || {
                 let mut stdin = std::io::stdin().lock();
@@ -270,9 +281,13 @@ mod mf {
             while let Ok(read) = full.recv() {
                 took(&mut waited);
                 // A new picture into NV12 (kept: a repeat is the same NV12 again).
-                if let Some(rgba) = read? {
-                    crate::nv12::from_rgba(&rgba, wu, hu, &mut nv12);
-                    let _ = free.send(rgba);
+                if let Some(pic) = read? {
+                    if nv12_in {
+                        nv12.copy_from_slice(&pic);
+                    } else {
+                        crate::nv12::from_rgba(&pic, wu, hu, &mut nv12);
+                    }
+                    let _ = free.send(pic);
                 } else if n == 0 {
                     return Err("frame 0 is marked as the picture before it again; there is none".into());
                 }

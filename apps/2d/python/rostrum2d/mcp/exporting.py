@@ -125,8 +125,8 @@ def with_sound(where: str, facts: dict, target: Path, s: dict, folder) -> dict:
 
 
 def _engine():
-    from rostrum2d.engine import Engine
-    return Engine()
+    from . import export_engine
+    return export_engine.engine()      # held between exports: its drawing workers stay warm
 
 
 def project_renders(folder, item) -> Path | None:

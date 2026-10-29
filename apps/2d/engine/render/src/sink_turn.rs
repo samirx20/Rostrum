@@ -9,7 +9,9 @@
 //! will never come.
 
 use std::collections::{BTreeMap, HashMap};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::Instant;
 
 use crate::sink::{Pixels, Sink};
 
@@ -19,6 +21,11 @@ pub const WINDOW: usize = 16;
 pub struct Turn {
     state: Mutex<State>,
     cv: Condvar,
+    /// Its encoder takes NV12: each worker converts its frame before its turn (sink.rs `for_encoder`).
+    nv12: bool,
+    /// Microseconds, summed over the workers: converting frames, waiting for their turn (WINDOW), handing them to the
+    /// encoder (its queue full: the encoder behind). The export's reply says them (`timing.turn`).
+    spent: [AtomicU64; 3],
 }
 
 struct State {
@@ -35,7 +42,8 @@ impl Turn {
     /// The export's encoder, taking frames numbered `order` (export order).
     pub fn new(sink: Sink, order: Vec<u32>) -> Arc<Turn> {
         let pos = order.iter().enumerate().map(|(p, &i)| (i, p)).collect();
-        Arc::new(Turn { state: Mutex::new(State { sink, pos, next: 0, held: BTreeMap::new(), stop: None }), cv: Condvar::new() })
+        let nv12 = sink.wants_nv12();
+        Arc::new(Turn { state: Mutex::new(State { sink, pos, next: 0, held: BTreeMap::new(), stop: None }), cv: Condvar::new(), nv12, spent: Default::default() })
     }
 
     /// Queues this frame in the encoder when its turn has come, else holds it (waiting while it is WINDOW or more
@@ -51,7 +59,9 @@ impl Turn {
         };
         // Converted here, off the lock, while other workers convert theirs (due or not: the one writer thread
         // converting each due frame was the export's narrowest step). Frames from the GPU's output step are ready.
-        let mut px = Some(px.converted());
+        let t0 = Instant::now();
+        let mut px = Some(px.for_encoder(self.nv12));
+        let t1 = Instant::now();
         let mut st = self.state.lock().unwrap();
         loop {
             if let Some(why) = &st.stop {
@@ -63,6 +73,7 @@ impl Turn {
             st = self.cv.wait(st).unwrap();
         }
         st.held.insert(p, px.take().unwrap());
+        let t2 = Instant::now();
         let mut r = Ok(());
         while let Some(px) = { let n = st.next; st.held.remove(&n) } {
             r = st.sink.push(px);
@@ -75,7 +86,16 @@ impl Turn {
             }
         }
         self.cv.notify_all();
+        drop(st);
+        for (k, d) in [t1 - t0, t2 - t1, t2.elapsed()].iter().enumerate() {
+            self.spent[k].fetch_add(d.as_micros() as u64, Ordering::Relaxed);
+        }
         r
+    }
+
+    /// Seconds summed over the workers: converting, waiting for a turn, handing frames to the encoder.
+    pub fn spent(&self) -> [f64; 3] {
+        self.spent.each_ref().map(|a| a.load(Ordering::Relaxed) as f64 / 1e6)
     }
 
     /// A worker failed: every frame waiting, and every one pushed from now on, fails with `why` (the first kept).
@@ -108,7 +128,7 @@ mod tests {
     /// A frame of 4 × 2 premultiplied half floats, its values made from its number.
     fn frame(index: u32) -> Pixels {
         let raw = (0..4 * 2 * 4).flat_map(|k| half::f16::from_f32(((index as usize * 7 + k) % 97) as f32 / 97.0).to_le_bytes()).collect();
-        Pixels { raw, spec: crate::color::Spec::default(), width: 4, deep: false, index, ready: false, repeat: false }
+        Pixels { raw, spec: crate::color::Spec::default(), width: 4, deep: false, index, ready: false, repeat: false, nv12: false }
     }
 
     /// Three workers push 40 frames in an order of their own (one held up on a slow frame): the encoder still gets every

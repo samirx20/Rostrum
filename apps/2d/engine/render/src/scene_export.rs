@@ -5,7 +5,9 @@
 //! time on. With several drawing workers the steps add up over all of them (so they can sum to more than `totalS`).
 //! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
 //! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs); `repeatedFrames`: how many
-//! frames had the stage of the frame before and went to the encoder as that picture again, not drawn (export_crew.rs).
+//! frames had the stage of the frame before and went to the encoder as that picture again, not drawn (export_crew.rs);
+//! `workerStartS` the seconds the extra workers took to be ready and `workersMade` how many made their session now (the
+//! others were kept from an earlier export: export_pool.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
 //! `warning` says in words when that was not the computer's main graphics card; `encoder` names the MP4 encoder
 //! used and whether it ran on the graphics card (sink.rs `encoder`, with where its time went); `read` how the frames
@@ -59,7 +61,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         (e, _) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
             let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            s.sink = Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true))?);
+            s.sink = Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true), e["nv12"].as_bool() == Some(true))?);
         }
     }
     let warning = painting_warning(&s.painting);
@@ -69,7 +71,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
     let span = Span { start, fps, n };
-    let (rows, costs, worker_start_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
+    let (rows, costs, worker_start_s, workers_made, turn_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
     let code = if images.is_none() { Some(serve::finish(s)?) } else { None };
     if let Some(sink) = &s.sink {
         // Every frame, once, in order (sink.rs `push` notes each frame's number as it is queued).
@@ -99,6 +101,8 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     }
     timing.insert("stillPieces".into(), json!(rows.iter().map(|r| r.still).sum::<u64>()));
     timing.insert("workerStartS".into(), json!(worker_start_s));
+    timing.insert("workersMade".into(), json!(workers_made));
+    timing.insert("turn".into(), json!({ "convertS": turn_s[0], "waitS": turn_s[1], "handS": turn_s[2] }));
     timing.insert("repeatedFrames".into(), json!(rows.iter().filter(|r| r.repeat).count()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);

@@ -30,14 +30,29 @@ pub struct Pixels {
     /// The same picture as the frame before it (serve.rs `repeat`): `raw` is empty and the encoder gets that frame's
     /// bytes again (or, one that takes repeats, a mark: `Sink::start`).
     pub repeat: bool,
+    /// `raw` is the encoder's NV12 already (`for_encoder`): written as it is.
+    pub nv12: bool,
 }
 
 impl Pixels {
     /// The frame put through the output step now, on this thread (an export's drawing workers do it side by side,
     /// sink_turn.rs, instead of the one writer thread): the same bytes the writer would make.
     pub fn converted(self) -> Pixels {
-        let (spec, width, deep, index, repeat) = (self.spec, self.width, self.deep, self.index, self.repeat);
-        Pixels { raw: self.bytes(), spec, width, deep, index, ready: true, repeat }
+        let (spec, width, deep, index, repeat, nv12) = (self.spec, self.width, self.deep, self.index, self.repeat, self.nv12);
+        Pixels { raw: self.bytes(), spec, width, deep, index, ready: true, repeat, nv12 }
+    }
+
+    /// The frame as the encoder takes it, made on this thread: converted, and into NV12 when it takes NV12 (`nv12`,
+    /// encode_mp4.rs `--nv12`; nv12.rs, the same bytes the encoder made itself before). A repeat stays a mark.
+    pub fn for_encoder(self, nv12: bool) -> Pixels {
+        let px = self.converted();
+        if !nv12 || px.nv12 || px.repeat {
+            return px;
+        }
+        let (w, h) = (px.width as usize, px.raw.len() / (px.width as usize * 4));
+        let mut out = vec![0u8; w * h * 3 / 2];
+        crate::nv12::from_rgba(&px.raw, w, h, &mut out);
+        Pixels { raw: out, nv12: true, ..px }
     }
 
     fn bytes(self) -> Vec<u8> {
@@ -52,6 +67,8 @@ impl Pixels {
 
 pub struct Sink {
     to: To,
+    /// The encoder takes NV12 (`Sink::start`'s `nv12`): frames are converted before they reach it.
+    nv12: bool,
     /// Frames queued so far, and whether each came right after the one before (an export checks both).
     pushed: u64,
     last: Option<u32>,
@@ -79,8 +96,14 @@ struct Encoder {
 impl Sink {
     /// `repeats`: the encoder takes repeated frames as marks (encode_mp4.rs `--tagged`): each frame comes after a byte,
     /// 0 for a picture that follows, 1 for the picture before it again; else a repeat is written whole.
-    pub fn start(program: &str, args: &[String], repeats: bool) -> Result<Sink, String> {
-        Ok(Sink::of(To::Encoder(Encoder::start(program, args, repeats)?)))
+    /// `nv12`: it takes NV12 frames (encode_mp4.rs `--nv12`), converted by whoever pushes them (`Pixels::for_encoder`).
+    pub fn start(program: &str, args: &[String], repeats: bool, nv12: bool) -> Result<Sink, String> {
+        Ok(Sink { nv12, ..Sink::of(To::Encoder(Encoder::start(program, args, repeats)?)) })
+    }
+
+    /// Whether its encoder takes NV12 (a worker's turn converts each frame before its turn: sink_turn.rs).
+    pub fn wants_nv12(&self) -> bool {
+        self.nv12
     }
 
     /// A worker's sink: its frames go to `turn`'s encoder when their turn comes.
@@ -95,7 +118,7 @@ impl Sink {
     }
 
     fn of(to: To) -> Sink {
-        Sink { to, pushed: 0, last: None, in_order: true }
+        Sink { to, nv12: false, pushed: 0, last: None, in_order: true }
     }
 
     /// Queues a frame's pixels (waits while two are queued; a worker's, until the frames before it are in).
@@ -103,7 +126,7 @@ impl Sink {
         self.in_order &= self.last.map_or(true, |l| pixels.index == l + 1);
         (self.pushed, self.last) = (self.pushed + 1, Some(pixels.index));
         match &mut self.to {
-            To::Encoder(e) => e.push(pixels),
+            To::Encoder(e) => e.push(pixels.for_encoder(self.nv12)),
             To::Turn(t) => t.push(pixels),
             #[cfg(test)]
             To::Kept(k) => {
