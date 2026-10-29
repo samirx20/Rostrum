@@ -78,13 +78,17 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
 
 
 def _runs(todo: list[int], cuts) -> list[list[int]]:
-    """The segments to draw, in runs of neighbours drawn by one engine request, each at most engine_export.PART_FRAMES
-    long (the engine's own parts: a longer request is split by it at frames that need not be segment cuts)."""
+    """The segments to draw, in runs of neighbours, each run one engine request (one export start-up, one read-back)
+    then split at the segment cuts. The engine draws a long request in its own parts (engine_export.PART_FRAMES) and
+    joins them; a part boundary is a segment cut too when PART_FRAMES is a whole number of segments, else runs stop
+    at PART_FRAMES. A first export of a 68 s film: 7 requests of 10 s took 79 s, one whole request 62 s."""
     from rostrum2d.engine_export import PART_FRAMES
+    seg = cuts[0][1] - cuts[0][0] if cuts else 1
+    most = None if seg and PART_FRAMES % seg == 0 else PART_FRAMES
     runs: list[list[int]] = []
     for i in todo:
         r = runs[-1] if runs else None
-        if r and r[-1] == i - 1 and cuts[i][1] - cuts[r[0]][0] <= PART_FRAMES:
+        if r and r[-1] == i - 1 and (most is None or cuts[i][1] - cuts[r[0]][0] <= most):
             r.append(i)
         else:
             runs.append([i])
@@ -130,8 +134,21 @@ def _split(run: Path, cuts: list[int], into: list[Path]) -> bool:
 
 
 def _readback(readback, target: Path, total: int, w: int, h: int, fps) -> dict:
-    return {"file": str(target), "frames": total, "fps": fps, "alpha": False, "depth": 8,
-            "checked": readback.check("mp4", target, total, w, h, False, 8)}
+    """The joined file read back without decoding it again: every segment was decoded and checked when it was drawn
+    (io/export.py) and the join only copies their packets, so counting the packets (one a frame) and reading the size
+    proves it whole. A full decode here cost ~10 s on a 68 s film."""
+    import json
+    out = subprocess.run([settings.ffmpeg("ffprobe"), "-v", "error", "-count_packets", "-select_streams", "v:0", "-show_entries",
+                          "stream=width,height,pix_fmt,nb_read_packets", "-of", "json", str(target)],
+                         capture_output=True, text=True, creationflags=settings.NO_WINDOW)
+    if out.returncode:
+        raise readback.ExportError(f"ffprobe failed on the joined file: {out.stderr.strip()[-300:]}", {"file": str(target)})
+    st = json.loads(out.stdout)["streams"][0]
+    facts = {"frames": int(st["nb_read_packets"]), "size": (st["width"], st["height"]), "pix_fmt": st["pix_fmt"], "min_alpha": 255}
+    if facts["frames"] != total or tuple(facts["size"]) != (w, h):
+        raise readback.ExportError(f'the joined file has {facts["frames"]} frames at {facts["size"][0]}×{facts["size"][1]}, '
+                                   f"expected {total} at {w}×{h}", facts)
+    return {"file": str(target), "frames": total, "fps": fps, "alpha": False, "depth": 8, "checked": facts}
 
 
 def _part_progress(progress, before: int, of: int):
