@@ -66,7 +66,8 @@ def look_frame(ctx, args):
     t, frame = time_of(ctx, comp, args)
     if "area" in args:
         return _area(ctx, doc, comp, t, frame, args)
-    scene, width, quality = render.look_scene(doc, comp["id"]), args.get("width", FRAME_WIDTH), args.get("quality")
+    # times=[t]: only this moment's painted-on pictures are made (warm.scene); the edge warnings come with the reply facts
+    scene, width, quality = render.look_scene(doc, comp["id"], times=[t]), args.get("width", FRAME_WIDTH), args.get("quality")
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
 
     def job_fn(job):
