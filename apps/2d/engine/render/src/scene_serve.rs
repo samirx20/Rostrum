@@ -368,6 +368,10 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         if whole || staged.iter().any(|&s| s) {
             let ids: Vec<&str> = centre.layers.iter().filter(|l| l.kind != "camera" && !crate::scene::matte::used(l, &centre)).map(|l| l.id).collect();
             staged_ids = if whole { vec!["(all)".to_string()] } else { (1..staged.len()).filter(|&p| staged[p]).filter_map(|p| ids.get(p - 1).map(|s| s.to_string())).collect() };
+            // As many sub-frames as the staged layers' own moves need (the streaks keep all of theirs).
+            let least = crate::motion::shutter(&scene.comp, req)?.1;
+            let m = if whole { n } else { crate::motion::streak::own_steps(&at_probes, &staged_ids, least, n) };
+            let times: Vec<f64> = crate::motion::streak::pick(m, n).into_iter().map(|j| times[j]).collect();
             let items = times.iter().map(|&ts| eval_at(ts)).collect::<Result<Vec<_>, _>>()?;
             // Staged per sub-frame: every piece when the sub-frames draw different layers, else only those that change.
             for (comp, &ts) in items.iter().zip(&times) {

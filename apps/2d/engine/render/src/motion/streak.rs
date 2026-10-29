@@ -37,10 +37,8 @@ pub type Moves = Vec<[f64; 6]>;
 pub struct Streak {
     pub moves: Moves,
     pub reach: Option<[f64; 4]>,
-    /// Where its picture is (its padded boxes at the frame's time) and every px its streak reads from (that picture
-    /// carried back from anywhere it reaches): streaks whose reads miss each other's pictures can share one picture.
+    /// Where its picture is: its padded boxes at the frame's time (page px).
     pub ink: [f64; 4],
-    pub reads: [f64; 4],
     /// It blends with what is under it (a blend mode, a glow, frosted glass: still_runs.rs `regroups`), so it isn't
     /// laid over as one picture: it is painted at each of its moves, as laid out at the frame's time (blurred.rs).
     pub blends: bool,
@@ -74,11 +72,11 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
                 staged.push(false);
             }
             Some(m) => {
-                let (reach, ink, reads) = match reach(l, cv.as_ref(), &m, spread(k + 1)) {
-                    Some((r, i, d)) => (Some(r), i, d),
-                    None => (None, [f64::MIN, f64::MIN, f64::MAX, f64::MAX], [f64::MIN, f64::MIN, f64::MAX, f64::MAX]),
+                let (reach, ink) = match reach(l, cv.as_ref(), &m, spread(k + 1)) {
+                    Some((r, i)) => (Some(r), i),
+                    None => (None, [f64::MIN, f64::MIN, f64::MAX, f64::MAX]),
                 };
-                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, reads, blends: !streakable(k + 1) }));
+                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, blends: !streakable(k + 1) }));
                 staged.push(false);
             }
             _ => {
@@ -125,10 +123,10 @@ pub fn pad(piece: &str) -> f64 {
     pad
 }
 
-/// The page px rectangles of the layer's picture under any of `moves` (its reach), of the picture itself (its boxes'
-/// corners, its own and its children's, as steps.rs measures them, `pad` further out) and of what its streak reads.
-/// None when a part of it has no box (a path, a picture without a size).
-fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64; 4], [f64; 4], [f64; 4])> {
+/// The page px rectangles of the layer's picture under any of `moves` (its reach) and of the picture itself (its boxes'
+/// corners, its own and its children's, as steps.rs measures them, `pad` further out). None when a part of it has no
+/// box (a path, a picture without a size).
+fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64; 4], [f64; 4])> {
     fn boxed(it: &Item) -> bool {
         (it.props.contains_key("w") || it.kind == "group") && it.kind != "path" && it.layers.iter().all(boxed)
     }
@@ -143,10 +141,7 @@ fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64
     let (x0, y0, x1, y1) = (b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad);
     let ink = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)];
     let r = bound(&mut moves.iter().flat_map(|m| ink.map(|p| m.apply(p))));
-    let back: Vec<Aff> = moves.iter().filter_map(Aff::inverse).collect();
-    let reads = bound(&mut back.iter().flat_map(|b| moves.iter().flat_map(move |m| ink.map(|p| (*b * *m).apply(p)))));
-    let all = [r, reads].iter().flatten().all(|v| v.is_finite());
-    (all && back.len() == moves.len()).then_some((r, [x0, y0, x1, y1], reads))
+    r.iter().all(|v| v.is_finite()).then_some((r, [x0, y0, x1, y1]))
 }
 
 /// `b` is `a` but for its placing fields (`top`), its colours and fades (`TONE`) and numbers within HOLD_PX: the same
@@ -193,6 +188,29 @@ pub fn spread(moves: &[[f64; 6]], probes: &[usize], n: usize) -> Moves {
         let f = (j as f64 - a as f64) / (b - a).max(1) as f64;
         std::array::from_fn(|k| moves[i][k] + (moves[i + 1][k] - moves[i][k]) * f)
     }).collect()
+}
+
+/// How many of the `n` sub-frames the layers `ids` (staged per sub-frame) need: one per px the fastest of their corners
+/// (and their mattes') travels over the probes (`at_probes`, in order), at least `least` (what moves inside a layer
+/// isn't measured, as steps.rs). Their own steps, not the frame's: a still title under a fast pan needs the fewest.
+pub fn own_steps(at_probes: &[Item], ids: &[String], least: usize, n: usize) -> usize {
+    let places: Vec<_> = at_probes.iter().map(super::hold::places).collect();
+    let path = ids.iter().map(|id| places.windows(2).map(|w| match (w[0].get(id.as_str()), w[1].get(id.as_str())) {
+        (Some(a), Some(b)) if a.len() == b.len() => a.iter().zip(b).map(|(p, q)| (q.0 - p.0).hypot(q.1 - p.1)).fold(0.0, f64::max),
+        _ => f64::INFINITY,
+    }).sum::<f64>()).fold(0.0, f64::max);
+    if !path.is_finite() {
+        return n;
+    }
+    ((path / super::steps::GAP_PX - 1e-9).ceil() as usize).clamp(least.min(n), n)
+}
+
+/// `m` of `n` evenly spread sub-frames, by index (all of them when `m` ≥ `n`).
+pub fn pick(m: usize, n: usize) -> Vec<usize> {
+    if m >= n {
+        return (0..n).collect();
+    }
+    (0..m).map(|i| (((i as f64 + 0.5) * n as f64 / m as f64) as usize).min(n - 1)).collect()
 }
 
 #[cfg(test)]

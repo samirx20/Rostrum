@@ -251,9 +251,10 @@ keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples
 **What it costs.** The page is laid out and painted once a frame. A layer that only moves, turns or scales (or that
 the frame moves: a pan, a whip, a drop) is painted once, with its depth-of-field blur, and smeared along its path in one
 pass on the graphics card, however many steps the frame takes. Layers at one depth under a pan share that one picture.
-A layer that changes while the shutter is open (a path changing shape, letters playing their keys, a colour, a layer
-with a matte) or that blends (a glow, a blend mode other than Normal, frosted glass) is drawn again at every step, alone,
-over what is under it. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
+A layer that only moves but blends (a glow, a blend mode other than Normal, frosted glass), or that runs past the edge
+of the frame, is redrawn at each step without a new layout. A fade or a colour change within one step is taken at the
+frame's time. Only a layer whose shape changes while the shutter is open (a path changing shape, letters playing their
+keys, a layer with a matte, a group whose children move) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
 `shutterSamples` does not make fast moves smoother (they get their steps anyway); it only makes the layers that change
 slower. Keep 8 unless steps show inside a layer, and look at a few frames before exporting the whole film.
 

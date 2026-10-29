@@ -6,7 +6,8 @@
 //! The pieces are drawn in stage order, in steps: a step draws its pieces over the picture of the steps before it (kept
 //! picture 0, drawn in place of the first piece). A step of pieces that are the same in every sub-frame is one paint: its
 //! streaks first painted alone and kept (at most `most_kept` pictures at once; past it the next streaks are the next
-//! step). A step of pieces that change is painted at every sub-frame and averaged: over the same picture below, the
+//! step); a streak that never reaches the frame isn't drawn, one whose picture runs past the frame's edge is painted at
+//! each of its moves instead (no layout) and averaged. A step of pieces that change is painted at every sub-frame and averaged: over the same picture below, the
 //! average is the layers' own average laid over it, exactly. Steps never reorder pieces, so blends and backdrops see what
 //! is under them.
 
@@ -96,32 +97,71 @@ pub(crate) fn draw(
                 runs.push((q..r, m));
                 q = r;
             }
-            // Runs whose streaks read none of each other's pictures share one picture, painted together (`shares`); at most
-            // `most_kept` pictures a step, the runs past them the next step's.
+            // A run whose picture runs past the frame's edge (or whose size isn't known) would streak the frame's edge
+            // px: it is painted at each of its moves instead, alone, and averaged into its picture (`edge`). One that
+            // covers the whole frame (a backdrop) streaks its edge px, as its picture would continue past it.
+            let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
+            let seen = [x0, y0, x0 + size.0 as f64 / k, y0 + size.1 as f64 / k];
+            let edge: Vec<bool> = runs.iter().map(|(run, m)| {
+                let long = taps(&m.moves, view, size).len() > 2;   // a streak of 2 px or less smears the edge by that much at most
+                long && run.clone().any(|i| streak(i).is_none_or(|st| st.reach.is_none() || crosses(st.ink, seen)))
+            }).collect();
+            // A run whose streak never reaches the frame isn't drawn.
+            let off: Vec<bool> = runs.iter().map(|(run, _)| run.clone().all(|i| streak(i).and_then(|st| st.reach).is_some_and(|r| r[2] <= seen[0] || r[0] >= seen[2] || r[3] <= seen[1] || r[1] >= seen[3]))).collect();
+            // Each run painted alone into a picture of its own; at most `most_kept` pictures a step, the runs past them the
+            // next step's.
             let mut pictures: Vec<Vec<usize>> = vec![];
             let mut taken = runs.len();
             for i in 0..runs.len() {
-                match pictures.iter().position(|g| g.iter().all(|&o| shares(&runs[o].0, &runs[i].0, streaks))) {
-                    Some(g) => pictures[g].push(i),
-                    None if pictures.len() + 1 < most_kept => pictures.push(vec![i]),
-                    None => {
-                        taken = i;
-                        break;
-                    }
+                if off[i] {
+                    continue;
                 }
+                if pictures.len() + 1 >= most_kept {
+                    taken = i;
+                    break;
+                }
+                pictures.push(vec![i]);
             }
-            pictures.iter_mut().for_each(|g| g.retain(|&i| i < taken));
             q = if taken < runs.len() { runs[taken].0.start } else { q };
             let mut slot = vec![0; taken];
             for g in &pictures {
                 let mine = |i: &usize| g.iter().any(|&r| runs[r].0.contains(i));
-                blitz_paint::set_plan(kids.iter().enumerate().filter(|(i, _)| !mine(i)).map(|(_, &o)| (o, Run::Skip)).collect());
+                let alone: HashMap<NodeId, Run> = kids.iter().enumerate().filter(|(i, _)| !mine(i)).map(|(_, &o)| (o, Run::Skip)).collect();
+                if let [r] = g[..] {
+                    if edge[r] {
+                        let (run, m) = &runs[r];
+                        let taps = taps(&m.moves, view, size);
+                        for (j, &t) in taps.iter().enumerate() {
+                            let mut plan = alone.clone();
+                            plan.extend(run.clone().map(|i| (kids[i], Run::Shift(m.moves[t]))));
+                            blitz_paint::set_plan(plan);
+                            timed(s, None, true, false)?;
+                            s.painter.accumulate(j == 0, 1.0 / taps.len() as f32)?;
+                        }
+                        let picture = s.painter.last_image();
+                        s.painter.push_cached(picture);
+                        slot[r] = s.painter.cached_len() - 1;
+                        continue;
+                    }
+                }
+                blitz_paint::set_plan(alone);
                 timed(s, None, true, false)?;
                 s.painter.keep_cached();
                 g.iter().for_each(|&r| slot[r] = s.painter.cached_len() - 1);
             }
             let (mut plan, mut moves) = (HashMap::new(), vec![]);
             for (i, (run, m)) in runs.iter().take(taken).enumerate() {
+                if off[i] {
+                    plan.extend(run.clone().map(|k| (kids[k], Run::Skip)));
+                    continue;
+                }
+                if edge[i] {
+                    plan.insert(kids[run.start], Run::Cached(slot[i]));
+                    for k in run.start + 1..run.end {
+                        plan.insert(kids[k], Run::Skip);
+                    }
+                    continue;
+                }
                 plan.insert(kids[run.start], Run::Streak(slot[i], moves.len()));
                 for k in run.start + 1..run.end {
                     plan.insert(kids[k], Run::Skip);
@@ -131,7 +171,6 @@ pub(crate) fn draw(
                     let b = streak(i)?.reach?;
                     Some(Some(a.map_or(b, |a| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])])))
                 }).flatten();
-                let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
                 let rect = reach.map(|b| [((b[0] - x0) * k).floor() as f32, ((b[1] - y0) * k).floor() as f32, ((b[2] - x0) * k).ceil() as f32, ((b[3] - y0) * k).ceil() as f32]);
                 moves.push(blitz_paint::Streak { moves: on_device(&m.moves, view, size), rect });
             }
@@ -178,14 +217,10 @@ fn whole(s: &mut Session, samples: &[&str], cuts: &[Vec<String>], timed: &mut dy
     Ok(())
 }
 
-/// Two runs may share a picture: each piece of either has a known reach, and what each streak reads misses the other's
-/// pictures (so neither streak picks up the other's pixels).
-fn shares(ra: &Range<usize>, rb: &Range<usize>, streaks: &[Option<Streak>]) -> bool {
-    let apart = |x: [f64; 4], y: [f64; 4]| x[2] <= y[0] || y[2] <= x[0] || x[3] <= y[1] || y[3] <= x[1];
-    let all = |r: &Range<usize>| r.clone().filter_map(|i| streaks[i].as_ref()).collect::<Vec<_>>();
-    let (pa, pb) = (all(ra), all(rb));
-    pa.iter().chain(&pb).all(|s| s.reach.is_some())
-        && pa.iter().all(|x| pb.iter().all(|y| apart(x.reads, y.ink) && apart(y.reads, x.ink)))
+/// The picture `ink` runs past an edge of the frame `seen` (page px) without covering the whole frame.
+fn crosses(ink: [f64; 4], seen: [f64; 4]) -> bool {
+    let covers = ink[0] <= seen[0] && ink[1] <= seen[1] && ink[2] >= seen[2] && ink[3] >= seen[3];
+    !covers && (ink[0] < seen[0] || ink[1] < seen[1] || ink[2] > seen[2] || ink[3] > seen[3])
 }
 
 /// Two streaks' moves are within a quarter px of each other over the frame: one picture, one streak.

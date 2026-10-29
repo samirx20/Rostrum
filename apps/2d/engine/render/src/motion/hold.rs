@@ -56,7 +56,7 @@ pub(super) fn drawn<'t, 'a>(comp: &'t Item<'a>) -> Vec<&'t Item<'a>> {
 }
 
 /// Every corner of each drawn top-level layer's piece (its own, its children's, its matte's) in output px, by layer id.
-fn places<'a>(comp: &Item<'a>) -> HashMap<&'a str, Vec<Pt>> {
+pub(super) fn places<'a>(comp: &Item<'a>) -> HashMap<&'a str, Vec<Pt>> {
     let view = View::of(comp).ok();
     let mut out = HashMap::new();
     for l in drawn(comp) {

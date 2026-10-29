@@ -87,7 +87,14 @@ of its longest path. Turning and scaling streak per pixel as they should (each r
 slide). Layers in a row that move alike (the same depth under a pan) are one picture and one streak. What a layer
 streaks over is what lies under it, so this is each layer's own motion blur laid over the others, as After Effects
 blurs each layer: where two layers that move differently overlap, it differs a little from averaging whole sub-frames.
-The few px a move pulls in from past the frame's edge take the picture's edge px.
+A layer that only moves but blends (a blend mode, glow, frosted glass) is painted as laid out, moved to each
+sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. A moving layer whose
+picture runs past the frame's edge (or whose size isn't known before layout: a text, a path) is built the same way,
+alone, so what lies past the edge streaks in; one that covers the whole frame (a backdrop) takes its edge px for the few
+px a move pulls in; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 sub-frames spread over the shutter (`streak.rs` `PROBES`) and the
+moves in between read off them; a fade or a colour change within one shutter opening is taken at the frame's time (its
+average). A layer still staged per sub-frame gets as many sub-frames as its own corners (and its matte's) travel in px,
+at least `shutterSamples`, not the frame's count.
 
 A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer with a
 matte) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
