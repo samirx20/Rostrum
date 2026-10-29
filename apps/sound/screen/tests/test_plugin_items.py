@@ -25,7 +25,11 @@ from test_song_swap import song  # noqa: E402
 PLUGIN = {"id": "wig1", "type": "wiggle:generator", "name": "Wobble", "wiggle:cfg": {"a": [1, {"b": None}], "c": 1.5e300},
           "odd": [True, None, "é", 0.1], "deep": {"x": {"y": []}}}
 CHILD = {"id": "wc", "type": "wiggle:clip", "at": 2, "x": {"y": []}}
-SLOW_MS = 100            # a real click or key must be handled well inside this (the budget is one refresh, ~16 ms)
+# Two budgets (Sam, 2026-10-27): only direct manipulation (the drag's move steps) owes a frame; a discrete action (click, M,
+# Ctrl+Shift+L, Delete, Ctrl+Z, the drop) only has to feel instant: visible reaction at once, nothing stalls over ~0.2 s.
+# Measured in real ms: the first click on a cold window (builds the selection's look) 44-125 ms, the rest 1-35 ms.
+DISCRETE_MS = 200
+DRAG_STEP_MS = 50        # a frame is ~16 ms; headroom for a loaded laptop
 
 
 def timed(fn):
@@ -68,7 +72,7 @@ def test_a_plugin_item_can_be_locked_muted_moved_and_deleted(tmp_path, monkeypat
     p["doc"].write_text(json.dumps(f), encoding="utf-8")
     import main as soundmain
     screen = soundmain.Screen((1646, 900))
-    slowest = 0.0
+    slowest = drag_slowest = 0.0
     try:
         assert screen.files.openPath(str(folder))
         QTest.qWait(400)
@@ -98,7 +102,8 @@ def test_a_plugin_item_can_be_locked_muted_moved_and_deleted(tmp_path, monkeypat
         QTest.mouseMove(win, a)
         QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
         for step in range(1, 7):
-            QTest.mouseMove(win, QPoint(a.x(), round(a.y() + (top.y() - a.y()) * step / 6)))
+            drag_slowest = max(drag_slowest, timed(lambda: QTest.mouseMove(
+                win, QPoint(a.x(), round(a.y() + (top.y() - a.y()) * step / 6)))))
             QTest.qWait(20)
         slowest = max(slowest, timed(lambda: QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, top)))
         QTest.qWait(200)
@@ -131,5 +136,6 @@ def test_a_plugin_item_can_be_locked_muted_moved_and_deleted(tmp_path, monkeypat
         assert canonical(screen.bridge.doc.item("wc")) == canonical(CHILD)
     finally:
         screen.close()
-    print(f"slowest real input handled in {slowest:.1f} ms")
-    assert slowest < SLOW_MS
+    print(f"slowest discrete input {slowest:.1f} ms, slowest drag step {drag_slowest:.1f} ms")
+    assert slowest < DISCRETE_MS
+    assert drag_slowest < DRAG_STEP_MS
