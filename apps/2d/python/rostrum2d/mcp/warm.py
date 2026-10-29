@@ -13,12 +13,14 @@ engine that died restarts itself on the next request (engine.py); the process en
 from __future__ import annotations
 
 import atexit
+import math
 import threading
 from contextlib import contextmanager
 
 from rostrum_core import markers as M
 
-from rostrum2d import drawing
+from rostrum2d import drawing, write_on
+from rostrum2d import scene as scene_mod
 from rostrum2d.scene_keep import Keeper
 
 _lock = threading.RLock()
@@ -26,18 +28,31 @@ _engine = None
 _keeper = Keeper()
 
 
-def scene(doc, comp_id: str, duration: float) -> dict:
-    """The composition's whole description as it is now, made again only where the document changed since the last look."""
+def scene(doc, comp_id: str, duration: float, times: list[float] | None = None) -> dict:
+    """The composition's whole description as it is now, made again only where the document changed since the last look.
+    `times`: the only moments the call draws: Drawn so far pictures are made for those frames (and a motion blur's
+    reach), the others stand in until a look draws them (their nodes are described again then, never kept)."""
     with _lock:
         args = (doc.data, comp_id, M.times(doc.folder), doc.folder, (0.0, duration))
         jobs: list = []
         got = _keeper.describe(*args, later=jobs)
         if jobs:
-            drawing.make_all(jobs, None, None)      # paint pictures first (kept by content), then described with them
+            if times is not None:
+                jobs = write_on.wanted(jobs, _frames(doc.data, comp_id, times))
+            if jobs:
+                drawing.make_all(jobs, None, None)  # paint pictures first (kept by content), then described with them
             got = _keeper.describe(*args, later=[])
         if got.get("warnings"):                     # a placeholder (a 3D render not made yet) may be ready next time
             _keeper.forget()
         return got
+
+
+def _frames(data: dict, comp_id: str, times: list[float]) -> set:
+    """The frame numbers drawing `times` shows: each time's frame (either way of a time between two) and the motion
+    blur's reach round it (scene._spare)."""
+    comp = next((c for c in data.get("comps", []) if c["id"] == comp_id), {})
+    fps, spare = comp.get("fps", 30), scene_mod._spare(comp, data)
+    return {n + k for t in times for n in {math.floor(t * fps + 1e-6), round(t * fps)} for k in range(-spare - 1, spare + 2)}
 
 
 @contextmanager

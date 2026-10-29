@@ -154,32 +154,32 @@ def blank(paint, w, h) -> np.ndarray:
     return px
 
 
-_CHAINS: OrderedDict = OrderedDict()     # (paint id, w, h) -> (its strokes, what they read, their chain keys)
+_CHAINS: OrderedDict = OrderedDict()     # (paint id, w, h) -> (its strokes, the masks they read, what they read below, their chain keys)
 CHAINS_KEEP = 256
 
 
 def _chain(paint, w, h, masks, below_key, at=(0, 0)) -> list[str]:
     strokes, mine = paint["strokes"], (paint["id"], w, h, at)
-    reads_of = (json.dumps([masks.get(s.get("mask")) for s in strokes if s.get("mask")], sort_keys=True) + below_key
-                + str(paint.get("ground") or ""))
+    used = [masks.get(s.get("mask")) if s.get("mask") else None for s in strokes]
+    reads_of = below_key + str(paint.get("ground") or "")
     with _LOCK:
         got = _CHAINS.get(mine)
     keys, done = [_h(ENGINE_VERSION, str(w), str(h), *([f"{at[0]},{at[1]}"] if any(at) else []),
                      *([f"ground {paint['ground']}"] if paint.get("ground") else []))], 0
-    if got is not None and got[1] == reads_of:
-        old = got[0]
-        while done < min(len(old), len(strokes)) and old[done] is strokes[done]:
-            done += 1
-        keys = got[2][:done + 1]
-    for s in strokes[done:]:
-        reads = json.dumps(masks.get(s.get("mask")), sort_keys=True) if s.get("mask") else ""
+    if got is not None and got[2] == reads_of:      # a kept stroke is reused while it and its mask are the same objects
+        old, old_used = got[0], got[1]              # (a document never changes either in place: an edit makes new ones;
+        while done < min(len(old), len(strokes)) and old[done] is strokes[done] and old_used[done] is used[done]:
+            done += 1                               # comparing the masks' JSON took 10-40 ms a call, ~2300 calls a look)
+        keys = got[3][:done + 1]
+    for s, m in zip(strokes[done:], used[done:]):
+        reads = json.dumps(m, sort_keys=True) if s.get("mask") else ""
         if s.get("smudge") and s.get("pickup"):
             reads += below_key
         keys.append(_h(keys[-1], json.dumps(s, sort_keys=True), reads))
     with _LOCK:
-        if not (got is not None and got[1] == reads_of and done == len(strokes) <= len(got[0])):
-            _CHAINS[mine] = (list(strokes), reads_of, keys)     # (a part of the strokes kept already: the whole stays,
-        _CHAINS.move_to_end(mine)                               # so Drawn so far's pictures don't key them all again)
+        if not (got is not None and got[2] == reads_of and done == len(strokes) <= len(got[0])):
+            _CHAINS[mine] = (list(strokes), used, reads_of, keys)   # (a part of the strokes kept already: the whole stays,
+        _CHAINS.move_to_end(mine)                                   # so Drawn so far's pictures don't key them all again)
         while len(_CHAINS) > CHAINS_KEEP:
             _CHAINS.popitem(last=False)
     return keys
@@ -210,7 +210,7 @@ def _grown_from(paint, w, h, at, keys):
     with _LOCK:
         olds = [(k, v) for k, v in _CHAINS.items() if k[0] == paint["id"] and k[1:] != (w, h, at)]
     best = None
-    for (_, ow, oh, oat), (old, _, okeys) in reversed(olds):
+    for (_, ow, oh, oat), (old, _, _, okeys) in reversed(olds):
         dx, dy = at[0] - oat[0], at[1] - oat[1]
         if dx < 0 or dy < 0 or ow + dx > w or oh + dy > h:
             continue

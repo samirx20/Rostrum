@@ -55,7 +55,7 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     noting = bool(getattr(ctx, "asked_notes", False))
     samples = [min(round(i * every, 4), (round(duration * fps) - 1) / fps) for i in range(int(duration / every + 1e-9))] if noting else []
     found, measured, notes = film_faults.collect(doc.data, comp, samples, ctx.tool) if noting else ([], [], [])
-    scene = render.look_scene(doc, comp["id"])
+    scene = render.look_scene(doc, comp["id"], times=[*times, *samples])
     cols = 3 if len(times) in (5, 6, 9) else min(4, len(times))
     tile_w = sheet.tile_width(SHEET_WIDTH, cols)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_script_look', project=doc.folder)

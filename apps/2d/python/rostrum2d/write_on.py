@@ -303,6 +303,7 @@ class Ahead:
 
     def __init__(self, make, at: float = 0.0):
         self.make, self.at = make, at          # `at`: the time it shows (the screen makes those near its playhead first)
+        self.covers = (-math.inf, math.inf)    # the frame numbers it shows at, [first, stop) (`entries`; a look's `wanted`)
 
     def __call__(self):
         return self.make()
@@ -332,16 +333,35 @@ def entries(item: dict, run: list, fps: float, first: int, last: int, size: tupl
     are made: a sheet over 30 s made every frame's between its first and last tile (~1000 pictures for its 30)."""
     from rostrum_core.keys import keys_of
     cropped = item["type"] == "drawing"
+    listed: list = []                   # (a picture's job put in `later`, the frame its entry starts at)
+
+    def entry(n: int, f: dict, a: float) -> dict:
+        had = len(later) if later is not None else 0
+        got = {"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, n / fps))}
+        if later is not None and len(later) > had and isinstance(later[-1], Ahead):
+            listed.append((later[-1], n))
+        return got
     if not keys_of(item, DRAWN):
         a = amount_at(item, 0.0)
-        return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, n / fps))} for n, f in run]
-    out, i, shown = [], 0, None
-    lo, hi = (max(first, run[0][0]), last + 1) if run else (0, 0)
-    for n in (range(lo, hi) if frames is None else sorted({n for n in frames if lo <= n < hi})):
-        while i + 1 < len(run) and run[i + 1][0] <= n:
-            i += 1
-        a = amount_at(item, n / fps)
-        if (i, a) != shown:
-            shown, f = (i, a), run[i][1]
-            out.append({"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, n / fps))})
+        out = [entry(n, f, a) for n, f in run]
+    else:
+        out, i, shown = [], 0, None
+        lo, hi = (max(first, run[0][0]), last + 1) if run else (0, 0)
+        for n in (range(lo, hi) if frames is None else sorted({n for n in frames if lo <= n < hi})):
+            while i + 1 < len(run) and run[i + 1][0] <= n:
+                i += 1
+            a = amount_at(item, n / fps)
+            if (i, a) != shown:
+                shown, f = (i, a), run[i][1]
+                out.append(entry(n, f, a))
+    starts = [e["at"] for e in out]
+    for job, n in listed:               # an entry shows from its frame until the next entry's
+        job.covers = (n, next((m for m in starts if m > n), math.inf))
     return out or [{"at": n, **full(f)} for n, f in run[:1]]
+
+
+def wanted(jobs: list, frames: set) -> list:
+    """The jobs a draw of only `frames` (frame numbers) needs: every job but a Drawn so far picture shown at none of
+    them. A look at 2 moments of a film with three drawings painting on made all ~600 of their pictures (~80 s a
+    run_script look, 2D re-bench Night Market); the ones left are made when something draws them (export, the screen)."""
+    return [j for j in jobs if not isinstance(j, Ahead) or any(j.covers[0] <= n < j.covers[1] for n in frames)]
