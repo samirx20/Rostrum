@@ -8,7 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import look_quality, look_wash, render, video_frames
+from . import geometry, look_quality, look_wash, render, video_frames
 from .geometry import comp_size, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
@@ -66,20 +66,26 @@ def look_frame(ctx, args):
     t, frame = time_of(ctx, comp, args)
     if "area" in args:
         return _area(ctx, doc, comp, t, frame, args)
-    scene, width, quality = render.look_scene(doc, comp["id"], t), args.get("width", FRAME_WIDTH), args.get("quality")
+    scene, width, quality = render.look_scene(doc, comp["id"]), args.get("width", FRAME_WIDTH), args.get("quality")
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
-    seen = shown_ids(comp, t)
 
     def job_fn(job):
-        with tempfile.TemporaryDirectory(prefix="rostrum_look_") as tmp:
-            raw = Path(tmp) / "raw.png"         # drawn at the size asked (the engine scales), never a full frame shrunk after
-            render.small_stills(ctx.tool, scene, [(t, raw)], min(width, comp_size(comp)[0]), samples=look_quality.samples(quality))
-            w, h = sheet.scaled_copy(raw, width, dest)
-        washes = look_wash.facts(comp, t)
+        draw_w = min(width, comp_size(comp)[0])     # drawn at the size asked (the engine scales), never a full frame shrunk after
+        part = dest.with_name(dest.stem + ".partial.png")
+        size = render.small_stills(ctx.tool, scene, [(t, part)], draw_w, samples=look_quality.samples(quality), rgb=True)
+        if size:                                    # written once, as the look's own file
+            part.replace(dest)
+            w, h = size[0]
+        else:                                       # final quality at full size: the engine's own PNG, copied as a sheet shows it
+            with tempfile.TemporaryDirectory(prefix="rostrum_look_") as tmp:
+                part.replace(raw := Path(tmp) / "raw.png")
+                w, h = sheet.scaled_copy(raw, width, dest)
+        with geometry.memo():                       # the reply's facts share one evaluation of the layers at t
+            cut, seen, washes = render.edge_warnings(doc.data, comp, t), shown_ids(comp, t), look_wash.facts(comp, t)
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.'
                      + look_wash.words(washes) + " " + look_quality.line(comp, quality),
                      {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen, "washes": washes, "quality": quality or look_quality.PREVIEW}, [dest], [dest],
-                     scene.get("warnings", []))
+                     [*scene.get("warnings", []), *cut])
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
 
