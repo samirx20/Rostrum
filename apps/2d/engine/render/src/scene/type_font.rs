@@ -201,14 +201,40 @@ pub fn measure(it: &Item, line: &str) -> R<Measure> {
     };
     // Tabular figures by hand: every digit as wide as the widest (letters.rs centres each glyph in its advance).
     let digit = if tabular_by_hand(it) { Some(('0'..='9').map(&width).collect::<R<Vec<_>>>()?.into_iter().fold(0.0, f64::max)) } else { None };
+    let kerned = if digit.is_none() { shaped(&font, &settings, &features(it, Some(&font))?, it.num("size"), line) } else { None };
     let mut advances = vec![];
-    for ch in line.chars() {
-        let w = match digit {
-            Some(d) if ch.is_ascii_digit() => d,
+    for (i, ch) in line.chars().enumerate() {
+        let w = match (digit, &kerned) {
+            (Some(d), _) if ch.is_ascii_digit() => d,
+            (_, Some(k)) => k[i],
             _ => width(ch)?,
         };
         advances.push(w + track);
     }
     let m = font.metrics(size, &location);
     Ok(Measure { advances, ascent: m.ascent as f64, descent: m.descent.abs() as f64 })
+}
+
+/// Each letter's advance in px as the shaper lays the line out (harfrust, the shaper the stage's text layout uses):
+/// the font's kerning included, so letters placed one by one sit where the same line drawn whole puts them. One
+/// glyph per letter is needed (ligatures off, as drawn letter by letter); None otherwise, and the plain advances serve.
+fn shaped(font: &FontRef, settings: &[(Tag, f32)], asked: &[(Tag, u16)], size: f64, line: &str) -> Option<Vec<f64>> {
+    use harfrust::{Feature, ShapeOptions, ShaperData, ShaperInstance, UnicodeBuffer, Variation};
+    let data = ShaperData::new(font);
+    let instance = ShaperInstance::from_variations(font, settings.iter().map(|(tag, value)| Variation { tag: *tag, value: *value }));
+    let shaper = data.shaper(font).instance(Some(&instance)).build();
+    let mut buffer = UnicodeBuffer::new();
+    buffer.push_str(line);
+    buffer.guess_segment_properties();
+    let off = |t: &[u8; 4]| Feature::new(Tag::new(t), 0, ..);
+    let mut features: Vec<Feature> = asked.iter().map(|(t, v)| Feature::new(*t, u32::from(*v), ..)).collect();
+    features.extend([off(b"liga"), off(b"clig"), off(b"dlig"), off(b"rlig")]);
+    let glyphs = shaper.shape(buffer, ShapeOptions::new().features(&features));
+    let starts: Vec<usize> = line.char_indices().map(|(b, _)| b).collect();
+    let (infos, pos) = (glyphs.glyph_infos(), glyphs.glyph_positions());
+    if infos.len() != starts.len() || infos.iter().zip(&starts).any(|(g, b)| g.cluster as usize != *b) {
+        return None;
+    }
+    let per_unit = size / shaper.units_per_em() as f64;
+    Some(pos.iter().map(|p| p.x_advance as f64 * per_unit).collect())
 }

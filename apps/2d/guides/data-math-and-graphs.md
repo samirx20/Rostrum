@@ -158,6 +158,10 @@ s.key("d", {i * 0.1: (view(20 + i * 3), "linear") for i in range(41)})
 
 ## A chart from a table
 
+For a plain dashboard chart (bars or one line from 0, a y axis with round ticks, gridlines, x labels) inside a
+device's screen or a column, `chart(values, labels=, kind=, at=)` makes it in one call (guide
+`lower-thirds-and-charts`). Build it from the parts below when you need more: negative values, several series, a pie.
+
 A table comes in as rows: pasted text with `parse_table`, or a file read by `inspect_table {path}` (CSV, TSV, JSON; the
 reply has the rows and, for each number column, its min, max and round `ticks`), whose rows you paste into the script.
 

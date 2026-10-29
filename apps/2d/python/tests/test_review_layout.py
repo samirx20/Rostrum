@@ -57,7 +57,7 @@ def test_texts_on_texts_but_not_a_short_cross_fade_swap():
 def test_a_cursor_on_a_label():
     label = 'text("send_lbl", body="Send requests", size=20, x=160, y=90)\n'
     rows = _kinds(review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=150, y=90, w=30, h=30, fill="#222")\n')))
-    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and "beside the label" in rows["pointer_on_text"]["text"]
+    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and 'spot="beside"' in rows["pointer_on_text"]["text"]
     away = review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=40, y=30, w=30, h=30, fill="#222")\n'))
     assert away == []
     assert review_layout.overlaps(_sampled(label + 'shape("handle", x=150, y=90, w=30, h=30, fill="#222")\n'))[0]["kind"] == "text_crossed"

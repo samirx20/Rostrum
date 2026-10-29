@@ -37,7 +37,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure
+from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure, text_runs
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -118,6 +118,11 @@ class Item:
         from .evaluate import resolve
         from .textsize import size
         return size(resolve(self.node, at))
+
+    def run(self, which) -> "text_runs.Run":
+        """A styled run of this text by its words or number (text_runs.py): `t.run("move").key("color", {…})`."""
+        self._need("text", "run")
+        return text_runs.Run(self, text_runs.number(self.node, which))
 
     def pivot(self, x: float, y: float, at: float = 0) -> "Item":
         """The anchor (what it turns and scales around) on the point (x, y) of the parent's px (comp px, or the group's
@@ -383,6 +388,8 @@ class Build:
         if isinstance(values.get("fill"), Painted):         # fill=painted(grain, fit="tile", …): a painted fill, the fields below
             values = {**{k: v for k, v in values.items() if k != "fill"}, **values["fill"].fields()}
         values = script_time.fill(self, node, values)        # start= / end= on a marker ("#reveal+0.5", script_time.py)
+        if node["type"] == "text":
+            values = text_runs.split(node, values)          # body=["… ", ("words", {"color": …}), …]: styled runs
         params = F.FIELDS[node["type"]]
         known = [p.name for p in params]
         kinds = {p.name: p.type for p in params}
@@ -554,13 +561,13 @@ run_source.wants_doc = True            # rostrum_core's run_script tool then pas
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text(id, body=[\"plain \", (\"words\", {\"color\": …, \"weight\": …}), …]): styled runs in one text; text.run(\"words\").key(\"color\" | \"weight\" | \"scale\" | \"opacity\", {…}) (guide styled-words)", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",
        "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / step(legs=[l, r], by=px, at=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",
        "with row / column / grid / stack(id, padding=, gap=, align=, justify=, w=px|\"50%\"|\"fill\"|\"fit\", bg=, radius=, tw=): layers made inside are placed for you (grow=, align_self=, margin=, span=, shift_x=; x / y only with apart=True); anchor=\"top-left\"|\"top\"|\"left\"|\"center\"|…|(0, 1) (or origin=) on any layer; no x / y = the parent's centre; guide lay-out-a-screen",
-       "device(id, kind=phone|laptop|browser (left out: the kind the id names, device(\"laptop\") is a laptop; else phone), fit=, anchor=center|left|right, screen=) returns its screen, a column / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter: placed by the container they are made in; guide ui-and-product-animation",
-       "pointer(id=\"cursor\", kind=arrow|touch) / tap(pointer, target, at=, move=, press=, ripple=, spot=): the tip lands beside the target's words, eased, with a press",
+       "device(id, kind=phone|laptop|browser (left out: the kind the id names, device(\"laptop\") is a laptop; else phone), fit=, anchor=center|left|right, screen=) returns its screen, a column / status_bar / nav_bar / tab_bar / list_rows / card / button / toggle / bars / counter / chart / lower_third: placed by the container they are made in; guide ui-and-product-animation",
+       "pointer(id=\"cursor\", kind=arrow|touch) / tap(pointer, target, at=, move=, press=, ripple=, spot=, then=, hold=): the tip lands on the target's centre, follows it if it moves, reacts (guide tap-and-react)",
        "scramble(id, body, start=, end=, rate=, chars=, order=, **text fields): characters cycling and locking into words", "beats(start=, end=) the song's beats / beats(bpm=, start=, count=) a beat grid without a song", "marker(name, at) -> \"#name\": a shared project marker; any time may be \"#name+0.5\" (start=, end=, at=, keys)", "after(item, gap=): when its last key lands + gap", "stagger(items, every=, start=) -> [(time, item), …]", "light_shafts(id, x=, y=, count=, spread=, length=, lean=, color=, strength=, sway=): beams of light, a group (guide frame-parallax-motion-blur)",
        "path(id, d=star(5, 100, 45))", "math_text(id, r\"\\frac{a}{b}\", x=, y=, size=, color=): a typeset equation as a group of path layers (guide data-math-and-graphs)", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.letters(text, x=, y=, height=, font=, **brush): hand-lettered words as brush strokes", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",

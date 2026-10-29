@@ -16,6 +16,8 @@ const ACCURACY: f64 = 0.01;
 /// its baseline turns to (degrees), its advance, and the unit (letter or word) it is ordered by.
 pub struct Letter {
     pub ch: char,
+    /// Its place in `body` (letters counted, line breaks included): the run it belongs to (runs.rs).
+    pub index: usize,
     pub unit: usize,
     pub x: f64,
     pub y: f64,
@@ -37,7 +39,9 @@ pub fn place(it: &Item) -> R<Placed> {
         return Err(format!("{}.boxWidth: text wrapped in a box is not drawn letter by letter yet (boxWidth 0; or no path, letterDelay 0 and, on a font without tabular figures, figures not tabular)", it.id));
     }
     let lines: Vec<&str> = it.str("body").split('\n').collect();
-    let measures = lines.iter().map(|l| type_font::measure(it, l)).collect::<R<Vec<_>>>()?;
+    let mut measures = lines.iter().map(|l| type_font::measure(it, l)).collect::<R<Vec<_>>>()?;
+    let starts: Vec<usize> = lines.iter().scan(0, |at, l| { let s = *at; *at += l.chars().count() + 1; Some(s) }).collect();
+    weighted(it, &lines, &starts, &mut measures)?;
     let line = it.num("lineHeight") * it.num("size");
     let (ascent, descent) = measures.first().map_or((0.0, 0.0), |m| (m.ascent, m.descent));
     let baseline = (line - ascent - descent) / 2.0 + ascent;
@@ -49,9 +53,9 @@ pub fn place(it: &Item) -> R<Placed> {
         let w = widths.iter().copied().fold(0.0, f64::max);
         for (i, (text, m)) in lines.iter().zip(&measures).enumerate() {
             let mut pen = match it.str("align") { "left" => 0.0, "right" => w - widths[i], _ => (w - widths[i]) / 2.0 };
-            for (ch, adv) in text.chars().zip(&m.advances) {
+            for (j, (ch, adv)) in text.chars().zip(&m.advances).enumerate() {
                 if let Some(unit) = units.next(ch) {
-                    letters.push(Letter { ch, unit, x: pen + adv / 2.0, y: i as f64 * line + baseline, angle: 0.0, advance: *adv });
+                    letters.push(Letter { ch, index: starts[i] + j, unit, x: pen + adv / 2.0, y: i as f64 * line + baseline, angle: 0.0, advance: *adv });
                 }
                 pen += adv;
             }
@@ -72,16 +76,37 @@ pub fn place(it: &Item) -> R<Placed> {
     let lo = if straight && from <= 0.0 { f64::NEG_INFINITY } else { from };
     let hi = if straight && to >= along.total { f64::INFINITY } else { to };
     let mut pen = match it.str("pathAlign") { "end" => to - widths[0], "center" => from + (to - from - widths[0]) / 2.0, _ => from } + it.num("pathOffset");
-    for (ch, adv) in lines[0].chars().zip(&measures[0].advances) {
+    for (index, (ch, adv)) in lines[0].chars().zip(&measures[0].advances).enumerate() {
         let centre = pen + adv / 2.0;
         if let Some(unit) = units.next(ch).filter(|_| (lo..=hi).contains(&centre)) {
             let (p, angle) = along.at(centre);
-            letters.push(Letter { ch, unit, x: p.x, y: p.y, angle, advance: *adv });
+            letters.push(Letter { ch, index, unit, x: p.x, y: p.y, angle, advance: *adv });
         }
         pen += adv;
     }
     let (w, h) = followed.map_or_else(|| { let b = along.path.bounding_box(); (b.x1.max(0.0), b.y1.max(0.0)) }, |(_, size)| size);
     Ok(Placed { letters, w, h, line, baseline })
+}
+
+/// A run's letters take its own advances (runs.rs): its weight's (0 = the text's), times its scale, so the letters
+/// after a heavier or bigger run move along with it, as the same runs drawn as spans do.
+fn weighted(it: &Item, lines: &[&str], starts: &[usize], measures: &mut [type_font::Measure]) -> R<()> {
+    let runs = super::runs::read(&it.props);
+    for run in runs.iter().filter(|r| r.weight > 0.0 || r.scale != 1.0) {
+        let mut own = it.clone();
+        if run.weight > 0.0 {
+            own.props.insert("weight".into(), run.weight.into());
+        }
+        for (i, line) in lines.iter().enumerate() {
+            let m = if run.weight > 0.0 { type_font::measure(&own, line)? } else { type_font::measure(it, line)? };
+            for (j, adv) in m.advances.iter().enumerate() {
+                if super::runs::at(&runs, starts[i] + j) == Some(run) {
+                    measures[i].advances[j] = adv * run.scale.max(0.0);
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Counts units: every letter, or every word (spaces and line breaks belong to none).

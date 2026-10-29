@@ -1,7 +1,7 @@
 """Script calls that build product screens as plain, editable layers (guide ui-and-product-animation, "Building
 blocks", and lay-out-a-screen): a device (phone, laptop, browser window) whose screen is a column, and the parts a
 screen is made of (status bar, title bar, tab bar, list rows, cards, buttons, toggles, chart bars) plus a counting
-number.
+number; lower_third (ui_lower_third.py) and chart (ui_chart.py, bars with axes) come through here too.
 
     scr = device("phone", screen="#ffffff")     # fills 82 % of the picture's height, centred; its screen is a column
     with scr:
@@ -14,13 +14,13 @@ number.
 Each block is a container of shapes and texts with ids made from the block's id (`trips_r0_title`, `pay_label`), so
 it is moved, keyed, restyled or taken apart like anything else. Made in a container (a device's screen, a column, a
 row) the container places it and it fills the width (w= for its own; apart=True with x= / y= to place it yourself);
-made anywhere else it needs x= and y= (its top-left). Sizes and colours are a starting point (drawn for a 390 px wide
-screen, scaled to the parent's width, colours for what they sit on, light or dark: ui_layout.palette); every one is a parameter. Nothing is animated
+made anywhere else it needs x= and y= (its top-left). Sizes and colours are a starting point (sized for the device
+screen they are in, ui_layout.unit: a phone's as 390 px, a laptop's as 960 px; colours for what they sit on, light or dark: ui_layout.palette); every one is a parameter. Nothing is animated
 except `counter`.
 """
 from __future__ import annotations
 
-from . import ui_device, ui_layout as U
+from . import ui_chart, ui_device, ui_layout as U, ui_lower_third
 from .script_layout import in_layout
 from .ui_layout import ACCENT
 
@@ -38,7 +38,7 @@ def for_script(build) -> dict:
         return [P[k] if v is None else v for k, v in given.items()]
 
     def unit():
-        return U.parent_size(build)[0] / U.BASE_W
+        return U.unit(build)
 
     def box(id, x, y, w, h, **f):           # a plain group placed by its top-left, its children in its own px
         return L("group", id, x=x, y=y, w=w, h=h, anchorX=0, anchorY=0, **f)
@@ -257,4 +257,5 @@ def for_script(build) -> dict:
         return t.key("count", {at: (start, ease), at + duration: to})
 
     return {"device": ui_device.maker(build, box, words), "status_bar": status_bar, "nav_bar": nav_bar, "tab_bar": tab_bar, "list_rows": list_rows,
-            "card": card, "button": button, "toggle": toggle, "bars": bars, "counter": counter}
+            "card": card, "button": button, "toggle": toggle, "bars": bars, "counter": counter,
+            **ui_lower_third.maker(build, auto), **ui_chart.maker(build, block, auto, colours)}

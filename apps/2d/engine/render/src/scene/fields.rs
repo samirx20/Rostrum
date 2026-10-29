@@ -150,7 +150,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "comp" => Some((Role::Comp, COMP.iter().chain(crate::motion::COMP).copied().collect())),
         "camera" => Some((Role::Layer, crate::frame::FIELDS.iter().chain(RIDE).copied().collect())),
         "shape" => layer(SHAPE),
-        "text" => layer(TEXT),
+        "text" => Some((Role::Layer, TEXT.iter().chain(super::runs::FIELDS).copied().chain(transform()).collect())),
         "image" => layer(IMAGE),
         "video" => layer(VIDEO),
         "group" | "rig" => layer(GROUP),
@@ -180,6 +180,7 @@ pub fn animatable(kind: &str, field: &Field) -> bool {
     (matches!(field.1, Number | Color) || (kind == "path" && matches!(field.0, "d" | "widthProfile"))) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth" | "fillDriftX" | "fillDriftY")
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed" | "countDecimals" | "countDigits"))
+        && !(kind == "text" && field.0.starts_with("run") && (field.0.ends_with("From") || field.0.ends_with("To")))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))
         && crate::rig::fields::animatable(kind, field.0)
         && crate::motion::animatable(kind, field.0)

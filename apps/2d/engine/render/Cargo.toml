@@ -18,6 +18,8 @@ kurbo = "0.13"
 parley = { version = "0.12", default-features = false, features = ["std"] }
 # Glyph outlines for `glyphs` (the version parley shapes with; already in the lock).
 skrifa = "=0.44.0"
+# Kerned advances for text drawn letter by letter (the shaper parley uses; already in the lock; MIT).
+harfrust = "=0.12.0"
 # Computed values for `styles` (the Stylo Blitz is built on; already in the lock).
 style = { package = "stylo", version = "=0.22.0" }
 image = { version = "0.25.6", default-features = false, features = ["png", "jpeg", "exr"] }

@@ -86,6 +86,9 @@ that the layout, an anchor or a marker can give you.
 - `lay-out-a-screen`: rows, columns, grids, stacks, Tailwind words (`tw=`).
 - `timing-to-music`: markers, layers timed from a marker, beats, the song from RostrumSound.
 - `ui-and-product-animation`: devices, screen blocks, counters, pointers, glass and depth.
+- `styled-words`: one text, some words styled and keyed on their own (`body=[…]`, `text.run()`).
+- `tap-and-react`: `tap()` aims at the centre, follows a moving target, reacts (`then=`).
+- `lower-thirds-and-charts`: `lower_third` (name + role on a bar) and `chart` (bars or a line with axes): place, colour, time, take apart.
 - `type-and-kinetic-text`: fonts, per-letter animation (typing on: key opacity 0 → 1 with `letterDelay`), scrambles.
 - `easing-and-overlap`: what each ease does, checking overlap.
 - `frame-parallax-motion-blur`: moving and cutting the frame, depth, motion blur.

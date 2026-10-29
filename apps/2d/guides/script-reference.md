@@ -248,9 +248,10 @@ a group of path layers, one per symbol.
 - `device(id, kind="phone" | "laptop" | "browser", fit=share of the picture's height, anchor=, screen=colour)` sizes and
   centres itself and returns its screen, a column. Left out, `kind` is the device the id names (`device("laptop")` draws
   a laptop), else a phone; a device it can't draw (a tablet) or an id naming another kind than `kind=` is refused.
-- `status_bar`, `nav_bar`, `tab_bar`, `list_rows`, `card`, `button`, `toggle`, `bars` made in it (or any container) go
-  one under the other, full width.
-- `pointer()` and `tap(pointer, target, at=)` land the tip beside a button's words with a press.
+- `status_bar`, `nav_bar`, `tab_bar`, `list_rows`, `card`, `button`, `toggle`, `bars`, `chart` made in it (or any container) go
+  one under the other, full width; `lower_third` hugs its words (top level: the lower-left title-safe area; guide
+  `lower-thirds-and-charts`).
+- `pointer()` and `tap(pointer, target, at=, then=)` land the tip on the target's centre (following it if it moves) and react (guide `tap-and-react`).
 
 ### What a script may use
 

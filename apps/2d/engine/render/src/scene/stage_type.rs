@@ -19,10 +19,10 @@ pub fn font_css(it: &Item) -> R<String> {
     type_font::css(it)
 }
 
-/// Drawn letter by letter: on a path, playing its keys letter by letter, or with tabular figures the font lacks
-/// (type_font.rs `tabular_by_hand`: each digit centred in the widest digit's advance).
+/// Drawn letter by letter: on a path, playing its keys letter by letter, with tabular figures the font lacks
+/// (type_font.rs `tabular_by_hand`: each digit centred in the widest digit's advance), or with a scaled run (runs.rs).
 pub fn by_letter(it: &Item) -> bool {
-    it.kind == "text" && (!it.str("path").is_empty() || animated(it) || type_font::tabular_by_hand(it))
+    it.kind == "text" && (!it.str("path").is_empty() || animated(it) || type_font::tabular_by_hand(it) || super::runs::scaled(it))
 }
 
 /// Its keys play letter by letter (letterDelay ≠ 0).
@@ -77,6 +77,7 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
     // Tabular figures by hand: each glyph centred in its advance (a digit's is the widest digit's); else at its left.
     let align = if type_font::tabular_by_hand(it) { "center" } else { "left" };
     let mut inner = String::new();
+    let runs = super::runs::read(&it.props);
     for (l, rank) in placed.letters.iter().zip(ranks) {
         let (left, top) = (l.x - l.advance / 2.0, l.y - base);
         let mut s = format!("position:absolute;left:{left:.3}px;top:{top:.3}px;width:{:.3}px;height:{line:.3}px;line-height:{line:.3}px;text-align:{align};transform-origin:{:.3}px {base:.3}px;", l.advance, l.advance / 2.0);
@@ -97,8 +98,21 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
                 let _ = write!(s, "-webkit-text-stroke:{}px {};", num(p, "strokeWidth"), p["strokeColor"].as_str().unwrap_or("#ffffff"));
             }
         }
+        // Its run's own style (runs.rs) at the layer's time, not the letter's delayed one: a run's keys are the
+        // word's own (a colour keyed on a marker changes on the marker while the letters type on).
+        let run = super::runs::at(&runs, l.index).cloned();
+        if let Some(r) = &run {
+            s += &super::runs::css(r, eval::fill_opacity(own.as_ref().unwrap_or(&it.props)), color.is_some() || gradient.is_some());
+            if r.scale != 1.0 {
+                // Its advance is already the run's scale times its own (letters.rs): the glyph, centred in it, grows
+                // about its baseline point.
+                s += "text-align:center;";
+                tf.push(format!("scale({:.5})", r.scale));
+            }
+        }
         if let Some(c) = color {
             let _ = write!(s, "color:{c};");
+        } else if run.as_ref().is_some_and(|r| !r.color.is_empty()) && gradient.is_none() {
         } else if let Some(g) = gradient {
             // The layer's one gradient, each letter showing its part of it.
             let _ = write!(s, "background:{g};background-size:{:.3}px {:.3}px;background-position:{:.3}px {:.3}px;-webkit-background-clip:text;background-clip:text;color:transparent;", placed.w, placed.h, -left, -top);

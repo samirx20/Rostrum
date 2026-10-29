@@ -14,7 +14,7 @@ from rostrum_core import PLUGIN_ITEM, Param, plugin_parts
 from rostrum_core.registry import Kinds as _Kinds
 from rostrum_core.keys import KEY_FIELDS
 
-from . import painting_fields as _painting, blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import painting_fields as _painting, blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, text_runs as _runs, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 NEW_FILL = "#d9d9d9"  # a new shape or path starts in this light grey: never the accent, so a selection shows on it (Figma's choice too)
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
@@ -283,7 +283,7 @@ FIELDS: dict[str, list[Param]] = {
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
-    ] + TYPE + COUNTER + [_unless_following(p) for p in TRANSFORM] + _grade.colour(_fill.PICTURE[0].valid_when),   # letters take no picture: never
+    ] + TYPE + COUNTER + _runs.FIELDS + [_unless_following(p) for p in TRANSFORM] + _grade.colour(_fill.PICTURE[0].valid_when),   # letters take no picture: never
     "image": [
         X("src", "File", "Image", "", help="Absolute path, or relative to the project folder", control="file",
           filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
@@ -501,7 +501,7 @@ STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
-         "text": {"letterDelay", "letterSeed", "countDecimals", "countDigits"},
+         "text": {"letterDelay", "letterSeed", "countDecimals", "countDigits", *_runs.STILL},
          **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH", "fillPhase", "fillDriftX", "fillDriftY"}}
 LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame", "painting": "Painting",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "rough": "Rough edges", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",

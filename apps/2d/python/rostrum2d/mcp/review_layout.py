@@ -18,7 +18,8 @@ ON_TEXT_S = 0.5           # two texts overlapping this long or longer ...
 SWAP_S, SWAP_SAME = 1.0, 0.6   # ... texts this much on the same spot overlapping under SWAP_S: a cross-fade swap
 ON_TEXT = 0.1             # two texts overlapping by this share of the smaller one's box
 POINTER = re.compile(r"(^|[_\-\s])(cursor|pointer|mouse|finger|hand)s?($|[_\-\s\d])", re.I)
-POINTER_ON, POINTER_S = 0.2, 0.25   # a pointer over this share of a showing text's box, this long or longer
+POINTER_ON, POINTER_S = 0.2, 1.5    # a pointer resting over this share of a showing text's box this long (a tap's landing on a
+                                    # button's centre covers its label briefly, as a real click does: not a fault)
 END_S = 1.5               # the end card: the last picture held this long or longer ...
 END_MARK, END_LOCKUP = 0.04, 0.07   # ... its biggest mark under this share of the frame (brief: "a logo under ~5 %"), or all of it in a box under this share
 # (measured: Tally's two end cards, a normal app lock-up, mark 1.8-2.2 %, lock-up 12.6-16.7 %; Lumen's lamp lock-up
@@ -138,8 +139,8 @@ def overlaps(s: Sampled) -> list[dict]:
 
     def pointer_line(key, t0, t1, share, _):
         return {"kind": "pointer_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "cover_pct": round(100 * share),
-                "text": f'{t0:g}–{t1:g} s: pointer "{key[1]}" covers {100 * share:.0f} % of label "{key[0]}": put the pointer\'s '
-                        f'tip on the button beside the label, not on it (tap() in ui_blocks does this)'}
+                "text": f'{t0:g}–{t1:g} s: pointer "{key[1]}" rests on {100 * share:.0f} % of label "{key[0]}": move it on after '
+                        f'the tap (the next tap() or a key on its x / y), or land beside the label: tap(..., spot="beside")'}
 
     def by_any(blocks):        # the blocks' nodes at the last frame they both show (for the fix's numbers)
         for t, nodes in reversed(s.frames):

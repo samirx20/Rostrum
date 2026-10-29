@@ -36,6 +36,7 @@ pub(crate) fn neutral(kind: &str) -> Map<String, Value> {
     for (name, k) in fields::of(kind).expect("a known type").1 {
         let v = match (name, k) {
             ("scale" | "scaleX" | "scaleY" | "opacity", _) => json!(1.0),
+            (f, _) if f.starts_with("run") && (f.ends_with("Scale") || f.ends_with("Opacity")) => json!(1.0),
             ("end", _) => json!(1e9),
             ("fillUnder", _) => json!("#00000000"),
             (_, Kind::Number) => json!(0.0),

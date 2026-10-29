@@ -20,8 +20,8 @@ with scr:
         pay = button("Request", w=300)
     tab_bar(["Home", "Trips", "You"])
     cur = pointer()
-    tap(cur, pay, at=1.5)
-    tap(cur, hero, at=3)
+    tap(cur, pay, at=1.5, spot="beside")
+    tap(cur, hero, at=3, spot="beside")
 '''
 
 
