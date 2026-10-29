@@ -13,7 +13,7 @@ import numpy as np
 from rostrum_core.mcp import faults as shared
 
 from .. import dialogue
-from . import arc, clean_end
+from . import arc, clean_end, stall
 from .core import db, load
 
 LOUD_LU = 0.5          # the mix this far off the master's loudness target is a fault
@@ -161,12 +161,14 @@ def peak_faults(peak, clipped) -> list[dict]:
 
 
 def all_faults(doc, found, wav, measured_lufs, target, ducks, stems=None, ring_s=0.0, peak=None, clipped=None, push=None,
-               faded=None) -> list[dict]:
+               faded=None, moments=None) -> list[dict]:
     """Every check, shaped: the listening faults, then loudness, the file's peak and clipping, ducks and the end (the
     end read after the ring a render allowed: ring_past_length; `faded`: the delivery's fade of a ring past the length,
-    a fault when the song asks for a clean ending, clean_end.py; an opening or ending the brief asks to be quiet, arc.py)."""
+    a fault when the song asks for a clean ending, clean_end.py; an opening or ending the brief asks to be quiet, arc.py;
+    a build that goes flat in the bars before its peak, stall.py: `moments` the asked ones, else the song's markers)."""
     out = (shape(found, doc) + loudness_fault(measured_lufs, target, push) + peak_faults(peak, clipped)
-           + duck_faults(doc.data, ducks, stems) + clean_end.fault(doc, faded, wav) + arc.fault(doc, wav))
+           + duck_faults(doc.data, ducks, stems) + clean_end.fault(doc, faded, wav) + arc.fault(doc, wav)
+           + stall.fault(doc, wav, stems, moments))
     try:
         end = end_second(doc)
         out += rings_past_end(wav, end + ring_s if end else end)

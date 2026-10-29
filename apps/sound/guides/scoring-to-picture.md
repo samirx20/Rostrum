@@ -136,6 +136,8 @@ the climax (short-term loudness, 3 s windows). Ways to get there with the tools:
 
 - Velocity is level (measured on a held chord against velocity 1.0): built-in `strings` 0.5 about 10 dB under,
   0.3 about 16, 0.2 about 22; `horn` 0.5 about 11, 0.3 about 21; and the soft samples are darker too. Start the sustained parts low (0.2–0.35).
+- A build in one line: `t.shape("vol", 0.4, 1.2, over=(bar(1), "#hit"), curve="late")` raises the velocities (and
+  the sample layers) along the span; `inspect_guide 'writing-music'` › "Keep it moving: shape".
 - Swell held notes with the track's expression lane, `t.dynamics([(0, 0.3), (bar(9), 0.7), (38.0, 1.2)])`: it
   moves the level inside a note, as a bow or breath does. A note's own `dynamics` is a fraction of that note
   (`[(0, 0.4), (1, 1.0)]` swells one note to its end), not song time.

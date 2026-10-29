@@ -29,7 +29,7 @@ marker("lift", at=bar(9)); section("verse", bar(1), bar(9))  #    sync points as
 CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}              # 2. the music as data: bar -> chord, a dict you edit
 def comping(first, last, vel): ...                         #    a section is a function: call it where it plays
 for b in range(1, 17, 2): ...                              #    loops over bars write what repeats
-keys.humanize(seed=2); keys.dynamics([(0, 0.5), ("#lift", 1.0)])   # 3. one pass for how it is played
+keys.humanize(seed=2); keys.shape("vol", 0.6, 1, over=(0, "#lift"))   # 3. one pass for how it is played
 keys.effect("reverb", space="hall", mix=0.3)               # 4. the mix block last: effects, levels, buses
 master(loudness=-16, truePeak=-1)                          #    and the master target
 ```
@@ -186,7 +186,7 @@ A song stops at its `length`. What a clean end needs, with what exists today:
   (a staccato chord, a kick with a choked cymbal, notes no longer than a beat), held notes ending on it
   (`end="#end"`), and the song's `length` 1–2 s after it so the tail dies away in the room, Ring out on. When the brief
   asks for a clean ending, or a marker named end / ending marks it, two endings are faults: the delivery's fade of a
-  ring past the length (`faded_end`), and a file that stops while still playing, within 12 dB of its loudest
+  ring past the length that is still audible, above -60 dBFS (`faded_end`), and a file that stops while still playing, within 12 dB of its loudest
   (`chopped_end`: held notes cut at the length). `ring_out(False)` (after `length`) stops the song at its length, its last
   0.1 s smoothed (`ring_out(False, soft_end=False)`: a dead stop): for a sound that has already died away there.
 - **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
@@ -358,6 +358,9 @@ vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (
 vln.bend([(bar(5), -0.25), (bar(5) + beats(1), 0)], range=2)  # pitch wheel -1 … 1 (× range semitones, 2 unless set)
 keys = track("keys", builtIn="piano")      # perform=False plays every note exactly as written (guide: writing-parts)
 keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
+vln.shape("vol", 0.6, 1.2, over=(bar(9), "#climax"), curve="late")   # velocities x 0.6 -> 1.2 along the span (held after); long notes swell inside
+vln.shape("bright", 0.2, 1, over=(bar(9), bar(13)))   # one lowpass on the track opening (0 ≈ 250 Hz … 1 = 20 kHz, or Hz)
+vln.shape("art", "", "tremolo", over=(bar(13), bar(15)))   # notes switch where the curve passes its middle ("" = main file)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel; louder is also brighter
 f = vel_curve([(0, 0.5), (1, 0.9)], bar(5), bar(9)); vln.note("D4", at=bar(6), dur=1, vel=f(bar(6)) + 0.15)
 vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the track, ±12 ms, ±0.06

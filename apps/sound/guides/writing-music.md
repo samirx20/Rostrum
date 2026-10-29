@@ -101,7 +101,8 @@ Give every part its own range and its own job, and the mix sorts itself out:
 
 - **Shape every phrase:** it swells towards its high point and falls away after it. In a script, use
   `t.phrase(start, end, vel=[(0, 0.55), (0.6, 0.85), (1, 0.6)])` on a part, or `vary(line, "dynamics:0.6>1.0")`.
-- **Shape the whole piece too:** the expression lane `t.dynamics([(time, level), …])` gives a swell over several bars,
+- **Shape the whole piece too:** `t.shape` (below) is the one-line way; the expression lane
+  `t.dynamics([(time, level), …])` gives a swell over several bars as a level under the notes,
   the way strings and brass actually play. A note's own `dynamics=[(0, 0.4), (1, 1.0)]` runs across that one note
   (x is the fraction of its length), not song time.
 - **A build to one big moment** under a loudness target (a crescendo, a hit, a tutti): how wide to make it, how long
@@ -121,6 +122,29 @@ Give every part its own range and its own job, and the mix sorts itself out:
   pedal.
 - **Piano:** use the sustain pedal (`t.sustain(...)`), and lift and press it again at each chord change so the
   harmonies don't blur.
+
+## Keep it moving: shape
+
+`t.shape(what, from_, to, over=(start, end), curve="linear")` makes one part's volume, brightness or articulation
+follow a curve over bars, in one line:
+
+```python
+strings.shape("vol", 0.5, 1.2, over=(bar(1), bar(13)), curve="late")     # swell, most of it near the end
+horns.shape("bright", 0.2, 1, over=(bar(9), "#climax"))                   # a lowpass opening up into the climax
+violins.shape("art", "sus", "trem", over=(bar(5), bar(9)))                # sustained -> tremolo halfway through
+```
+
+- `"vol"` multiplies each note's and hit's velocity by the curve where it starts (1 = as written, up to 2, velocity
+  kept 0 … 1). Velocity picks the sample layer, so instruments with soft and loud recordings change sound along the
+  curve, as players do. A note longer than a beat with no `dynamics` of its own swells inside itself with the curve.
+- `"bright"`: 0 … 1 (0 ≈ 250 Hz, 1 = 20 kHz) or Hz; written as one lowpass EQ on the track (`<track>.eq_bright`).
+- `"art"`: names from the track's `articulations`, `""` for its main sound; notes switch where the curve passes its
+  middle. Notes written with another articulation keep theirs.
+- `curve`: `"linear"`, `"late"` (most of the change near the end), `"early"` (most near the start), `"smooth"`
+  (S-shaped). `over` takes every time the script takes (`bar(9)`, seconds, `"#climax"`, `"#climax-0.5"`).
+- Before a part's first shape of a kind the value holds at its `from_`, after the last at its `to`; several shapes of
+  one kind on a part join into one curve. It applies after `phrase` and before `humanize`; a re-run gives the same
+  values.
 
 ## The performance layer (on by default)
 

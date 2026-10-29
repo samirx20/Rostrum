@@ -40,6 +40,11 @@ def effect(parent: str, type_: str, taken) -> str:
     return core_ids.counted(taken, f"{parent}.{type_}")
 
 
+def named(parent: str, tag: str, taken) -> str:
+    """`<parent>.<tag>`: a thing made once per parent under a fixed name (a track's shape lowpass)."""
+    return _free(f"{parent}.{tag}", taken)
+
+
 def lane(parent: str, lane_: str) -> str:
     return f"{parent}.auto_{lane_}"
 
