@@ -62,3 +62,13 @@ def test_a_negative_beat_is_refused_with_the_pickup_form():
     with pytest.raises(RostrumError) as e:
         run_source("tempo(120); t = track('k', builtIn='piano'); t.note('C4', at=bar(1) - beats(1), dur=beats(1))", "sync.py")
     assert "seconds_of" in str(e.value.to_dict())
+
+
+def test_humanize_never_moves_a_bar_1_note_before_bar_1_with_a_pickup():
+    src = ("tempo(132); downbeat(bar(21), at=37.0)\n"
+           "t = track('keys', builtIn='piano').humanize(seed=s, timing=0.05)\n"
+           "for b in range(1, 3): t.note('C4', at=bar(b), dur=beats(1))\n")
+    for s in range(12):                                  # some seeds draw a move earlier: none may fail the run
+        tree = run_source(f"s = {s}\n" + src, "pickup.py")
+        notes = next(x for x in tree["tracks"] if x["id"] == "keys")["notes"]
+        assert min(n["at"]["beat"] for n in notes) >= 0
