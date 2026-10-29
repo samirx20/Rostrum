@@ -113,3 +113,16 @@ def test_a_ring_crosses_the_letters_it_runs_through_but_not_the_title_inside_its
     assert review_layout.overlaps(_sampled(title + ring.format(d=170))) == []
     rows = review_layout.overlaps(_sampled(title + ring.format(d=60)))
     assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["title", "ring"])] and "outline" in rows[0]["text"]
+
+
+def test_a_panel_over_the_last_line_of_a_wrapped_text_crosses_it():
+    """A card's own background over the bottom of a two-line value: small in the whole box, a cut through that line."""
+    value = 'text("value", body="TARGET ACQUIRED", size=24, lineHeight=1.1, boxWidth=120, x=160, y=60)\n'
+    panel = ('with group("panel", x=160, y=130, w=200, h={h}, background=True, bgColor="#222"):\n'
+             '    text("panel_lbl", body="BARS", size=10, x=10, y=10)\n')
+    box = _sampled(value).frames[0][1][0]
+    assert box["size"][1] > 40, "the value wraps to two lines"
+    top = 60 + box["size"][1] / 2 - 4                        # the panel's top edge 4 px into the last line (under 10 % of the box)
+    rows = review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top))))
+    assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["value", "panel"])]
+    assert review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top - 12)))) == []      # clear of it

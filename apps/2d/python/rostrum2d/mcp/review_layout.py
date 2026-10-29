@@ -11,7 +11,8 @@ from .geometry import covers, drawn_box
 from .review_cover import _in_front, _over, _related
 from .review_sample import Sampled, runs
 
-PARTIAL = (0.1, 0.85)     # a layer in front painting over this share of a text's box crosses it (more: the text is hidden)
+PARTIAL = (0.1, 0.85)     # a layer in front painting over this share of one of a text's lines crosses it (over more of
+                          # its whole box: the text is hidden)
 HIDDEN = 0.85             # a text this much under opaque layers in front is hidden, not crossed
 OPAQUE = 0.6              # a layer in front this opaque or more hides what is under it
 CROSS_S = 1.0             # a crossing this long or longer (shorter: a wipe or a morph passing over)
@@ -47,6 +48,15 @@ def _box(s: Sampled, n: dict, by: dict) -> tuple | None:
             a, b, c, d = drawn_box(by[g])
             x0, y0, x1, y1 = max(x0, a), max(y0, b), min(x1, c), min(y1, d)
     return (x0, y0, x1, y1) if x1 - x0 > 2 and y1 - y0 > 2 else None
+
+
+def _lines(n: dict, box) -> list[tuple]:
+    """A text's box cut into its lines (size x lineHeight each): a panel over one line of two crosses that line's words,
+    however small a share of the whole box it is."""
+    p = n["props"]
+    k = max(1, round(n["size"][1] / max(p.get("size", 0) * p.get("lineHeight", 1.2), 1.0)))
+    x0, y0, x1, y1 = box
+    return [(x0, y0 + (y1 - y0) * i / k, x1, y0 + (y1 - y0) * (i + 1) / k) for i in range(k)]
 
 
 def _glyphs(box) -> tuple:
@@ -148,8 +158,8 @@ def overlaps(s: Sampled) -> list[dict]:
             for o in front:
                 if outline.hollow(o) or not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
                     continue
-                share = _over(o, box)
-                if PARTIAL[0] <= share <= PARTIAL[1]:
+                share = max(_over(o, line) for line in _lines(n, box))     # a wrapped text: the line it cuts
+                if share >= PARTIAL[0] and _over(o, box) <= PARTIAL[1]:
                     crossed.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
             tips = [o for o in nodes[k + 1:] if s.seen(o) and (POINTER.search(o["id"]) or POINTER.search(o["name"] or "")
                                                                or any(POINTER.search(w) for w in o["within"]))]
