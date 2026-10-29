@@ -40,8 +40,11 @@ def draw(seed, key: str, n: int = 2) -> list[float]:
 
 
 def shift(at, dt: float, root: dict, where: str):
-    """`at` moved by dt seconds, kept in its own form (seconds, beats or a marker reference); never before 0."""
-    return write_like(at, max(0.0, times.seconds(at, root, where) + dt), root)
+    """`at` moved by dt seconds, kept in its own form (seconds, beats or a marker reference); never before 0, nor
+    before bar 1 when it is not written in seconds (a pickup's bar 1 starts later than 0 s)."""
+    s = times.seconds(at, root, where)
+    lo = 0.0 if isinstance(at, (int, float)) else min(s, times.seconds({"beat": 0}, root, where))
+    return write_like(at, max(0.0, lo, s + dt), root)
 
 
 @dataclass

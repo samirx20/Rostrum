@@ -21,3 +21,8 @@ def test_a_range_selects_the_notes_starting_in_it_and_an_empty_one_fails():
     call["target"] = [{"track": "g", "from": {"bar": 9}, "to": {"bar": 10}}]
     with pytest.raises(RostrumError, match="holds no notes"):
         range_target.expand(d, KIND.registry, [call])
+
+
+def test_seconds_sent_as_text_are_seconds():
+    from rostrum_sound.mcp.range_target import _seconds
+    assert _seconds({"tempo": 120}, "36.0", "t") == 36.0 and _seconds({"tempo": 120}, {"beat": 8}, "t") == 4.0

@@ -27,7 +27,7 @@ from . import master_memo, settings
 from .compile import compile as compile_doc
 from .doc import markers
 
-KEEP = ("lufs", "truePeak", "peak", "lra", "clipped", "renderSeconds", "series", "master")
+KEEP = ("lufs", "truePeak", "peak", "lra", "clipped", "renderSeconds", "series", "master", "tracks")   # tracks: each part over the stretch (hear_measure)
 MOST_S = 60.0                 # one stretch at most (longer: render_mix with from / to)
 
 

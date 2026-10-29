@@ -5,7 +5,7 @@ order to use them in when checking a whole mix; the table of every tool and what
 
 ## Hear a moment first
 
-`render_audition` plays any stretch (`{"at": "#hit", "around": 2}`, or `from` / `to` in bars; `solo` / `mute`; `look: true` for its wave, loudness and spectrum) in about a second, no full render. Change the script and play it again. The rest of this page checks the whole file.
+`render_audition` plays any stretch (`{"at": "#hit", "around": 2}`, or `from` / `to` in bars; `solo` / `mute`; `look: true` for its wave, loudness and spectrum) in about a second, no full render; the reply gives the stretch as numbers (loudness and bands per row, hits, each part's level and starts, what is written there). Change the script and play it again. The rest of this page checks the whole file.
 
 ## Render first
 

@@ -11,7 +11,8 @@ effects), sections, markers and a master. You build it from ONE Python script an
 2. **See it: `look_arrangement`** (about 0.05 s, no render): who plays when, how loud and how high, the bars numbered.
 3. **Hear the moment you care about: `render_audition`** (about a second, no full render):
    `{"from": {"bar": 9}, "to": {"bar": 11}}` or `{"at": "#chorus", "around": 2}`; `solo` / `mute` pick who is heard;
-   `look: true` adds the stretch's picture (wave, loudness, spectrum). It sounds exactly as that stretch of the full
+   the reply reads the stretch as numbers (see "You can't hear" below); `look: true` adds its picture (wave, loudness,
+   spectrum). It sounds exactly as that stretch of the full
    render does (same master, same level), and after a change to one part it takes a fraction of a second. The same
    stretch again comes back instantly.
 4. **Judge it yourself, then change the script** and run it again **under the same name**. A removed track, note or marker
@@ -20,6 +21,28 @@ effects), sections, markers and a master. You build it from ONE Python script an
    written where you ask, at the song's full length (`trim` is off unless you pass `trim: true`). Add `notes: true` (to
    `run_script`: `look: {"notes": true}`) when you want measurements: the reply then ends `Notes (n): ...`, observations
    (an id, what was measured, when) to read; nothing is required of you and nothing is blocked.
+
+## You can't hear. Look at the moment like this
+
+Call `render_audition` on the moment (`{"at": "#drop", "around": 2}`, or `from` / `to`). Every reply carries the stretch
+as numbers, times in song seconds (`data.measure`; `measure: false` leaves them out, `step` sets the row length):
+
+- `Loudness per 0.5 s`: LUFS of each row, and the `loudest row`. **Did the lift happen?** Compare the rows before and
+  after the marker. **Is the climax the loudest moment?** Check the `loudest row` against its time: a swell that keeps
+  growing after the downbeat is loudest later, even when its strongest hit is on time.
+- `Bands per row`: dB in sub (<60 Hz), bass (60-250), lowMid (250-1k), mid (1-4 kHz) and high (4-16 kHz) per row.
+  **Did the low end drop out?** Read sub and bass across the marker.
+- `Mix hits`: where the mix's level jumps, each with its peak (dBFS), and the `strongest hit` (the sharpest attack, not
+  the loudest moment). **Does the hit strike?** Check that the strongest hit is at the hit's time and compare its dB with
+  the other hits.
+- `Part <id>`: each track alone before the master, over the stretch: LUFS, peak, when it first and last sounds, where its
+  sounds start, its bands. **Did the drums stop?** Their `sounds a-b` ends where you wrote the stop, and no starts follow.
+  **Which part sits in 1-4 kHz under a voice?** Compare each part's `mid` with the voice track's.
+- `Written` / `Sounding at`: what the script has there (notes and hits per track, lowest-highest, first-last) and what
+  is sounding at `at` (or the start), with the chord. **Is what I hear what I wrote?** Set the two side by side.
+
+To hear one part's share, `solo` or `mute` it and compare the rows. A start in a stretch's first 20 ms is not counted
+(the cut begins there); start the stretch a little earlier to see a downbeat.
 
 ## Bars first
 
@@ -63,7 +86,7 @@ comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 ## The tools to start with
 
 - `run_script`: build or rebuild the song from the script; `look: true` also renders it in the same call.
-- `render_audition`: hear any stretch in about a second (see the loop above).
+- `render_audition`: hear any stretch in about a second, read as numbers (see the loop and "You can't hear" above).
 - `look_sound`: the mix as numbers: loudness and measured faults (default), each track's level, low end, clashes, spectrum, stereo.
 - `look_music`: the music as facts: where sounds start against `expect`, beats and swing, pitch, key and chords.
 - `inspect_guide`: these guides by `topic` (`{"topic": "script"}`); with no topic, the list.

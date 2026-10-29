@@ -23,6 +23,7 @@ SCHEMA_ITEM = {"anyOf": [{"type": "string"}, {"type": "object", "required": ["tr
 
 
 def _seconds(root, value, where: str) -> float:
+    value = _number(value)
     if isinstance(value, dict) and set(value) == {"bar"}:
         bar = value["bar"]
         if isinstance(bar, bool) or not isinstance(bar, int) or bar < 1:
@@ -32,6 +33,17 @@ def _seconds(root, value, where: str) -> float:
     if why:
         raise RostrumError(codes.BAD_ARGUMENT, where, f"{value!r}", why, ["seconds (2.5)", '{"beat": 8}', '{"bar": 3}', '"#drop"'])
     return times.seconds(value, root, where)
+
+
+def _number(value):
+    """Seconds sent as text ("36.0": some MCP clients send every argument as a string) are those seconds."""
+    if isinstance(value, str) and not value.startswith("#"):
+        try:
+            v = float(value)
+            return v if v == v and abs(v) != float("inf") else value
+        except ValueError:
+            return value
+    return value
 
 
 def _bar(root, sec: float) -> str:
