@@ -306,6 +306,16 @@ pub trait PaintScene: RenderContext {
         false
     }
 
+    /// Rostrum patch (streak blur, one paint): what is drawn next, until `end_kept`, goes into picture `k` of this
+    /// paint (a fresh transparent picture the canvas's size the first time, the same one after), not the canvas; the
+    /// caller takes the pictures once the paint is done. False when it can't (nothing is redirected).
+    fn begin_kept(&mut self, _k: usize) -> bool {
+        false
+    }
+
+    /// Rostrum patch (streak blur, one paint): drawing goes back to the canvas (after a `begin_kept` that was true).
+    fn end_kept(&mut self) {}
+
     /// Rostrum patch (E3): a layer whose content is captured as one picture, then drawn as each glow (the picture
     /// with the glow's filter, at its strength, added: `plus-lighter`, under the glow's clip), then as itself: in a
     /// layer with `alpha`, `blend` (normal when None) and `filter` under `clip`, or as it is when `clip` is None (no

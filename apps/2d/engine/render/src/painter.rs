@@ -511,11 +511,41 @@ impl Painter {
         if shader_errors.is_empty() { Ok(()) } else { Err(shader_errors.join("; ")) }
     }
 
-    /// Keeps the last painted picture (a still run of a motion-blurred frame, still_runs.rs) as kept picture
+    /// Keeps the last painted picture (a still run of a motion-blurred frame, slide.rs) as kept picture
     /// `cached().len()`, which a paint plan's `Run::Cached` then draws in its place.
     pub fn keep_cached(&mut self) {
         let image = self.surface.image_snapshot();
         self.cache.cached.push(image);
+    }
+
+    /// Keeps the pictures the last paint drew its `Run::Keep(k)` layers into (blurred.rs: a step's streak pictures, made
+    /// in one paint), in number order, as kept pictures from `cached_len()` on; one it never drew into (all of its layers
+    /// culled) is kept as nothing (a transparent px). `n`: how many the paint was to make.
+    pub fn keep_drawn(&mut self, n: usize) -> Result<(), String> {
+        let mut drawn = self.cache.take_kept();
+        if drawn.len() > n {
+            return Err(format!("a paint drew {} kept pictures, {n} were asked for", drawn.len()));
+        }
+        drawn.resize_with(n, || None);
+        for kept in drawn {
+            let (image, at) = match kept {
+                Some(k) => k,
+                None => {
+                    let mut s = skia_safe::surfaces::raster_n32_premul((1, 1)).ok_or("no picture could be made for a streak whose layers were all culled")?;
+                    s.canvas().clear(Color::TRANSPARENT);
+                    (s.image_snapshot(), (0, 0))
+                }
+            };
+            self.cache.cached_at.resize(self.cache.cached.len(), (0, 0));
+            self.cache.cached.push(image);
+            self.cache.cached_at.push(at);
+        }
+        Ok(())
+    }
+
+    /// How far past the frame's edges the next paint's kept pictures reach (device px; blurred.rs `keep_drawn`).
+    pub fn set_kept_margin(&mut self, px: i32) {
+        self.cache.kept_margin = px;
     }
 
     /// Keeps `image` (the picture of a motion-blurred frame's layers drawn so far, blurred.rs) as kept picture `cached().len()`.
@@ -526,6 +556,7 @@ impl Painter {
     /// Lets the kept pictures go (the frame is done).
     pub fn clear_cached(&mut self) {
         self.cache.cached.clear();
+        self.cache.cached_at.clear();
     }
 
     /// How many pictures are kept.

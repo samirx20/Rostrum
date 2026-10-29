@@ -73,20 +73,31 @@ fn on_screen<'a>(comp: &Item<'a>) -> HashMap<(&'a str, usize), Pt> {
 }
 
 pub(super) fn corners<'a>(it: &Item<'a>, parent: Aff, out: &mut HashMap<(&'a str, usize), Pt>) {
-    let n = |f: &str, d: f64| it.props.get(f).and_then(serde_json::Value::as_f64).unwrap_or(d);
-    let (w, h) = super::smear::size(it).unwrap_or((0.0, 0.0));
-    let (ax, ay) = (n("anchorX", 0.5) * w, n("anchorY", 0.5) * h);
-    // stage.rs `layer`: the anchor point lands on (x, y); the layer turns and scales about it.
-    let s = n("scale", 1.0);
-    let m = parent
-        * Aff::translate(n("x", 0.0), n("y", 0.0))
-        * Aff::rotate(n("rotation", 0.0))
-        * Aff::scale(s * n("scaleX", 1.0), s * n("scaleY", 1.0))
-        * Aff::translate(-ax, -ay);
+    let (m, (w, h)) = (parent * local(it), super::smear::size(it).unwrap_or((0.0, 0.0)));
     for (i, p) in [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)].into_iter().enumerate() {
         out.insert((it.id, i), m.apply(p));
     }
     for c in &it.layers {
         corners(c, m, out);
     }
+}
+
+/// The most the layer or any of its children is stretched on screen (`parent`: its frame's; the largest singular value
+/// of each one's place, turn and scale, as `corners` carries them): how far its own blurs and shadows reach, scaled.
+pub(super) fn widest(it: &Item, parent: Aff) -> f64 {
+    let m = parent * local(it);
+    let sum = m.a * m.a + m.b * m.b + m.c * m.c + m.d * m.d;
+    let det = m.a * m.d - m.b * m.c;
+    let own = ((sum + (sum * sum - 4.0 * det * det).max(0.0).sqrt()) / 2.0).sqrt();
+    it.layers.iter().map(|c| widest(c, m)).fold(own, f64::max)
+}
+
+/// A layer's own place, turn and scale (stage.rs `layer`): the anchor point lands on (x, y); the layer turns and scales
+/// about it.
+fn local(it: &Item) -> Aff {
+    let n = |f: &str, d: f64| it.props.get(f).and_then(serde_json::Value::as_f64).unwrap_or(d);
+    let (w, h) = super::smear::size(it).unwrap_or((0.0, 0.0));
+    let (ax, ay) = (n("anchorX", 0.5) * w, n("anchorY", 0.5) * h);
+    let s = n("scale", 1.0);
+    Aff::translate(n("x", 0.0), n("y", 0.0)) * Aff::rotate(n("rotation", 0.0)) * Aff::scale(s * n("scaleX", 1.0), s * n("scaleY", 1.0)) * Aff::translate(-ax, -ay)
 }

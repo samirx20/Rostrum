@@ -65,6 +65,39 @@ fn shown(frames: &[super::Pic], t: f64, fps: f64) -> Option<&super::Pic> {
 }
 
 fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
+    eval_with(node, t, all, fps, &|_, c| eval(c, t, all, fps))
+}
+
+/// `eval`, its children (`layers`) each made by `layer` (their index, their node).
+fn eval_with<'a>(node: &'a Node, t: f64, all: bool, fps: f64, layer: &dyn Fn(usize, &'a Node) -> Option<Item<'a>>) -> Option<Item<'a>> {
+    let mut item = Item {
+        id: &node.id,
+        node,
+        t,
+        kind: node.kind,
+        effects: node.effects.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        masks: node.masks.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        layers: node.layers.iter().enumerate().filter_map(|(i, c)| layer(i, c)).collect(),
+        stops: node.stops.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        props: own_props(node, t, fps),
+    };
+    super::follow::resolve(node, &mut item.layers, t);
+    if node.kind == "rig" {
+        crate::rig::pose(&mut item);
+    }
+    // A layer outside start ≤ t < end is left out; the frame (a `camera`) has no start or end: it always shows.
+    // Whether it shows decides what is drawn, so a motion-blur sub-frame asks at its frame's own time (`tc`): a layer
+    // showing in a frame is in every one of its sub-frames, even those before 0 s or its start (critic 2d-r11: frame 0
+    // came out at half strength), as After Effects.
+    let tc = content_time(t);
+    if !all && node.role == Role::Layer && node.kind != "camera" && !(item.num("start") <= tc && tc < item.num("end")) {
+        return None;
+    }
+    Some(item)
+}
+
+/// A node's own fields at `t` as `eval` gives them: `props_at`, and which picture it shows.
+fn own_props(node: &Node, t: f64, fps: f64) -> Map<String, Value> {
     let mut props = props_at(node, t);
     // Which picture shows (a drawing's frame, paint, grain's and rough's frame, a video's frame) decides what is drawn, so it is
     // read at the frame's own time even in a motion-blur sub-frame (`content_time`).
@@ -90,29 +123,56 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     if node.kind == "video" {
         props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, tc, fps)));
     }
-    let mut item = Item {
-        id: &node.id,
-        node,
-        t,
-        kind: node.kind,
-        effects: node.effects.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
-        masks: node.masks.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
-        layers: node.layers.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
-        stops: node.stops.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
-        props,
-    };
-    super::follow::resolve(node, &mut item.layers, t);
-    if node.kind == "rig" {
-        crate::rig::pose(&mut item);
+    props
+}
+
+/// Per top-level layer of `comp` (by index): whether, within one motion-blurred frame, only its own fields change
+/// (`at_reusing`). Its children, effects, masks and stops have no keys and no rig, so they are the same at every
+/// sub-frame (what they show is read at the frame's own time: `content_time`); and it isn't a rig, doesn't follow or
+/// ride a path (follow.rs: placed from a sibling), and its start and end have no keys (it shows in every sub-frame of
+/// a frame it shows in). The frame (a `camera`) is never one: its focus is set per frame (scene_serve.rs).
+pub fn own_only(comp: &Node) -> Vec<bool> {
+    fn still(n: &Node) -> bool {
+        n.anim.is_empty() && n.kind != "rig" && n.rig.is_empty() && [&n.effects, &n.masks, &n.layers, &n.stops].iter().all(|c| c.iter().all(still))
     }
-    // A layer outside start ≤ t < end is left out; the frame (a `camera`) has no start or end: it always shows.
-    // Whether it shows decides what is drawn, so a motion-blur sub-frame asks at its frame's own time (`tc`): a layer
-    // showing in a frame is in every one of its sub-frames, even those before 0 s or its start (critic 2d-r11: frame 0
-    // came out at half strength), as After Effects.
-    if !all && node.role == Role::Layer && node.kind != "camera" && !(item.num("start") <= tc && tc < item.num("end")) {
-        return None;
-    }
-    Some(item)
+    let names = |n: &Node, f: &str| n.props.get(f).and_then(Value::as_str).is_some_and(|s| !s.is_empty());
+    comp.layers.iter().map(|n| {
+        n.kind != "camera" && n.kind != "rig" && n.rig.is_empty() && !names(n, "pathLayer") && !names(n, "ridePath")
+            && !n.anim.iter().any(|(f, _)| f == "start" || f == "end")
+            && [&n.effects, &n.masks, &n.layers, &n.stops].iter().all(|c| c.iter().all(still))
+    }).collect()
+}
+
+/// `at(comp, t)` for another time of the frame whose comp `centre` is (inside its `shutter_at`, so `t` is one of its
+/// sub-frames), with each top-level layer marked in `own` (`own_only`) re-reading only its own fields and taking its
+/// children, effects, masks and stops from `centre`: the same item as `at`, field for field, at a fraction of the cost.
+pub fn at_reusing<'a>(comp: &'a Node, t: f64, centre: &Item<'a>, own: &[bool]) -> Option<Item<'a>> {
+    let fps = fps(comp);
+    eval_with(comp, t, false, fps, &|i, c| {
+        if !own[i] {
+            return eval(c, t, false, fps);
+        }
+        // It shows now when it shows at the frame's time (its start and end have no keys).
+        let at = centre.layers.iter().find(|l| std::ptr::eq(l.node, c))?;
+        let again = |items: &[Item<'a>]| items.iter().map(|it| retimed(it, t)).collect();
+        Some(Item {
+            id: at.id,
+            node: c,
+            t,
+            kind: at.kind,
+            props: own_props(c, t, fps),
+            effects: again(&at.effects),
+            masks: again(&at.masks),
+            layers: again(&at.layers),
+            stops: again(&at.stops),
+        })
+    })
+}
+
+/// A copy of `it` and everything in it, evaluated at `t` instead (`at_reusing`: they read the same at both).
+fn retimed<'a>(it: &Item<'a>, t: f64) -> Item<'a> {
+    let again = |items: &[Item<'a>]| items.iter().map(|c| retimed(c, t)).collect();
+    Item { t, props: it.props.clone(), effects: again(&it.effects), masks: again(&it.masks), layers: again(&it.layers), stops: again(&it.stops), ..*it }
 }
 
 /// A node's own field values at time `t` (its still values, keyed fields decided by their keys; a counting text's
