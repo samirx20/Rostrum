@@ -216,7 +216,7 @@ moved by more than a second). Which ending fits the piece is yours to choose:
 - **Ring out** (the song field `ringOut`, on in every new song): a sound still ringing at `length` plays on until it dies
   away (under -60 dBFS, at most 6 s more); a note held past `length` is let go at it, and a note that starts at or after
   `length` is not heard (both are warned, in `run_script` and `render_mix`). **The file `render_mix` delivers is exactly
-  `length` long**: a ring that would run past it is faded out over the last second inside it, and the reply's warnings
+  `length` long**: a ring that would run past it is faded out over the last second inside it (a loop brief: cut at the length with a 10 ms de-click, never faded), and the reply's warnings
   say how much was cut off. That is why `ending(...)` puts the tail inside the length. `render_mix` with
   `ring_past_length: true` lets the file run on up to 2 s past it (a number: up to that many seconds). Songs saved
   before 2026-10-25 open with Ring out off: there the file stops at `length`.

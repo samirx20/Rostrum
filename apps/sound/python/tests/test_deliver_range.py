@@ -40,3 +40,13 @@ def test_a_range_the_engine_rendered_is_not_cut_again_and_its_silent_end_goes(tm
     y, _ = sf.read(out["file"], dtype="float32")
     assert y[0, 0] == 0.5 and abs(out["seconds"] - (1.0 + deliver.TAIL)) < 1e-3 and out["trimmed"] is True
     assert out["range"] == [10.0, 10.0 + out["seconds"]] and out["songSeconds"] == 60.0
+
+
+def test_a_loop_is_cut_at_its_length_not_faded(tmp_path):
+    """sound-endings, Notes App: a loop plays on at its length; the 1 s ring fade there was a dip at the join, and the
+    ending check called it a faded end, so no loop could pass. A loop is cut at the length with only a de-click."""
+    opts = deliver.Options.read({"format": "wav32f", "sampleRate": 48000, "length": 3.0, "loop": True})
+    out = deliver.deliver(tmp_path, _render(tmp_path), {}, opts, "song")
+    y, _ = sf.read(out["file"])
+    assert "fadedEnd" not in out and len(y) == 3 * 48000
+    assert abs(y[-int(0.02 * 48000), 0]) > 0.6          # still playing 20 ms before the cut (a 1 s fade would be near 0)

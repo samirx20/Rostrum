@@ -66,7 +66,7 @@ def asked(doc) -> str | None:
 
 
 def _fade_ok(data) -> bool:
-    return (data.get("ending") or {}).get("kind") == "fade" or bool(brief.asks(data, "fade_ending"))
+    return (data.get("ending") or {}).get("kind") == "fade" or bool(brief.asks(data, "fade_ending") or brief.asks(data, "loop"))
 
 
 def _loop(m) -> list[tuple[str, str]]:
