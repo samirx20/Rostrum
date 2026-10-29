@@ -22,7 +22,7 @@ pub struct Compiled {
     /// The distinct credit lines of the CC-BY instruments the tracks play (every export carries them).
     pub credits: Vec<&'static str>,
     /// A given length (ending.rs): its frame, whether the song rings out past it, and the notes and clips held past it.
-    pub ending: Option<(usize, bool, usize, bool)>,
+    pub ending: Option<(usize, bool, Vec<(String, f64)>, bool)>,
 }
 
 pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
@@ -68,7 +68,12 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     let given = length_given.is_some();
     let song = ((if given { seconds } else { end }) * sr as f64).round() as usize;
     let ring = ring || !given;
-    let held = if given { tracks.iter_mut().map(|t| ending::hold_to(&mut t.voices, &mut t.clips, song, sr as f64, ring)).sum() } else { 0 };
+    // Each note or clip held past the end, by its track and start (the warning names them).
+    let held: Vec<(String, f64)> = if given {
+        tracks.iter_mut().zip(&ids).flat_map(|(t, id)| ending::hold_to(&mut t.voices, &mut t.clips, song, sr as f64, ring).into_iter().map(move |at| (id.clone(), at))).collect()
+    } else {
+        vec![]
+    };
     let ending = Some((song, ring, held, given));
     // A song that rings out renders on past its length (the file is cut where the ring dies away: ending.rs).
     let total = if ring { song + (ending::RING_MAX * sr as f64).round() as usize } else { song };

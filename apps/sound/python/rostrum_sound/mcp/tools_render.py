@@ -11,7 +11,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp import faults as shared_faults
 
-from .. import brief, deliver, handoff, packs, presets
+from .. import brief, deliver, handoff, master_memo, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
@@ -219,6 +219,8 @@ def register(tools: Tools):
                 r = handoff.render(state.folder, doc, state.engine, schedule_now, who, stems=stems, master=master, options=options,
                                    markers_file=bool(args.get("markers")), name=args.get("name") or "")
             state.remember(item, r)
+            if not partial:              # the whole song's mastering decisions (none for a part), for the stretches heard next (hear.py)
+                master_memo.remember(master_memo.song_of(state.folder, item), master_memo.key(schedule_now), r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             copied = _copy_to(target, r, files) if target and not partial else []
             loud = loudness(r, export_target.master_as_rendered(master_here, pushed), {} if pushed else before) if master and not partial else None

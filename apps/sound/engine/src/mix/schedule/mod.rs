@@ -64,6 +64,14 @@ pub struct Schedule {
     /// on the range alone, and the stems are cut to it.
     #[serde(skip)]
     pub range: Option<(usize, usize)>,
+    /// The whole song's mastering decisions, given with a range (the render request's `masterAs`): the stretch then
+    /// renders on its own, mastered as the song is there (mix/window.rs); None: worked out over the song.
+    #[serde(skip)]
+    pub master_as: Option<crate::fx::master::window::Decisions>,
+    /// A range heard as it is in the song (the request's `inSong`, or `masterAs`): the master stage as the whole song's
+    /// does it there. Else the range is mastered and measured on its own (a file of a part).
+    #[serde(skip)]
+    pub in_song: bool,
 }
 
 fn safety_clip_on() -> bool {

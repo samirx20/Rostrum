@@ -19,11 +19,11 @@ const FADE_S: f64 = 0.5;
 
 /// With ring-out: notes held past the song's `song` frame are let go at it, voices that start there or later (written
 /// after the end, or performed onto its last frame) are left out, and recorded clips stop at it with a 50 ms fade.
-/// Returns how many notes and clips were held past the end (said in both modes; without ring-out the end cuts them).
-pub fn hold_to(voices: &mut Vec<Value>, clips: &mut Vec<Value>, song: usize, sr: f64, ring: bool) -> usize {
+/// Returns where each note and clip held past the end starts (s; said in both modes; without ring-out the end cuts them).
+pub fn hold_to(voices: &mut Vec<Value>, clips: &mut Vec<Value>, song: usize, sr: f64, ring: bool) -> Vec<f64> {
     let end = song as f64 / sr;
     let start = |v: &Value, k: &str| v[k].as_u64().unwrap_or(0) as usize;
-    let mut past = 0;
+    let mut past = vec![];
     if ring {
         voices.retain(|v| start(v, "startIdx") + 1 < song);
         clips.retain(|c| start(c, "startSample") < song);
@@ -31,7 +31,7 @@ pub fn hold_to(voices: &mut Vec<Value>, clips: &mut Vec<Value>, song: usize, sr:
     for v in voices.iter_mut() {
         let (at, dur) = (start(v, "startIdx") as f64 / sr, v["duration"].as_f64().unwrap_or(0.0));
         if at < end && at + dur > end + 1e-6 {
-            past += 1;
+            past.push(at);
             if ring {
                 v["duration"] = json!(end - at);
             }
@@ -40,7 +40,7 @@ pub fn hold_to(voices: &mut Vec<Value>, clips: &mut Vec<Value>, song: usize, sr:
     for c in clips.iter_mut() {
         let (at, n) = (start(c, "startSample"), start(c, "samples"));
         if at + n > song {
-            past += 1;
+            past.push(at as f64 / sr);
             if ring {
                 c["samples"] = json!(song - at);
                 c["fadeOut"] = json!(c["fadeOut"].as_f64().unwrap_or(0.0).max(0.05).min((song - at) as f64 / sr));
@@ -58,8 +58,8 @@ pub struct Ending {
     pub ring: bool,
     /// The mix's peak (dBFS) in the 50 ms before the length (before the master's own fade-out).
     pub level_db: f64,
-    /// Notes and clips held past the length.
-    pub held: usize,
+    /// Notes and clips held past the length: their track and start (s).
+    pub held: Vec<(String, f64)>,
     /// Still sounding `RING_MAX` s past the length: cut there.
     pub ran_out: bool,
     pub faded: bool,
@@ -74,7 +74,7 @@ fn peak_db(mix: &Mix, a: usize, b: usize) -> Result<f64, String> {
 
 /// After the render: the level at the length; with ring-out, the file cut where the ring has died away (its measures
 /// and series with it; nothing past there is above -60 dBFS, so the loudness and peaks are the file's).
-pub fn finish(mix: &mut Mix, song: usize, ring: bool, fade_out: usize, held: usize, given: bool, sr: f64) -> Result<Ending, String> {
+pub fn finish(mix: &mut Mix, song: usize, ring: bool, fade_out: usize, held: Vec<(String, f64)>, given: bool, sr: f64) -> Result<Ending, String> {
     let total = mix.frames();
     let block = (0.01 * sr) as usize;
     let before = song.min(total).saturating_sub(fade_out);
@@ -118,7 +118,7 @@ impl Ending {
     pub fn to_json(&self) -> Value {
         let r = |v: f64| (v * 100.0).round() / 100.0;
         json!({ "length": r(self.length), "end": r(self.end), "ringOut": self.ring, "levelAtLengthDb": r(self.level_db.max(-120.0)),
-                "heldPastLength": self.held, "cut": self.cut() })
+                "heldPastLength": self.held.len(), "cut": self.cut() })
     }
 
     /// The ending was cut while still sounding: no ring-out, no deliberate fade, and loud at the length.
@@ -129,9 +129,11 @@ impl Ending {
     /// What a person must know about the ending, in plain words (empty: it ended where it was given).
     pub fn warnings(&self) -> Vec<String> {
         let mut out = vec![];
-        if self.held > 0 {
-            out.push(format!("{} note(s) or clip(s) are held past the song's end ({:.2} s): they are let go there{}.", self.held, self.length,
-                             if self.ring { " and ring out" } else { " and cut off" }));
+        if !self.held.is_empty() {
+            let named: Vec<String> = self.held.iter().take(3).map(|(t, at)| format!("{t} at {at:.2} s")).collect();
+            let more = if self.held.len() > 3 { format!(" and {} more", self.held.len() - 3) } else { String::new() };
+            out.push(format!("{} note(s) or clip(s) are held past the song's end ({:.2} s): they are let go there{}: {}{more}.", self.held.len(), self.length,
+                             if self.ring { " and ring out" } else { " and cut off" }, named.join(", ")));
         }
         if self.ran_out && !self.given {
             out.push(format!("The last sounds still ring {RING_MAX:.0} s after the last note ends ({:.2} s): the song fades out there, ending at {:.2} s. Shorten or choke the last notes, or give the song a length.", self.length, self.end));

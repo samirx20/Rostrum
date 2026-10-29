@@ -16,6 +16,10 @@ pub struct TapeWriter {
     chs: usize,
     len: usize,
     at: usize,
+    /// The frame after the last one pushed (`len`, or a span's end).
+    end: usize,
+    /// A span (`span`): its first frame and its frames so far, held in memory (a stretch is a few seconds); no file.
+    held: Option<(usize, Vec<Vec<f32>>)>,
     /// The first and one past the last frame where any channel is not +0.0.
     from: Option<usize>,
     to: usize,
@@ -24,6 +28,17 @@ pub struct TapeWriter {
 impl TapeWriter {
     /// A tape of `channels` × `len` frames, filled by `push`.
     pub fn new(channels: usize, len: usize) -> Result<TapeWriter, String> {
+        TapeWriter::span(channels, len, 0, len)
+    }
+
+    /// A tape of `channels` × `len` frames of which only frames `from .. to` are pushed (a heard stretch, window.rs):
+    /// the rest reads as silence.
+    pub fn span(channels: usize, len: usize, from: usize, to: usize) -> Result<TapeWriter, String> {
+        let to = to.min(len);
+        if from > 0 || to < len {
+            let held = Some((from, vec![Vec::with_capacity(to.saturating_sub(from)); channels]));
+            return Ok(TapeWriter { path: PathBuf::new(), file: None, chs: channels, len, at: from, end: to, held, from: None, to: 0 });
+        }
         use std::sync::atomic::{AtomicUsize, Ordering};
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join("rostrum-sound-render");
@@ -31,7 +46,7 @@ impl TapeWriter {
         let fail = |e: std::io::Error| format!("could not write the render's scratch file {}: {e}", path.display());
         std::fs::create_dir_all(&dir).map_err(fail)?;
         let file = File::create(&path).and_then(|f| f.set_len((HEADER + channels * len * 4) as u64).map(|_| f)).map_err(fail)?;
-        Ok(TapeWriter { path, file: Some(file), chs: channels, len, at: 0, from: None, to: 0 })
+        Ok(TapeWriter { path, file: Some(file), chs: channels, len, at: from, end: to, held: None, from: None, to: 0 })
     }
 
     fn fail(&self, e: std::io::Error) -> String {
@@ -41,7 +56,7 @@ impl TapeWriter {
     /// The next block of every channel (all the same length).
     pub fn push(&mut self, chs: &[Vec<f32>]) -> Result<(), String> {
         let n = chs.first().map_or(0, Vec::len);
-        if chs.len() != self.chs || self.at + n > self.len {
+        if chs.len() != self.chs || self.at + n > self.end {
             return Err(format!("a track's tape got {} channels to frame {}, made for {} × {} (an engine fault)", chs.len(), self.at + n, self.chs, self.len));
         }
         for i in 0..n {
@@ -49,6 +64,11 @@ impl TapeWriter {
                 self.from.get_or_insert(self.at + i);
                 self.to = self.at + i + 1;
             }
+        }
+        if let Some((_, held)) = &mut self.held {
+            held.iter_mut().zip(chs).for_each(|(h, c)| h.extend_from_slice(c));
+            self.at += n;
+            return Ok(());
         }
         let mut buf = Vec::with_capacity(n * 4);
         for (c, ch) in chs.iter().enumerate() {
@@ -86,12 +106,26 @@ impl TapeWriter {
 
     /// Into the render cache under `key` (when it can be written), else a scratch tape of this render.
     pub fn finish(mut self, cache: Option<(&crate::mix::trackcache::TrackCache, &str)>) -> Result<Tape, String> {
-        if self.at != self.len {
-            return Err(format!("a track's tape ended at frame {} of {} (an engine fault)", self.at, self.len));
+        if self.at != self.end {
+            return Err(format!("a track's tape ended at frame {} of {} (an engine fault)", self.at, self.end));
         }
         let from = self.from.unwrap_or(self.len);
         let to = self.to.max(from);
         let len = self.len;
+        if let Some((start, held)) = self.held.take() {
+            // A span: its sounding part written as a scratch tape (never into the cache: the track is not whole).
+            let (a, b) = if from >= to { (start, start) } else { (from, to) };
+            return Tape::spill_with(len, |w| {
+                for word in [self.chs, len, a, b - a] {
+                    w.write_all(&(word as u64).to_le_bytes())?;
+                }
+                for c in &held {
+                    let bytes: Vec<u8> = c[a - start..b - start].iter().flat_map(|s| s.to_le_bytes()).collect();
+                    w.write_all(&bytes)?;
+                }
+                w.flush()
+            });
+        }
         if (len - (to - from)) * 4 >= len {
             // A quarter or more is silence: keep only the sounding span.
             drop(self.file.take());

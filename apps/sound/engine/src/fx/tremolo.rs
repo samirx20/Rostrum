@@ -15,16 +15,22 @@ pub struct Tremolo {
     depth: Param,
     sr: f64,
     phase: f64,
+    started: bool,
     d: f64,
 }
 
 impl Tremolo {
     pub fn new(rate: f64, depth: &Param, stereo: f64, sr: f64) -> Self {
-        Tremolo { rate, stereo, depth: depth.clone(), sr, phase: 0.0, d: depth.at(0.0) }
+        Tremolo { rate, stereo, depth: depth.clone(), sr, phase: 0.0, started: false, d: depth.at(0.0) }
     }
 
     pub fn pair(&mut self, l: &mut [f32], r: &mut [f32], t0: usize) {
         let step = 2.0 * PI * self.rate / self.sr;
+        if !self.started && t0 > 0 {
+            // A render that starts later in the song (a heard stretch): the sweep where it is at that frame.
+            self.phase = (step * t0 as f64) % (2.0 * PI);
+        }
+        self.started = true;
         for i in 0..l.len().min(r.len()) {
             if (t0 + i) % BLOCK == 0 {
                 self.d = self.depth.at((t0 + i) as f64 / self.sr).clamp(0.0, 1.0);

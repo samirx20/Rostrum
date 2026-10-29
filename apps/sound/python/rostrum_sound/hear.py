@@ -1,10 +1,13 @@
 """Hearing one stretch of the song in about a second, without a full render (render_audition with `from` / `at`):
-the engine renders the stretch itself (contract: `render` with from / to), its tracks read back from the render cache
-when unchanged, the master stage and the measures on the stretch alone. The WAV is kept by content in the engine's
+the engine renders the stretch itself (contract: `render` with from / to), as it is in the whole song's render: mastered
+with the song's own decisions (master_memo.py: the gain to the target, the limiter's hold), sample for sample what the
+full render has there. With those decisions known it renders on its own: the tracks from the render cache, a changed
+track only over the stretch and a few seconds before it, the master stage on that span. Without them (the song's first
+listen) the song is mastered whole once and the stretch cut from it; its decisions are kept for the next. The WAV is kept by content in the engine's
 share of the one cache (`sound/auditions/`): the same stretch of the same song again is the same file, found at once.
 Nothing in the document changes and no version is written (a check, not a delivery: render_mix makes those).
 
-    hear(engine, doc, start, end, solo=None, mute=None, master=True)   # -> {file, from_s, to_s, seconds, cached, lufs, ...}
+    hear(engine, doc, start, end, solo=None, mute=None, master=True, song=None)  # -> {file, from_s, to_s, cached, mastered, ...}
     picture(png, wav, result)                                          # the stretch: wave, loudness, spectrum over time
     notes(wav, doc, result)                                            # the asked moments inside it, measured
 
@@ -20,7 +23,7 @@ import numpy as np
 
 from rostrum_core.cache import LEVELS, put_file
 
-from . import settings
+from . import master_memo, settings
 from .compile import compile as compile_doc
 from .doc import markers
 
@@ -35,23 +38,35 @@ def window(start: float, end: float | None, around: float | None) -> tuple[float
     return start, end if end is not None else start + 4.0
 
 
-def _key(schedule: dict, a: float, b: float) -> str:
-    return hashlib.sha256((json.dumps(schedule, sort_keys=True, default=str) + f"|{a:.4f}|{b:.4f}").encode()).hexdigest()[:24]
+def _key(schedule: dict, a: float, b: float, given) -> str:
+    return hashlib.sha256((json.dumps(schedule, sort_keys=True, default=str) + f"|{a:.4f}|{b:.4f}|{json.dumps(given, sort_keys=True)}").encode()).hexdigest()[:24]
 
 
-def hear(engine, doc: dict, start: float, end: float, solo=None, mute=None, master: bool = True, out_dir: Path | None = None) -> dict:
-    """The stretch [start, end) of the song as it is written now, rendered once into the content-keyed cache."""
+def hear(engine, doc: dict, start: float, end: float, solo=None, mute=None, master: bool = True, out_dir: Path | None = None,
+         song: str | None = None) -> dict:
+    """The stretch [start, end) of the song as it is written now, rendered once into the content-keyed cache. `song`
+    (master_memo.song_of): whose mastering decisions to use and keep. `mastered`: "song" (the song's decisions as it is
+    now), "earlier" (the decisions the song last measured, before a later change), "alone" (no master)."""
     schedule = compile_doc(doc, solo=solo, mute=mute, master=master)
+    alone = bool(solo or mute)
+    k = master_memo.key(compile_doc(doc, master=master) if alone else schedule)
+    given, fresh = master_memo.given(song, k) if song and master else (None, False)
+    ask = {"masterAs": given} if given else {"inSong": True} if master else {}
     folder = Path(out_dir) if out_dir else settings.cache_dir() / "sound" / "auditions"
-    out = folder / f"{_key(schedule, start, end)}.wav"
+    out = folder / f"{_key(schedule, start, end, given)}.wav"
     facts = out.with_suffix(".json")
     if out.is_file() and out.with_suffix(LEVELS).is_file() and facts.is_file():
         return {**json.loads(facts.read_text(encoding="utf-8")), "file": str(out), "cached": True}
     r = {}
-    put_file(out, lambda tmp: r.update(engine.request("render", schedule=schedule, out=str(tmp), stems=[], **{"from": start, "to": end}) or {}),
+    put_file(out, lambda tmp: r.update(engine.request("render", schedule=schedule, out=str(tmp), stems=[], **{"from": start, "to": end}, **ask) or {}),
              "render_audition", beside=(LEVELS,))
+    if song and not alone and not given:
+        master_memo.remember(song, k, r)              # worked out over the song now: the next stretch renders on its own
+    if song and given and not fresh:                  # the song changed since it was measured: measured again, for the next
+        master_memo.refresh(engine, song, k, compile_doc(doc, master=master) if alone else schedule)
     rng = r.get("range") or [start, end]
-    got = {"from_s": round(rng[0], 3), "to_s": round(rng[1], 3), "seconds": round(rng[1] - rng[0], 3), **{k: r[k] for k in KEEP if k in r}}
+    got = {"from_s": round(rng[0], 3), "to_s": round(rng[1], 3), "seconds": round(rng[1] - rng[0], 3), **{k: r[k] for k in KEEP if k in r},
+           "mastered": "alone" if not master else "earlier" if given and not fresh else "song", "windowed": bool(r.get("windowed"))}
     facts.write_text(json.dumps(got), encoding="utf-8")
     return {**got, "file": str(out), "cached": False}
 

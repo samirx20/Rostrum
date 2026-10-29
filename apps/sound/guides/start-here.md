@@ -11,7 +11,9 @@ effects), sections, markers and a master. You build it from ONE Python script an
 2. **See it: `look_arrangement`** (about 0.05 s, no render): who plays when, how loud and how high, the bars numbered.
 3. **Hear the moment you care about: `render_audition`** (about a second, no full render):
    `{"from": {"bar": 9}, "to": {"bar": 11}}` or `{"at": "#chorus", "around": 2}`; `solo` / `mute` pick who is heard;
-   `look: true` adds the stretch's picture (wave, loudness, spectrum). The same stretch again comes back instantly.
+   `look: true` adds the stretch's picture (wave, loudness, spectrum). It sounds exactly as that stretch of the full
+   render does (same master, same level), and after a change to one part it takes a fraction of a second. The same
+   stretch again comes back instantly.
 4. **Judge it yourself, then change the script** and run it again **under the same name**. A removed track, note or marker
    disappears; nothing is copied. A new name that makes the same tracks is refused (it would double every note).
 5. Repeat 2–4 on the next moment. **`render_mix` only to deliver** (`name`, `folder`, `format`): the file is always

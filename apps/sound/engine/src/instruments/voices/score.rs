@@ -4,8 +4,17 @@ use super::Voice;
 
 /// A score clip's voices into its buffers, in the schedule's order (as the TS mixdown summed them);
 /// a sampler's notes play through one SoundFont synthesizer for the clip.
-pub fn render_score(voices: &[crate::mix::schedule::Voice], left: &mut [f32], right: &mut [f32], sr: f64) -> Result<(), String> {
+pub fn render_score(voices: &[crate::mix::schedule::Voice], left: &mut [f32], right: &mut [f32], sr: f64, span: Option<(usize, usize)>) -> Result<(), String> {
     use crate::mix::schedule::Voice as V;
+    // A heard stretch (mix/window.rs, clip frames): only the notes that sound in it. SFZ notes all go in, so its
+    // round robin counts every strike; it leaves out the ones not heard itself.
+    let heard = |v: &V| match v {
+        V::Note { start_idx, duration, .. } => crate::mix::window::heard(span, *start_idx, (duration * sr).round() as usize, sr),
+        V::Drum { start_idx, .. } => crate::mix::window::heard(span, *start_idx, 0, sr),
+    };
+    let all = voices;
+    let kept: Vec<V> = if span.is_some() { voices.iter().filter(|v| heard(v)).cloned().collect() } else { vec![] };
+    let voices: &[V] = if span.is_some() { &kept } else { voices };
     let sampled: Vec<_> = voices
         .iter()
         .filter_map(|v| match v {
@@ -21,13 +30,13 @@ pub fn render_score(voices: &[crate::mix::schedule::Voice], left: &mut [f32], ri
     }
     // SFZ instruments (sfz.rs): each articulation's notes together, so legato hands over between them.
     let mut files: Vec<&crate::instruments::sfz::SfzSpec> = vec![];
-    for v in voices { if let V::Note { sfz: Some(s), .. } = v { if !files.iter().any(|f| f.plays_as(s)) { files.push(s); } } }
+    for v in all { if let V::Note { sfz: Some(s), .. } = v { if !files.iter().any(|f| f.plays_as(s)) { files.push(s); } } }
     for spec in files {
-        let notes: Vec<_> = voices.iter().filter_map(|v| match v {
+        let notes: Vec<_> = all.iter().filter_map(|v| match v {
             V::Note { sfz: Some(s), freqs, start_idx, duration, velocity, pan, expression, .. } if s.plays_as(spec) => Some(crate::instruments::sfz::Note { start: *start_idx, len: (duration * sr).round() as usize, freqs: freqs.as_slice(), velocity: *velocity, pan: *pan, expression: expression.as_ref() }),
             _ => None,
         }).collect();
-        crate::instruments::sfz::render(spec, &notes, left, right, sr)?;
+        crate::instruments::sfz::render(spec, &notes, left, right, sr, span)?;
     }
     // A plugin instrument: one instance for the clip's notes (its own polyphony and releases), rendered once and kept.
     let plugged: Vec<_> = voices.iter().filter_map(|v| match v { V::Note { plugin: Some(p), freqs, start_idx, duration, velocity, .. } => Some((p, freqs, *start_idx, *duration, *velocity)), _ => None }).collect();

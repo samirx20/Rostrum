@@ -32,6 +32,8 @@ pub struct MasterSpec {
 /// how far the whole mix was turned down under its target (or fader) so the limiter keeps within `max_limit`.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MasterReport {
+    /// The program's own integrated loudness before the stage (LUFS; -70 and under: none to read): the glue's level.
+    pub program: f64,
     pub gain_db: f64,
     pub glue_db: f64,
     pub limiter_db: f64,
@@ -61,7 +63,7 @@ impl Dynamics {
 /// needs by the time it plays (a held minimum smoothed over the look-ahead, which never overshoots),
 /// then recovers over `release`. Fed block by block, it answers each frame once the look-ahead after it is in
 /// (`finish`: the rest); `deepest` is its largest gain reduction (dB, ≥ 0).
-struct Limiter {
+pub(super) struct Limiter {
     ceiling: f64,
     la: usize,
     rel: f64,
@@ -156,7 +158,7 @@ impl Limiter {
 /// Feed-forward compression linked across the channels, over the program's own loudness (soft
 /// knee, 6 dB); the detector is the BS.1770-weighted mean power (the LFE does not drive it). Block by block;
 /// `deepest` is its largest gain reduction (dB, ≥ 0).
-struct Glue {
+pub(super) struct Glue {
     weights: Vec<f64>,
     wsum: f64,
     ratio: f64,
@@ -172,7 +174,7 @@ struct Glue {
 }
 
 impl Glue {
-    fn new(weights: &[f64], amount: f64, program: f64, sr: f64) -> Glue {
+    pub(super) fn new(weights: &[f64], amount: f64, program: f64, sr: f64) -> Glue {
         Glue {
             weights: weights.to_vec(), wsum: weights.iter().sum::<f64>().max(1e-9), ratio: 1.0 + 3.0 * amount, threshold: program + 3.0,
             att: 1.0 - (-1.0 / (0.025 * sr)).exp(), rel: 1.0 - (-1.0 / (0.18 * sr)).exp(), det: 1.0 - (-1.0 / (0.01 * sr)).exp(), ms: 0.0, gr: 0.0, deepest: 0.0, given: vec![],
@@ -218,15 +220,15 @@ fn lufs_of(read: Source, nch: usize, total: usize, weights: &[f64], sr: f64) -> 
 
 /// One limiter pass: the result, its gain at every frame (the target gain times the limiter's: Dynamics), its deepest
 /// reduction (dB) and, with `measure`, the result's loudness.
-struct Pass {
-    out: Spool,
-    gains: Spool,
-    deepest: f64,
+pub(super) struct Pass {
+    pub(super) out: Spool,
+    pub(super) gains: Spool,
+    pub(super) deepest: f64,
     lufs: Option<f64>,
 }
 
 /// The source through `gain` and the limiter into a new spool, with the gain each frame got.
-fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f64, sr: f64, on_disk: bool, measure: Option<&[f64]>) -> Result<Pass, String> {
+pub(super) fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f64, sr: f64, on_disk: bool, measure: Option<&[f64]>) -> Result<Pass, String> {
     let mut lim = Limiter::new(nch, ceiling, sr);
     let mut out = Spool::new(nch, total, on_disk)?;
     let mut gains = Spool::new(1, total, on_disk)?;
@@ -255,6 +257,26 @@ fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f
     Ok(Pass { out: out.done()?, gains: gains.done()?, deepest: lim.deepest(), lufs: meter.map(Lufs::finish) })
 }
 
+/// The source through the glue (threshold over `program`) into a spool, with the gain each frame got, its deepest
+/// reduction (dB, ≥ 0) and, with `measure`, the glued signal's loudness.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn glue_pass(read: Source, nch: usize, total: usize, weights: &[f64], amount: f64, program: f64, sr: f64, on_disk: bool, measure: bool) -> Result<Pass, String> {
+    let mut g = Glue::new(weights, amount, program, sr);
+    let mut sp = Spool::new(nch, total, on_disk)?;
+    let mut gains = Spool::new(1, total, on_disk)?;
+    let mut m = measure.then(|| Lufs::new(nch, weights, sr));
+    for at in (0..total).step_by(BLOCK) {
+        let mut b = read(at, BLOCK.min(total - at))?;
+        g.block(&mut b);
+        gains.push(&[std::mem::take(&mut g.given)])?;
+        if let Some(m) = &mut m {
+            m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
+        }
+        sp.push(&b)?;
+    }
+    Ok(Pass { out: sp.done()?, gains: gains.done()?, deepest: -g.deepest, lufs: m.map(Lufs::finish) })
+}
+
 /// Masters a signal of `total` frames: glue, then gain to the target (BS.1770 with the layout's channel weights),
 /// then the true-peak limiter (linked: every channel under the ceiling); the gain is corrected and the chain re-run
 /// (from the glued signal) until the result is within 0.2 LU. Block by block: the glued signal and each pass's result
@@ -267,32 +289,16 @@ pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], sp
     if program <= -69.0 {
         // No integrated loudness to read (silence, or under the 400 ms gate: a UI click): the ceiling still holds.
         let p = limited(read, nch, total, None, ceiling, sr, on_disk, None)?;
-        return Ok((p.out, MasterReport { limiter_db: p.deepest, ..Default::default() }, Dynamics { glue: None, limiter: p.gains }));
+        return Ok((p.out, MasterReport { program, limiter_db: p.deepest, ..Default::default() }, Dynamics { glue: None, limiter: p.gains }));
     }
     // The glued signal, spooled (with no glue: the source itself), and its loudness on the way.
-    let mut glued = None;
-    let mut glue_db = 0.0;
-    let mut glued_lufs = None;
-    let mut glue_gains = None;
-    if spec.glue > 0.0 {
-        let mut g = Glue::new(weights, spec.glue, program, sr);
-        let mut sp = Spool::new(nch, total, on_disk)?;
-        let mut gains = Spool::new(1, total, on_disk)?;
-        let mut m = spec.loudness.map(|_| Lufs::new(nch, weights, sr));
-        for at in (0..total).step_by(BLOCK) {
-            let mut b = read(at, BLOCK.min(total - at))?;
-            g.block(&mut b);
-            gains.push(&[std::mem::take(&mut g.given)])?;
-            if let Some(m) = &mut m {
-                m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
-            }
-            sp.push(&b)?;
+    let (glued, glue_gains, glue_db, glued_lufs) = match spec.glue > 0.0 {
+        true => {
+            let g = glue_pass(read, nch, total, weights, spec.glue, program, sr, on_disk, spec.loudness.is_some())?;
+            (Some(g.out), Some(g.gains), g.deepest, g.lufs)
         }
-        glue_db = -g.deepest;
-        glued_lufs = m.map(Lufs::finish);
-        glued = Some(sp.done()?);
-        glue_gains = Some(gains.done()?);
-    }
+        false => (None, None, 0.0, None),
+    };
     let from_glued = |at: usize, n: usize| glued.as_ref().expect("glued").read(at, n);
     let src: Source = if glued.is_some() { &from_glued } else { read };
     let mut gain_db = match (spec.loudness, glued_lufs) {
@@ -300,7 +306,7 @@ pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], sp
         (Some(t), Some(l)) => t - l,
         (Some(t), None) => t - lufs_of(src, nch, total, weights, sr)?,
     };
-    let mut report = MasterReport { glue_db, ..Default::default() };
+    let mut report = MasterReport { program, glue_db, ..Default::default() };
     let mut pass = 0;
     loop {
         let g = 10f64.powf(gain_db / 20.0) as f32;
@@ -333,6 +339,9 @@ pub fn master_n(chs: &mut [Vec<f32>], weights: &[f64], spec: &MasterSpec, sr: f6
     }
     report
 }
+
+#[path = "master_window.rs"]
+pub mod window;
 
 #[cfg(test)]
 #[path = "master_tests.rs"]

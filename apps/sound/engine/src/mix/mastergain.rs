@@ -27,14 +27,16 @@ pub struct MasterGain {
     pub total: usize,
     /// The mastering stage's gain to its loudness target (linear; 1 without one).
     pub norm: f64,
-    /// The mastering stage's gain at every frame of the file (it includes `norm`); None without a mastering stage.
+    /// The mastering stage's gain at every frame it worked on (it includes `norm`); None without a mastering stage.
     pub dynamics: Option<Arc<Dynamics>>,
+    /// Where the file starts in what the mastering stage worked on (a stretch: its lead-in, or the song before it).
+    pub skip: usize,
 }
 
 impl MasterGain {
     pub fn new(s: &Schedule) -> MasterGain {
         let (offset, end) = s.range.unwrap_or((0, s.total_samples));
-        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.song_samples.unwrap_or(s.total_samples), ring_end: s.song_samples.map(|_| s.total_samples), offset, total: end - offset, norm: 1.0, dynamics: None }
+        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.song_samples.unwrap_or(s.total_samples), ring_end: s.song_samples.map(|_| s.total_samples), offset, total: end - offset, norm: 1.0, dynamics: None, skip: 0 }
     }
 
     /// The fades' envelope at song frame `i`.
@@ -62,7 +64,11 @@ impl MasterGain {
 
     /// Fader times fades at frame `i` of the file (what the mix takes before its mastering stage).
     pub fn lin(&self, i: usize) -> f64 {
-        let i = i + self.offset;
+        self.lin_song(i + self.offset)
+    }
+
+    /// Fader times fades at song frame `i`.
+    pub fn lin_song(&self, i: usize) -> f64 {
         self.fader.at(i as f64 / self.sr) * self.env(i)
     }
 
@@ -70,7 +76,7 @@ impl MasterGain {
     /// without a mastering stage).
     pub fn mastering(&self, at: usize, n: usize) -> Result<Vec<f64>, String> {
         match &self.dynamics {
-            Some(d) => d.read(at, n),
+            Some(d) => d.read(at + self.skip, n),
             None => Ok(vec![self.norm; n]),
         }
     }

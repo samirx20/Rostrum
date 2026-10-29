@@ -39,14 +39,15 @@ fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize, hel
     let sr = s.sample_rate as f64;
     if track.ducks.is_empty() {
         // A `measure` run (held.rs): the same tape measured before in the run has the same measures.
-        let key = s.track_keys.get(k).filter(|_| held).map(|t| format!("{t}|{}|{}", track.name, s.total_samples));
+        let key = s.track_keys.get(k).filter(|_| held).map(|t| format!("{t}|{}|{}|{:?}", track.name, s.total_samples, s.range));
         if let Some(st) = key.as_deref().and_then(crate::mix::held::stats) {
             return Ok(Placed { duck: None, stats: Some(st), ducked: None });
         }
-        // Measured from its tape, block by block.
-        let mut m = TrackMeter::new(&track.name, outs[k].channels(), s.total_samples, sr, s.layout);
-        for at in (0..s.total_samples).step_by(CHUNK) {
-            m.push(&outs[k].read(at, CHUNK.min(s.total_samples - at))?);
+        // Measured from its tape, block by block: over the file's frames (a stretch of the song: that stretch; times from its start).
+        let (a, b) = s.range.unwrap_or((0, s.total_samples));
+        let mut m = TrackMeter::new(&track.name, outs[k].channels(), b - a, sr, s.layout);
+        for at in (a..b).step_by(CHUNK) {
+            m.push(&outs[k].read(at, CHUNK.min(b - at))?);
         }
         let st = m.finish();
         if let Some(key) = &key {

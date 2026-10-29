@@ -17,6 +17,10 @@ pub struct Job {
     stems_dir: PathBuf,
     /// A stretch of the song, seconds (`from` / `to`; both or neither).
     range: Option<(f64, f64)>,
+    /// The whole song's mastering decisions for a stretch (`masterAs`: as a reply's `decisions` gives them).
+    master_as: Option<crate::fx::master::window::Decisions>,
+    /// The stretch as it is in the song (`inSong`; implied by `masterAs`), else mastered on its own.
+    in_song: bool,
 }
 
 /// Reads the request's fields (so an unknown one fails before any work).
@@ -52,11 +56,24 @@ pub fn read(o: &mut Obj) -> Result<Job, Error> {
         (Some(a), Some(b)) if a < b => Some((a, b)),
         (a, b) => return Err(Error::new("BAD_ARGUMENT", "from", format!("from {a:?} to {b:?}"), "is not a stretch of the song: give both `from` and `to` in seconds, 0 ≤ from < to")),
     };
-    Ok(Job { c, out, stems, stems_dir, range })
+    let master_as = match o.raw("masterAs") {
+        None | Some(Value::Null) => None,
+        Some(v) => {
+            let mut d = Obj::new(v, "masterAs")?;
+            let got = crate::fx::master::window::Decisions { program: d.num("program", -200.0, 50.0, None)?, gain_db: d.num("gainDb", -200.0, 200.0, None)?, held_db: d.num("heldDb", 0.0, 200.0, Some(0.0))? };
+            d.done()?;
+            Some(got)
+        }
+    };
+    let in_song = o.bool("inSong", false)? || master_as.is_some();
+    if in_song && range.is_none() {
+        return Err(Error::new("BAD_ARGUMENT", "inSong", "given", "is for a stretch of the song: give `from` and `to` with it"));
+    }
+    Ok(Job { c, out, stems, stems_dir, range, master_as, in_song })
 }
 
 pub fn run(job: Job) -> Result<Value, Error> {
-    let Job { c, out, stems, stems_dir, range } = job;
+    let Job { c, out, stems, stems_dir, range, master_as, in_song } = job;
     let mut s = Schedule::parse(&c.job.to_string()).map_err(|e| Error::new("INTERNAL", "render", "the compiled job", e))?;
     if let Some((a, b)) = range {
         let (sr, total) = (s.sample_rate as f64, s.total_samples);
@@ -65,6 +82,8 @@ pub fn run(job: Job) -> Result<Value, Error> {
             return Err(Error::new("BAD_ARGUMENT", "from", format!("{a} s"), format!("starts after the song ends ({:.1} s)", total as f64 / sr)));
         }
         s.range = Some((from, to));
+        s.master_as = master_as;
+        s.in_song = in_song;
     }
     let t0 = std::time::Instant::now();
     let cache = crate::mix::trackcache::TrackCache::default_dir();
@@ -72,7 +91,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let took = t0.elapsed().as_secs_f64();
     let sr = s.sample_rate;
     // The song's end (ending.rs): where a ring-out died away, or whether a given length cut the sound.
-    let ending = match (c.ending, s.range) {
+    let ending = match (c.ending.clone(), s.range) {
         (Some((song, ring, held, given)), None) => Some(super::ending::finish(&mut mix, song, ring, s.fade_out_samples, held, given, sr as f64).map_err(Error::render)?),
         _ => None,
     };
@@ -120,6 +139,10 @@ pub fn run(job: Job) -> Result<Value, Error> {
                     "insertsOnMix": !s.effects.is_empty() || s.master_reverb != "dry" || !s.time_warps.is_empty(),
                     "onMixOnly": on_mix_only(&s, mix.safety_clipped),
                     "stemsMaxDifference": written.max_difference },
+        // The song's mastering decisions (fx/master_window.rs): give them back as `masterAs` with a stretch, and the
+        // stretch renders on its own, mastered as the song is there. `windowed`: this stretch was rendered so.
+        "decisions": s.master.as_ref().filter(|_| s.range.is_none() || s.in_song).map(|_| json!({ "program": mix.master.program, "gainDb": mix.master.gain_db, "heldDb": mix.master.held_db })),
+        "windowed": crate::mix::window::master_span(&s).is_some(),
         "buses": mix.buses.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs })).collect::<Vec<_>>(),
         "ducks": mix.ducks.iter().map(|(t, spans)| json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect::<Vec<_>>(),
     }))

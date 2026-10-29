@@ -45,10 +45,12 @@ pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize
         let level: Vec<usize> = (0..n).filter(|&k| want[k] && feeds(k) == buses).collect();
         let done = &outs;
         let rendered = crate::mix::par::map_n(level, threads, |k| -> Result<(usize, Tape, Option<Tape>), String> {
-            let clips = clips_of(s, k, held)?;
+            // A heard stretch (window.rs): a track that renders now covers its span only, and is not cached (not whole).
+            let span = crate::mix::window::track_span(s).filter(|_| !held && !reads_whole(s, k));
+            let clips = clips_of(s, k, held, span)?;
             let feeders: Vec<&Tape> = s.tracks.iter().enumerate().filter(|(_, t)| t.into == Some(k)).filter_map(|(j, _)| done[j].as_deref()).collect();
-            let (out, pre) = track_out(s, &s.tracks[k], &clips, feeders, buf)?;
-            let tape = out.finish(cache.map(|c| (c, s.track_keys[k].as_str())))?;
+            let (out, pre) = track_out(s, &s.tracks[k], &clips, feeders, buf, span)?;
+            let tape = out.finish(cache.filter(|_| span.is_none()).map(|c| (c, s.track_keys[k].as_str())))?;
             Ok((k, tape, pre.map(|p| p.finish(None)).transpose()?))
         });
         for r in rendered {
@@ -63,14 +65,21 @@ pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize
 
 /// Track `k`'s rendered clips: from the run's memory when `held` and rendered before (held.rs), else rendered (and,
 /// when `held`, kept for the run's next request).
-fn clips_of(s: &Schedule, k: usize, held: bool) -> Result<crate::mix::held::Clips, String> {
+fn clips_of(s: &Schedule, k: usize, held: bool, span: Option<(usize, usize)>) -> Result<crate::mix::held::Clips, String> {
     let key = s.clip_keys.get(k).filter(|_| held);
     if let Some(c) = key.and_then(|key| crate::mix::held::clips(key)) {
         return Ok(c);
     }
-    let clips = Arc::new(render_track_clips(s, k)?);
+    let clips = Arc::new(render_track_clips(s, k, span)?);
     if let Some(key) = key {
         crate::mix::held::keep_clips(key, clips.clone());
     }
     Ok(clips)
+}
+
+/// Track `k`'s effects read the whole take at once (fx/chain.rs): it renders whole, even for a heard stretch.
+fn reads_whole(s: &Schedule, k: usize) -> bool {
+    let t = &s.tracks[k];
+    let layout = if t.bed { s.layout } else { crate::bed::Layout::Stereo };
+    crate::fx::chain::Chain::new(&t.effects, layout, s.sample_rate as f64).map_or(true, |c| c.whole())
 }
