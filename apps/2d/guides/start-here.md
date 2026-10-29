@@ -8,12 +8,17 @@ working on one page; the topic guides at the end hold the detail.
 
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
 2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet and
-   the film's weakest moments. It opens `NOT DONE:` with each fault (what, when, the fix), or `DONE:`.
+   the film's weakest moments. It opens `NOT DONE:` with the faults by kind (the first three of each kind with what,
+   when and the fix, the rest counted; every id is in `data.faults`), or `DONE:`.
 3. **Read the faults.** Each one names a layer and a time.
 4. **Fix the script**, not the document: change the lines the fault points at.
 5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
    by hand stays. A new name adds a second copy of everything.
-6. **Deliver** with `render_export {"what": "video"}`: it waits for the file and replies with its checks.
+6. **Deliver** with `render_export {"what": "video"}`: it waits for the file and replies with its checks. A final
+   (mp4, prores4444, webm or gif of the whole film) is **refused while a fault is open**: the file is kept as
+   `<name>.NOT-DONE.mp4`. Fix the fault, or keep one you leave on purpose with `keep: {"text_edge:title": "why"}`,
+   the why quoting the brief: put the brief's own words at the top of the script with `brief("...")`.
+   A part of the film (`start` / `end`), a png, lottie or motion is a preview and is never refused.
 
 Every reply ends with a clock line. Use the time to look and refine in passes; `inspect_project` with
 `what: "session"` lists what you have not checked yet.

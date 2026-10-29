@@ -5,11 +5,11 @@ import copy
 from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp import Reply, Tools, brief_keep, faults
 
 from rostrum2d import project_sound
 
-from . import export_area, export_name, exporting, video
+from . import export_area, export_name, exporting, film_faults, video
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -31,7 +31,10 @@ tools = Tools()
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the person's Videos folder (no project)."},
     "name": {"type": "string", "description": "The file's name without its type (\"Launch film\" → Launch film.mp4), as the Export panel's name field. Default: the project's name (and the composition's when it says something). Characters a file name can't hold are dropped."},
-    "overwrite": {"type": "boolean", "description": "Replace a file that already exists at `path`. Default false: an existing file makes the export fail (nothing is replaced)."}}})
+    "overwrite": {"type": "boolean", "description": "Replace a file that already exists at `path`. Default false: an existing file makes the export fail (nothing is replaced)."},
+    "keep": {**faults.KEEP["keep"], "description": "A final (mp4 / prores4444 / webm / gif of the whole composition) is refused while a fault is open: "
+             "fix it, or explain each fault you leave on purpose, {fault_id: \"why\"} with the ids the reply names, the why QUOTING the brief stored with "
+             "brief(\"...\") in the script (its own words in quotes, or 3+ of them in a row). An unquoted why is refused and the fault's fix says why."}}})
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. It waits for its job in this call (wait_s, default
     120 s) and answers with the finished file; past that with the job id: ask with inspect_job (wait_s up to 25). The file is written under a .partial name and renamed once it
@@ -39,7 +42,12 @@ def render_export(ctx, args):
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
     before any job, as the Export button refuses it. An mp4's reply ends, as render_video's does, with the time left and the film's
     weakest moments (look_review), with the brief's `beats` (kept for the session) that never happen or come too soon;
-    `quiet_stretches` and `edge_cuts` carry the file's checks as data."""
+    `quiet_stretches` and `edge_cuts` carry the file's checks as data.
+    Faults first: a film export (mp4, prores4444, webm, gif) opens NOT DONE: with each fault (the ones run_script look
+    names, with its fix) or DONE:. A FINAL (one of those formats, the whole composition: no start / end) with an open
+    fault is refused: the file is kept as <name>.NOT-DONE<ext>, nothing under the asked-for name, unless `keep` explains
+    each by quoting the brief. A preview (a part with start / end, png, lottie, motion) is never refused. The screen's
+    Export button is never refused."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
@@ -63,7 +71,10 @@ def render_export(ctx, args):
     scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
     folder, item, seq = ctx.app.folder, doc.item_id, doc.seq
     name, overwrite = (export_name.clean(args.get("name") or "") or export_name.stem_of(doc, comp["id"])), bool(args.get("overwrite"))
-    data_now = copy.deepcopy(doc.data) if fmt == "mp4" else None        # the edge check reads the scene as exported
+    data_now = copy.deepcopy(doc.data) if fmt in film_faults.FILMS else None        # the checks read the scene as exported
+    is_final, keep = film_faults.final(fmt, s["start"], s["end"], comp.get("duration", 5.0), "time" in args), args.get("keep")
+    if keep and not is_final:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"keep"', "is for a final (mp4 / prores4444 / webm / gif of the whole composition); a preview is never refused")
 
     def job_fn(job):
         facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite, on_stop=job.on_cancel)
@@ -77,12 +88,22 @@ def render_export(ctx, args):
         if fmt == "motion":
             say = f'Wrote the motion samples of {comp["id"]}: {len(facts["checked"]["layers"])} moving layers ({", ".join(facts["checked"]["layers"])}), {facts["checked"]["samples"]} samples each at {facts["checked"]["rate"]}/s, to {facts["file"]}. Hand it to RostrumSound: edit_sounds_from_motion samples="{facts["file"]}"'
             return Reply(say + ".", data)
+        pixels, cuts = (), None
         if fmt == "mp4":            # the same checks as render_video's reply, on the finished file
-            quiet, cuts = video.checked(job, facts["frames"], Path(facts["file"]), Path(facts["file"]), data_now,
-                                        next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
-            data.update(quiet_stretches=quiet[1], edge_cuts=cuts[1])
+            quiet, cut = video.checked(job, facts["frames"], Path(facts["file"]), Path(facts["file"]), data_now,
+                                       next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
+            data.update(quiet_stretches=quiet[1], edge_cuts=cut[1])
+            pixels, cuts = [dict(q) for q in quiet[1]], cut[1]
             say += '. ' + exporting.next_steps(f'look_frame what "sheet" with video "{facts["file"]}"', "sound" in facts, folder).rstrip(".")
-        return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
+        if fmt not in film_faults.FILMS:
+            return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
+        found, notes = film_faults.of_export(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]),
+                                             s["start"], s["end"], ctx.tool, pixels, cuts)
+        if is_final:                # open faults: the file is held back as <name>.NOT-DONE<ext> and this raises
+            notes += faults.deliver(found, brief_keep.screen(found, keep, data_now), ctx.tool, facts["file"])
+        else:
+            say += ". A part of the film is a preview: its faults are named, never refused (a whole-film export is refused while one is open)"
+        return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]], warnings=notes, faults=found)
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,
                    key=f"export|{item}|{comp['id']}|{fmt}|{sorted(s.items(), key=str)}|{seq}|{out}|{overwrite}")

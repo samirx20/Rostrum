@@ -86,9 +86,9 @@ def paint_stroke(ctx, targets, args):
         if sid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{sid}"', "is already used in this document")
         wrap = {"wrap": True} if paintings.seamless(item) else {}       # a seamless painting: it wraps (the kit's wrap.py)
-        ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, **wrap, "points": pts}, ctx.where))
+        ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, **wrap, "points": pts}, ctx.where, paint_fields.STROKE))
         for piece in more:              # the same stroke in the other tiles it crossed into (paint_through.py)
-            ctx.insert(paint["id"], "strokes", build("stroke", ctx.new_id("stroke"), {**brush, "points": piece}, ctx.where))
+            ctx.insert(paint["id"], "strokes", build("stroke", ctx.new_id("stroke"), {**brush, "points": piece}, ctx.where, paint_fields.STROKE))
 
 
 def _fit(ctx, t: str, pts, brush: dict) -> tuple[str, list]:

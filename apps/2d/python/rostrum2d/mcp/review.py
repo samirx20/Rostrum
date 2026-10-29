@@ -14,20 +14,20 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from . import edge_cut, look_empty, render
-from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_room, review_spill
+from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_paint_order, review_room, review_spill
 from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
-CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts)   # each (Sampled) -> faults: a new check registers here
+CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts, review_paint_order.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
         "text_crossed": 90, "text_clipped": 91, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
         "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
-        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
+        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "painted_over": 86, "small_text_edge": 28, "washed": 25}
 
 
 def _kind(r: dict, duration: float) -> str:
@@ -97,9 +97,28 @@ def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str,
 def tell(rows: list[dict], limit: int) -> str:
     if not rows:
         return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed, cut by its screen's edge or on another text, no pointer on a label, no device cut, no tiny end card, no character hidden or on a bare set, every declared beat happens on time."
-    shown = " ".join(f"{i}. {r['text']}." for i, r in enumerate(rows[:limit], 1))
-    more = f" ({len(rows) - limit} more in data.)" if len(rows) > limit else ""
-    return f"Weakest moments, most visible first: {shown}{more}"
+    picked, more = few(rows, limit)
+    shown = " ".join(f"{i}. {r['text']}." for i, r in enumerate(picked, 1))
+    return f"Weakest moments, most visible first: {shown}{more and f' ({more})'}"
+
+
+PER_KIND = 3        # rows of one kind written out in a summary; the rest are counted (all of them stay in the data)
+
+
+def few(rows: list[dict], limit: int) -> tuple[list[dict], str]:
+    """The ranked rows a summary writes out: in rank order, at most PER_KIND of a kind, at most `limit`; and what is left
+    as counts per kind ("" when nothing is): "and 412 more text_on_text, 2 more edge_cut in data"."""
+    picked, per = [], {}
+    for r in rows:
+        k = r.get("rank_kind", r["kind"])
+        if len(picked) < limit and per.get(k, 0) < PER_KIND:
+            picked.append(r)
+        per[k] = per.get(k, 0) + 1
+    shown: dict[str, int] = {}
+    for r in picked:
+        shown[r.get("rank_kind", r["kind"])] = shown.get(r.get("rank_kind", r["kind"]), 0) + 1
+    left = [f"{n - shown.get(k, 0)} more {k}" for k, n in per.items() if n > shown.get(k, 0)]
+    return picked, ("and " + ", ".join(left) + " in data") if left else ""
 
 
 def after_export(doc_data: dict, comp: dict, quiet: list[dict], cuts: list[dict], limit: int = 3, beats: list[dict] | None = None) -> str:

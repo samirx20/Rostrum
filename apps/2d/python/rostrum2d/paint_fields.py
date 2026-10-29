@@ -44,6 +44,12 @@ DRAWING.append(_new_hold("Drawing", {"is": ["eachFrame", True]}))
 # Drawn so far (write_on.py): the paint painted on over time, stroke after stroke in the order they were painted.
 DRAWN = "drawnSoFar"
 
+# 2D's own stroke field (the paint kit's `stroke_fields`): the words a lettering stroke letters, set by paint.letters /
+# letters(); the layout checks read a painted title by it (lettered.py). Not stored on other strokes.
+WORDS = Param.text("words", label="Words", importance="deep",
+                   help="The words this stroke letters (set by paint.letters): the layout checks read a painted title by it")
+STROKE = (WORDS,)
+
 
 def _drawn(group, importance, when):
     return Param.number(DRAWN, label="Drawn so far", group=group, min=0, max=1, step=0.01, default=1.0, display="percent",

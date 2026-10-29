@@ -4,6 +4,9 @@ otherwise sits in, and a shape parked as a dot for seconds before it grows (a wi
 {kind, start, end, id, text} with times, the same as review_facts; no taste: a bleed off the edge may be meant."""
 from __future__ import annotations
 
+from rostrum2d import lettered
+
+from . import edge_cut
 from .geometry import comp_size, drawn_box, flatten
 from .review_facts import TITLE_H, _runs, _span
 
@@ -59,13 +62,13 @@ def facts(comp: dict, times: list[float], step: float) -> list[dict]:
     for t, nodes in frames:
         clipped = {n["id"] for n in nodes if n["type"] == "group" and n["props"].get("clip")}
         seen = [n for n in nodes if _seen(n, W, H) and not clipped & set(n["within"])]     # not screen content in a clipped group
-        titles = [n for n in seen if n["type"] == "text" and drawn_box(n)[3] - drawn_box(n)[1] >= TITLE_H * H]
+        titles = [n for n in lettered.texts(seen) if drawn_box(n)[3] - drawn_box(n)[1] >= TITLE_H * H]   # painted words too
         for n in titles:
             x0, y0, x1, y1 = drawn_box(n)
             if (hit := _margin(n, W, H)) and hit[1] > -0.03 * (x1 - x0):      # further past it: review_facts names it cut off
                 edge.setdefault((n["id"], hit[0]), []).append((t, hit[1]))
             for o in ([] if n["layer"].get("matte") else seen):     # a matted title shows only where its matte is
-                if o is n or _related(n, o) or o["matte_for"] or o["type"] == "group" and not o["paint"]:
+                if o is n or o["id"] == n.get("lettering") or edge_cut.soft(o["layer"]) or _related(n, o) or o["matte_for"] or o["type"] == "group" and not o["paint"]:
                     continue
                 ob = drawn_box(o)
                 if (ob[2] - ob[0]) * (ob[3] - ob[1]) > NEIGHBOUR * (x1 - x0) * (y1 - y0):   # a backdrop or a blob, not a neighbour

@@ -96,3 +96,11 @@ def test_a_word_a_deep_push_in_slices_at_the_frame_edge_is_named_not_kept_as_inf
     faults, _ = review.doc_faults(doc.data, doc.item("c"), None, "look_review")
     cut = [f for f in faults if f["kind"] in ("text_edge", "small_text_edge") and "s" in (f.get("ids") or [f["id"]])]
     assert cut and not any(f.get("info") for f in cut)
+
+
+def test_a_scramble_is_not_text_on_text_but_a_real_overlap_on_it_is():
+    """A swap set shows one child at a time (swap.py): its steps never sit on each other; another text across it does."""
+    line = 'scramble("sc", "LISTEN", start=0.5, end=3, rate=10, size=30).set(x=160, y=90)\n'
+    assert review_layout.overlaps(_sampled(line)) == []
+    rows = review_layout.overlaps(_sampled(line + 'text("orbit", body="ORBIT", size=30, x=165, y=92)\n'))
+    assert rows and {r["kind"] for r in rows} == {"text_on_text"} and all("orbit" in r["ids"] for r in rows)

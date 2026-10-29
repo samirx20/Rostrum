@@ -50,7 +50,8 @@ Only the settings that apply to the chosen format are shown.
 3. Click **Show in folder** to open where it went. The top bar's chip says **Exported Main.mp4 ▾** too, until your next change: click it for **Play** and **Show in folder** after the panel is closed.
 4. If something goes wrong the panel and the top bar say so in red, in plain words: what could not be saved and why, such as "Couldn't save the file: this computer won't let Rostrum write to …. Pick another folder." (the full technical line goes to the console, for agents and logs). Nothing is reported as done unless the file was made.
 5. A scene with nothing showing (no layer, or every layer hidden; the frame alone draws nothing) is not exported: the panel says "There is nothing to export yet: the scene has no layers showing. Add one first." and no file is made. Agents get the same refusal from `render_export`.
-6. **Ctrl+Shift+E** exports again with the last settings without opening the panel. Before your first export in this window there are no last settings: the top bar says "Nothing exported yet — Ctrl+E to export".
+6. Your Export button always exports: the fault check below is for agents only.
+7. **Ctrl+Shift+E** exports again with the last settings without opening the panel. Before your first export in this window there are no last settings: the top bar says "Nothing exported yet — Ctrl+E to export".
 
 ## 6. How long it takes
 
@@ -67,3 +68,24 @@ Only the settings that apply to the chosen format are shown.
    holds no lock between programs: a render that ended or was stopped leaves nothing that blocks the next one.
 
 Next: [first-animation.md](first-animation.md), [files.md](files.md).
+
+## Agents: a final is checked
+
+`render_export` checks a film export for the same faults `run_script` with `look` names (text cut by the edge, a
+blank stretch, a device off the frame, …) and its reply opens `NOT DONE:` with each fault and its fix, or `DONE:`.
+A fault is what a client sees as broken: a text cut by the frame edge or too near it, crossed by a layer, on another
+text or cut by its box; a faint old heading behind a new one; a pointer on a label; a device, subject or character
+cut by the edge for 2 s or more (passing in or out is not); a blank or near-empty stretch mid-film; a layer hanging
+off its screen or outside it; a parked dot; a tiny end card; a painted patch shown in front of a shape it should be
+behind. The rest of the weakest moments (a held framing or pose, a crowded lock-up, alike openings …) may be meant:
+they are listed as "worth a look", never refused.
+
+- **A final** is mp4, prores4444, webm or gif of the whole composition (no `start` / `end`). With a fault open it is
+  refused: the file is kept as `<name>.NOT-DONE<ext>` (look at it, it is not delivered) and nothing is written under
+  the asked-for name.
+- **A preview** is anything less: a part (`start` / `end`), a png (one picture with `time`, or a sequence), lottie,
+  motion. Its faults are named (film formats) but it is never refused.
+- **Fix** each fault in the script and export again, or **keep** the ones the brief asks for:
+  `keep: {"text_edge:title": "the brief says \"cropped by the right edge on purpose\""}`. The why must quote the brief
+  stored with `brief("...")` in the script (its words in quotes, or three or more of them in a row); a why that does
+  not is refused and the fault's fix says why. Ids are the ones the reply names (`kind:layer`, or `kind@seconds`).
