@@ -40,7 +40,8 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
   block; the look names it (`text_spill`) with the h that fits: make it taller, or leave `h` out.
 - Words a layer takes inside a box: `grow=1` (takes the room left along the line), `shrink=0` (never squeezed),
   `align_self=`, `margin=`, `span=2` (grid columns), `shift_x=` / `shift_y=` (moved off its place without pushing the
-  others; key `shiftX` / `shiftY` for a slide-in).
+  others; key `shiftX` / `shiftY` for a slide-in). Outside a box there is no place to shift from: key `x` / `y`
+  (run_script's reply names a `shiftX` / `shiftY` given there, as it does any field given where it does nothing).
 - A text in a box reads from its slot's left edge (`align="left"`) and wraps at the slot's width; give `align="center"`
   or `"right"` for another.
 - **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Add `apart=True` to the

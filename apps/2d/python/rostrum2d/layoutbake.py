@@ -18,7 +18,7 @@ import math
 from rostrum_core.keys import track_value
 
 from . import fields as F
-from .evaluate import resolve
+from .evaluate import placed, resolve
 from .exprbake import items_of
 from .layout import Plan, has_layout, laid_out, lay_out, prime_texts
 
@@ -59,7 +59,7 @@ def _solve(comp: dict, fps: float, baked: dict) -> dict[str, dict[str, list]]:
     def props(item, t):
         p = resolve(item, t)
         for prop, keys in baked.get(item["id"], {}).items():
-            p[prop] = track_value(keys, t)
+            p[prop] = track_value(placed(keys), t)
         return p
 
     duration = comp.get("duration", F.defaults("comp")["duration"])

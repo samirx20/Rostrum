@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from . import ui_chart, ui_device, ui_layout as U, ui_lower_third
 from .script_layout import in_layout
+from .script_time import Time, seconds
 from .ui_layout import ACCENT
 
 
@@ -249,7 +250,13 @@ def for_script(build) -> dict:
     def counter(id, start=0.0, to=100.0, at=0.0, duration=1.0, ease="smooth", decimals=0, prefix="", suffix="",
                 separator=None, digits=None, **fields):
         """One text that counts from `start` at `at` to `to` at `at + duration` (text.counter): the engine writes the
-        number each frame; tabular figures keep its width steady. More steps: .key("count", {t: v})."""
+        number each frame; tabular figures keep its width steady; in a row or column its room is its widest number.
+        `at` may be a marker time ("#open+1.4"): both keys stay on that marker. More steps: .key("count", {t: v})."""
+        if isinstance(at, str):
+            seconds(build, at, f"counter({id}) at")       # a marker that isn't there fails now, naming the ones that are
+            end = Time(at) + duration                       # "#open+1.4" + 1.8 -> "#open+3.2": still on the marker
+        else:
+            end = at + duration
         f = {"counter": True, "countDecimals": decimals, "countPrefix": prefix, "countSuffix": suffix,
              "figures": "tabular lining", **fields}
         if separator is not None:
@@ -257,7 +264,7 @@ def for_script(build) -> dict:
         if digits is not None:
             f["countDigits"] = digits
         t = L("text", id, **f)
-        return t.key("count", {at: (start, ease), at + duration: to})
+        return t.key("count", {at: (start, ease), end: to})
 
     return {"device": ui_device.maker(build, box, words), "status_bar": status_bar, "nav_bar": nav_bar, "tab_bar": tab_bar, "list_rows": list_rows,
             "card": card, "button": button, "toggle": toggle, "bars": bars, "counter": counter,

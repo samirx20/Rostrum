@@ -96,6 +96,16 @@ mask of `w` or `h` 0 shows nothing of the layer (inverted, all of it), so a wipe
 t.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})
 ```
 
+The mask's numbers are the layer's own pixels and never follow the text: a word that widens (its `tracking`, `size`,
+`weight` or `scale` keyed) slides out of a mask keyed to its first width ("SIGNAL" cut to "SIGNAI"). Key the mask from
+the text's width at each moment, `t.measure(at=)` (script-reference, "A text's real width"):
+
+```python
+t = text("t", body="SIGNAL", size=160).key("tracking", {0.3: 0, 1.0: 0.4})
+m = t.mask("reveal", x=0, y=0, h=300, w=0)
+m.key("w", {0.3: 0, 1.0: t.measure(at=1.0)[0]})       # the word's width when the wipe ends, not at 0 s
+```
+
 A mask moves with its layer. To move a layer *through* a fixed edge, put it in a group with `clip=True` and animate the
 layer inside it. Masks cut before effects, so a glow cannot spill past a mask.
 
