@@ -41,3 +41,11 @@ def test_asked_notes_close_the_reply_as_observations(tmp_path):
     assert r["ok"] and out.exists()
     assert r["summary"].split("\n")[-1].startswith("Notes (1): [loudness] -16.9 LUFS") and "fix" not in r["summary"]
     assert r["notes"][0] == {"id": "loudness", "what": "-16.9 LUFS, the master's target is -14", "when": "whole song"}
+
+
+def test_a_flood_of_alike_notes_stays_one_short_line():
+    from rostrum_core.mcp.faults import lines
+    many = [note(f"text_on_text:t{i}", "text 't' crosses text 'u'") for i in range(1000)] + [LOUD]
+    line = lines(many)
+    assert line.startswith("Notes (1001):") and "and 997 more text_on_text" in line and "[loudness]" in line
+    assert len(line) < 400

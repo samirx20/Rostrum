@@ -131,9 +131,11 @@ The words you may know from CSS, SVG or other tools work too, and become the fie
   or `"fit"`, and texts that wrap where the box ends (guide `lay-out-a-screen`). Inside a box `x=` / `y=` fail unless
   `apart=True`. Keep raw `x`, `y` for motion and art: a moving shape, a painted world, a camera path.
 - **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0); a child with no `x`, `y` sits at the
-  box's centre. A group made without `w`, `h` fits around what is inside when its `with` block ends: its children's
-  `x`, `y` count from a comp-sized box, so a child left without them sits on the group's own `x`, `y`. To arrange
-  several, use a `column` / `row` / `stack` instead of sums.
+  box's centre. A group made without `w`, `h` fits around what is inside when its `with` block ends. Given `x`, `y`
+  (and no size), the group is a **point**: its children's `x`, `y` count from it (`with group("arm", x=520, y=650):` and
+  a child at `x=0, y=80` sits 80 px below that point) and it turns and scales around it, so groups inside groups are
+  joints (a shoulder, an elbow). Without `x`, `y`, its children keep the places written for them in its parent. To
+  arrange several side by side or stacked, use a `column` / `row` / `stack` instead of sums.
 - **Stacking order:** layers are drawn in the order they are made: the first one made is at the bottom, each later one
   on top of it (inside a group the same, among its children). Make the background first; `layer.arrange` with `index`
   (0 = bottom) moves one later.
@@ -166,6 +168,7 @@ Everything a script can call, by job. The details and techniques are in the topi
 
 ### The scene and its layers
 
+- `brief("the brief's own words")`: stores the brief's words on the document, for the person and for notes. It changes nothing in an export.
 - `comp(id, width=, height=, fps=, duration=, background=)`: the scene. A script starts with it.
 - `shape(id, **fields)`, `text(id, **fields)`, `image(id, **fields)`, `path(id, **fields)`, `group(id, **fields)`: the
   layers. Layers made inside `with group(...):` go in it, and their `x`, `y` are then in the group's box.

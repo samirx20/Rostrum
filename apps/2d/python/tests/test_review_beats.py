@@ -43,7 +43,6 @@ def test_beats_given_once_are_kept_and_a_bad_one_fails_before_any_job(tmp_path):
     rt, doc = _scene(tmp_path)
     bad, _ = rt.call("render_export", {"format": "mp4", "beats": [{"at": 1, "expect": "lamp shows"}]}, AGENT)
     assert bad["ok"] is False and "lamp" in bad["summary"], bad
-    assert "No beats declared" in review.after_export(doc.data, doc.data["comps"][0], [], [], beats=None)
     _done(rt, rt.call("look_frame", {"what": "review", "beats": [{"at": 8, "expect": "early shows"}]}, AGENT)[0])
     again = _done(rt, rt.call("look_frame", {"what": "review"}, AGENT)[0])                         # no beats given: the kept ones
     assert "'early shows' already happened at 0 s" in again["summary"], again["summary"]

@@ -1,6 +1,6 @@
 """The brief's timed beats, declared once and checked on every export: render_export takes `beats` as look_frame
-what "review" does. The last ones given for a composition are kept for the session (on the clock) and the export reply's
-weakest moments (review.after_export, through session_clock) name a beat that never happens or comes at the wrong time.
+what "review" does. The last ones given for a composition are kept for the session (on the clock); look_frame what "review" checks them
+when called without its own `beats`.
 In the fair benchmark agents rarely called the review, so its beats never ran; the export they always call now carries them."""
 from __future__ import annotations
 

@@ -7,6 +7,9 @@ its path sit side by side, in the same composition or group.
 """
 from __future__ import annotations
 
+import bisect
+import functools
+import itertools
 import math
 
 from rostrum_core import Param
@@ -118,6 +121,20 @@ def _cubic(a, b, c, d, k):
 
 def _along(d: str, frac: float):
     """((x, y), degrees) at `frac` of the whole length of `d` (subpath after subpath, as trim counts); None if no length."""
+    segs, lengths, total = _segments(d)
+    if not segs:
+        return None
+    left = frac * total
+    i = min(bisect.bisect_left(lengths, left), len(segs) - 1)      # the first segment whose end reaches `left`
+    (a, b), start = segs[i], lengths[i - 1] if i else 0.0
+    length = lengths[i] - start
+    k = min((left - start) / length, 1.0)
+    return (a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+@functools.lru_cache(maxsize=512)
+def _segments(d: str):
+    """`d` cut into short lines, once per distinct `d`: (segments, running lengths, total)."""
     runs: list[list[tuple[float, float]]] = []
     for c in pathdata.commands(d) if d else []:
         if c[0] == "M":
@@ -130,15 +147,8 @@ def _along(d: str, frac: float):
         else:
             runs[-1].append(runs[-1][0])
     segs = [(a, b) for run in runs for a, b in zip(run, run[1:]) if math.dist(a, b) > 1e-9]
-    if not segs:
-        return None
-    left = frac * sum(math.dist(a, b) for a, b in segs)
-    for i, (a, b) in enumerate(segs):
-        length = math.dist(a, b)
-        if left <= length or i == len(segs) - 1:
-            k = min(left / length, 1.0)
-            return (a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-        left -= length
+    lengths = list(itertools.accumulate(math.dist(a, b) for a, b in segs))
+    return segs, lengths, (lengths[-1] if lengths else 0.0)
 
 
 def _parent_layers(ctx, id_: str) -> list[dict]:

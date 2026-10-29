@@ -191,7 +191,8 @@ brush). `height` is the capital height; brush `size` about 6–12 % of it reads 
 picks another hand. Put the words on their own drawing (or `layer: "new"`) and key that drawing's **Drawn so far**
 (`drawnSoFar`) 0 → 1: they write on letter by letter, stroke by stroke, the pen at one speed, so the time you give
 is the writing speed. They are ordinary strokes afterwards: `rough`, `grain`, a `glow` or more paint go on as on any
-drawing. Look at the first and last frames of the write-on (`look_frame`) before moving on.
+drawing. Each keeps the words it letters (`words`), so the look checks treat it as text: a lettered title past the
+frame edge, nearer it than the safe margin, or crossed by a shape is named as a typed one is. Look at the first and last frames of the write-on (`look_frame`) before moving on.
 In a script, `x`, `y` are where the first line's baseline starts, in the drawing canvas's px (`align` "center" makes x the middle). Words run about 0.7–0.8 × `height` per character, spaces included ("Night Market" at height 140 is about 1200 px wide), so size them to the room you have:
 
 ```python

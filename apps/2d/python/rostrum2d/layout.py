@@ -14,7 +14,9 @@ that doesn't move is one engine call per film.
   cell, placed by justify (across) and align (down).
 - `sizeW` / `sizeH`: fixed (w / h), fit (a laid-out group follows what is inside it; with `hugPin` it grows from its
   top-left, as a design tool's frame: see `hugged`), fill (the room the parent layout leaves) or percent of it.
-- A layer outside its start..end, or hidden, takes no room; a layer `layoutApart` keeps its own x, y (an absolute box).
+- A layer outside its start..end, or hidden, takes no room (the row re-flows as layers come and go, as the script
+  wrote them); faded out, scaled to 0 or shifted by keys it keeps its slot, as CSS keeps one under opacity and
+  transform. A layer `layoutApart` keeps its own x, y (an absolute box).
 - Layers are placed by their anchor: x = slot left + anchorX × w + shiftX (a group's layers live in its px from its
   top-left). A text the layout makes narrower (or wider) than its one line gets that `boxWidth`, so it wraps where the
   layout did.
@@ -135,6 +137,8 @@ class Plan:
             mode = p[f"size{axis}"]
             if mode == "fit":                    # inside a box: auto, so a stretching parent stretches it (as CSS)
                 style["width" if axis == "W" else "height"] = "fit" if parent is None else "auto"
+                if axis == "H" and p.get("minH", 0) > 0:
+                    style["minHeight"] = p["minH"]
             elif mode == "fixed" or parent is None:
                 style["width" if axis == "W" else "height"] = p[field]
         self._child_style(group, p, parent, style)

@@ -28,8 +28,8 @@ GROUPS = [
      {"layers": "run_import", "paint_picture": "run_paint_picture"}, "layers"),
     ("run_open_project", "The person's projects.",
      {"open": "run_open_project", "recent": "inspect_recent_projects"}, "open"),
-    ("render_export", "Export a composition; waits for the job in this call and answers with the file, checked. An mp4's "
-     "reply ends with the film's weakest moments: fix the top one and export again.",
+    ("render_export", "Export a composition; waits for the job in this call and answers with the file (always written, under "
+     "the name asked). `notes: true` adds what the checks measured.",
      {"file": "render_export", "video": "render_video"}, "file"),
 ]
 

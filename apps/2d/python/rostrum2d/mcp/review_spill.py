@@ -42,7 +42,5 @@ def facts(s: Sampled) -> list[dict]:
                 side, px = max((at[i] for i in range(a, b + 1) if i in at), key=lambda r: r[1])
                 out.append({"kind": "screen_spill", "start": t0, "end": t1, "id": lid, "ids": [lid, did],
                             "text": f'{t0:g}–{t1:g} s: "{lid}" runs {px:.0f} px past the {side} edge of device "{did}"\'s screen '
-                                    f'(the screen does not clip): a client sees it hang off the device; make it fit the screen '
-                                    f'(a smaller size or fewer items in the row / column), or device(..., overflow="hidden") '
-                                    f'cuts it at the edge'})
+                                    f'(the screen does not clip)'})
     return out

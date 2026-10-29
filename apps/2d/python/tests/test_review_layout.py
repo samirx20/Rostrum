@@ -33,7 +33,7 @@ with group("home", x=160, y=90, w=200, h=160):
 def test_text_partly_under_the_block_below_it_names_both_and_where_to_place_it():
     rows = _kinds(review_layout.overlaps(_sampled(SCREEN.format(ty=42))))
     assert rows["text_crossed"]["ids"] == ["nav_title", "hero_bg"]
-    assert 'place "hero" below "nav"' in rows["text_crossed"]["text"] and "ends at y =" in rows["text_crossed"]["text"]
+    assert '"nav" ends at y =' in rows["text_crossed"]["text"] and "place" not in rows["text_crossed"]["text"]
     assert "text_crossed" not in _kinds(review_layout.overlaps(_sampled(SCREEN.format(ty=20))))     # clear of it
 
 
@@ -49,15 +49,18 @@ def test_texts_on_texts_but_not_a_short_cross_fade_swap():
     a = 'text("a", body="Total", size=24, x=160, y=80)\n'
     rows = review_layout.overlaps(_sampled(a + 'text("b", body="$46.60", size=24, x=170, y=92)\n'))
     assert [r["kind"] for r in rows] == ["text_on_text"] and rows[0]["ids"] == ["a", "b"]
-    swap = ('text("a", body="Send", size=24, x=160, y=90, end=3.4)\n'
+    swap = ('a = text("a", body="Send", size=24, x=160, y=90)\na.key("opacity", {2.6: 1, 3.4: 0})\n'
+            'b = text("b", body="Sent", size=24, x=160, y=90)\nb.key("opacity", {2.6: 0, 3.4: 1})\n')
+    assert review_layout.overlaps(_sampled(swap)) == []      # a cross-fade: one of them is always faint
+    both = ('text("a", body="Send", size=24, x=160, y=90, end=3.4)\n'
             'text("b", body="Sent", size=24, x=160, y=90, start=2.6)\n')
-    assert review_layout.overlaps(_sampled(swap)) == []
+    assert [r["kind"] for r in review_layout.overlaps(_sampled(both))] == ["text_on_text"]   # both clear: a jumble in a still
 
 
 def test_a_cursor_on_a_label():
     label = 'text("send_lbl", body="Send requests", size=20, x=160, y=90)\n'
     rows = _kinds(review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=150, y=90, w=30, h=30, fill="#222")\n')))
-    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and 'spot="beside"' in rows["pointer_on_text"]["text"]
+    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and "spot=" not in rows["pointer_on_text"]["text"]
     away = review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=40, y=30, w=30, h=30, fill="#222")\n'))
     assert away == []
     assert review_layout.overlaps(_sampled(label + 'shape("handle", x=150, y=90, w=30, h=30, fill="#222")\n'))[0]["kind"] == "text_crossed"
@@ -66,7 +69,7 @@ def test_a_cursor_on_a_label():
 def test_a_tiny_end_card_but_not_a_normal_lock_up():
     tiny = review_layout.end_card(_sampled('shape("mark", x=150, y=90, w=10, h=10, fill="#6a4dff")\n'
                                            'text("word", body="Tally", size=8, x=172, y=90)\n'))
-    assert tiny and tiny[0]["kind"] == "end_small" and "scale the lock-up up" in tiny[0]["text"]
+    assert tiny and tiny[0]["kind"] == "end_small" and "% of the frame height" in tiny[0]["text"]
     normal = review_layout.end_card(_sampled('shape("mark", x=160, y=64, w=56, h=56, fill="#6a4dff")\n'
                                              'text("word", body="Tally", size=30, x=160, y=126)\n'))
     assert normal == []
@@ -83,7 +86,7 @@ with group("phone", x=160, y=90, w=60, h=120):
 def test_a_phone_placed_off_the_frame_or_nibbled_by_a_push_in_but_not_a_deep_push_in():
     assert _kinds(review_device.facts(_sampled(PHONE.replace('y=90, w=60', 'y=40, w=60'))))["device_cut"]["id"] == "phone"
     push = _kinds(review_device.facts(_sampled(PHONE + 'frame().fit(rect=(85, 48, 150, 84), at=0)\n')))
-    assert 'frame().fit(["phone"]' in push["push_cut"]["text"] and "% of the film" in push["push_cut"]["text"]
+    assert 'frame().fit' not in push["push_cut"]["text"] and "% of the film" in push["push_cut"]["text"]
     deep = review_device.facts(_sampled(PHONE + 'frame().fit(rect=(140, 60, 40, 22), at=0)\n'))
     assert [r["kind"] for r in deep] == ["push_in"] and deep[0]["info"]
 
@@ -96,3 +99,34 @@ def test_a_word_a_deep_push_in_slices_at_the_frame_edge_is_named_not_kept_as_inf
     faults, _ = review.doc_faults(doc.data, doc.item("c"), None, "look_review")
     cut = [f for f in faults if f["kind"] in ("text_edge", "small_text_edge") and "s" in (f.get("ids") or [f["id"]])]
     assert cut and not any(f.get("info") for f in cut)
+
+
+def test_a_scramble_is_not_text_on_text_but_a_real_overlap_on_it_is():
+    """A swap set shows one child at a time (swap.py): its steps never sit on each other; another text across it does."""
+    line = 'scramble("sc", "LISTEN", start=0.5, end=3, rate=10, size=30).set(x=160, y=90)\n'
+    assert review_layout.overlaps(_sampled(line)) == []
+    rows = review_layout.overlaps(_sampled(line + 'text("orbit", body="ORBIT", size=30, x=165, y=92)\n'))
+    assert rows and {r["kind"] for r in rows} == {"text_on_text"} and all("orbit" in r["ids"] for r in rows)
+
+
+def test_a_ring_crosses_the_letters_it_runs_through_but_not_the_title_inside_its_hole():
+    """A hollow shape paints only its outline: a ring around a title neither hides nor crosses it; one through it does."""
+    title = 'text("title", body="Shaped", size=30, x=160, y=90)\n'
+    ring = 'shape("ring", shape="ellipse", w={d}, h={d}, filled=False, stroke="#f60", strokeWidth=3, x=160, y=90, opacity=0.4)\n'
+    assert review_layout.overlaps(_sampled(title + ring.format(d=170))) == []
+    rows = review_layout.overlaps(_sampled(title + ring.format(d=60)))
+    assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["title", "ring"])] and "outline" in rows[0]["text"]
+
+
+def test_a_panel_over_the_last_line_of_a_wrapped_text_crosses_it():
+    """A card's own background over the bottom of a two-line value: small in the whole box, a cut through that line."""
+    value = 'text("value", body="TARGET ACQUIRED", size=24, lineHeight=1.1, boxWidth=120, x=160, y=60)\n'
+    panel = ('with group("panel", x=160, y=130, w=200, h={h}, background=True, bgColor="#222"):\n'
+             '    text("panel_lbl", body="BARS", size=10, x=10, y=10)\n')
+    box = _sampled(value).frames[0][1][0]
+    assert box["size"][1] > 40, "the value wraps to two lines"
+    top = 60 + box["size"][1] / 2 - 4                        # the panel's top edge 4 px into the last line (under 10 % of the box)
+    rows = review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top))))
+    assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["value", "panel"])]
+    assert review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top - 12)))) == []      # clear of it
+

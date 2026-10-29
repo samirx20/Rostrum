@@ -37,7 +37,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, mathtype, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure, text_runs
+from . import fields as F, fontlist, mathtype, paint_fields, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure, text_runs
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -253,7 +253,7 @@ class Item:
                         spacing=float(own.get("tracking", 0)), line=float(own.get("line", 1.6)), slant=float(own.get("slant", 0)),
                         hand=float(own.get("hand", 0)), seed=int(own.get("hand_seed", 0)), path=own.get("path", ""),
                         start=float(own.get("start", 0)))
-        return [self.stroke(pts, **values) for pts in lines]
+        return [self.stroke(pts, words=text, **values) for pts in lines]
 
     def wash(self, box=None, outline=None, id: str | None = None, **values) -> list:
         """A wash to the edges on this paint layer (paint_wash.py, the same as paint.wash): `p.wash(color="#1b2a5c")` covers
@@ -313,7 +313,7 @@ class Item:
     def __exit__(self, *exc):
         self._b.holders.pop()
         if self.node["type"] == "group" and not exc[0] and self.id not in self._b.sized:
-            fit(self.node)
+            fit(self.node, pointed=self.id in self._b.pointed)
 
 
 class Painted:
@@ -365,6 +365,7 @@ class Build:
     def __init__(self, reserved=()):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
         self.sized = set()          # groups whose script gave a size (w or h): never refitted
+        self.pointed = set()        # unsized groups whose script gave x / y: their children count from that point
         self.counts: dict[str, int] = {}     # type -> the last counted N (new_id)
 
     def new_id(self, type_, id_):
@@ -421,7 +422,8 @@ class Build:
 
     def add_kit(self, type_, id_, values, into: list) -> Item:
         from rostrum_paint.ops import build
-        node = build(type_, self.new_id(type_, id_), values, f"{type_} {id_ or ''}".strip())
+        node = build(type_, self.new_id(type_, id_), values, f"{type_} {id_ or ''}".strip(),
+                     paint_fields.STROKE if type_ == "stroke" else ())
         into.append(node)
         return Item(self, node)
 
@@ -468,11 +470,17 @@ class Build:
             for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
                 if xy not in values:
                     values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
+        if values.get("ridePath"):         # rides a path: the path places it, its own x / y are an offset (as layer.ride
+            values = {**values, "x": values.get("x", 0.0), "y": values.get("y", 0.0)}     # sets), 0 when the script gave none
+        pointed = type_ == "group" and bool({"x", "y"} & values.keys()) and not ({"w", "h", "layout"} & values.keys())             and not script_layout.in_layout(self) and not ({"anchorX", "anchorY", "origin", "anchor"} & values.keys())
         values = script_layout.centre(self, type_, values)           # no x / y: the parent's centre
         if type_ == "group":        # a script's hugging group grows around its anchor; keeping top-left is the canvas's
             values.setdefault("hugPin", False)
         values = script_layout.prepare(self, type_, id, values)       # origin, tw, container words (guide lay-out-a-screen)
-        return self.add(type_, id, values, self.holders[-1]["layers"])
+        made = self.add(type_, id, values, self.holders[-1]["layers"])
+        if pointed:
+            self.pointed.add(made.id)   # group("arm", x=520, y=650): a child at (0, 80) sits 80 px below that point
+        return made
 
 
 def _hint(word, options) -> str:
@@ -533,6 +541,14 @@ def _held_ids(doc, name: str) -> set[str]:
     return {i["id"] for i in walk(doc.data, KIND.lists)} - ours
 
 
+def _brief(b: "Build", words) -> None:
+    """brief("..."): the brief's own words, stored on the document (doc.data["brief"]) for the person and the
+    notes; it changes nothing in an export."""
+    if not isinstance(words, str) or not words.strip():
+        raise ValueError('brief(...) takes the brief\'s own words as one text: brief("A 20 s launch film for ...")')
+    b.root["brief"] = words.strip()
+
+
 def run_source(source: str, name: str, doc=None) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged.
     `doc`: the document it will be merged into (run_script passes it), so the ids it already holds are left alone."""
@@ -541,6 +557,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
     rnd = SeededRandom(1)
     scope = {"__builtins__": {**SAFE, "__import__": _importer(rnd), "__build_class__": no_classes}, "math": math, "random": rnd, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
+             "brief": lambda words: _brief(b, words),
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
              **pathdata.for_script(b.layer), **plot.for_script(), **mathtype.for_script(b.layer), **text_measure.for_script(), **rig_script.for_script(b), **rig_motion.for_script(b), **script_layout.for_script(b), **ui_blocks.for_script(b), **ui_pointer.for_script(b), **shafts.for_script(b),
@@ -559,7 +576,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
 
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
-API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
+API = ["brief(\"the brief's own words\"): stored on the document; a final export's keep quotes it", "comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
        "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text(id, body=[\"plain \", (\"words\", {\"color\": …, \"weight\": …}), …]): styled runs in one text; text.run(\"words\").key(\"color\" | \"weight\" | \"scale\" | \"opacity\", {…}) (guide styled-words)", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",

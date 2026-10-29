@@ -334,23 +334,33 @@ pub(crate) fn open_stage(s: &mut Session, open: bool) {
 /// kept moved layer moved by its own matrix, every other piece drawn as the page holds it, which must be the same
 /// text as this sample's (the page was last staged from sample `applied`; `base` is the group's middle sample, whose
 /// pieces were kept). None when a piece is neither.
-fn moved_plan(kids: &[NodeId], cuts: &[Vec<String>], runs: &[std::ops::Range<usize>], keep: &HashMap<usize, (usize, [f64; 6])>, i: usize, base: usize, applied: Option<usize>, view: (f32, f32, f32)) -> Option<HashMap<NodeId, blitz_paint::Run>> {
+fn moved_plan(kids: &[NodeId], cuts: &[Vec<String>], runs: &[std::ops::Range<usize>], keep: &HashMap<usize, (usize, [f64; 6], usize)>, i: usize, base: usize, applied: Option<usize>, view: (f32, f32, f32)) -> Option<HashMap<NodeId, blitz_paint::Run>> {
     let (cut, page) = (&cuts[i], &cuts[applied?]);
     if kids.len() != cut.len() || page.len() != cut.len() {
         return None;
     }
     let mut plan = if runs.is_empty() { HashMap::new() } else { crate::still_runs::kept(kids, runs) };
-    for (p, piece) in cut.iter().enumerate() {
+    let mut p = 0;
+    while p < cut.len() {
         if runs.iter().any(|r| r.contains(&p)) {
+            p += 1;
             continue;
         }
-        if let Some(&(slot, from)) = keep.get(&p) {
+        if let Some(&(slot, from, end)) = keep.get(&p) {
             // Compared with the base's piece (the one kept), not the page's: the page may hold another sample's matrix.
-            let to = crate::still_runs::moved(piece, &cuts[base][p])?;
+            // The run's other pieces move alike in every sample of the group (checked when it was kept): skipped.
+            let to = crate::still_runs::moved(&cut[p], &cuts[base][p])?;
             plan.insert(kids[p], blitz_paint::Run::Moved(slot, crate::still_runs::delta(to, from, view)?));
-        } else if *piece != page[p] {
+            for q in p + 1..end {
+                plan.insert(kids[q], blitz_paint::Run::Skip);
+            }
+            p = end;
+            continue;
+        }
+        if cut[p] != page[p] {
             return None;
         }
+        p += 1;
     }
     Some(plan)
 }
@@ -364,6 +374,10 @@ fn paint(s: &mut Session, held: bool) -> Result<(), String> {
     let shader_errors = anyrender::filters::shader_errors::take();
     if shader_errors.is_empty() { Ok(()) } else { Err(shader_errors.join("; ")) }
 }
+
+/// The most memory a motion-blurred frame's kept pictures take on the graphics card (still runs and a group's moving
+/// runs, each a whole frame): the laptop's card has 4 GB; past this its memory spills and a frame takes minutes.
+const KEPT_BYTES: usize = 768 << 20;
 
 /// Threads a frame decodes its own pictures on (the laptop's 8 logical cores are shared with the 3D engine).
 const FRAME_DECODE_THREADS: usize = 4;
@@ -538,9 +552,12 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         let k = 1.0 / samples.len() as f32;
         let view = s.painter.view();
         let drawn = (|| -> Result<(), String> {
-            // Grouped sub-frames (still_runs.rs `order`): the group's moved layers kept at its middle sample, by piece:
-            // (kept picture, the matrix it was drawn through); `applied` is the sample the page was last staged from.
-            let (mut group, mut keep): (Option<usize>, HashMap<usize, (usize, [f64; 6])>) = (None, HashMap::new());
+            // Grouped sub-frames (still_runs.rs `order`): the group's moved layers kept at its middle sample, by a run's
+            // first piece (still_runs.rs `moving_runs`): (kept picture, the matrix it was drawn through, the run's end);
+            // `applied` is the sample the page was last staged from.
+            let (mut group, mut keep): (Option<usize>, HashMap<usize, (usize, [f64; 6], usize)>) = (None, HashMap::new());
+            // The most pictures a frame keeps at once (KEPT_BYTES): past it a group's other moving runs are drawn whole each sample.
+            let most_kept = (KEPT_BYTES / (s.width as usize * s.height as usize * if s.deep { 8 } else { 4 }).max(1)).max(2);
             let (mut applied, mut still_kept) = (None::<usize>, 0);
             for (nth, i) in crate::still_runs::order(if grouped { &bases } else { &[] }, samples.len()).into_iter().enumerate() {
                 // Another sample of the group whose base is drawn: its moved layers' pictures moved, its other pieces
@@ -579,14 +596,20 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
                     keep.clear();
                     group = Some(i);
                     let mut plan = if runs.is_empty() { HashMap::new() } else { crate::still_runs::kept(&kids, &runs) };
-                    for (p, piece) in cuts[i].iter().enumerate() {
-                        let Some(m) = crate::still_runs::movable(piece).filter(|_| !runs.iter().any(|r| r.contains(&p))) else { continue };
-                        blitz_paint::set_plan(kids.iter().enumerate().filter(|&(q, _)| q != p).map(|(_, &o)| (o, blitz_paint::Run::Skip)).collect());
+                    // The moving pieces that move alike, in a row, painted together and kept as one picture (still_runs.rs `moving_runs`).
+                    for (run, m) in crate::still_runs::moving_runs(&cuts, &bases, i, &runs, view) {
+                        if s.painter.cached_len() >= most_kept {
+                            break;
+                        }
+                        blitz_paint::set_plan(kids.iter().enumerate().filter(|(q, _)| !run.contains(q)).map(|(_, &o)| (o, blitz_paint::Run::Skip)).collect());
                         timed(s, None, true, false)?;
                         s.painter.keep_cached();
                         let slot = s.painter.cached_len() - 1;
-                        keep.insert(p, (slot, m));
-                        plan.insert(kids[p], blitz_paint::Run::Cached(slot));
+                        plan.insert(kids[run.start], blitz_paint::Run::Cached(slot));
+                        for q in run.start + 1..run.end {
+                            plan.insert(kids[q], blitz_paint::Run::Skip);
+                        }
+                        keep.insert(run.start, (slot, m, run.end));
                     }
                     blitz_paint::set_plan(plan);
                 }

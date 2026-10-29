@@ -15,7 +15,7 @@ SAY = {
     "look_in_frame": "Which layers are in, partly in or out of the frame.",
     "look_rig": "The rigs' bones over one frame.",
     "look_empty": "Blank, washed-out or still stretches and edge-cut subjects, with times.",
-    "look_review": "The weakest moments, ranked, with times and the fix; `beats` checks the brief's beats.",
+    "look_review": "What the checks measure, ranked, with times (notes, never a verdict); `beats` checks the brief's beats.",
     "inspect_diagnose": "Everything broken: missing fonts or files, broken links, bad expressions, unseen layers.",
     "look_motion": "Every move per layer from the keys (start, landing, ease, speed) and overlap / stillness facts; no rendering.",
     "look_path": "The path a layer or the frame travels, with its key handles and speed on screen.",

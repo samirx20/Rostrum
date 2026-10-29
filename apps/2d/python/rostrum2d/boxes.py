@@ -45,10 +45,10 @@ def box(layer: dict, t: float = 0.0) -> tuple[float, float, float, float]:
 def _drawn(p: dict, w: float, h: float):
     """A path's drawn extent in its own px: its curve's bounds widened by half the outline (the whole box when it has
     no points yet, so a new path can still be picked)."""
-    cmds = pathdata.commands(p.get("d", ""))
-    if not cmds:
+    got = pathdata.drawn_bounds(p.get("d", ""))
+    if got is None:
         return (0.0, 0.0, w, h)
-    x0, y0, x1, y1 = pathdata.bounds(cmds)
+    x0, y0, x1, y1 = got
     r = p["strokeWidth"] / 2 if p.get("stroke") else 0.0
     return x0 - r, y0 - r, x1 + r, y1 + r
 

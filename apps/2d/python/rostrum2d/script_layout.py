@@ -60,6 +60,8 @@ def centre(build, type_: str, values: dict) -> dict:
         return values
     if h["type"] == "comp":
         cx, cy = h["width"] / 2, h["height"] / 2
+    elif h["id"] in build.pointed:     # a group placed by its x / y: its children count from that point
+        cx, cy = 0.0, 0.0
     elif h["id"] in build.sized:
         cx, cy = h["w"] / 2, h["h"] / 2
     else:       # an unsized group fits around what is inside at its end: a layer left alone sits on the group's x / y
@@ -116,9 +118,12 @@ def prepare(build, type_: str, id_, values: dict) -> dict:
     if inside and type_ == "text" and "align" not in out:
         out["align"] = "left"                  # a text in a box reads from its slot's left edge, as on a web page
     if inside and not out.get("layoutApart") and {"x", "y"} & set(out):
-        raise ValueError(f"{where}: x= / y= inside a container: the layout places this layer. Leave x / y out (use "
-                         "align, justify, gap, margin; shift_x= / shift_y= to move it off its place without pushing the "
-                         "others), or give apart=True to place it by its own x / y (it then takes no room)")
+        h = build.holders[-1]
+        name = f'{type_} "{id_}"' if id_ else f"this {type_}"
+        call = "" if type_ == "group" else f' ({type_}({f"{chr(34)}{id_}{chr(34)}, " if id_ else ""}…, apart=True))'
+        raise ValueError(f'{name} has x / y inside {h["layout"]} "{h.get("id", "")}", which places its layers for you: add '
+                         f'apart=True to its call to place it by hand{call}, it then takes no room; or leave x / y out '
+                         f'(shift_x= / shift_y= nudge it off its slot)')
     return out
 
 

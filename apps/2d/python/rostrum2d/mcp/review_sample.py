@@ -61,7 +61,7 @@ class Sampled:
         box is not its body: a character is measured by its posed `parts`."""
         if not n["in_time"] or n["opacity"] < SEEN or n["matte_for"] or n["type"] == "rig" or n["type"] == "group" and not n["paint"]:
             return False
-        x0, y0, x1, y1 = drawn_box(n)
+        x0, y0, x1, y1 = box(n)
         return x1 > 0 and y1 > 0 and x0 < self.W and y0 < self.H and (x1 - x0) * (y1 - y0) > 4
 
     def share(self, box) -> float:
@@ -70,7 +70,7 @@ class Sampled:
         return max(0.0, min(x1, self.W) - max(x0, 0)) * max(0.0, min(y1, self.H) - max(y0, 0)) / (self.W * self.H)
 
     def backdrop(self, n: dict) -> bool:
-        return self.share(drawn_box(n)) >= BACKDROP
+        return self.share(box(n)) >= BACKDROP
 
     def cells(self, boxes: list[tuple]) -> np.ndarray:
         """The GRID cells the union of `boxes` (x0, y0, x1, y1) covers."""
@@ -89,6 +89,20 @@ class Sampled:
             if self.seen(n) and n["type"] != "text" and self.backdrop(n):
                 return str(n["props"].get("fill") or n["id"])
         return str(self.comp.get("background", "#000000"))
+
+
+def box(n: dict) -> tuple:
+    """geometry.drawn_box of a flattened layer, worked out once: the nodes of one moment are shared by every check of a
+    review (geometry.memo) and never change, so the box is kept on the node."""
+    got = n.get("_box")
+    if got is None:
+        got = n["_box"] = drawn_box(n)
+    return got
+
+
+def meets(a, b) -> bool:
+    """Two boxes (x0, y0, x1, y1) touch or overlap."""
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
 
 
 def quad_points(quad: list[tuple]) -> list[tuple[float, float]]:

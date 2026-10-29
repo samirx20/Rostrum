@@ -15,7 +15,6 @@ from rostrum_core.mcp.tools import _schema_of
 SEES_PICTURE = {"look_motion", "look_drawing", "look_painting"}
 EXPORTS = {"render_video", "render_export"}        # (render_video: a job's label for render_export what "video") an export the agent should look at (render_export: an mp4's reply has `quiet_stretches`)
 KINDS = {"full-size frame": "a full-size single frame (look_frame time)", "motion": "the motion (look_motion)"}     # named after an export until done     # looks that reset "edits since the last look"
-PASS_S = 150.0                # a look-fix-export pass besides the export itself: looks, a script change, thinking
 MOMENT = 2.0                  # a looked-at time stands for this many seconds either side of it
 SESSION_ARG = {"what": {"enum": ["project", "session"], "default": "project", "description":
                '"session": the clock and what is still unchecked.'}}
@@ -97,14 +96,13 @@ class Clock:
         return gaps + ([[at, span]] if at < span - 1e-9 else [])
 
     def left_said(self) -> str:
-        """'Time left: 11 min (about 3 passes of fix and export). ' when there is a budget, else ''."""
+        """'Time left: 11 min. ' when there is a budget, else ''."""
         if self.budget_min is None:
             return ""
         left = self.budget_min * 60 - self.elapsed()
         if left <= 60:
             return "Time is up after this. "
-        passes = int(left // ((self.export_s or 60.0) + PASS_S))
-        return f"Time left: {round(left / 60)} min" + (f" (about {passes} more pass{'es' * (passes != 1)} of fix and export)" if passes else "") + ". "
+        return f"Time left: {round(left / 60)} min. "
 
     def line(self) -> str:
         parts = [f"Session {said_time(self.elapsed())} of real time since your first call (your thinking included)", f"{self.calls} call{'s' * (self.calls != 1)}"]
@@ -121,11 +119,8 @@ class Clock:
             parts.append("not looked at yet: " + ", ".join(missing))
         if self.budget_min is not None:
             left = self.budget_min * 60 - self.elapsed()
-            parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to look and refine)" if left > 60 else "")
+            parts.append(f"{said_time(left)} of your {self.budget_min:g} min left"
                          if left > 0 else f"your {self.budget_min:g} min are used")
-            passes = int(left // ((self.export_s or 60.0) + PASS_S)) if self.exported else 0
-            if passes >= 1:                  # agents stopped with two thirds of their time unused (fair 2D benchmark)
-                parts.append(f"enough for about {passes} more pass{'es' * (passes != 1)} of look, fix and export")
         return " · ".join(parts)
 
     def facts(self, span: float | None) -> Reply:
@@ -187,32 +182,7 @@ def _wrapped(tool, clock: Clock):
         clock.begin()
         reply = tool.fn(ctx, args)
         clock.noted(ctx.tool, args, reply)
-        reply.summary = f"{reply.summary}{_fix_pass(ctx, args, reply, clock)}\n{clock.line()}"
+        reply.summary = f"{reply.summary}\n{clock.line()}"
         return reply
     return fn
 
-
-def _fix_pass(ctx, args, reply: Reply, clock: Clock) -> str:
-    """After a finished mp4 export (render_video, render_export): the minutes left and the film's weakest moments (review),
-    as the next fix pass. In the fair benchmark agents ended the turn after one export believing every item was covered."""
-    data = reply.data if isinstance(reply.data, dict) else {}
-    payload = data["result"] if isinstance(data.get("result"), dict) else data
-    if "quiet_stretches" not in payload or data.get("status", "done") != "done":
-        return ""
-    label = str(data.get("label", "")).split(" ")
-    comp_id = label[1] if ctx.tool == "inspect_job" and len(label) > 1 else args.get("comp")
-    try:
-        from . import review
-        from .pick import doc_and_comp
-        doc, comp = doc_and_comp(ctx, {"comp": comp_id} if comp_id else {})
-        said = review.after_export(doc.data, comp, payload.get("quiet_stretches") or [], payload.get("edge_cuts") or [],
-                                   beats=clock.beats.get(comp["id"]))
-    except Exception as e:      # noqa: BLE001  (the export stands; the review's failure is said, not hidden)
-        said = f"(The review could not run: {e}; call look_frame what \"review\".)"
-    left = clock.left_said()
-    if said.startswith("Weakest") and left.startswith("Time left"):
-        # gaps2 benchmark: agents copied the named faults into their summary as "weak spots" and ended the turn with
-        # 11 minutes left. Say plainly that the work is not over while both remain.
-        left = ("Not finished yet: the weak moments below are still in the film and you have time. Keep going until time "
-                "is up or each one left is a choice you made. " + left)
-    return f"\n{left}{said}"

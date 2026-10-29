@@ -106,3 +106,28 @@ def test_a_card_hanging_off_a_device_screen_is_named_once():
         d = run(src.format(clip))
         faults, _ = review.doc_faults(d.data, d.data["comps"][0], None, "t")
         assert [f["id"] for f in faults if f["kind"] == "screen_spill"] == named
+
+
+def test_a_cards_h_is_exact_min_h_grows_and_a_fixed_h_group_its_words_outgrow_is_noted():
+    """No gates (Sam, 2026-10-29): card(h=50) keeps the h the script wrote, its words at a readable size (not h * 0.13 =
+    6.5 px), and spill (a note says so); card(min_h=50) grows to fit them. A laid-out group with a fixed h its words run
+    out of is a text_spill naming the h that fits."""
+    from rostrum_core.tree import walk
+    from rostrum2d.layout import solve
+    from rostrum2d.mcp import review
+    d = run('comp("main", width=1920, height=1080, fps=30, duration=2)\ncard("c", x=200, y=200, w=420, h=50, '
+            'title="Grasp", detail="Error 0.02 mm", value="TARGET ACQUIRED")\n')
+    comp = d.data["comps"][0]
+    card = next(n for n in walk(d.data, KIND.lists) if n.get("id") == "c")
+    title = next(n for n in walk(d.data, KIND.lists) if n.get("id") == "c_title")
+    assert card["h"] == 50 and title["size"] >= 12
+    d = run('comp("main", width=1920, height=1080, fps=30, duration=2)\ncard("c", x=200, y=200, w=420, min_h=50, '
+            'title="Grasp", detail="Error 0.02 mm", value="TARGET ACQUIRED")\n')
+    comp = d.data["comps"][0]
+    assert solve(comp, 0)["c"]["h"] > 50
+    assert not [f for f in review.doc_faults(d.data, comp, None, "t")[0] if f["kind"] == "text_spill"]
+    d = run('comp("main", width=1920, height=1080, fps=30, duration=2)\nwith group("tele", layout="column", x=200, y=200, w=420, h=90, '
+            'sizeH="fixed"):\n'
+            '    text("a", body="Grasp", size=40)\n    text("b", body="TARGET ACQUIRED", size=48)\n')
+    rows = [f for f in review.doc_faults(d.data, d.data["comps"][0], None, "t")[0] if f["kind"] == "text_spill"]
+    assert [f["id"] for f in rows] == ["tele"] and "h=90 is too small" in rows[0]["text"]

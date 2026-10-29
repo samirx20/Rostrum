@@ -26,7 +26,7 @@ def test_the_line_counts_time_calls_and_edits_since_the_last_look():
     clock.noted("run_script", {}, Reply("x", changed={"seq": 1}))
     clock.noted("run_script", {}, Reply("x", changed={"seq": 2}))
     assert clock.line() == ("Session 6 min 12 s of real time since your first call (your thinking included) · 2 calls · no look at the picture yet"
-                            " · 8 min 48 s of your 15 min left (time to look and refine)")
+                            " · 8 min 48 s of your 15 min left")
     clock.noted("look_frame", {}, Reply("x", {"result": {"time": 1.0}}))
     clock.noted("run_script", {}, Reply("x", changed={"seq": 3}))
     assert "last look at the picture 1 edit ago" in clock.line()
@@ -73,14 +73,14 @@ def test_after_an_export_the_line_names_the_looks_not_done_yet():
     assert "not looked at yet" not in clock.line() and "the export has not been looked at" in clock.line()
 
 
-def test_after_an_export_the_clock_counts_the_passes_left():
-    # The fair benchmark's agents stopped after ~5 of 15 min; the clock turns the time left into passes of look, fix, export.
+def test_after_an_export_the_clock_says_the_time_left_never_a_push():
+    # Facts only (no gates): the time left, never "passes of fix and export left".
     from rostrum_core.mcp import Reply
     now = [0.0]
     clock = Clock(lambda: now[0], budget_min=15)
     clock.begin()
     now[0] = 300.0
     clock.noted("render_video", {}, Reply("Rendered", {"video": "a.mp4", "seconds": 30.0, "quiet_stretches": []}))
-    assert "about 3 more passes of look, fix and export" in clock.line()      # 600 s left / (30 + 150) s
+    assert "10 min 00 s of your 15 min left" in clock.line() and "fix" not in clock.line()
     now[0] = 800.0
     assert "more pass" not in clock.line()

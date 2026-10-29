@@ -11,6 +11,7 @@ Coordinates are the layer's own px from its box's top-left.
 """
 from __future__ import annotations
 
+import functools
 import math
 import re
 
@@ -20,7 +21,24 @@ K = 0.5522847498  # a quarter circle's handle length, as a fraction of its radiu
 
 
 def commands(d: str) -> list[tuple]:
-    """`d` → commands. A bad `d` raises ValueError saying what is wrong (as the engine's check, stage_path.rs)."""
+    """`d` → commands. A bad `d` raises ValueError saying what is wrong (as the engine's check, stage_path.rs).
+    Parsed once per distinct `d` (the look reads every path at every sampled time); each caller gets its own list."""
+    return list(_parsed(d))
+
+
+def drawn_bounds(d: str) -> tuple[float, float, float, float] | None:
+    """bounds(commands(d)), once per distinct `d`; None when it has no points."""
+    return _bounds(d)
+
+
+@functools.lru_cache(maxsize=4096)
+def _bounds(d: str):
+    cmds = _parsed(d)
+    return bounds(cmds) if cmds else None
+
+
+@functools.lru_cache(maxsize=4096)
+def _parsed(d: str) -> tuple:
     toks, out, i, cmd, open_ = _TOKEN.findall(d), [], 0, None, False
     while i < len(toks):
         if toks[i] in _COUNT:
@@ -47,7 +65,7 @@ def commands(d: str) -> list[tuple]:
         open_, i = True, i + n
         if cmd == "M":
             cmd = "L"                                    # more pairs after M are lines
-    return out
+    return tuple(out)
 
 
 _NUM = re.compile(r"[\s,]*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)")

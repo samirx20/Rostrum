@@ -35,7 +35,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   timed from a marker (`marker=`), frame 0 is the marker's moment, so moving the marker moves every drawing with it. Drawings on twos = a drawing every 2 frames. `frame.hold frames=3` makes one last 3 frames and moves the later
   ones.
 - A **paint** layer (blend `normal`, `multiply`, `screen`, `add`; opacity; visible; locked) holds **strokes** in painting
-  order. Several paint layers on one layer: e.g. a base and a light layer in `add`. In a layer that draws each frame
+  order. Several paint layers on one layer: e.g. a base and a light layer in `add`. Paint layers stack in the order they
+  are made: a later layer shows in front of every earlier one, so a patch on it that lies partly on an earlier shape (a
+  window over an awning) shows in front of that shape; the look names it (`painted_over`). Paint what is behind first. In a layer that draws each frame
   the paint layers belong to the layer and are shared by all its drawings; each drawing keeps its own strokes in each.
 - A **stroke** is a path `[[x, y, pressure], …]` in canvas px plus a brush. Pressure 0..1 thins and fades the mark
   (`size_pressure`, `opacity_pressure`). The seed is fixed when it is made, so it repaints identically.

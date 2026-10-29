@@ -37,8 +37,29 @@ def _line(n: dict) -> str:
     return f"[{n['id']}] {n['what']}{when}"
 
 
+PER_KIND = 3        # notes of one kind written out in the line; the rest are counted (every note stays in `notes`)
+KINDS = 6           # kinds written out; the rest are named with their counts
+
+
+def kind_of(note_id: str) -> str:
+    """A note's kind: its id's part before ':' or '@' (`cut_edge:ball` -> `cut_edge`)."""
+    return note_id.replace("@", ":").split(":", 1)[0]
+
+
 def lines(notes: list[dict]) -> str:
-    """The reply's closing line for the notes asked for."""
+    """The reply's closing line for the notes asked for, grouped by kind so a thousand alike stay one short line (kinds
+    in the order their first note comes, so a caller's ranking holds)."""
     if not notes:
         return "Notes: the checks measured nothing to note."
-    return f"Notes ({len(notes)}): " + " | ".join(_line(n) for n in notes)
+    groups: dict[str, list[dict]] = {}
+    for n in notes:
+        groups.setdefault(kind_of(n["id"]), []).append(n)
+    parts = []
+    for kind, ns in list(groups.items())[:KINDS]:
+        parts += [_line(n) for n in ns[:PER_KIND]]
+        if len(ns) > PER_KIND:
+            parts.append(f"and {len(ns) - PER_KIND} more {kind} (in notes)")
+    rest = list(groups.items())[KINDS:]
+    if rest:
+        parts.append("also " + ", ".join(f"{len(ns)} {kind}" for kind, ns in rest) + " (in notes)")
+    return f"Notes ({len(notes)}): " + " | ".join(parts)

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from rostrum_core.motion.report import stem
 
+from rostrum2d import lettered
 from rostrum2d.frame import view
 
 from .geometry import comp_size, drawn_box, flatten
@@ -157,7 +158,7 @@ def layer_facts(comp: dict, times: list[float], step: float) -> list[dict]:
     edge, ghost, hollow, shown = {}, {}, {}, {}
     for t in times:
         nodes = flatten(comp, t)
-        texts = [n for n in nodes if n["type"] == "text" and _visible(n)]
+        texts = [n for n in lettered.texts(nodes) if _visible(n)]     # painted words too
         for n in texts:
             x0, y0, x1, y1 = drawn_box(n)
             mx, my = EDGE_CUT * (x1 - x0), EDGE_CUT * (y1 - y0)

@@ -145,6 +145,45 @@ pub fn delta(to: [f64; 6], from: [f64; 6], view: (f32, f32, f32)) -> Option<[f64
     Some([r.a, r.b, r.c, r.d, r.e, r.f])
 }
 
+/// The farthest two pieces' moves may differ and still be drawn as one picture (device px; the matrix's turn and scale
+/// alike to this over a picture's width are far under a px).
+const ALIKE: f64 = 1e-3;
+
+/// The pictures a grouped frame's base sample `base` keeps of its moving pieces (scene_serve.rs `stage_at`): movable
+/// pieces in a row (none in a `still` run) that every other sample of the group (`bases[j] == base`) moves alike are one
+/// picture, painted together and moved as one: (the pieces, the base's frame matrix of the first). Kept one per piece,
+/// a whip pan over 200 depth layers kept 200 full-frame pictures per group and laid each over every sample: seconds a
+/// frame and the graphics card's memory full (Undertow, 2026-10-29). A piece some sample of the group doesn't merely
+/// move is a picture of its own, as before (that sample is then drawn whole).
+pub fn moving_runs(cuts: &[Vec<String>], bases: &[usize], base: usize, still: &[Range<usize>], view: (f32, f32, f32)) -> Vec<(Range<usize>, [f64; 6])> {
+    let pieces = &cuts[base];
+    let others: Vec<usize> = (0..bases.len()).filter(|&j| bases[j] == base && j != base && cuts[j].len() == pieces.len()).collect();
+    // Each movable piece: its matrix at the base and its move in every other sample (None: some sample changes more).
+    let moves = |p: usize| -> Option<([f64; 6], Option<Vec<[f64; 6]>>)> {
+        let m = movable(&pieces[p]).filter(|_| !still.iter().any(|r| r.contains(&p)))?;
+        let d = others.iter().map(|&j| delta(moved(&cuts[j][p], &pieces[p])?, m, view)).collect::<Option<Vec<_>>>();
+        Some((m, d))
+    };
+    let alike = |a: &[[f64; 6]], b: &[[f64; 6]]| a.iter().zip(b).all(|(x, y)| x.iter().zip(y).enumerate().all(|(k, (u, v))| (u - v).abs() <= if k < 4 { 1e-6 } else { ALIKE }));
+    let mut out: Vec<(Range<usize>, [f64; 6])> = vec![];
+    let mut last: Option<Vec<[f64; 6]>> = None;              // the moves of the run being grown
+    for p in 0..pieces.len() {
+        let Some((m, d)) = moves(p) else {
+            last = None;
+            continue;
+        };
+        let joins = matches!((&d, &last, out.last()), (Some(d), Some(l), Some((r, _))) if r.end == p && alike(d.as_slice(), l.as_slice()));
+        if joins {
+            let last_run = out.len() - 1;               // joins: there is one, ending here
+            out[last_run].0.end = p + 1;
+        } else {
+            out.push((p..p + 1, m));
+        }
+        last = d;
+    }
+    out
+}
+
 /// A still piece that blends (or sits in a frosted glass, a held or tapped element) must never be drawn once and laid
 /// over: the picture would be silently wrong. Moving pieces split runs and keep their order.
 #[cfg(test)]
@@ -181,5 +220,18 @@ mod tests {
         assert_eq!(super::order(&[1, 1, 1, 4, 4, 4], 6), vec![1, 0, 2, 4, 3, 5]);
         assert_eq!(super::wrapper_id(&a), Some("a"));
         assert_eq!(super::with_matrix(&a, "matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500)").as_deref(), Some(w("1.000000, 0.000000, 0.000000, 1.000000, 0.000, -14.500", "2.000").as_str()));
+    }
+
+    #[test]
+    fn pieces_in_a_row_that_move_alike_are_kept_as_one_picture() {
+        // Five depth wrappers: a, b at one depth (moved alike), c at another, d blends, e alike to a but after d.
+        let w = |id: &str, y: f64, k: f64| format!("<div id=\"cam~{id}\" style=\"transform:matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000, {:.3});\"></div>", y * k);
+        let cut = |y: f64| vec![w("a", y, 1.0), w("b", y, 1.0), w("c", y, 2.0), w("d", y, 1.0).replace("style=\"", "style=\"mix-blend-mode:screen;"), w("e", y, 1.0)];
+        let cuts = vec![cut(-10.0), cut(-12.0), cut(-14.0)];
+        let runs = super::moving_runs(&cuts, &[1, 1, 1], 1, &[], (1.0, 0.0, 0.0));
+        let ranges: Vec<_> = runs.iter().map(|(r, _)| r.clone()).collect();
+        assert_eq!(ranges, vec![0..2, 2..3, 4..5], "a and b share a picture; c moves twice as far; d blends; e is not next to a");
+        assert_eq!(runs[0].1[5], -12.0, "the base's matrix of the run's first piece");
+        assert_eq!(super::moving_runs(&cuts, &[1, 1, 1], 1, &[0..1], (1.0, 0.0, 0.0)).iter().map(|(r, _)| r.clone()).collect::<Vec<_>>(), vec![1..2, 2..3, 4..5], "a still piece is not moved");
     }
 }

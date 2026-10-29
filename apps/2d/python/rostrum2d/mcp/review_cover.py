@@ -3,8 +3,8 @@ in front of it, and a character on a bare set (apart from it and the background,
 behind a shape, or a character peeking over a wall, may be meant."""
 from __future__ import annotations
 
-from .geometry import covers, drawn_box
-from .review_sample import Sampled, quad_points, runs
+from .geometry import covers
+from .review_sample import Sampled, box as drawn_box, quad_points, runs
 
 HIDDEN_FROM = 0.5         # a character with more than this share of its body behind layers in front is hidden ...
 HIDDEN_S = 1.0            # ... for this long or longer

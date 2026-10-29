@@ -8,13 +8,17 @@ are where the layer shows on screen. The frame itself is not listed (it is not d
 """
 from __future__ import annotations
 
+import contextlib
 
-from rostrum2d import boxes, fields as F, follow
+
+from rostrum2d import boxes, fields as F, follow, swap
 from rostrum2d.drawing import frame_number
 from rostrum2d.frame import view as camera
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size  # the one size rule
+
+from . import outline
 
 VISIBLE_OPACITY = 0.01
 
@@ -37,7 +41,31 @@ def _invert(m):
     return (d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det)
 
 
+_MEMO: list[dict] = []          # while a review runs (memo()): flatten results by (comp, t, world), shared by its checks
+
+
+@contextlib.contextmanager
+def memo():
+    """One review pass: every check asking for the same comp at the same time gets the same flattened layers (they
+    read them, never change them). The Argon look flattened each moment 4 times: 576 walks of a 72 s film."""
+    _MEMO.append({})
+    try:
+        yield
+    finally:
+        _MEMO.pop()
+
+
 def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
+    if _MEMO and only is None:
+        key = (id(comp), round(float(t), 6), world)
+        got = _MEMO[-1].get(key)
+        if got is None:
+            got = _MEMO[-1][key] = _flatten(comp, t, world, None)
+        return got
+    return _flatten(comp, t, world, only)
+
+
+def _flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
     """Every layer of a composition at time t, bottom of the stack first. `world`: corners and matrices in world px, where the
     world view draws each layer (frame/view.py `world_matrix`), instead of in the picture. Each: id, type, name, props (evaluated),
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size), paint (the
@@ -47,7 +75,7 @@ def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) 
     cam = camera.shot(comp, t)
     placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
 
-    def walk(layers, parent_m, parent_opacity, parent_in_time, path):
+    def walk(layers, parent_m, parent_opacity, parent_in_time, path, off=frozenset()):
         mattes = _mattes(layers)
         for layer in layers:
             if layer["type"] == "camera" or (only is not None and layer["id"] not in only):
@@ -59,21 +87,31 @@ def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) 
                 p.update(took)
             outer = parent_m if path else (camera.world_matrix if world else camera.layer_matrix)(comp, cam, p)
             m = _mul(outer, boxes.matrix(p, w, h))
-            opacity = parent_opacity * min(1.0, max(0.0, p["opacity"]))
+            opacity = 0.0 if layer["id"] in off else parent_opacity * min(1.0, max(0.0, p["opacity"]))
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
                         "paint": (0.0, 0.0, w, h) if layer["type"] == "group" and p.get("background") else
                                  boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30)), p),   # a group's background box paints
-                        "frame": frame_number(t, comp.get("fps", 30)), "layer": layer,
+                        "frame": frame_number(t, comp.get("fps", 30)), "t": t, "layer": layer,
                         "broken": follow.problem(layer, layers),
                         "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
             if layer["type"] == "group":
-                walk(layer.get("layers", []), m, opacity, in_time, path + (layer["id"],))
+                walk(layer.get("layers", []), m, opacity, in_time, path + (layer["id"],), _swapped_off(layer, t))
 
     walk(comp.get("layers", []), (1, 0, 0, 1, 0, 0), 1.0, True, ())
     return out
+
+
+def _swapped_off(group: dict, t: float) -> frozenset:
+    """A swap set's children it does not show at t (swap.py, the render's own rule: scene.py gates them to opacity 0)."""
+    if not group.get("swap"):
+        return frozenset()
+    kids = [c for c in group.get("layers", []) if not c.get("hidden")]
+    back = 1 if group.get("background") else 0                     # the group's own background is the set's first child
+    shown = swap.index_at(group, t, len(kids) + back) - back
+    return frozenset(c["id"] for i, c in enumerate(kids) if i != shown)
 
 
 def _matte_id(layer: dict) -> str:
@@ -120,6 +158,8 @@ def covers(node: dict, x: float, y: float) -> bool:
     x0, y0, x1, y1 = node["paint"]
     if not (x0 <= lx <= x1 and y0 <= ly <= y1):
         return False
+    if outline.hollow(node):                         # a ring or an outlined box paints only its stroke band
+        return outline.near(node, lx, ly)
     w, h = node["size"]
     return boxes.ink_at(node["layer"], node["frame"], lx / (w or 1), ly / (h or 1))      # a drawing: a painted pixel
 

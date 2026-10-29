@@ -66,5 +66,5 @@ def paint_letters(ctx, targets, args):
     layer = stroke.get("layer", "")
     for i, pts in enumerate(lines):
         # A new paint layer is made by the first stroke; the rest go on it, the top one now.
-        ops_paint.paint_stroke(ctx, targets, {**stroke, "points": pts, "space": "comp",
+        ops_paint.paint_stroke(ctx, targets, {**stroke, "points": pts, "space": "comp", "words": args["text"],
                                               "layer": "" if layer == "new" and i else layer})
