@@ -25,9 +25,10 @@ def _animatable(kind: str) -> frozenset:
     return frozenset(F.animatable(kind))
 
 
-def shown_values(item: dict, t: float) -> dict:
+def shown_values(item: dict, t: float, stack: list[dict] = ()) -> dict:
+    """`stack`: the document's animation layers: the inspector shows what the canvas draws (evaluate.resolve)."""
     if item["type"] in F.ANIMATED_OWNERS:
-        return {**item, **resolve(item, t)}
+        return {**item, **resolve(item, t, stack)}
     return item
 
 

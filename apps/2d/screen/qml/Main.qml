@@ -213,6 +213,7 @@ AppShell {
         compactExtra: backend.soundtrack.present ? Theme.row + 2 : 0      // the Sound row stays
         frameTicks: painter.drawingId !== ""
         rows: LayerRows { ruler: timeline.ruler; labelWidth: timeline.labelWidth; compact: timeline.compact }
+        layers: AnimLayers {}           // animation layers (layers2d.py): ⧉ beside Keys | Curves; the rows show the chosen layer's keys
         curves: CurveEditor { visible: backend.curves.on; ruler: timeline.ruler; labelWidth: timeline.labelWidth }
         overlay: Item {
             BeatLines { ruler: timeline.ruler; bottomY: timeline.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines

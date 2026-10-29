@@ -13,6 +13,7 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 7. [Timing to music](timing-to-music.md): hear the project's sound from RostrumSound, the Sound row, mute, pick the soundtrack, show beats, snap and tie to beats and markers, jump beat to beat, open the song in RostrumSound.
 8. [Text on a path](text-on-a-path.md): draw a path, put text on it, slide and align it, animate along it.
 9. [The curve editor](curve-editor.md): open Curves, read the lines, drag keys and handles, change an ease, the ease keys.
+   [Animation layers](animation-layers.md): ⧉ in the timeline, a move laid over the animation with a weight, Add or Replace, fade a layer in.
 10. [Characters, sound and styles](characters-sound-styles.md): bones, poses, lip sync and blinks, Add a sound here, moving the frame, text Styles, the Library and Brand kit, Add from a file.
 
 ## For agents
@@ -34,6 +35,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [text-on-a-path.md](text-on-a-path.md): text along a path (also a people page above).
 - [easing-and-overlap.md](easing-and-overlap.md): how a key's ease shapes motion, and checking that moves overlap as you meant.
 - [curve-editor.md](curve-editor.md): shaping the easing by hand (also a people page above).
+- [animation-layers.md](animation-layers.md): a weighted stack of moves over the keys (`animlayer.add`, `key.add {layer}`), Add or Replace, fades (also a people page above).
 - [expressions.md](expressions.md): fields driven by a formula or following something instead of being keyed.
 - [data-math-and-graphs.md](data-math-and-graphs.md): equations, function plots, axes and ticks, 3D-looking surfaces, charts from a table, one design filled in from many rows.
 - [colour-and-blending.md](colour-and-blending.md): blend modes (screen, multiply, overlay …) and grading a layer: exposure, levels, curves, a .cube LUT.

@@ -2,6 +2,7 @@
 operation per item type (`text.set`, `glow.set`, `key.set` …) generated from the fields table.
 
     doc ─ paintings ─ painting ─ frames ─ frame ─ paints … (a painting of the scene: paintings.py)
+        ─ animLayers ─ animLayer ─ keys (its weight's; a key on a layer stays on its item: rostrum_core.keys.layers)
         ─ comps ─ comp ─ layers ─ camera (the scene's one frame, first: frame/) | shape | text | image | group (group ─ layers …)
                                   | drawing ─ frames ─ frame ─ paints ─ paint ─ strokes (painting kit)
                                   shape | text | image | video | path may hold frames too (paint on an element)
@@ -16,6 +17,7 @@ import re
 
 import rostrum_paint
 from rostrum_core import DocKind, Registry, plugin_parts
+from rostrum_core.keys import layers as anim_layers
 
 from . import advice, exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, text_anchor, widthprofile
 from .frame import make as frame_make, rules as frame_rules
@@ -28,6 +30,7 @@ LISTS = {"doc": ["comps", "paintings", "textStyles", "swatches"], "painting": ["
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
          **{t: ["frames", *OWNED] for t in paint_fields.TYPES},     # paint on an element (paint_fields.py)
          **{t: ["keys"] for t in (*F.EFFECTS, "mask", "stop")}}
+LISTS = anim_layers.with_lists(LISTS)  # the animation layer stack: doc › animLayers (rostrum_core.keys.layers)
 for _t in fill_fields.OWNERS:          # a gradient fill's stops (fill_fields.py)
     LISTS[_t] = [*LISTS[_t], "stops"]
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
@@ -35,7 +38,8 @@ for _t, _owned in LISTS.items():       # whatever animates a field may also hold
         _owned.append("exprs")
 HOLDS = {"comps": ("comp",), "paintings": ("painting",), "stops": ("stop",), "swatches": ("swatch",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
          "exprs": ("expr",), "textStyles": ("textstyle",),
-         "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
+         "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS,
+         **anim_layers.HOLDS}
 
 REGISTRY = Registry()
 
@@ -134,9 +138,9 @@ def _check_keys(owner: dict, problems: list):
                 problems.append(f'key {k["id"]}: {owner["id"]}.{prop} at {k.get("t")} s: {e}')
         if want != "v" and ({"out", "in"} & set(k)):
             problems.append(f'key {k["id"]}: out / in (spatial handles) belong on a number key only, not a {prop} key')
-        if (prop, k.get("t")) in seen:
+        if (prop, k.get("t"), k.get(anim_layers.FIELD)) in seen:      # one per field per time on each layer
             problems.append(f'{owner["id"]}: two {prop} keys at {k.get("t")} s')
-        seen.add((prop, k.get("t")))
+        seen.add((prop, k.get("t"), k.get(anim_layers.FIELD)))
 
 
 _LEAVES = frozenset(t for t, owned in rostrum_paint.LISTS.items() if not owned)   # strokes, fills: nothing inside

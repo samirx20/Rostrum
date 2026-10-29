@@ -42,7 +42,7 @@ IGNORE = ()
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "canvas-menu-select-layer", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "time_box_typing", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
+         "panels-folded", "animation-picked", "anim-layers-open", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "text-counter", "scene-1080x1920", "long-status-line", "import-report", "bar-busy", "bar-message")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -188,6 +188,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])
           for w, h in ((1080, 1920), (1080, 1080), (1080, 1350))],
         ("animation-picked", ["--sample"], ["select title", "clickname stretch:title.opacity.k200"]),   # §9.3: the animation view
+        # animation layers (layers2d.py, the kit's AnimLayers.qml): the ⧉ popover with two layers, the top one chosen
+        ("anim-layers-open", ["--sample"], ["select title", "clickname animLayersButton", "wait 300", "clickname animLayerNew",
+                                            "wait 300", "clickname animLayerNew", "wait 300"]),
         ("right-click", ["--sample"], ["selectmany title card", "canvasmenu"]),
         # Select layer ▸ (only where layers overlap): two overlapping shapes, one with a long name, its side menu open
         ("canvas-menu-select-layer", ["--sample"], ["shape rect 100 100 500 400", "shape rect 200 150 600 450",

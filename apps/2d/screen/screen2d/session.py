@@ -27,6 +27,7 @@ GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # 
     ("drawing.md", "Drawing"), ("importing.md", "Importing pictures and files"),                # listed in README.md
     ("exporting.md", "Exporting a video"), ("files.md", "Files and settings"), ("timing-to-music.md", "Timing to music"),
     ("text-on-a-path.md", "Text on a path"), ("curve-editor.md", "The curve editor"),
+    ("animation-layers.md", "Animation layers"),
     ("characters-sound-styles.md", "Characters, sound and styles"), ("README.md", "All guides")])
 
 
