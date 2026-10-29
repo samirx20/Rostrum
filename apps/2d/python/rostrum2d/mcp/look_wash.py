@@ -48,9 +48,9 @@ def lightness(rgba: np.ndarray, b: int) -> tuple[np.ndarray, np.ndarray]:
     return blk.mean(axis=(2, 3)), blk.std(axis=(2, 3))
 
 
-def measure(rgba: np.ndarray, own: np.ndarray, b: int, blocks: tuple[np.ndarray, np.ndarray] | None = None) -> dict | None:
+def measure(rgba: np.ndarray | None, own: np.ndarray, b: int, blocks: tuple[np.ndarray, np.ndarray] | None = None) -> dict | None:
     """One area's numbers: `rgba` premultiplied HxWx4, `own` HxW bool (its pixels), `b` block px; `blocks` = lightness(rgba, b)
-    when already worked out."""
+    when already worked out (then `rgba` is not read)."""
     mean, fine = blocks or lightness(rgba, b)
     ob = _blocks(own, b).all(axis=(2, 3))
     inner = ob.copy()
@@ -87,21 +87,40 @@ def _picture(frame: dict, w: int, h: int) -> np.ndarray:
     return u8
 
 
+def _grid_box(box: tuple, b: int, w: int, h: int) -> tuple[int, int, int, int]:
+    """`box` (x0, y0, x1, y1) widened to whole blocks of the canvas's b px grid (the canvas's own edge stays)."""
+    return box[0] // b * b, box[1] // b * b, min(w, -(-box[2] // b) * b), min(h, -(-box[3] // b) * b)
+
+
 def _rows(layer: dict, frame: dict, washes: list, cw: float, ch: float) -> list[dict]:
-    """The areas of one drawing's picture, top first (facts' rows for it)."""
+    """The areas of one drawing's picture, top first (facts' rows for it). Each area is worked out only in its mask's
+    box (compose.mask_box) widened to whole blocks of the canvas's grid, and the blocks' lightness once over the
+    washes' joint box: the same blocks and numbers the whole canvas gives (over the whole canvas once per wash it
+    took ~0.45 s a look, Night Market's 54 washes)."""
     from rostrum_paint import compose
     w, h = D.canvas_size(layer)
-    rgba = _picture(frame, w, h).astype(np.float32) / 255
-    rgba[..., :3] *= rgba[..., 3:4]
-    b, later, blocks, rows = max(1, round(w / SEE)), np.zeros((h, w), bool), None, []
-    for paint, s, mask in reversed(washes):            # top first: a later wash hides the one under it
-        inside = compose.mask_array(mask, w, h) > 0.5
-        own = inside & ~later
-        later |= inside
+    b, rows = max(1, round(w / SEE)), []
+    boxes = [(paint, s, mask, compose.mask_box(mask, w, h)) for paint, s, mask in washes]
+    boxes = [(paint, s, mask, _grid_box(box, b, w, h)) for paint, s, mask, box in boxes if box is not None]
+    if not boxes:
+        return rows
+    ux0, uy0 = min(x[3][0] for x in boxes), min(x[3][1] for x in boxes)
+    ux1, uy1 = max(x[3][2] for x in boxes), max(x[3][3] for x in boxes)
+    later, blocks = np.zeros((uy1 - uy0, ux1 - ux0), bool), None     # where a wash over this one already is
+    for paint, s, mask, (x0, y0, x1, y1) in reversed(boxes):          # top first: a later wash hides the one under it
+        inside = compose.mask_array(mask, w, h)[y0:y1, x0:x1] > 0.5
+        seen = later[y0 - uy0:y1 - uy0, x0 - ux0:x1 - ux0]
+        own = inside & ~seen
+        seen |= inside
         share = float(own.sum()) / (cw * ch)
         if share >= MIN_SHARE:
-            blocks = blocks or lightness(rgba, b)
-            if m := measure(rgba, own, b, blocks):
+            if blocks is None:
+                rgba = _picture(frame, w, h)[uy0:uy1, ux0:ux1].astype(np.float32) / 255
+                rgba[..., :3] *= rgba[..., 3:4]
+                blocks = lightness(rgba, b)
+            by, bx = (y0 - uy0) // b, (x0 - ux0) // b
+            ny, nx = (y1 - y0) // b, (x1 - x0) // b
+            if m := measure(None, own, b, (blocks[0][by:by + ny, bx:bx + nx], blocks[1][by:by + ny, bx:bx + nx])):
                 rows.append({"drawing": layer["id"], "paint": paint, "stroke": s["id"], "area": round(share, 3), **m})
     return rows
 

@@ -94,6 +94,14 @@ def mask_array(mask: dict, w: int, h: int) -> np.ndarray:
     return _mask(json.dumps({k: mask[k] for k in ("points", "feather", "invert")}, sort_keys=True), w, h)
 
 
+def mask_box(mask: dict, w: int, h: int) -> tuple[int, int, int, int] | None:
+    """(x0, y0, x1, y1) canvas px outside which `mask_array` is 0 (the whole canvas for an inverted mask; None: 0
+    everywhere): a reader of one mask works only there."""
+    if mask["invert"]:
+        return 0, 0, w, h
+    return _mask_box(mask["points"], mask["feather"], w, h)
+
+
 def _mask_box(points, feather: float, w: int, h: int) -> tuple[int, int, int, int] | None:
     """(x0, y0, x1, y1) canvas px holding every px a mask's polygon and its feather can reach (None: none on the
     canvas). The blur is three box passes about `feather` px wide each, so 3 x (feather + 2) px round the shape; outside,

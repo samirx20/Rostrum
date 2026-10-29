@@ -2,9 +2,12 @@
 place paint meets a layer. Carried over from P-PAINT (`proofs/paint/kit/brush.py`, after Team Hem's P-3D-2 engine).
 A layer is HxWx4 float32: sRGB-encoded colour 0..1, **premultiplied by alpha** (rgb <= a).
 """
-import colorsys, math
+import colorsys, hashlib, math, threading
+from pathlib import Path
 from typing import NamedTuple
 import numpy as np
+
+_SOURCE = hashlib.sha1(Path(__file__).read_bytes()).hexdigest()[:12]     # the tooth's code, in its disk key
 
 TIPS = ("round", "bristle", "chalk", "flat", "block", "line")
 MODES = ("normal", "multiply", "erase", "screen", "add", "overlay", "soft_light", "color")
@@ -90,6 +93,7 @@ class Paper:
     def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0, origin=(0, 0), wrap=False):
         self.h, self.w, self.seed, self.size, self._g = h, w, seed, size, None
         self.picture, self.scale, self.origin, self.wrap = picture, scale, tuple(origin), wrap
+        self._making = threading.Lock()     # made once: a drawing's pictures made side by side each made it again
 
     def fields(self):
         """(grain, chalk fibre) HxW. On a seamless canvas (`wrap`) both repeat every w and h px, so the tooth meets
@@ -102,10 +106,22 @@ class Paper:
             fibre = _noise(self.h, self.w, 1.5 * self.scale, self.seed, 2, self.origin, self.wrap)
             self._g = (g, np.ascontiguousarray(0.55 * g + 0.45 * fibre, np.float32))
         if self._g is None:
-            s, o, h, w, r = self.size, self.origin, self.h, self.w, self.wrap
-            g = 0.6 * _noise(h, w, s, self.seed, 0, o, r) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o, r)
-            self._g = (g, _noise(h, w, 1.5, self.seed, 2, o, r))
+            with self._making:
+                if self._g is None:
+                    self._g = self._tooth()
         return self._g
+
+    def _tooth(self):
+        """The procedural tooth's (grain, fibre), kept on disk (kept_disk.arrays): ~0.4-1.3 s a canvas size, made
+        again by every fresh process for its first stroke on that paper."""
+        from . import kept_disk
+        s, o, h, w, r = self.size, self.origin, self.h, self.w, self.wrap
+
+        def make():
+            g = 0.6 * _noise(h, w, s, self.seed, 0, o, r) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o, r)
+            return {"grain": g, "fibre": _noise(h, w, 1.5, self.seed, 2, o, r)}
+        got = kept_disk.arrays("paper.tooth", [_SOURCE, repr((h, w, self.seed, s, o, r))], make)
+        return got["grain"], got["fibre"]
 
     def noise(self, x0, y0, x1, y1, cell, salt):
         """Smooth value noise 0..1 (features about `cell` px) over the canvas box x0..x1, y0..y1, fixed to the paper
