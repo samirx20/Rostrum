@@ -4,6 +4,7 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/base/gf/vec4f.h>
 #include <pxr/base/tf/stringUtils.h>
+#include <pxr/base/vt/array.h>
 #include <pxr/base/vt/dictionary.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/types.h>
@@ -147,7 +148,12 @@ UsdShadeMaterial write_material(const UsdStageRefPtr& stage, const MaterialDesc&
 
     UsdShadeShader tex = UsdShadeShader::Define(stage, path.AppendChild(TfToken("BaseColorTexture")));
     tex.CreateIdAttr(VtValue(TfToken("UsdUVTexture")));
-    tex.CreateInput(TfToken("file"), SdfValueTypeNames->Asset).Set(SdfAssetPath(asset_path(udim::as_set(d.base_texture))));
+    const std::string file = udim::as_set(d.base_texture);
+    tex.CreateInput(TfToken("file"), SdfValueTypeNames->Asset).Set(SdfAssetPath(asset_path(file)));
+    if (udim::is_set(file)) {  // Cycles loads a set's tiles only when they are listed (Storm finds them itself)
+      const std::vector<int> found = udim::tile_numbers(file);
+      tex.CreateInput(TfToken("tiles"), SdfValueTypeNames->IntArray).Set(VtIntArray(found.begin(), found.end()));
+    }
     tex.CreateInput(TfToken("st"), SdfValueTypeNames->Float2).ConnectToSource(st);
     tex.CreateInput(TfToken("wrapS"), SdfValueTypeNames->Token).Set(TfToken("repeat"));
     tex.CreateInput(TfToken("wrapT"), SdfValueTypeNames->Token).Set(TfToken("repeat"));
