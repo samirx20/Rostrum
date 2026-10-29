@@ -313,7 +313,7 @@ class Item:
     def __exit__(self, *exc):
         self._b.holders.pop()
         if self.node["type"] == "group" and not exc[0] and self.id not in self._b.sized:
-            fit(self.node)
+            fit(self.node, pointed=self.id in self._b.pointed)
 
 
 class Painted:
@@ -365,6 +365,7 @@ class Build:
     def __init__(self, reserved=()):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
         self.sized = set()          # groups whose script gave a size (w or h): never refitted
+        self.pointed = set()        # unsized groups whose script gave x / y: their children count from that point
         self.counts: dict[str, int] = {}     # type -> the last counted N (new_id)
 
     def new_id(self, type_, id_):
@@ -469,11 +470,23 @@ class Build:
             for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
                 if xy not in values:
                     values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
+        if values.get("ridePath"):         # rides a path: the path places it, its own x / y are an offset (as layer.ride sets)
+            values = {**values, "x": values.get("x", 0.0), "y": values.get("y", 0.0)}
+            off, size = math.hypot(float(values["x"]), float(values["y"])), max(float(values.get("w", 0) or 0), float(values.get("h", 0) or 0), 40.0)
+            if off > 2 * size:
+                raise ValueError(f'{id or type_} rides the path "{values["ridePath"]}": the path places it, and its x / y '
+                                 f'({values["x"]:g}, {values["y"]:g}) would be added to that place as an offset, {off:.0f} px '
+                                 f'off the line. Leave x / y out (it then sits on the line), or give a small offset '
+                                 f'(x=0, y=-30 floats it above).')
+        pointed = type_ == "group" and bool({"x", "y"} & values.keys()) and not ({"w", "h", "layout"} & values.keys())             and not script_layout.in_layout(self) and not ({"anchorX", "anchorY", "origin", "anchor"} & values.keys())
         values = script_layout.centre(self, type_, values)           # no x / y: the parent's centre
         if type_ == "group":        # a script's hugging group grows around its anchor; keeping top-left is the canvas's
             values.setdefault("hugPin", False)
         values = script_layout.prepare(self, type_, id, values)       # origin, tw, container words (guide lay-out-a-screen)
-        return self.add(type_, id, values, self.holders[-1]["layers"])
+        made = self.add(type_, id, values, self.holders[-1]["layers"])
+        if pointed:
+            self.pointed.add(made.id)   # group("arm", x=520, y=650): a child at (0, 80) sits 80 px below that point
+        return made
 
 
 def _hint(word, options) -> str:

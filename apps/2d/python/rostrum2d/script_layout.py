@@ -60,6 +60,8 @@ def centre(build, type_: str, values: dict) -> dict:
         return values
     if h["type"] == "comp":
         cx, cy = h["width"] / 2, h["height"] / 2
+    elif h["id"] in build.pointed:     # a group placed by its x / y: its children count from that point
+        cx, cy = 0.0, 0.0
     elif h["id"] in build.sized:
         cx, cy = h["w"] / 2, h["h"] / 2
     else:       # an unsized group fits around what is inside at its end: a layer left alone sits on the group's x / y

@@ -47,12 +47,13 @@ f = lambda x: math.sin(x) * math.exp(-x / 10)
 wave = path("wave", d=line_d(curve_points(f, 0, 4 * math.pi, 240), to=P, smooth=True),
             fill="none", stroke=True, strokeColor="#ffb547", strokeWidth=6, cap="round")
 wave.key("trimEnd", {0.3: 0, 3.0: 1}, ease="easeInOut")                     # the curve draws on
-shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideAt="end", x=0, y=0)   # rides its tip
+shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideAt="end")   # rides its tip
 ```
 
 - **Draw on:** key `trimEnd` 0 → 1 (`trimStart` takes it off again). **A dot riding the curve:** `ridePath` + `rideAt="end"`
-  follows the drawn tip; `rideAt="along"` and keying `rideAlong` 0 → 1 moves it on its own clock. Its `x`, `y` become an
-  offset from the path, so set them to 0. It shows from frame 0 at the curve's start; give it `start=` the draw-on's
+  follows the drawn tip; `rideAt="along"` and keying `rideAlong` 0 → 1 moves it on its own clock. Leave its `x`, `y`
+  out: the path places it, and an `x`, `y` given is an offset from there (`y=-30` floats it above the line; a big one is
+  refused). It shows from frame 0 at the curve's start; give it `start=` the draw-on's
   first key time (here `start=0.3`) if it should appear with the line.
 - **Gaps:** `1/x`, `tan`, `log` break; `curve_points` leaves a `None` there and the line lifts. Pass `ylim=(lo, hi)` so a
   value shooting off to infinity becomes a gap instead of a near-vertical line.
