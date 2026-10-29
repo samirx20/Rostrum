@@ -11,7 +11,7 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui import drag, snap
 from rostrum_gui.edits import Drag, Scrub
 
-from . import handles, key_lock, moves, timing
+from . import handles, moves, timing
 from .actions import LIST
 
 
@@ -82,7 +82,6 @@ class EditSlots:
             calls = moves.add_note_calls(self.doc, self._track, t, key, chord=self.drawChord,
                                          beats=self._draw_beats(timing.beat(t, self.doc.data)),
                                          grid=self._grid_now, px=px, lock=self.keepInKey)
-            self._range_guard(calls)            # a key its recorded sound can't play: refused in words (roll_hover.py)
             self._apply(calls, "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
@@ -110,12 +109,6 @@ class EditSlots:
         if not self._track:
             return ""
         grid = self._grid_now
-        root, at = self.doc.data, timing.snap(t, self.doc.data, False, grid, "draw", px)
-        key = key_lock.snapped(root, at, int(round(row))) if self.keepInKey else int(round(row))
-        said = self._range_refusal(self._track, self._stamped(key, at, root))     # the keys its faint note showed
-        if said:                                    # a row its recorded sound can't play: nothing drawn, said why
-            self._fail(said, said)
-            return ""
         calls = moves.add_note_calls(self.doc, self._track, t, int(round(row)), chord=self.drawChord,
                                      beats=self._draw_beats(timing.beat(t, self.doc.data)),
                                      grid=grid, px=px, lock=self.keepInKey)
@@ -194,15 +187,6 @@ class EditSlots:
             end = timing.sec(root["length"], root) if root.get("length") is not None else None    # a set length: kept inside it
             calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), scale,
                                               self._grid_now, end, self.keepInKey)
-            said = self._pitch_refusal(calls)
-            if said:                # past a track's recorded range: the notes stay at the last keys that fit, said why
-                calls, caught = moves.many_calls(self.doc, g, dt, g.get("fits", 0), free, only_time, self._snap_targets(),
-                                                  scale, self._grid_now, end, self.keepInKey)
-                if said != g.get("said"):
-                    self._fail(said, said)
-                g["said"] = said
-            else:
-                g["fits"] = dsemi
             if not only_time:
                 calls += moves.track_calls(self.doc, g, getattr(self, "_to_track", ""))
             if copy and not self._copy:
@@ -210,16 +194,6 @@ class EditSlots:
             self._drag.preview(calls)
             self._set_snap(caught if caught.get("name") or not free else {})
         self._guard(go)
-
-    def _pitch_refusal(self, calls) -> str:
-        """The words when a drag's calls put notes outside their track's recorded range (roll_hover._range_refusal), else ""."""
-        by: dict = {}
-        for c in calls:
-            pitch = (c.get("args") or {}).get("pitch")
-            for i in (c.get("target") or []) if pitch is not None else []:
-                if self.doc.has(i) and self.doc.item(i)["type"] == "note":
-                    by.setdefault(self.doc.parent_of(i)[0], []).extend(timing.keys(pitch))
-        return next((w for t, ks in by.items() if (w := self._range_refusal(t, ks))), "")
 
     @Slot(str)
     def dragTrack(self, track_id):

@@ -331,7 +331,6 @@ class ActionSlots:
                 act()
 
         def act():
-            self._range_guard(calls)            # notes outside their track's recorded range: refused in words (roll_hover.py)
             picked = list(self._picks.ids)      # (the change drops what it removed from the selection)
             change = self.doc.apply(calls, self.who, label=label)
             self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently

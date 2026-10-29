@@ -213,7 +213,7 @@ MouseArea {
             visible: !!m.ghost && m.grid.shows(key)
             x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
             width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
-            color: m.ghost && m.ghost.out ? Theme.danger : m.grid.roll.hue; opacity: 0.55   // faint, still seen on the dark rows; red: a row its sound can't play (the click is refused)
+            color: m.grid.roll.hue; opacity: 0.55   // faint, still seen on the dark rows
         }
     }
     Diamond {   // a hit
