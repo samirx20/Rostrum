@@ -15,6 +15,17 @@ from .pick import ITEM_COMP, doc_and_comp
 tools = Tools()
 
 
+def segments_said(g: dict) -> str:
+    """What an mp4 export drew and what it reused, in words."""
+    if not g["drawn"]:
+        drew = f'Nothing changed: all {g["count"]} segments reused'
+    elif g["drawn"] == g["count"]:
+        drew = f'Rendered all {g["count"]} segments'
+    else:
+        drew = f'Re-rendered {g["drawn"]} of {g["count"]} segments ({g["drawn_s"]:g} s), the rest reused'
+    return f'{drew}; took {g["took_s"]:g} s'
+
+
 @tools.tool("render_export", {"required": ["format"], "properties": {
     **ITEM_COMP,
     "format": {"type": "string", "enum": [r["name"] for r in exporting.formats()],
@@ -34,8 +45,14 @@ tools = Tools()
     "overwrite": {"type": "boolean", "description": "Replace a file that already exists at `path`. Default false: an existing file makes the export fail (nothing is replaced)."},
     **faults.NOTES}})
 def render_export(ctx, args):
-    """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. It waits for its job in this call (wait_s, default
-    120 s) and answers with the finished file; past that with the job id: ask with inspect_job (wait_s up to 25). The file is written under a .partial name and renamed once it
+    """Export a composition in one of the formats the Export button offers, through the same engine as look_frame.
+    mp4 returns at once with a job id and renders in the background from a copy of the document taken at the call (later
+    edits are not in the file): keep working, then inspect_job (wait_s up to 25) for the finished reply. Pass wait_s to
+    wait in the call instead. An mp4 is drawn in 2-second segments kept by their content: exporting again draws only the
+    segments a change touches (a layer counts for the seconds between its start and end; one with no start / end, and
+    the frame, for all of them) and reuses the rest; the reply says how many were re-rendered and the time. Other formats
+    wait for their job in this call (wait_s, default 120 s) and answer with the finished file; past that with the job
+    id. The file is written under a .partial name and renamed once it
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
     before any job, as the Export button refuses it. It always writes what was asked, under the name
@@ -72,6 +89,9 @@ def render_export(ctx, args):
         facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite, on_stop=job.on_cancel)
         say = f'Exported {comp["id"]} as {fmt}: {facts["frames"]} frames at {facts["fps"]} fps'
         data = {k: facts[k] for k in ("file", "frames", "fps", "alpha", "depth", "checked", "files", "sound") if k in facts}
+        if "segments" in facts:
+            say += ". " + segments_said(facts["segments"])
+            data["segments"] = facts["segments"]
         if "sound" in facts:
             say += f', with the sound of "{facts["sound"]["song"]}"'
         if "report" in facts:

@@ -5,6 +5,11 @@ go to the engine together (FRAMES a request); a frame whose trees are the same a
 the layout fields; a field the layout sets overrides that field's own keys and any expression on it. A value that
 never changes is one key. Layout reads the layers' values with their expressions applied (a card whose height is
 an expression re-flows the others).
+
+Each top-level layer's layout is solved on its own and kept (_KEPT) while it is the very same object (documents are
+copy on write: an edit makes new objects only for what it touched), in the same composition settings, with the same
+expression keys inside it: a script re-run that changed one section solves only that section again (a 70 s film:
+~4 s for every frame of every section, before).
 """
 from __future__ import annotations
 
@@ -15,9 +20,11 @@ from rostrum_core.keys import track_value
 from . import fields as F
 from .evaluate import resolve
 from .exprbake import items_of
-from .layout import Plan, has_layout, lay_out, prime_texts
+from .layout import Plan, has_layout, laid_out, lay_out, prime_texts
 
 FRAMES = 60                 # frames' layout trees a request: one round trip a couple of seconds of film
+KEEP = 512                  # top-level layers' solved layouts kept (oldest dropped)
+_KEPT: dict[str, tuple] = {}   # top-level layer id -> (the layer object, comp settings, its expression keys, its tracks)
 
 
 def uses_layout(comp: dict) -> bool:
@@ -29,6 +36,25 @@ def bake(comp: dict, fps: float, baked: dict | None = None) -> dict[str, dict[st
     if not uses_layout(comp):
         return {}
     baked = baked or {}
+    settings = (fps, {k: v for k, v in comp.items() if k != "layers"})
+    out: dict[str, dict[str, list]] = {}
+    for layer in comp.get("layers", []):
+        if not laid_out(layer):
+            continue
+        mine = {i: baked[i] for i in items_of(layer) if i in baked}
+        kept = _KEPT.get(layer["id"])
+        if not (kept and kept[0] is layer and kept[1] == settings and kept[2] == mine):
+            kept = (layer, settings, mine, _solve({**comp, "layers": [layer]}, fps, baked))
+            _KEPT.pop(layer["id"], None)
+            _KEPT[layer["id"]] = kept
+            while len(_KEPT) > KEEP:
+                _KEPT.pop(next(iter(_KEPT)))
+        out.update({i: dict(fields) for i, fields in kept[3].items()})
+    return out
+
+
+def _solve(comp: dict, fps: float, baked: dict) -> dict[str, dict[str, list]]:
+    """bake's work for the layers of `comp`, every frame."""
 
     def props(item, t):
         p = resolve(item, t)

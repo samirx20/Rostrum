@@ -9,7 +9,7 @@ working on one page; the topic guides at the end hold the detail.
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
 2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet.
    Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
-3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself.
+3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look takes well under a second once the session's first one has run (about 0.2 s a frame or a sheet on a 70 s film), so look often.
 4. **Change the script**, not the document.
 5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
    by hand stays. A new name adds a second copy of everything.
@@ -93,6 +93,7 @@ that the layout, an anchor or a marker can give you.
 - `type-and-kinetic-text`: fonts, per-letter animation (typing on: key opacity 0 → 1 with `letterDelay`), scrambles.
 - `easing-and-overlap`: what each ease does, checking overlap.
 - `frame-parallax-motion-blur`: moving and cutting the frame, depth, motion blur.
+- `transitions-and-carry-overs`: `transition()` (cut, fade, push, slide, wipe, iris, zoom, blur) and `carry()` from one section to the next.
 - `shape-and-path-animation`: the pen, combining shapes, drawing a stroke on.
 - `drawing-and-frame-by-frame`, `painted-backgrounds`: brush strokes, one picture per frame, big painted worlds.
 - `character-rigging-and-lip-sync`: limbs, poses, walks, mouths that follow a voice.

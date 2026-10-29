@@ -204,6 +204,15 @@ Everything a script can call, by job. The details and techniques are in the topi
 - `beats()` gives the scene's music beats in seconds (the music is made in RostrumSound); `beats(bpm=120, start=,
   count=)` a grid without a song (`end=` too: default the scene's length). Guide `timing-to-music`.
 
+### Transitions and carry-overs (guide `transitions-and-carry-overs`)
+
+- `transition(kind, at=, dur=0.5, out_of=, into=, ease="smooth", …)`: kind `"cut"`, `"fade"` (`hold_out=`),
+  `"push"` / `"slide"` (`direction=`), `"wipe"` (`direction=`, `softness=`), `"iris"` (`x=`, `y=`, `softness=`),
+  `"zoom"` (`out_scale=`, `in_scale=`), `"blur"` (`radius=`). Writes out_of's Ends at (at + dur), into's Starts at
+  (at), into above out_of, and plain keys / a mask / blur effects on the two.
+- `carry(layer, into=, at=, dur=0.5, to=dict(x=, y=, scale=, …), ease=, id=)`: the layer ends at `at` in its group; a
+  copy `"<layer>_carry"` in the scene takes over where it showed and is keyed to `to` (scene px) at `at + dur`.
+
 ### Layout (guide `lay-out-a-screen`)
 
 - `with row / column / grid / stack(padding=, gap=, align=, justify=, w=px | "50%" | "fill" | "fit",

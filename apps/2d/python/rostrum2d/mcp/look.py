@@ -62,14 +62,14 @@ def look_frame(ctx, args):
     t, frame = time_of(ctx, comp, args)
     if "area" in args:
         return _area(ctx, doc, comp, t, frame, args)
-    scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
+    scene, width = render.look_scene(doc, comp["id"], t), args.get("width", FRAME_WIDTH)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
     seen = shown_ids(comp, t)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_look_") as tmp:
-            raw = Path(tmp) / "raw.png"
-            render.stills(ctx.tool, scene, [(t, raw)])
+            raw = Path(tmp) / "raw.png"         # drawn at the size asked (the engine scales), never a full frame shrunk after
+            render.small_stills(ctx.tool, scene, [(t, raw)], min(width, comp_size(comp)[0]))
             w, h = sheet.scaled_copy(raw, width, dest)
         washes = look_wash.facts(comp, t)
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.'
@@ -87,7 +87,7 @@ def _area(ctx, doc, comp, t, frame, args):
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'area {args["area"]}', f"has no area inside the composition (0, 0, {cw:g}, {ch:g})",
                            hint="[x, y, w, h] in comp px, w and h above 0.")
     width = min(args.get("width", FRAME_WIDTH), 4096)
-    scene = render.scene_of(doc, comp["id"], (t, t))
+    scene = render.look_scene(doc, comp["id"], t)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}_area', project=doc.folder)
 
     def job_fn(job):
@@ -145,7 +145,7 @@ def look_sheet(ctx, args):
 def _sheet_of(ctx, doc, comp, frames: list[int], args: dict):
     """The one contact-sheet path: the frames (whole numbers, sorted) of a composition as one labelled picture."""
     fps = comp.get("fps", 30)
-    scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps), frames)
+    scene = render.look_scene(doc, comp["id"])
     cols = min(args.get("cols", 4), len(frames))
     tile_w = sheet.tile_width(args.get("width", SHEET_WIDTH), cols)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet', project=doc.folder)

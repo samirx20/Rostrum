@@ -111,7 +111,7 @@ def inspect_colour_at(ctx, args):
     x, y, (w, h) = args["x"], args["y"], comp_size(comp)
     if not (0 <= x < w and 0 <= y < h):
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"point ({x:g}, {y:g})", f"is outside the frame ({w}×{h} px)")
-    scene = render.scene_of(doc, comp["id"], (t, t))
+    scene = render.look_scene(doc, comp["id"], t)
     top = next((n for n in _covering(flatten(comp, t), x, y) if n["type"] != "group" and not problems_showing(n, w, h)), None)
 
     def job_fn(job):

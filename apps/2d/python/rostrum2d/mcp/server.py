@@ -38,7 +38,8 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
 
 SCRIPT_HELP = ("2D script layer: lay out first with row / column / grid / stack(padding=, gap=, align=); a layer with no "
                "x / y sits at its parent's centre; anchor=\"top-left\"|…. Time by name: marker(\"reveal\", 3) -> \"#reveal+0.5\", "
-               "after(item, gap=), stagger(items, every=), beats(). item.key(field, {time: value}, ease=). Every function: "
+               "after(item, gap=), stagger(items, every=), beats(). item.key(field, {time: value}, ease=). Section to section: "
+               "transition(\"push\", at=, dur=, out_of=, into=), carry(layer, into=, at=, to=dict(…)). Every function: "
                "inspect_guide 'script-reference'.")
 
 
