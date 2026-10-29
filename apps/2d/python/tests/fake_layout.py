@@ -55,5 +55,5 @@ class FakeEngine:
         at = max(at - gap, 0.0)
         cw, ch = (at, cross) if row else (cross, at)
         w = s["width"] if isinstance(s.get("width"), (int, float)) else cw + left + right
-        h = s["height"] if isinstance(s.get("height"), (int, float)) else ch + top + bottom
+        h = s["height"] if isinstance(s.get("height"), (int, float)) else max(ch + top + bottom, s.get("minHeight", 0))
         return w, h

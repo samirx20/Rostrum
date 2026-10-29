@@ -140,6 +140,8 @@ class Plan:
             mode = p[f"size{axis}"]
             if mode == "fit":                    # inside a box: auto, so a stretching parent stretches it (as CSS)
                 style["width" if axis == "W" else "height"] = "fit" if parent is None else "auto"
+                if axis == "H" and p.get("minH", 0) > 0:
+                    style["minHeight"] = p["minH"]
             elif mode == "fixed" or parent is None:
                 style["width" if axis == "W" else "height"] = p[field]
         self._child_style(group, p, parent, style)
