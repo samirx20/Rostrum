@@ -148,3 +148,16 @@ def test_three_tracks_of_one_piano_are_one_exposed_piano(tmp_path):
     f = squash.fault(wav, lim, {"tracks": tracks, "data": data})
     assert f and f[0]["measured"]["exposed"] and f[0]["measured"]["lead"] == "piano (keys, lead, bell)"
     assert squash.fault(wav, lim, {"tracks": tracks, "data": {**data, "tracks": []}}) == []   # three different sounds: dense
+
+
+def test_a_fade_of_a_tail_no_listener_hears_is_not_a_faded_end(tmp_path):
+    """Round sound-motion, Morning Light: a reverb tail between -80 and -60 dBFS was 'faded' (faded_end) and 'dead air'
+    (dead_air_end) at once, so every ending was refused. A fade counts only when what it took was audible."""
+    t = np.arange(int(4.0 * SR)) / SR
+    for name, level, fault in (("quiet", 10 ** (-70 / 20), False), ("ringing", 0.1, True)):   # the tail when the fade starts at 3 s
+        env = np.where(t < 2.0, 1.0, level) * np.where(t < 3.0, 1.0, np.clip(4.0 - t, 0, 1))
+        y = 0.5 * np.sin(2 * np.pi * 220 * t) * env
+        path = tmp_path / f"{name}.wav"
+        sf.write(path, np.stack([y, y], axis=1), SR, subtype="PCM_24")
+        got = clean_end.fault(_doc("ends cleanly on a marker"), {"faded_s": 1.0, "rang_s": 2.0, "from_s": 3.0}, str(path))
+        assert bool(got and got[0]["id"] == "faded_end") == fault

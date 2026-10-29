@@ -11,6 +11,11 @@ Re-run of the same canary: both models then held the last chord to the marker an
 stopped while still loud (-7 and -15 dBFS): chopped, not an ending, and the engine's warning even advised fading. So a
 song asked to end cleanly whose file stops within CHOP_DB of its loudest is a fault too, `chopped_end`: a clean ending
 is the music stopping itself (a short last chord or hit on the marker, its tail dying away in the room after it).
+
+Round sound-motion, Morning Light: the delivery fades whatever any part still has above -80 dBFS at the length (deliver.py),
+while dead_air_end (ending.py) calls everything under -60 dBFS gone. A reverb tail between the two was "faded" and
+"dead air" at once, and every ending the agent tried was refused by one or the other. So a fade counts only when a listener
+hears what it took: the sound was still above ending.HEARD_DBFS (the one audible-end line) where the fade began.
 """
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ import numpy as np
 from rostrum_core.mcp import faults as shared
 
 from .core import db, load, mono
+from .ending import audible_end
 
 ENDS = ("end", "ending", "the end", "clean end", "hard end", "final", "final hit", "button")   # marker names that mean "the song ends here"
 
@@ -64,6 +70,12 @@ def _why(doc) -> str | None:
     return f"the song marks its end (marker '{name}')" if name else None
 
 
+def _unheard(wav, from_s: float) -> bool:
+    """The sound had fallen under the audible line (ending.HEARD_DBFS) by the time the delivery's fade began."""
+    y, sr = load(wav)
+    return audible_end(y, sr) <= from_s + 0.05
+
+
 def fault(doc, faded: dict | None, wav=None) -> list[dict]:
     why = _why(doc)
     if not why:
@@ -73,6 +85,8 @@ def fault(doc, faded: dict | None, wav=None) -> list[dict]:
         return [shared.fault("chopped_end", f"the ending is chopped, not a clean end, and {why}: the file stops while still "
                              f"playing (its last 0.25 s at {chop[0]:.0f} dBFS, only {chop[1] - chop[0]:.0f} dB under its "
                              f"loudest)", CHOP_FIX, "the end")] if chop else []
+    if wav and _unheard(wav, faded["from_s"]):
+        return []                              # the fade took only a tail no listener hears
     return [shared.fault("faded_end", f"the ending is a fade, not a clean end, and {why}: what still rang at the length "
                          f"({faded['rang_s']:.1f} s of it) was faded out over the file's last {faded['faded_s']:.1f} s",
                          FIX.format(chop=CHOP_FIX), f"{faded['from_s']:.2f} s on")]
