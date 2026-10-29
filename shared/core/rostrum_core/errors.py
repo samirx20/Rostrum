@@ -5,9 +5,10 @@ the codes below. The GUI, CLI and MCP all show `error.line()`; nothing invents a
 """
 from __future__ import annotations
 
-import difflib
 import re
 from types import SimpleNamespace
+
+from . import nearest
 
 codes = SimpleNamespace(**{c: c for c in (
     "UNKNOWN_TOOL", "UNKNOWN_OPERATION", "BAD_ARGUMENT", "NOT_FOUND", "CONFLICT", "CHECK_FAILED",
@@ -15,19 +16,8 @@ codes = SimpleNamespace(**{c: c for c in (
 ALL_CODES = frozenset(vars(codes))
 
 
-# Words other tools use for the same thing, tried before spelling: an agent writing `from` / `to` is told `start` / `end`.
-SAME_AS = {"from": ("start", "t0"), "to": ("end", "t1"), "begin": ("start",), "stop": ("end",), "until": ("end",),
-           "columns": ("cols",), "frames": ("count",), "n": ("count",), "time": ("t", "at"), "script": ("source", "path"),
-           "code": ("source",), "file": ("path",), "dir": ("folder",), "project": ("folder",), "doc": ("item",)}
-
-
-def did_you_mean(word, choices) -> str | None:
-    named = [str(c) for c in choices]
-    same = next((s for s in SAME_AS.get(str(word).lower(), ()) if s in named), None)
-    if same:
-        return f"Did you mean {same}?"
-    close = difflib.get_close_matches(str(word), named, n=1, cutoff=0.6)
-    return f"Did you mean {close[0]}?" if close else None
+SAME_AS = nearest.SAME_AS
+did_you_mean = nearest.did_you_mean      # the closest real names (rostrum_core/nearest.py)
 
 
 # An item id as the documents write them ("track_1.n8000", "logo.s2"): dotted lower-case words with a digit in the last part.
