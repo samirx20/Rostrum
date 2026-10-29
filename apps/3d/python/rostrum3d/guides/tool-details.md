@@ -16,6 +16,7 @@ One rendered frame of a shot, seen through the SHOT's camera by the same render 
 - `renderer`: Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials).
 - `width`: Picture width in px; the height follows the shot's shape.
 - `through`: A light's id (rect, disk, strip, sphere, distant): look from where it stands along the way it shines (60° tall view, level) instead of through the shot camera, to aim it.
+- `view`: Look from here instead, for this one frame; the shot camera and the document stay as they are. `{"from": [x, y, z], "to": [x, y, z] or a part}`, or `{"around": a part, "turn_deg": 90, "tilt_deg": 30, "distance": 2}` (from where the shot camera stands: turn walks round to its right, tilt looks from higher, distance default its own); `lens_mm` default the shot camera's. A part: an item id or a clay joint `"buddy.hand.L"`. Level, like an aimed camera; data `view` {eye, target, focal}. No text or notes (not the shot's picture).
 - `onion`: Onion skin as in the viewport: the item's ghosts at other frames, red before, green after. Quick looks only (fast or stylized, not final); no ghosts are drawn when the item has no other keys or frames to show.
 - `highlight`: Outline what clay steps made: "steps:arm" or "steps:arm,foot" (step names or ids, as look_at's `step` gives them). Each in its own colour, tinted, 2 px edge.
 
@@ -132,7 +133,7 @@ An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot came
 - `exr`: Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants), with its passes as layers (passes).
 - `output_folder`: A folder (absolute path) to copy the finished mp4 and its share copy into, besides the project render. Made if missing; checked before rendering: a folder that can't be written fails at once.
 - `file_name`: The copy's name in output_folder (".mp4" optional; its share copy is <name>-share.mp4). Default: the render's own name. A file already there is replaced.
-- `budget_min`: Minutes you can spend. The time is measured first (render_estimate's probe, kept for the scene); if the estimate is over this, nothing is rendered and the error names settings that should fit, each with its time.
+- `budget_min`: Minutes you can spend. The time is measured first (render_estimate's probe, kept for the scene); it renders either way, and if the estimate is over this the reply says so at once, naming settings that should fit, each with its time.
 - `estimate_only`: Return the measured estimate (render_estimate's probe of the middle frame, kept for the scene) and render no video.
 
 ## inspect_model_file
@@ -202,6 +203,7 @@ What moves in a shot and how, measured on every frame from the document's evalua
 - `full`: Adds each item's speed per frame (m/s, and px/s on the picture), its jumps and its moving stretches to the data. Default false: a line per moving item.
 - `limit`: Without `items`: how many moving items and finding lines to list (default 20); the reply says how many more there are.
 - `all`: Every moving item and every finding line, no cap.
+- `path`: Instead of the above, one part's path on the picture: an item id or a clay joint `"buddy.hand.L"` (the bone's end: a hand's tip, an arm's elbow). Per sample its place x, y (0–1 of the picture, 0, 0 top left; behind the camera: null) and on-screen speed (picture heights per second); travel (picture heights), x / y range, peak speed, samples outside the picture. `from_s`, `to_s` (seconds from the shot's start; default the whole shot), `step_s` (default a frame). `view` (as look_frame's, placed at the middle time and held still) measures from there. `picture` (default true): a quick frame at the middle time with the trail drawn on it (line and dots per sample, the bigger dot this frame); `false` = numbers only, no render.
 
 ## inspect_voice_lines
 

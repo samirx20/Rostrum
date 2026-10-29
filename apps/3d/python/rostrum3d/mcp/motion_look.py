@@ -12,7 +12,8 @@ from rostrum_core.motion.report import LIMIT, capped, examples, stem
 from ..motion_track import Track
 from ..sim import fall_view
 from ..sim.cut_note import cut_lines
-from . import motion_found as M, motion_sim, shot_faults
+from . import motion_found as M, motion_sim, path_look, shot_faults
+from .look import VIEW
 from .shot import ITEM_SHOT, check_frame, doc_and_shot
 
 tools = Tools()
@@ -79,13 +80,17 @@ def grouped(found: list[dict]) -> list[dict]:
     "items": {"type": "array", "items": {"type": "string"}, "description": "Only these items (still checked against every shape)."},
     "full": {"type": "boolean", "description": "Add each item's speed per frame, jumps and moving stretches to the data."},
     "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": LIMIT, "description": "How many items and findings to list (default 20)."},
-    "all": {"type": "boolean", "description": "Every item and finding, no cap."}}})
+    "all": {"type": "boolean", "description": "Every item and finding, no cap."}, **path_look.PATH,
+    "view": {**VIEW["view"], "description": "path: measure from this view instead of the shot camera (look_frame's `view`, placed at the middle time)."}}})
 def look_motion(ctx, args):
     """What moves in a shot, measured every frame from the document (no rendering): per moving item its path, peak speed
     and stops; then faults: shapes passing through each other, sudden jumps, an item leaving the picture, and for falls
     and cloth whether the drop is on screen. Short by default; `items`, `frames`, `full`; `notes: true` (without `items`) also lists
-    the shot's checks read from the document. Guide 'agents' (The loop)."""
+    the shot's checks read from the document. `path` instead measures one part (an item or a clay joint "buddy.hand.L")
+    on the picture: place per sample, on-screen speed, travel, and a frame with its trail. Guide 'agents' (The loop)."""
     doc, info = doc_and_shot(ctx, args)
+    if args.get("path"):
+        return path_look.measure(ctx, doc, info, args)
     frames = _range(ctx, info, args)
     sim = motion_sim.moves(doc.data, info, ctx.app.folder)
     track = Track(doc.data, info, frames, ctx.app.folder, sim)

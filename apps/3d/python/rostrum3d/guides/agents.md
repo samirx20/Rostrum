@@ -39,6 +39,7 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
      blocks"); with no `renderer` or `quality`, a shot whose Quality is Stylized is drawn stylized (`look_frame what "sheet"` and
      `look_frame what "shots"` too). It fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
+     `view` looks from anywhere without moving the shot camera: `{"around": "buddy.head", "turn_deg": 90}` (the side) or `{"from": [x, y, z], "to": "ball"}`.
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim"). For every text in the picture it also says which way
      it reads from this camera: left to right, mirrored (seen from behind), upside down, tilted (its angle to the horizontal)
@@ -50,7 +51,8 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      other (both named, the frames, how deep), sudden jumps (a snap or teleport between two frames), an item partly or
      wholly out of the picture. Overlap is judged by each shape's own box, so a hollow case counts as full: check a
      "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
-     `full` for the speed on every frame. A thing set to Falls is measured where the stored simulation has it; when the
+     `full` for the speed on every frame. `path: "buddy.hand.L"` (or an item) instead measures that part on the picture:
+     place per sample (0–1), speed, travel as a share of the picture's height, and a frame with its trail drawn on it. A thing set to Falls is measured where the stored simulation has it; when the
      simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
      `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_frame what "sheet"` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
      thing and cloth says how many frames of its drop (until it first lands) the shot camera shows, and names a fall that happens above
@@ -154,8 +156,8 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - `render_video` with `budget_min` or `estimate_only` uses this same measurement (kept for the scene), so it agrees with
   `render_estimate`, and fewer samples never estimate longer.
   The reply waits (up to 25 s) for that measurement and answers at once: `estimate_only` returns the figures (frames, seconds, seconds a
-  frame), also when they are over `budget_min` (then with the settings that fit); `budget_min` alone, when over, is an immediate error
-  that names the settings that fit and says nothing was rendered. Neither is a failed job to find later with `inspect_job`.
+  frame), also when they are over `budget_min` (then with the settings that fit); `budget_min` alone renders either way, and when over,
+  the reply says so at once ("Rendering anyway: … over the 9.0 min budget") with the settings that fit, for next time.
 - Look at the probe picture it returns: it is what is about to be drawn.
 - It is a close guide, not a promise: start-up and encoding do not shrink with the settings, and time grows with samples much
   less than in step (a straight line in the log of the samples, as measured).

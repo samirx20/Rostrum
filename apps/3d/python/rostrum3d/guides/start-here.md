@@ -72,7 +72,8 @@ Run it (`run_script`, `name: "scene.py"`, `look: true`), look at the frame, chan
 
 - `run_script`: run the whole scene script (`look: true` to see it).
 - `look_frame`: the main check. See the shot: one frame (default), or `what` "sheet", "shots", "material", "shape", "paint",
-  "coverage", "where", "exposure".
+  "coverage", "where", "exposure"; `view` looks from any angle without moving the shot camera. `look_motion path:
+  "buddy.hand.L"` measures a part's path on the picture (numbers and a trail frame).
 - `edit_place_on`: put a mesh, or a light's highlight, on what is at a pixel of the last look.
 - `inspect_guide`: these guides (`topic`).
 - `render_still`: the final picture (`render_video` for an mp4).
