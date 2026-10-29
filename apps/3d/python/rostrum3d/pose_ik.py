@@ -2,7 +2,8 @@
 helpers the Pose tool and `pose.drag` share. Plain Python, no Qt.
 
 Spaces: everything is in the clay's (or mesh's) own space, as skin.py keeps its bones. Turns are a bone's absolute
-Turn (rx ry rz degrees, what its keys hold); a bone with no keys is at its rest turn.
+Turn (rx ry rz degrees, what its Base keys hold); a bone with no keys is at its rest turn. A rig reads the turns as
+shown: the document's animation layers (`stack`, layers.stack_of) laid over, so a drag starts from what is on screen.
 
 The solve is damped CCD: from the grabbed bone back towards the body, each bone turns by part of the smallest turn
 that brings the grabbed spot towards the target (limbs half of it per pass, the body's own bones ~0.3 as much), pass
@@ -17,7 +18,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum_core.keys import keys_of, track_value
+from rostrum_core.keys import layers
 
 from . import aim, skin
 from .pose_joints import BODY
@@ -112,11 +113,11 @@ def _seg_dist(p, a, b) -> float:
 
 class Rig:
     """A clay's bones as numbers for posing: rest heads and turns, the turns now (at time t), parents first (the same
-    order as skin.bones_of, so chain_pose lines up with the core's skin)."""
+    order as skin.bones_of, so chain_pose lines up with the core's skin), with the animation layers `stack` laid over."""
 
-    def __init__(self, item: dict, t: float = 0.0):
+    def __init__(self, item: dict, t: float = 0.0, stack=()):
         chain = skin.bones_of(item)
-        self.item, self.t = item, t
+        self.item, self.t, self.stack = item, t, list(stack)
         self.bones = [b for b, _ in chain]
         self.parent = [p for _, p in chain]
         self.ids = [b["id"] for b in self.bones]
@@ -125,8 +126,7 @@ class Rig:
         self.length = [float(b.get("length", 0.0)) for b in self.bones]
         self.head = [[float(b.get(k, 0.0)) for k in skin.HEAD] for b in self.bones]
         self.rest_turn = [tuple(float(b.get(k, 0.0)) for k in TURN) for b in self.bones]
-        self.turn = [tuple(float(track_value(ks, t)) if ks else r for ks, r in zip((keys_of(b, k) for k in TURN), rt))
-                     for b, rt in zip(self.bones, self.rest_turn)]
+        self.turn = [turn_now(b, t, stack) for b in self.bones]
         self.trunk = [j in BODY for j in self.joint]
         self.rest = _rest(chain, self.head, self.rest_turn)
 
@@ -217,9 +217,14 @@ def _as_turn(v) -> tuple:
     return tuple(float(v[k]) for k in TURN) if isinstance(v, dict) else tuple(float(x) for x in v)
 
 
-def rig(item: dict, t: float = 0.0) -> Rig:
+def turn_now(bone: dict, t: float, stack=()) -> tuple:
+    """A bone's Turn at t as shown: its Base keys (else its rest turn), the animation layers laid over."""
+    return tuple(float(layers.shown_at(bone, k, t, list(stack), 0.0)) for k in TURN)
+
+
+def rig(item: dict, t: float = 0.0, stack=()) -> Rig:
     """A fresh Rig (well under a millisecond for ~15 bones, so never cached: the document changes under it)."""
-    return Rig(item, t)
+    return Rig(item, t, stack)
 
 
 def solve_rig(r: Rig, grab: int, local, to, held: set[int] = frozenset(), iterations: int = 60,
@@ -356,27 +361,27 @@ def clear_of_head(r: Rig, grab: int, out: dict, gap: float | None = None) -> tup
 
 
 # --- what the Pose tool calls (pose_link.py)
-def solve(clay: dict, bone: str, local, to, holds=(), t: float = 0.0) -> dict:
+def solve(clay: dict, bone: str, local, to, holds=(), t: float = 0.0, stack=()) -> dict:
     """One pointer move: the turns that bring the spot `local` (clay space, on bone `bone` as drawn at t) to `to`
     (clay space), holding `holds` (bone ids / joint names, or rest spots [x, y, z]). Solves from the clay as given
     (the press-time clay), so each move starts from the same pose. Returns solve_rig's dict."""
-    r = rig(clay, t)
+    r = rig(clay, t, stack)
     g = r.find(bone)
     spot = aim.point(aim.invert(r.frames()[g]), list(local))
     return solve_rig(r, g, spot, list(to), r.held(holds))
 
 
-def bone_at(clay: dict, local, t: float = 0.0) -> str | None:
+def bone_at(clay: dict, local, t: float = 0.0, stack=()) -> str | None:
     """Which bone a spot on the clay (clay space, as drawn at t) belongs to: the nearest posed segment."""
-    r = rig(clay, t)
+    r = rig(clay, t, stack)
     n = r.bone_at(list(local))
     return r.ids[n] if n >= 0 else None
 
 
-def chain_pose(clay: dict, turns: dict | None = None, t: float = 0.0) -> list[list[float]]:
+def chain_pose(clay: dict, turns: dict | None = None, t: float = 0.0, stack=()) -> list[list[float]]:
     """The `clay_pose` payload for a drag in progress: one 12-number move per bone (skin order), `turns` over the
-    clay's turns at t."""
-    return rig(clay, t).pose(turns)
+    clay's turns at t (as shown, `stack` laid over)."""
+    return rig(clay, t, stack).pose(turns)
 
 
 def held_bones(clay: dict) -> list[str]:
@@ -385,23 +390,29 @@ def held_bones(clay: dict) -> list[str]:
     return [r.ids[n] for n in sorted(r.held(clay.get("holds") or []))]
 
 
-def drag_keys(clay: dict, turns: dict, t: float, fill: bool = True) -> list[tuple[str, str, float, float]]:
-    """The keys a drag at time t writes: (bone id, rx|ry|rz, time, degrees). A drag changes only its own moment: a
-    bone keyed for the first time also gets its turn from before the drag keyed at every other time the clay's bones
-    have Turn keys (else its one key would hold for the whole shot, and the pose already keyed there would change).
+def drag_keys(clay: dict, turns: dict, t: float, fill: bool = True, layer: str = "",
+              stack=()) -> list[tuple[str, str, float, float]]:
+    """The keys a drag at time t writes: (bone id, rx|ry|rz, time, degrees as shown). A drag changes only its own
+    moment: a bone keyed for the first time (on `layer`, "" the Base) also gets its turn from before the drag keyed at
+    every other time the clay's bones have Turn keys (else its one key would hold for the whole shot, and the pose
+    already keyed there would change): on the Base its written turn, on a layer its turn as shown there (the layer's
+    key then holds its own curve: add 0). The degrees are what the field shows; a key on a layer needs
+    layers.key_for (the window's route, pose.drag's `layer`).
     fill=False (a script's .bend / .pose: the script states each joint's keys itself) writes the given keys only: the
     fill pinned a joint keyed later in the script at rest on every time keyed before it (gaps6: bend("arm.L", {0.8: …})
     after a keyed wave held the arm out at rest until the wave's last key)."""
-    bones, stack = [], list(clay.get("bones", []))
-    while stack:
-        b = stack.pop()
+    bones, todo = [], list(clay.get("bones", []))
+    while todo:
+        b = todo.pop()
         bones.append(b)
-        stack += b.get("bones", [])
+        todo += b.get("bones", [])
     times = sorted({float(k["t"]) for b in bones for k in b.get("keys", [])
                     if k.get("prop") in TURN and abs(float(k["t"]) - t) > 1e-9})
     out = []
     for b in bones:
-        if fill and b["id"] in turns and not any(k.get("prop") in TURN for k in b.get("keys", [])):
-            out += [(b["id"], p, T, float(b.get(p, 0.0))) for T in times for p in TURN]
+        if fill and b["id"] in turns and not any(k.get("prop") in TURN and (k.get("layer") or "") == layer
+                                                 for k in b.get("keys", [])):
+            read = layers.shown_at if layer else (lambda o, p, T, _s, still: layers.base_at(o, p, T, still))
+            out += [(b["id"], p, T, float(read(b, p, T, list(stack), 0.0))) for T in times for p in TURN]
     out += [(id_, p, t, float(turn[p])) for id_, turn in turns.items() for p in TURN]
     return out

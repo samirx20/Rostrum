@@ -15,6 +15,7 @@ from rostrum_gui.edits import Drag
 from rostrum_gui.snap import Target
 from rostrum3d import aim, fields as F, resolve, shot_layer
 
+from rostrum_core.keys.layers import stack_of
 from . import gizmo as G, gizmo_bone, gizmo_live as live, route
 from .copies_gizmo import CopyGizmo
 from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
@@ -65,7 +66,7 @@ class Gizmo(live.LiveDrag, CopyGizmo, QObject):
         t = self.bridge.time
         it = shot_layer.shown(self.bridge.doc.data, self.bridge.shot_id, it)   # where the shown shot has it (Only in this shot)
         v = {p.name: it.get(p.name, p.default) for p in F.FIELDS[it["type"]]}
-        v.update({k: route.value_at(it, k, t) for k in MOVE + TURN + SCALE + PIVOT if k in v})
+        v.update({k: route.value_at(it, k, t, stack_of(self.bridge.doc.data)) for k in MOVE + TURN + SCALE + PIVOT if k in v})
         v.setdefault("aim", "none")
         v.update({k: v.get(k, 1.0) for k in SCALE} | {k: v.get(k, 0.0) for k in PIVOT})   # a rig has neither
         return v
@@ -231,6 +232,6 @@ class Gizmo(live.LiveDrag, CopyGizmo, QObject):
             if route.anim_state(it, p, t, fps) == "still":
                 calls += route.animate_calls(it, p, t, fps)[0]
             else:
-                calls.append(route.value_call(it, p, route.value_at(it, p, t), t))
+                calls.append(route.value_call(it, p, route.value_at(it, p, t, stack_of(self.bridge.doc.data)), t))
         self.bridge._guard(lambda: self.bridge._apply(calls, f"Key {', '.join(props)} of {self.bridge.label_of(it)}"))
         self._moved.pop(it["id"], None)

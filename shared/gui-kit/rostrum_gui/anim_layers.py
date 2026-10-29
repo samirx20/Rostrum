@@ -6,12 +6,12 @@ keys, so the rows show the chosen layer's keys only.
 
 While a layer is chosen, a person's key.add and value.set go on it as keys (`route`, a Document route: an agent's calls are never
 touched). The value they set is what they see: on an add layer the key holds the offset that gives it, on a replace
-layer the value that gives it at the layer's weight (a layer at weight 0 or off keys the value as given).
+layer the value that gives it at the layer's weight (layers.key_for; a layer at weight 0 or off counts at weight 1).
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core.keys import keys_of, layers as L, track_value
+from rostrum_core.keys import layers as L
 from rostrum_core.keys.layers import stack_of
 
 from .edits import Drag
@@ -138,7 +138,7 @@ class AnimLayers(QObject):
     def route(self, calls):
         layer = next((x for x in self._stack() if x["id"] == self._active), None)
         if layer is None:
-            return calls
+            return self._on_base(calls) if self._stack() else calls
         out = []
         for c in calls:
             args = c.get("args", {})
@@ -152,24 +152,29 @@ class AnimLayers(QObject):
         return out
 
     def _on_layer(self, call, layer):
+        """The key on the layer that makes the field show the value given (layers.key_for: one rule with the core's K
+        and the pose ops)."""
         args = {**call.get("args", {}), "layer": layer["id"]}
         if "fields" not in args and _number(args.get("v")) and _number(args.get("t")):
-            w = L.weight_at(layer, args["t"]) if layer.get("on", True) else 0.0
-            if w > 0:
-                return {**call, "args": {**args, "v": self._offset(call, layer, args, w)}}
+            owner = self.b.doc.item(call["target"][0])
+            args["v"] = L.key_for(owner, args["prop"], args["t"], self._stack(), layer["id"], args["v"])
         return {**call, "args": args}
 
-    def _offset(self, call, layer, args, w) -> float:
-        """The layer key that makes the field show `v` now: its curve now + what is missing, over the weight."""
-        prop, t = args["prop"], args["t"]
-        owner = self.b.doc.item(call["target"][0])
-        base = track_value(keys, t) if (keys := keys_of(owner, prop)) else owner.get(prop)
-        if not _number(base):
-            return args["v"]
-        shown = L.value(owner, prop, t, self._stack(), base)
-        mine = L.layer_keys(owner, prop, layer["id"])
-        now = track_value(mine, t) if mine else (0.0 if layer.get("mode", "add") == "add" else shown)
-        return round(now + (args["v"] - shown) / w, 6)
+    def _on_base(self, calls):
+        """The Base chosen under layers: a value set or keyed is the one the picture shows, so the Base gets the value
+        that shows it with the layers laid over (layers.base_for)."""
+        out = []
+        for c in calls:
+            args = c.get("args", {})
+            if c.get("op") not in ("value.set", "key.add") or "prop" not in args or "by" in args or "layer" in args or not _number(args.get("v")):
+                out.append(c)
+                continue
+            t = args.get("t", args.get("at", round(self.b.time, 6)))
+            for id_ in c.get("target", []):
+                owner = self.b.doc.item(id_)
+                out.append({**c, "target": [id_],
+                            "args": {**args, "v": L.base_for(owner, args["prop"], t, self._stack(), args["v"])}})
+        return out
 
     def _on_doc(self):
         if self._active and not any(x["id"] == self._active for x in self._stack()):

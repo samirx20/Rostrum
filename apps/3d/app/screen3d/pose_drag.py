@@ -125,7 +125,7 @@ class PoseDrag(PoseHolds):
             return self._end() if self._up else self._pointer()
         world = through.find_item(scene, it["id"], req["frame"])[0]
         local = aim.point(aim.invert(world), r["point"])
-        bone = L.bone_at(it, local, self.b.time)
+        bone = L.bone_at(it, local, self.b.time, L.layering(self.b)[1])
         if not bone:
             return self._end()
         self._phase = "grab"
@@ -151,10 +151,12 @@ class PoseDrag(PoseHolds):
         self._live = self.v.link is not None and not _REFUSED[0]
         self._phase = "pose"
         g, req = self._grab, self._grab["req"]
+        layer, stack = L.layering(self.b)               # solved as shown; the release keys the chosen layer
         self._gen = self.solver.start({
             "clay": self._clay0, "bone": g["bone"], "local": g["local"], "point": g["point"], "world": g["world"],
             "view": G.View.of(req, g["scene"], req["frame"], req["width"], req["height"]), "held": self._held,
-            "holds": L.holds_of(self._clay0), "t": self.b.time, "w": req["width"], "h": req["height"], "live": self._live})
+            "holds": L.holds_of(self._clay0), "t": self.b.time, "w": req["width"], "h": req["height"], "live": self._live,
+            "layer": layer, "stack": stack})
         self.timings = []
 
     def _aim(self, x, y):

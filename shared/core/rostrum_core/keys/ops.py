@@ -18,7 +18,7 @@ from ..tree import index
 from .easing import NAMES as EASES
 from .evaluate import key_value, keys_of, track_value
 from .fields import KEY_FIELDS
-from .layers import FIELD as LAYER_FIELD, layer_keys, stack_of
+from .layers import FIELD as LAYER_FIELD, curve_now, layer_keys, stack_of
 from .marked import id_part, marked, order, same_time
 
 TIME = dict(min=0, max=36000, unit="s")                         # a moment to read or set a value at
@@ -81,7 +81,8 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
     that doesn't apply now); `settable(ctx, owner, prop)` refuses a field that can't change now. `key_add_help` and `prop_help` are the words
     each app uses in its operation descriptions. `field_sets` ({"pose": ["x", "y", …]}) lets key.add key a named set
     at once with each field's value now (`value_now(ctx, owner, prop, t)` -> {"v": 3.0}, or None for a field that
-    owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens). `layers`:
+    owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens); with
+    `layer`, each field keys the layer's own curve now (layers.curve_now: add 0 where it has none), so K changes nothing seen. `layers`:
     the app has animation layers (layers.py): key.add takes `layer`, the layer a key goes on."""
     vals = value_params if value_params is not None else [V, C]
     settable = settable or (lambda ctx, owner, prop: None)
@@ -138,11 +139,13 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         given = [p.name for p in (PROP, *vals) if p.name in args]
         if given:
             ctx.fail(codes.BAD_ARGUMENT, '"fields"', f"keys each field at its value now; leave out {', '.join(given)}")
-        keyed = 0
+        keyed, _ = 0, checked_layer(ctx, args)
         for t in targets:
             owner = ctx.item(t)
             for prop in field_sets[args["fields"]]:
                 now = value_now(ctx, owner, prop, args["t"])
+                if now is not None and args.get(LAYER_FIELD) and "v" in now:    # on a layer: its own curve now
+                    now = {"v": curve_now(owner, prop, args["t"], stack_of(ctx.doc), args[LAYER_FIELD], now["v"])}
                 if now is not None:
                     put_key(ctx, t, prop, args["t"], {**now, **{k: args[k] for k in ("ease", LAYER_FIELD) if k in args}})
                     keyed += 1

@@ -9,7 +9,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from rostrum3d import fields as F
 
-from . import pose_thumbs
+from . import pose_link as L, pose_thumbs
 
 BREAKDOWN = 0.5          # Shift+click: halfway between the neighbouring keys
 
@@ -61,7 +61,8 @@ class Poses(QObject):
     @Slot(str, bool)
     def apply(self, pose_id, breakdown=False):
         """Key the pose at the playhead; `breakdown` (Shift+click): halfway between the neighbouring keys instead."""
-        args = {"at": self.b.time, **({"share": BREAKDOWN} if breakdown else {})}
+        layer = L.layering(self.b)[0]                   # the chosen animation layer: the pose's keys go there
+        args = {"at": self.b.time, **({"share": BREAKDOWN} if breakdown else {}), **({"layer": layer} if layer else {})}
         self._run({"op": "pose.apply", "target": [pose_id], "args": args}, "Breakdown" if breakdown else "Apply pose")
 
     @Slot(str, str)

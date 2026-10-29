@@ -105,10 +105,10 @@ def register_key_stagger(registry, timing, orders: Orders | None) -> None:
             own = {k: timing.own_seconds(ctx, ctx.item(k), own_of[k]) for k in kids}
             items.append({"id": group, "keys": own, "start": min(own[k] + timing.offset(ctx, own_of[k]) for k in kids)})
         new = {kid: old + delta for it, delta in cascade(ctx, items, args, orders) for kid, old in it["keys"].items()}
-        for kid, t in new.items():                  # never two keys of one setting at one time (key.scale's rule)
-            owner, prop = own_of[kid], ctx.item(kid)["prop"]
+        for kid, t in new.items():                  # never two keys of one setting at one time on one layer (key.scale's rule)
+            owner, prop, layer = own_of[kid], ctx.item(kid)["prop"], ctx.item(kid).get("layer")
             clash = [k["id"] for k in ctx.item(owner).get("keys", []) if k["prop"] == prop and k["id"] != kid
-                     and abs(new.get(k["id"], timing.own_seconds(ctx, k, owner)) - t) < 1e-6]
+                     and k.get("layer") == layer and abs(new.get(k["id"], timing.own_seconds(ctx, k, owner)) - t) < 1e-6]
             if clash:
                 ctx.fail(codes.CONFLICT, kid, f"would land on {clash[0]} ({prop}) after staggering",
                          hint="Stagger by another amount, or move that key first.")

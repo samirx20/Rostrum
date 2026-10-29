@@ -11,6 +11,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Slot
 from rostrum3d import collection_kit as K, shot_layer as L
 
+from rostrum_core.keys.layers import stack_of
 from . import outline, route
 from .bridge_signals import Signals3D
 
@@ -70,7 +71,7 @@ class ShotOnlyMixin:
         return route.edit_call(self.doc, item_id, param, value, self.time)
 
     def shown_values(self, item):
-        return route.shown_values(L.shown(self.doc.data, self.shot_id, item), self.time)
+        return route.shown_values(L.shown(self.doc.data, self.shot_id, item), self.time, stack_of(self.doc.data))
 
     def anim_state(self, item, param):
         if (self._only and self._can_only()) or param in self._own(item.get("id")):
