@@ -85,7 +85,9 @@ each top-level layer that blends normally is painted once per group and its pict
 sub-frames (staging, layout and painting skipped). A whip pan needing 128 steps whose layers need 16 paints 16 times,
 not 128. The picture is the same up to resampling (a picture moved by a fraction of a px is sampled smoothly) and the
 few px a move uncovers at the frame's edge, which take the picture's edge px. Layers with a blend mode, glow or frosted
-glass are still drawn each sub-frame. A request's own `shutterSamples` never groups. Top-level layers in a row that
+glass are still drawn each sub-frame, alone: the sub-frame is staged (its changed pieces, as text edits) and the other
+layers' kept pictures are still moved (B1, 2026-10-29: one glowing layer used to make every sub-frame draw every layer;
+Undertow r2's glowing water did so in every frame of its drop, which took 5-35 s each). A frame that isn't grouped (the layers' own moves need every step) still has one base, its middle sub-frame: a layer only the frame moves is painted there once and slid for every other sub-frame, the rest drawn per sub-frame (B1). The frame's depth of field (focus, blur) is as at the frame's own time in every sub-frame, so a still depth layer is one piece, blurred once a frame. A request's own `shutterSamples` never groups. Top-level layers in a row that
 the frame moves alike in every sub-frame of the group (the same depth) share one kept picture (`still_runs.rs`
 `moving_runs`): 200 bubbles at five depths keep five pictures, not 200 (each a whole frame on the graphics card, laid
 over every sub-frame: the Undertow whip pan took 31 s a frame that way). At most `KEPT_BYTES` (serve.rs, 768 MB) of pictures are kept at once; past

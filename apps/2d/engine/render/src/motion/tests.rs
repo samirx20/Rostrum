@@ -187,3 +187,23 @@ fn a_layer_drifting_under_a_quarter_pixel_is_held_and_a_moving_one_is_not() {
     assert!(samples.iter().all(|p| p[s] == samples[0][s]), "the slow layer is held");
     assert!(samples.windows(2).any(|w| w[0][f] != w[1][f]), "the fast layer moves");
 }
+
+/// B1: a rack focus doesn't change a still layer's depth-of-field blur between the sub-frames of one frame (the focus
+/// is the frame's own time's in each), so the layer is one piece, painted and blurred once a frame.
+#[test]
+fn a_rack_focus_keeps_a_still_layer_one_piece_through_the_shutter() {
+    let mut cam = item("f", "camera", json!({ "x": 200.0, "y": 200.0, "homeX": 200.0, "homeY": 200.0, "zoom": 1.0, "dof": true, "focusBlur": 20.0 }));
+    cam["anim"] = json!({ "focus": [{ "t": 0.0, "v": 0.0, "ease": "linear" }, { "t": 0.2, "v": 3.0, "ease": "linear" }] }); // 15 depth a second
+    let still = item("still", "shape", json!({ "w": 100.0, "h": 50.0, "x": 100.0, "y": 100.0, "depth": 1.0 }));
+    let mut fast = item("fast", "shape", json!({ "w": 100.0, "h": 50.0 }));
+    fast["anim"] = json!({ "x": [{ "t": 0.0, "v": 0.0, "ease": "linear" }, { "t": 1.0, "v": 1800.0, "ease": "linear" }] });
+    let mut comp = item("c", "comp", json!({ "shutter": 180.0, "shutterSamples": 8.0 }));
+    comp["layers"] = json!([cam, still, fast]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let staged = crate::scene_serve::stage_at(&scene, 0.1, &json!({})).unwrap();
+    let samples = staged.sample_pieces();
+    assert!(samples.len() >= 8);
+    let piece = |p: &Vec<String>| p.iter().find(|x| x.contains("cam~still")).cloned().unwrap();
+    assert!(samples.iter().all(|p| piece(p) == piece(&samples[0])), "the still layer's blur is the same in every sub-frame");
+    assert!(samples.windows(2).any(|w| w[0] != w[1]), "the fast layer moves");
+}
