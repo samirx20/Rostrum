@@ -180,33 +180,55 @@ colour is already on the keys.
 
 ## Ending a song
 
-A song stops at its `length`. What a clean end needs, with what exists today:
+**One call: `ending(kind, at="#end")`.** Write it anywhere in the script; it is applied when the script ends, after every
+note is written. Every part playing in the 2 bars before `at` (or `parts=[piano, strings]`) lands together on `at`;
+notes ringing across `at` end on it, notes and hits starting after it are dropped, and the song's `length` and Ring out
+are set so the end can't be cut or left silent by accident (an earlier `length(...)` is replaced; the reply says when it
+moved by more than a second). Which ending fits the piece is yours to choose:
 
-- **End on a marker (a clean, real ending).** The music stops itself on the marker: a short last chord or hit ON it
-  (a staccato chord, a kick with a choked cymbal, notes no longer than a beat), held notes ending on it
-  (`end="#end"`), and the song's `length` 1–2 s after it so the tail dies away in the room, Ring out on. When the brief
-  asks for a clean ending, or a marker named end / ending marks it, two endings are faults: the delivery's fade of a
-  ring past the length that is still audible, above -60 dBFS (`faded_end`), and a file that stops while still playing, within 12 dB of its loudest
-  (`chopped_end`: held notes cut at the length). `ring_out(False)` (after `length`) stops the song at its length, its last
-  0.1 s smoothed (`ring_out(False, soft_end=False)`: a dead stop): for a sound that has already died away there.
-- **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
-  **Ring out** (the song field `ringOut`, on in every new song) a sound still ringing at `length` plays on until it dies away
-  (under -60 dBFS, at most 6 s more) and the engine's file ends there; a note held past `length` is let go at it, and a note that
-  starts at or after `length` is not heard (both are warned, in `run_script` and `render_mix`). `length(bar(21))` after a chord let
-  go at bar 21 rings it out. **The file `render_mix` delivers is exactly `length` long** (a 40 s song is a 40.00 s file): the ring
-  that would run past it is faded out over the last second inside it, and the reply's warnings say how much was cut off; to have
-  the tail, end the music earlier or set a longer `length`. `render_mix` with `ring_past_length: true` lets the
-  file run on up to 2 s past it (a number: up to that many seconds); the Export sheet lets it run until the ring has died away. Songs saved before 2026-10-25 open with Ring out off (they sound as they did): there the
-  file stops at `length`, so leave the tail room yourself.
+| Call | What it writes |
+|---|---|
+| `ending("ring", at="#end")` | the last chord on `at`, held `ring` s (default 2 bars, kept to 3–5 s), then let go; the length 1 s after that (2 s when a drum track is in `parts`: its crash rings longer), so the release and reverb die away inside the file |
+| `ending("button", at=bar(33))` | a short accented chord on `at` (half a beat, at most 0.35 s, a little louder than the part's last notes), plus a kick and a crash on the drum tracks playing there; the length 1 s after the chord (2 s with the crash), or `ring` s |
+| `ending("fade", at="#end", ring=8.0)` | the parts keep playing what you wrote; the master's volume falls evenly in dB to -30 dB over the `ring` s (default 4 bars) before `at`, where the song ends. A written fade, the music's own |
+
+- **An asked length (a 40 s cue): pick `at` so the ring dies by it.** The reply gives the arithmetic: `ending ring: lands
+  37.00 s, held to 40.00 s, rings to about 41.00 s, file 41.00 s`. Up to about 2 s past the asked length is normally fine;
+  further, or well short of it, the reply says where to put `at` (or give a shorter `ring=`). Don't pull `at` early to
+  squeeze a short ring in: the music should sound all the way to the asked end, never fade to near-silence seconds before it.
+- **A loop has no ending.** A loop's last bar plays straight into bar 1: write no `ending(...)`, keep `length` on the bar line
+  where the loop repeats.
+- **The last chord** is the home chord of the key at `at` (`key("D minor")` → D minor; a mode with a minor third is
+  minor), or `chord="V"` (a numeral in the key), `chord="Gsus4"` (a symbol), `chord=["D3", "F3", "A3"]` (its tones; the
+  lowest is the root). Each part moves from its own last notes to the nearest chord tones, so it stays in its register:
+  a single-note part takes the nearest tone (the lowest part the nearest root), a chord part keeps its number of voices.
+  The reply names every part's notes; they are ordinary notes, so edit the script if a voice should go elsewhere.
+- **`at`**: a marker, `bar(n)` or seconds. `"#end"` with no marker of that name is the last bar line at or before the
+  song's `length`. The song keeps what was asked (`ending`: kind, at, its seconds, the home key); the ending checks read
+  it, so a fade asked for is not a faded-end fault, and a ring that stops early is one.
+- **By hand** (the fallback, when none of the three is the ending you want): end the notes yourself (`end="#end"`), set
+  `length(...)` past the last let-go by the tail (measured: about 1 s for piano, strings and pads, 2 s for a crash), keep
+  Ring out on. The one ending check, `bad_ending`, reads every way an ending fails in one fault (near silence or dead
+  air before the end, a cut, the delivery's fade of sound still loud, and, when an ending is asked, an unresolved last
+  chord or parts stopping early); its fix is `ending(...)` (inspect_guide 'listening' has the numbers).
+  `ring_out(False)` (after `length`) stops the song at its length, its last 0.1 s smoothed (`ring_out(False,
+  soft_end=False)`: a dead stop): for a sound that has already died away there.
+- **Ring out** (the song field `ringOut`, on in every new song): a sound still ringing at `length` plays on until it dies
+  away (under -60 dBFS, at most 6 s more); a note held past `length` is let go at it, and a note that starts at or after
+  `length` is not heard (both are warned, in `run_script` and `render_mix`). **The file `render_mix` delivers is exactly
+  `length` long**: a ring that would run past it is faded out over the last second inside it (a loop brief: cut at the length with a 10 ms de-click, never faded), and the reply's warnings
+  say how much was cut off. That is why `ending(...)` puts the tail inside the length. `render_mix` with
+  `ring_past_length: true` lets the file run on up to 2 s past it (a number: up to that many seconds). Songs saved
+  before 2026-10-25 open with Ring out off: there the file stops at `length`.
 - **Check the end.** `look_sound` (`what: "loudness"`) answers an `ending` line from the render: the level of the last 0.5 s,
   whether that is still above -50 dBFS, and whether the last 50 ms drop faster than the fade before it. Still above -50 dBFS
-  with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is `ringOut` on, a later
-  `length`, or `master(fadeOut=...)`. The render also answers `ending` (`length`, the file's `end`, `levelAtLengthDb`, `cut`)
+  with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is `ending(...)` (it sets the
+  length past the tail), else `ringOut` on, a later `length`, or `master(fadeOut=...)`. The render also answers `ending` (`length`, the file's `end`, `levelAtLengthDb`, `cut`)
   and a warning when the ending is cut.
 - **Soft end.** Only with Ring out off; on by default (the song field `endFade`): anything sounding at `length` is faded over
   its last 0.1 s so the file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
   if it is off and sound still plays.
-- **Fade out.** `master(fadeOut=1.8)` fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
+- **Fade out.** For the music fading away, `ending("fade")`. `master(fadeOut=1.8)` is a short delivery fade: it fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
   where you want silence). On a held chord at the very end a 1.5 s fade measured: the last half second at -56 dB instead of -21 dB.
 - **`trim`.** With a `length` set, `render_mix` never cuts below it (trim has nothing to take off: the file is the length you asked
   for). Without a `length` (or with `ring_past_length`), it trims the end only where the sound is below -80 dBFS; the reply says

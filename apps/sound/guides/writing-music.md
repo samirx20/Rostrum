@@ -114,7 +114,8 @@ Give every part its own range and its own job, and the mix sorts itself out:
   0.2 → −22; `horn` 0.5 → −11, 0.3 → −21. A swell that reads as one over 30 s or more (strings alone at 0.2–0.3 under
   a `t.dynamics` lane rising to 1.0, parts added on the way up, the peak a tutti) travels about 25–35 LU from its
   first bars to its peak; one written at 0.5–0.6 from the start travels about 15.
-  Coming down is the same in reverse: parts drop out, the lane falls, a soft last chord dies away inside the file.
+  Coming down is the same in reverse: parts drop out, the lane falls, a soft last chord dies away inside the file
+  (`ending("ring", at="#end")` lands the parts on the home chord and leaves the tail room; `ending("fade")` writes a fade).
   `look_sound` shows the short-term curve; when the brief asks for a quiet start or ending the render measures it
   (`loud_opening`, `loud_ending`: 20 LU or more under the loudest 3 s passes).
 - **Sustained instruments** (strings, brass, pads) need long notes and slow swells. Short notes on a pad sound like a
