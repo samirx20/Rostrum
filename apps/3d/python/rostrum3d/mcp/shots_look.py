@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
+from rostrum_core.mcp.faults import NOTES, asked as notes_asked
 from rostrum_core.mcp.files import look_path
 
 from rostrum3d.compile import shot_info
@@ -57,7 +58,7 @@ def stack(rows: list[Path], dest: Path) -> tuple[int, int]:
     "item": ITEM_SHOT["item"],
     **COUNT,
     **WIDTH,
-    "quality": LOOK["quality"], "renderer": LOOK["renderer"]}})
+    "quality": LOOK["quality"], "renderer": LOOK["renderer"], **NOTES}})
 def look_shots(ctx, args):
     """One row per shot (`shots`): compare a cut or a sequence."""
     doc = ctx.document(args.get("item"))
@@ -87,7 +88,7 @@ def look_shots(ctx, args):
                     tiles.append((png, f'{names[info["id"]]}  f{f}  {seconds(info, f):.2f} s'))
                     done += 1
                     job.progress(done, count * len(infos))
-                found += shot_faults.check(doc.data, info, frames, {f: Path(tmp) / f'{info["id"]}_f{f}.png' for f in frames}, ctx.app.folder, renderer)
+                found += [] if not notes_asked(args) else shot_faults.check(doc.data, info, frames, {f: Path(tmp) / f'{info["id"]}_f{f}.png' for f in frames}, ctx.app.folder, renderer)
                 row = Path(tmp) / f'row_{info["id"]}.png'
                 sheet.contact_sheet(tiles, tile_w, len(tiles), row)
                 rows.append(row)
@@ -96,6 +97,6 @@ def look_shots(ctx, args):
         said = "; ".join(f'{names[i]} ({len(per[i]["frames"])} frames, {per[i]["times"][0]:g}–{per[i]["times"][-1]:g} s)' for i in ids)
         return Reply(f"Contact sheet of {len(ids)} shots, one row each, top to bottom: {said}. {renderer}, {sw}×{sh}.",
                      {"shots": per, "rows": ids, "width": sw, "height": sh, "renderer": renderer}, [dest], [dest], engine.take_notices(),
-                     faults=list({x["id"]: x for x in reversed(found)}.values())[::-1])        # one per id (a shot's faults name the shot)
+                     faults=list({x["id"]: x for x in reversed(found)}.values())[::-1] if notes_asked(args) else None)   # one per id
 
     return ctx.long(f"look_shots {', '.join(ids)}", job_fn)

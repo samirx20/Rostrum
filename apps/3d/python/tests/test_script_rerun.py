@@ -36,12 +36,16 @@ def test_an_edited_rerun_replaces_its_own_things_and_keeps_a_persons_edit():
     assert sorted((k["t"], k["v"]) for k in d.item("cam")["keys"]) == [(0, -0.5), (1.5, 0.5)]
 
 
-def test_a_one_line_tweak_under_the_same_name_is_refused_not_a_wipe():
+def test_a_one_line_tweak_under_the_same_name_goes_through_and_names_what_it_removed():
     d = _doc()
-    with pytest.raises(RostrumError, match='would remove 4 of the 5 things.*"wall"'):
-        run(d, 'edit("ball", y=0.3)')
-    assert d.item("wall") and d.item("ball")["y"] == 0.2                  # nothing changed (base 0.1 up: middle 0.2)
-    run(d, SRC.replace('mesh("wall", shape="box", width=2, height=1, depth=0.05, z=-0.5)\n', ""))   # one left out: removed
+    tree = run_source('material("paint", baseColor="#cc3322")\nedit("ball", y=0.3)', "scene.py", d)
+    assert any("removed 3 of the 5 things" in n and '"wall"' in n and "edit_undo" in n for n in tree.notes)
+    d.run_script("scene.py", tree)                                        # never refused: the run is the agent's
+    assert all(i["id"] != "wall" for i in d.data["items"])
+    d = _doc()
+    tree = run_source(SRC.replace('mesh("wall", shape="box", width=2, height=1, depth=0.05, z=-0.5)\n', ""), "scene.py", d)
+    assert not any("removed" in n for n in tree.notes)                    # one left out of five: nothing to say
+    d.run_script("scene.py", tree)
     assert all(i["id"] != "wall" for i in d.data["items"])
 
 
