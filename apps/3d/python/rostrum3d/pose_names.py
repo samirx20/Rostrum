@@ -49,7 +49,7 @@ def resolve(name: str, rig, owner: str, seen=None) -> int:
                              f'camera() and shot(camera=) before posing, or say "left {part}" / "right {part}" (the '
                              "figure's own sides)")
         order = seen(part)
-        name = order[0] if side == "picture-left" else order[-1]
+        name = (order[0] if side == "picture-left" else order[-1]) if order else name
     elif side is None and part in joints:
         name = part
     try:
@@ -59,5 +59,8 @@ def resolve(name: str, rig, owner: str, seen=None) -> int:
 
 
 def _limb(part: str, side: str, joints: list[str]) -> bool:
-    """A short limb stands for its hand / foot (Rig.find): an arm.R with no hand.R still has a right hand."""
-    return part in SIDED and any(j.endswith("." + side) and j[:-2] in ("arm", "forearm", "leg", "shin") for j in joints)
+    """A short limb stands for its hand / foot (Rig.find): an arm.R with no hand.R still has a right hand; a leg
+    never stands for a hand."""
+    from .pose_joints import CHAINS
+    earlier = {e for chain in CHAINS.values() if part in chain[1:] for e in chain[:chain.index(part)]}
+    return part in SIDED and any(j.endswith("." + side) and j[:-2] in earlier for j in joints)
