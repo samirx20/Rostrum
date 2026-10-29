@@ -177,6 +177,28 @@ def bone_dist(seg, centre: np.ndarray) -> np.ndarray:
     return np.linalg.norm(centre - (a + np.clip(s, 0, 1)[..., None] * ab), axis=-1)
 
 
+def _spread(f: np.ndarray, free: np.ndarray, count: np.ndarray, steps: int) -> np.ndarray:
+    """`steps` times, each free cell takes the mean of itself and its 6 neighbours (count: how many are inside;
+    outside cells hold 0, so they add nothing). Only the box round the free cells changes, so only it is worked
+    (with one cell more each side, which it reads); the sums are the same, in the same order, as over the whole grid."""
+    where = np.argwhere(free)
+    if not len(where) or steps <= 0:
+        return f
+    lo, hi = np.maximum(where.min(0) - 1, 0), np.minimum(where.max(0) + 2, f.shape)
+    box = tuple(slice(a, b) for a, b in zip(lo, hi))
+    g, fr, ct = f[box], free[box], count[box]
+    for _ in range(steps):
+        p = np.pad(g, 1)
+        s = g.astype(np.float64)
+        for a in range(3):
+            for d in (-1, 1):
+                s = s + p[tuple(slice(1 + d * (a == k), p.shape[k] - 1 + d * (a == k)) for k in range(3))]
+        g = np.where(fr, s / ct, g).astype(np.float32)
+    f = f.copy()
+    f[box] = g
+    return f
+
+
 def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.ndarray, list[float]]:
     """Each cell's share of each limb, float32 [limb − 1, x, y, z] (the rule above; NaN: no clay near the cell), and
     each piece's reach (root_reach; 0: none)."""
@@ -207,13 +229,7 @@ def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.
             reaches[n] = root_reach(parts, cells, n, rest[pc["first"]][:3])
             free = inside & ~own & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
             free &= bone_dist(rest[pc["first"]], centre) <= TUBE * pc["blend"] / 1.5   # 3d-gaps2: never into the head beside it
-            for _ in range(min(SHARE_MOST, int(np.floor(3.5 * sigma * sigma + 0.5)))):
-                p = np.pad(f, 1)
-                s = f.astype(np.float64)
-                for a in range(3):
-                    for d in (-1, 1):
-                        s = s + p[tuple(slice(1 + d * (a == k), p.shape[k] - 1 + d * (a == k)) for k in range(3))]
-                f = np.where(free, s / count, f).astype(np.float32)     # (outside cells hold 0, so they add nothing)
+            f = _spread(f, free, count, min(SHARE_MOST, int(np.floor(3.5 * sigma * sigma + 0.5))))
         g = np.where(inside, f, np.nan).astype(np.float32)
         for r, ring in enumerate(rings):                          # the mean of the neighbours valued before the ring
             before = np.pad((valued > 0) & (valued < 2 + r), 1)

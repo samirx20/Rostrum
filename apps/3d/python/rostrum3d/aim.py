@@ -13,11 +13,14 @@ IDENTITY = ([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], [0.0, 0.0, 0.0]
 
 
 def _mul(a, b):
-    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+    (b0, b1, b2) = b                       # sum() of a tuple, not a generator: the same (compensated) sums, faster
+    return [[sum((r[0] * b0[0], r[1] * b1[0], r[2] * b2[0])), sum((r[0] * b0[1], r[1] * b1[1], r[2] * b2[1])),
+             sum((r[0] * b0[2], r[1] * b1[2], r[2] * b2[2]))] for r in a]
 
 
 def _apply(m, v):
-    return [sum(m[i][k] * v[k] for k in range(3)) for i in range(3)]
+    x, y, z = v
+    return [sum((r[0] * x, r[1] * y, r[2] * z)) for r in m]
 
 
 def _rot(axis: int, deg: float):

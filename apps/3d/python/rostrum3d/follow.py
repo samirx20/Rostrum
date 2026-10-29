@@ -74,7 +74,8 @@ def ride(fr, id_: str, f: int):
         try:
             source = fr.items[fr.items[id_].get("mirror") or id_]
             target = _target(fr, source["id"], "follow", "follows")
-            carry = _carry(fr, id_, source, target)
+            if (carry := fr.carries.get(id_)) is None:            # its bone is found once per Frames, not per frame
+                carry = fr.carries[id_] = _carry(fr, id_, source, target)
             if seq is None:
                 start = (aim.compose(carry(0), aim.invert(fr.world(target, 0))) if source.get("followPose")
                          else aim.IDENTITY)
@@ -139,12 +140,20 @@ def nearest_bone(target: dict, p) -> int | None:
 
 def bone_move(fr, target: str, bone: int, g: int):
     """The bone's move at frame g in the target's own space: now times its rest (the core's skin pose)."""
+    return moves(fr, target, g)[bone]
+
+
+def moves(fr, target: str, g: int) -> list:
+    """Every bone's move at frame g (its held frame's), in skin.bones_of's order; the clay's own skin reads them too
+    (compile.py, with no animation layers: the same numbers)."""
     key = (target, fr.held(target, g))
     if key not in fr.poses:
-        chain = skin.bones_of(fr.items[target])
-        fr.poses[key] = [aim.compose(n, aim.invert(r))
-                         for n, r in zip(skin.transforms(chain, key[1] / fr.fps), skin.transforms(chain))]
-    return fr.poses[key][bone]
+        if (rest := fr.poses.get(target)) is None:             # its chain and the inverse of each bone's rest, once
+            pose = skin.poser(skin.bones_of(fr.items[target]))
+            rest = fr.poses[target] = (pose, [aim.invert(r) for r in pose(None)])
+        pose, back = rest
+        fr.poses[key] = [aim.compose(n, r) for n, r in zip(pose(key[1] / fr.fps), back)]
+    return fr.poses[key]
 
 
 def _parent(fr, id_: str, f: int):

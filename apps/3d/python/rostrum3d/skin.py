@@ -33,23 +33,35 @@ def bones_of(mesh: dict) -> list[tuple[dict, int]]:
     return out
 
 
-def _local(bone: dict, t: float | None, stack: list[dict] = ()):
-    v = {k: float(bone.get(k, 0.0)) for k in (*HEAD, *TURN)}
-    for k in TURN if t is not None else ():
-        if keys := keys_of(bone, k):
-            v[k] = float(track_value(keys, t))
-        v[k] = float(layers.value(bone, k, t, stack, v[k]))          # its animation layers (none: unchanged)
-    return aim.local({**v, "sx": 1.0, "sy": 1.0, "sz": 1.0})
+def _plan(chain: list[tuple[dict, int]]) -> list:
+    """Each bone with its parent's index, its written head and turn, and its Turn keys (read and sorted once)."""
+    return [(bone, parent, {k: float(bone.get(k, 0.0)) for k in (*HEAD, *TURN)}, [(k, keys_of(bone, k)) for k in TURN])
+            for bone, parent in chain]
+
+
+def _at(plan: list, t: float | None, stack: list[dict]) -> list:
+    out = []
+    for bone, parent, written, turn in plan:
+        v = dict(written)
+        for k, keys in turn if t is not None else ():
+            if keys:
+                v[k] = float(track_value(keys, t))
+            v[k] = float(layers.value(bone, k, t, stack, v[k]))      # its animation layers (none: unchanged)
+        own = aim.local({**v, "sx": 1.0, "sy": 1.0, "sz": 1.0})
+        out.append(aim.compose(out[parent], own) if parent >= 0 else own)
+    return out
 
 
 def transforms(chain: list[tuple[dict, int]], t: float | None = None, stack: list[dict] = ()) -> list:
     """Each bone's transform in the mesh's own space: at rest (t None) or at time t (seconds), with the document's
     animation layers (`stack`, layers.stack_of) laid over."""
-    out = []
-    for bone, parent in chain:
-        own = _local(bone, t, stack)
-        out.append(aim.compose(out[parent], own) if parent >= 0 else own)
-    return out
+    return _at(_plan(chain), t, stack)
+
+
+def poser(chain: list[tuple[dict, int]], stack: list[dict] = ()):
+    """time (seconds, or None: rest) -> transforms(chain, time, stack), the bones' keys read once for every time asked."""
+    plan = _plan(chain)
+    return lambda t: _at(plan, t, stack)
 
 
 def segment(m, bone: dict) -> list[float]:
@@ -58,18 +70,33 @@ def segment(m, bone: dict) -> list[float]:
 
 
 def _deform(now, rest) -> list[float]:
-    lin, t = aim.compose(now, aim.invert(rest))
+    return _moved(now, aim.invert(rest))
+
+
+def _moved(now, back) -> list[float]:
+    return _flat(aim.compose(now, back))                       # back: the bone's rest, inverted
+
+
+def _flat(m) -> list[float]:
+    lin, t = m
     return [round(x, 6) for x in (*lin[0], *lin[1], *lin[2], *t)]
 
 
-def skin(mesh: dict, times: list[float], stack: list[dict] = ()) -> dict | None:
-    """The core's `skin` for a mesh at these times (seconds, one per frame), or None: no bones, or Bend with bones off."""
+def skin(mesh: dict, times: list[float], stack: list[dict] = (), moves=None) -> dict | None:
+    """The core's `skin` for a mesh at these times (seconds, one per frame), or None: no bones, or Bend with bones off.
+    `moves`: frame index -> each bone's now × rest⁻¹ there, when the caller already has them (follow.moves)."""
     chain = bones_of(mesh)
     if not chain or not mesh.get("skinned", True):
         return None
-    rest = transforms(chain)
+    pose = poser(chain, stack)
+    rest = pose(None)
+    back = [aim.invert(r) for r in rest]
     segs = [[round(x, 6) for x in segment(m, b)] for m, (b, _) in zip(rest, chain)]
-    out = {"rest": segs, "pose": [[_deform(n, r) for n, r in zip(transforms(chain, t, stack), rest)] for t in times]}
+    seen: dict = {}                                            # a held time (On 2s) is worked out once
+    for i, t in enumerate(times):
+        if t not in seen:
+            seen[t] = [_flat(m) for m in moves(i)] if moves else [_moved(n, r) for n, r in zip(pose(t), back)]
+    out = {"rest": segs, "pose": [[list(m) for m in seen[t]] for t in times]}
     if mesh.get("jointParts"):                                 # a clay's pieces (skin_parts.py): each bends with its own
         from . import skin_parts
         if parts := skin_parts.for_core(mesh["jointParts"], chain, segs):
