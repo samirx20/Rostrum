@@ -22,7 +22,7 @@ pub(crate) fn of(node: &blitz_dom::Node) -> Vec<(Arc<Filter>, f32)> {
         .filter_map(|g| {
             let mut n = g.split_ascii_whitespace().filter_map(|v| v.parse::<f32>().ok());
             let (radius, strength) = (n.next()?, n.next()?);
-            Some((Arc::new(Filter::linear_list([FilterEffect::blur(radius)].into_iter())), strength))
+            Some((Arc::new(Filter::linear_list([FilterEffect::smooth_blur(radius)].into_iter())), strength))
         })
         .collect()
 }
