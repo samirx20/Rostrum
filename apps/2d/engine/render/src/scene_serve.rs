@@ -270,6 +270,8 @@ pub(crate) struct Staged {
     /// The layers staged at every sub-frame (`timing.stagedLayers`): what keeps a blurred frame from one layout.
     staged_ids: Vec<String>,
     eval_ms: f64,
+    /// Where the eval time went (`timing.evalSplit`, ms by step).
+    split: Vec<(&'static str, f64)>,
 }
 
 impl Staged {
@@ -295,7 +297,7 @@ impl Staged {
 
     /// A frame's own pieces, not motion-blurred (the world picture's page, scene_world.rs).
     pub(crate) fn of(t: f64, pieces: Vec<String>) -> Staged {
-        Staged { t, pieces, samples: vec![], streaks: vec![], staged_ids: vec![], eval_ms: 0.0 }
+        Staged { t, pieces, samples: vec![], streaks: vec![], staged_ids: vec![], eval_ms: 0.0, split: vec![] }
     }
 
     /// Tests: each motion-blur sub-frame's stage pieces.
@@ -338,14 +340,21 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
     // screen needs). A layer that only moves is one streak of its picture at the frame's time (motion/streak.rs); the
     // others are staged per sub-frame and averaged by serve.rs.
     let (mut samples, mut streaks, mut staged_ids, mut eval_ms) = (vec![], vec![], vec![], 0.0);
-    let times = crate::motion::sub_frames(&scene.comp, req, t)?;
-    let n = times.len();
-    if n > 0 {
+    let mut split: Vec<(&'static str, f64)> = vec![];
+    let mut lap = Instant::now();
+    let mut mark = |what: &'static str, split: &mut Vec<(&'static str, f64)>| {
+        split.push((what, ms(lap)));
+        lap = Instant::now();
+    };
+    let probe_times = crate::motion::probe_times(&scene.comp, req, t)?;
+    let mut own = None;
+    if !probe_times.is_empty() {
         // Each sub-frame's comp; then the layers that barely move while the shutter is open are drawn as at the frame's
         // own time in every one (motion/hold.rs), so still_runs.rs paints them once.
         let t0 = Instant::now();
         let plan = crate::motion::Plan::of(&scene.comp)?;
         let (centre, centre_pieces) = crate::scene::eval::shutter_at(t, t, || content(scene, &plan, t, alpha))?;
+        mark("centre", &mut split);
         // The frame's focus as at the frame's own time in every sub-frame: a rack focus no longer changes each depth
         // layer's blur between sub-frames, so a layer that doesn't move is one piece, painted and blurred once a frame
         // (B1). A focus pull within one shutter opening is a fraction of a px of blur.
@@ -353,17 +362,20 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
             .map(|c| ["dof", "focus", "focusBlur"].into_iter().map(|f| (f, c.props.get(f).cloned())).collect())
             .unwrap_or_default();
         let eval_at = |ts: f64| crate::scene::eval::shutter_at(t, ts, || Ok::<_, String>(comp_focused(scene, &plan, ts, alpha, &focus)));
-        // Where each layer is, at a few sub-frames spread over the shutter (motion/streak.rs `PROBES`); the streaks'
-        // moves in between are read off them.
-        let probes = crate::motion::streak::probes(n);
-        let at_probes = probes.iter().map(|&j| eval_at(times[j])).collect::<Result<Vec<_>, _>>()?;
+        // Where each layer is, at a few times spread over the open shutter (motion/streak.rs `probe_times`; the middle
+        // one is the frame's own, `centre`): the frame's step count and its streaks' moves are read off them.
+        let at_probes = probe_times.iter().map(|&ts| if ts == t { Ok(centre.clone()) } else { eval_at(ts) }).collect::<Result<Vec<_>, _>>()?;
+        let times = crate::motion::sub_frames(&scene.comp, req, t, &at_probes)?;
+        let n = times.len();
+        mark("probes", &mut split);
         let held = req["held"].as_bool() == Some(true);
         let reaches = |p: usize| crate::motion::streak::pad(&centre_pieces[p]);
         let (moves, staged) = if held { (vec![], vec![]) } else { crate::motion::streak::moves(&centre, &at_probes, |p| crate::still_runs::regroups(&centre_pieces[p]), reaches) };
         let moves: Vec<_> = moves.into_iter().map(|m| m.map(|mut m| {
-            m.moves = crate::motion::streak::spread(&m.moves, &probes, n);
+            m.moves = crate::motion::streak::spread(&m.moves, n);
             m
         })).collect();
+        mark("moves", &mut split);
         let whole = moves.len() != centre_pieces.len();
         if whole || staged.iter().any(|&s| s) {
             let ids: Vec<&str> = centre.layers.iter().filter(|l| l.kind != "camera" && !crate::scene::matte::used(l, &centre)).map(|l| l.id).collect();
@@ -373,17 +385,24 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
             let m = if whole { n } else { crate::motion::streak::own_steps(&at_probes, &staged_ids, least, n) };
             let times: Vec<f64> = crate::motion::streak::pick(m, n).into_iter().map(|j| times[j]).collect();
             let items = times.iter().map(|&ts| eval_at(ts)).collect::<Result<Vec<_>, _>>()?;
+            mark("stagedEval", &mut split);
             // Staged per sub-frame: every piece when the sub-frames draw different layers, else only those that change.
+            // Only the staged pieces are written; the others are the frame's own.
+            let keep = |p: usize| whole || staged.get(p).copied().unwrap_or(true);
             for (comp, &ts) in items.iter().zip(&times) {
-                let mut mk = crate::scene::eval::shutter_at(t, ts, || stage::parts(comp))?;
-                if !whole && mk.len() == centre_pieces.len() {
+                let mut mk = crate::scene::eval::shutter_at(t, ts, || stage::parts_of(comp, &keep))?;
+                if mk.len() != centre_pieces.len() && !whole {
+                    mk = crate::scene::eval::shutter_at(t, ts, || stage::parts(comp))?;
+                } else if !whole {
                     for (p, piece) in mk.iter_mut().enumerate().filter(|(p, _)| !staged[*p]) {
                         piece.clone_from(&centre_pieces[p]);
                     }
                 }
                 samples.push(mk);
             }
+            mark("stagedParts", &mut split);
             crate::motion::hold_still(&centre, &centre_pieces, &items, &mut samples);
+            mark("hold", &mut split);
             if !whole && samples.windows(2).all(|w| w[0] == w[1]) {
                 samples.clear();          // what changed stays within a quarter px: drawn as at the frame's time
             }
@@ -392,27 +411,31 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
             streaks = moves;
             if samples.is_empty() {
                 eval_ms += ms(t0);
-                return Ok(Staged { t, pieces: centre_pieces, samples, streaks, staged_ids, eval_ms });
+                return Ok(Staged { t, pieces: centre_pieces, samples, streaks, staged_ids, eval_ms, split });
             }
         }
         eval_ms += ms(t0);
+        own = Some(centre_pieces);
     }
     // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
     // picture, drawn once (the same pixels, within the sum's rounding).
     if streaks.is_empty() && samples.windows(2).all(|w| w[0] == w[1]) {
         if let Some(only) = samples.pop() {
-            return Ok(Staged { t, pieces: only, samples: vec![], streaks, staged_ids: vec![], eval_ms });
+            return Ok(Staged { t, pieces: only, samples: vec![], streaks, staged_ids: vec![], eval_ms, split });
         }
     }
     let own_drawn = samples.is_empty() || req["held"].as_bool() == Some(true) || req["boxes"].as_bool() == Some(true);
-    let pieces = if own_drawn {
+    let pieces = if let (true, Some(own)) = (own_drawn, own) {
+        own
+    } else if own_drawn {
         let (pieces, ms) = markup(scene, t, alpha)?;
         eval_ms += ms;
         pieces
     } else {
         vec![]
     };
-    Ok(Staged { t, pieces, samples, streaks, staged_ids, eval_ms })
+    mark("own", &mut split);
+    Ok(Staged { t, pieces, samples, streaks, staged_ids, eval_ms, split })
 }
 
 /// `frame` with `t`: the request with the scene's stage at t filled in, drawn by serve.rs `frame`.
@@ -431,7 +454,7 @@ pub(crate) fn draw(held: &Held, s: &mut Session, req: &Value, staged: Staged) ->
     if held.shell != Some((s.width, s.height)) {
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
-    let Staged { t, pieces, samples, streaks, staged_ids, eval_ms } = staged;
+    let Staged { t, pieces, samples, streaks, staged_ids, eval_ms, split } = staged;
     let mut f = req.clone();
     if let Some(o) = f.as_object_mut() {
         o.remove("alpha");
@@ -451,6 +474,7 @@ pub(crate) fn draw(held: &Held, s: &mut Session, req: &Value, staged: Staged) ->
     let (mut reply, px) = serve::frame(s, &f)?;
     if let Some(timing) = reply.get_mut("timing") {
         timing["evalMs"] = json!(eval_ms);
+        timing["evalSplit"] = split.iter().map(|(k, v)| (k.to_string(), json!((v * 10.0).round() / 10.0))).collect::<serde_json::Map<_, _>>().into();
         if !staged_ids.is_empty() {
             timing["stagedLayers"] = json!(staged_ids);
         }

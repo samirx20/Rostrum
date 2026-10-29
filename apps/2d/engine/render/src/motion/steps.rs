@@ -4,7 +4,7 @@
 //! After Effects' adaptive sample limit works the same way.
 //!
 //! The move is measured on the evaluated comp (eval.rs `at`, read as a sub-frame of this frame: `shutter_at`, so a cut
-//! is never counted as a move), at the edges of `probes` equal slices of the open shutter: each layer's box corners
+//! is never counted as a move), at the edges of four equal slices of the open shutter (the probes streak.rs reads too): each layer's box corners
 //! carried to the output through its own place, turn and scale, its groups' and the frame's (frame/mod.rs `map`).
 //! The fastest slice of the fastest layer decides. What happens inside a layer (a path's shape, letters, a rig's
 //! warp) is not measured: those keep the fewest steps.
@@ -24,22 +24,25 @@ pub const MOST: usize = 128;
 
 /// The sub-frames for the frame at `t`: at least `least`, more when something moves further than GAP_PX × `least`
 /// on screen while the shutter (`angle` degrees at `fps`) is open.
+#[cfg(test)]
 pub fn steps(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
-    measure(comp, t, fps, angle, least)
-}
-
-fn measure(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
     if least >= MOST {
         return least;
     }
-    let probes = least.clamp(2, 4);
-    let open = angle / 360.0 / fps;
-    let corners: Vec<HashMap<(&str, usize), Pt>> = (0..=probes)
-        .map(|k| {
-            let at = t + open * (k as f64 / probes as f64 - 0.5);
-            eval::shutter_at(t, at, || eval::at(comp, at)).map_or_else(HashMap::new, |c| on_screen(&c))
-        })
+    let probes: Vec<Item> = super::streak::probe_times(t, fps, angle)
+        .into_iter()
+        .filter_map(|at| eval::shutter_at(t, at, || eval::at(comp, at)))
         .collect();
+    from_probes(&probes, least)
+}
+
+/// `steps` from the comp evaluated at the edges of equal slices of the open shutter, in order (streak.rs
+/// `probe_times`: the frame's motion blur evaluates them once, for its steps and its streaks alike).
+pub fn from_probes(probes: &[Item], least: usize) -> usize {
+    if least >= MOST || probes.len() < 2 {
+        return least;
+    }
+    let corners: Vec<HashMap<(&str, usize), Pt>> = probes.iter().map(on_screen).collect();
     // The most any corner moves across one slice (a layer showing on one side only has no move to measure).
     let mut fastest: f64 = 0.0;
     for pair in corners.windows(2) {
@@ -50,7 +53,7 @@ fn measure(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
         }
     }
     // px per slice × slices = px per shutter at that speed; one step per GAP_PX of it.
-    let need = (fastest * probes as f64 / GAP_PX - 1e-9).ceil();
+    let need = (fastest * (probes.len() - 1) as f64 / GAP_PX - 1e-9).ceil();
     if !need.is_finite() {
         return MOST;
     }
