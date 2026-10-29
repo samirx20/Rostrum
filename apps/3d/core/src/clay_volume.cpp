@@ -2,7 +2,9 @@
 // Moved from proofs/3d-clay (clay.cpp: Clay::run, apply_stroke, the live stroke), plus undo records.
 #include "clay_volume.h"
 
+#include <array>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -579,6 +581,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
       keep(o);
       leaves[ci] = tree.touchLeaf(o);
       mixed.push_back(ci);
+      continue;  // marked below, by the voxels that really changed
     } else {
       const float val = cls[ci] * kBand;
       if (!leaf[ci] && uval[ci] == val) continue;  // already that tile: nothing changed here
@@ -587,15 +590,36 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     }
     dirty_chunk(o);
   }
+  // 3d-people-next: a mixed chunk marks only the box of its voxels whose value changed. Marked whole, every chunk a
+  // dab touched (its 8 voxels plus the 2 a mesh reads around them) reached into the next part on each side: a 25 mm
+  // brush at 1 mm re-meshed and re-sent ~82 preview parts a dab, most of them unchanged
+  std::vector<std::array<int, 6>> changed(nch);
   par(mixed, [&](int ci) {
     Leaf* lf = leaves[ci];
+    std::array<int, 6>& c = changed[ci];
+    c = {INT_MAX, INT_MAX, INT_MAX, INT_MIN, INT_MIN, INT_MIN};
     b.each(ci, [&](int x, int y, int z, size_t i) {
       const float v = V[i];
       const int off = leaf_offset(x, y, z);
-      if (std::fabs(v) < kBand) lf->setValueOn(off, v);
-      else lf->setValueOff(off, sgn(v) * kBand);
+      const float was = lf->getValue(off);
+      const bool wasOn = lf->isValueOn(off);
+      const bool on = std::fabs(v) < kBand;
+      const float now = on ? v : sgn(v) * kBand;
+      if (on) lf->setValueOn(off, v);
+      else lf->setValueOff(off, now);
+      if (now != was || on != wasOn) {
+        c[0] = std::min(c[0], x), c[1] = std::min(c[1], y), c[2] = std::min(c[2], z);
+        c[3] = std::max(c[3], x), c[4] = std::max(c[4], y), c[5] = std::max(c[5], z);
+      }
     });
   });
+  for (int ci : mixed) {
+    const std::array<int, 6>& c = changed[ci];
+    if (c[0] > c[3]) continue;  // nothing in it changed
+    const int lo[3] = {b.lo[0] + c[0], b.lo[1] + c[1], b.lo[2] + c[2]};
+    const int hi[3] = {b.lo[0] + c[3], b.lo[1] + c[4], b.lo[2] + c[5]};
+    mark_dirty(lo, hi);
+  }
 
   // G2. the mask chunks Mask dabs painted: a leaf, or no leaf when all 0 (after the clay's: a chunk both write is
   //     kept, clay and mask, before either changes)

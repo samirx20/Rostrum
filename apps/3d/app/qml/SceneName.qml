@@ -18,7 +18,7 @@ Rectangle {
     color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
     MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onClicked: (m) => {   // Ctrl+click adds or takes out; Shift+click picks the run from the primary; right-click picks and opens the menu
-                    if (m.button === Qt.RightButton) { backend.select(row.modelData.owner); row.menu.openAt(row, m.x, m.y, row.modelData.owner) }
+                    if (m.button === Qt.RightButton) { if (backend.selection.indexOf(row.modelData.owner) < 0) backend.select(row.modelData.owner); row.menu.openAt(row, m.x, m.y, row.modelData.owner) }
                     else if (row.field) backend.select(row.modelData.owner)
                     else if (m.modifiers & Qt.ControlModifier) backend.toggleInSelection(row.modelData.id)
                     else if (m.modifiers & Qt.ShiftModifier) backend.selectRange(row.modelData.id)

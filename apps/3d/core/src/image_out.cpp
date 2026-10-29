@@ -116,6 +116,8 @@ void ColorOut::write_exr(const Picture& p, const std::string& file, const std::v
   spec.channelnames = names;
   spec.alpha_channel = 3;
   spec.attribute("compression", "zip");
+  for (const auto& l : layers)
+    for (const auto& [key, value] : l.attributes) spec.attribute(key, value);
   OIIO::ImageBuf buf(spec);
   buf.set_pixels(OIIO::ROI::All(), OIIO::TypeDesc::FLOAT, all.data());
   buf.set_write_format(types);

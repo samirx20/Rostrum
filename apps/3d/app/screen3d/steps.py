@@ -130,6 +130,8 @@ def do_step(bridge, win, step):
         bridge.run(rest[0])
     elif word == "showshot":
         bridge.showShot(rest[0])
+    elif word == "shotonly":                   # shotonly on | off: the settings' Changes switch (bridge_shot_only.py)
+        bridge.setShotOnly(rest[0] == "on")
     elif word == "shot-from-view":
         bridge.newShotFromView()
     elif word == "add":

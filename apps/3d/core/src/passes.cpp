@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 
+#include "cryptomatte.h"
 #include "error.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -15,7 +17,8 @@ PXR_NAMESPACE_USING_DIRECTIVE
 namespace r3d {
 
 namespace {
-const std::vector<std::string> kPasses = {"light", "shadow", "reflections", "masks", "depth", "normal"};
+const std::vector<std::string> kPasses = {"light", "shadow", "reflections", "masks", "depth",
+                                          "normal", "lightGroups", "cryptomatte", "motion"};
 const std::vector<std::string> kRest = {"transmission", "emission", "background", "volume"};  // add up to "rest"
 
 bool has(const std::vector<std::string>& v, const std::string& x) { return std::find(v.begin(), v.end(), x) != v.end(); }
@@ -58,6 +61,14 @@ std::vector<SdfPath> items(const UsdStageRefPtr& stage) {
   return out;
 }
 
+// the light groups: one per light, named as it (hydra/light.cpp in our patch -r5 names each light's group so)
+std::set<std::string> light_groups(const UsdStageRefPtr& stage) {
+  std::set<std::string> out;
+  for (UsdPrim p : stage->Traverse())
+    if (p.HasAPI<UsdLuxLightAPI>()) out.insert(p.GetName());
+  return out;
+}
+
 // one channel per item: 1 where a pixel shows the item or anything it holds
 std::vector<ExrLayer> masks(const Aovs& lit, const UsdStageRefPtr& stage) {
   const auto list = items(stage);
@@ -91,7 +102,7 @@ std::vector<std::string> read_passes(const JsValue& v, const std::string& where)
   return out;
 }
 
-std::vector<std::string> aovs_for(const std::vector<std::string>& passes) {
+std::vector<std::string> aovs_for(const std::vector<std::string>& passes, const UsdStageRefPtr& stage) {
   std::vector<std::string> out;
   if (has(passes, "light")) out.push_back("diffuse");
   if (has(passes, "reflections")) out.push_back("glossy");
@@ -100,10 +111,16 @@ std::vector<std::string> aovs_for(const std::vector<std::string>& passes) {
   if (has(passes, "masks")) out.push_back(HdAovTokens->primId.GetString());
   if (has(passes, "depth")) out.push_back(HdAovTokens->depth.GetString());
   if (has(passes, "normal")) out.push_back(HdAovTokens->normal.GetString());
+  if (has(passes, "lightGroups"))
+    for (const auto& g : light_groups(stage)) out.push_back("lightgroup:" + g);
+  if (has(passes, "cryptomatte")) out.insert(out.end(), crypto_aovs().begin(), crypto_aovs().end());
+  if (has(passes, "motion")) out.push_back("motion");
   return out;
 }
 
 bool needs_unshadowed(const std::vector<std::string>& passes) { return has(passes, "shadow"); }
+
+bool needs_motion(const std::vector<std::string>& passes) { return has(passes, "motion"); }
 
 std::vector<ExrLayer> pass_layers(const std::vector<std::string>& passes, const Aovs& lit, const Aovs& unshadowed,
                                   const UsdStageRefPtr& stage) {
@@ -128,6 +145,12 @@ std::vector<ExrLayer> pass_layers(const std::vector<std::string>& passes, const 
     out.push_back(ExrLayer{{"depth.Z"}, std::move(z), true});
   }
   if (has(passes, "normal")) out.push_back(ExrLayer{{"normal.X", "normal.Y", "normal.Z"}, lit.plane("normal"), false});
+  if (has(passes, "lightGroups"))
+    for (const auto& g : light_groups(stage)) out.push_back(colour("lightgroup_" + g, lit.plane("lightgroup:" + g)));
+  if (has(passes, "cryptomatte"))
+    for (auto& l : cryptomatte(lit, stage)) out.push_back(std::move(l));
+  if (has(passes, "motion"))
+    out.push_back(ExrLayer{{"motion.X", "motion.Y", "motion.Z", "motion.W"}, lit.plane("motion"), true});
   return out;
 }
 
@@ -135,7 +158,8 @@ void check_beauty(const Picture& beauty, const std::vector<ExrLayer>& layers, in
   const auto any = [](const std::vector<float>& v) { return std::any_of(v.begin(), v.end(), [](float x) { return x != 0.0f; }); };
   if (any(beauty.rgba)) return;
   for (const auto& l : layers)
-    if (l.channels.front().rfind("masks.", 0) != 0 && any(l.pixels))
+    if (l.channels.front().rfind("masks.", 0) != 0 && l.channels.front().rfind("CryptoObject", 0) != 0 &&
+        l.channels.front().rfind("motion.", 0) != 0 && any(l.pixels))
       throw Error("render: frame " + std::to_string(frame) + ": the picture came out empty while its " +
                   l.channels.front() + " layer is not; no file written");
 }

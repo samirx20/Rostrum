@@ -21,7 +21,7 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-picker-low", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
-         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "shot-only-light", "collections-row", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
          "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-stylize", "sim-render-sheet", "sim-context", "sim-body-selected")
 BATCH = 6
@@ -204,6 +204,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shots-menu", s, ["shots"]),
         ("shots-two", two_shots(), ["mode free", "orbit 30 5", "shots"]),       # Hero 01 ✓, Close 02, New shot from this view
         ("shot-switched", two_shots(), ["showshot close"]),
+        ("shot-only-light", two_shots(), ["select key", "shotonly on", "set intensity 9"]),   # Changes: Only Hero 01, a This shot row
+        ("shot-only-tag", two_shots(), ["select key", "shotonly on", "set intensity 9", "shotonly off"]),   # the tag on All shots
+        ("collections-row", s, ["selectmany block vase", "action collection:new"]),       # the scene list's Collections chips
         ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
         # Make this the shot (header, free view only; its place held in the shot camera) and its hover: the frame it takes
         ("take-view-hover", s, ["mode free", "orbit 40 10", "wait 300", "hover takeShot", "wait 700"]),

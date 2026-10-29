@@ -33,7 +33,7 @@ Aovs read_aovs(UsdImagingGLEngine& e, const std::vector<std::string>& names, int
   out.height = h;
   for (const auto& name : names) {
     HdRenderBuffer* rb = e.GetAovRenderBuffer(TfToken(name));
-    if (!rb) throw Error("render.passes: the renderer has no \"" + name + "\" output (is the library folder -r3?)");
+    if (!rb) throw Error("render.passes: the renderer has no \"" + name + "\" output (light groups, Cryptomatte and motion need the library folder -r5)");
     rb->Resolve();
     if (int(rb->GetWidth()) != w || int(rb->GetHeight()) != h)
       throw Error("render.passes: \"" + name + "\" came out " + std::to_string(rb->GetWidth()) + " x " +

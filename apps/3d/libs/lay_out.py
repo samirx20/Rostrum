@@ -30,9 +30,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "5.2.2-cycles-a456b76-r4"   # r4 (3D libs): + per-copy colour in Cycles' Hydra plug-in; MaterialX lamp falloff (usd-overlay)
+VERSION = "5.2.2-cycles-a456b76-r5"   # r5 (PR9): + light groups, Cryptomatte and motion vectors in Cycles' Hydra plug-in
 BUNDLE_TAG, BUNDLE_COMMIT, CYCLES_COMMIT = "v5.2.2", "60d6e96", "a456b76"
-CYCLES_INSTALL = "install-r4"         # made by build_cycles.bat (the proof's unpatched build is install\)
+CYCLES_INSTALL = "install-r5"         # made by build_cycles.bat (the proof's unpatched build is install\)
 CYCLES_PATCH = "cycles-rostrum.patch"
 # Files of ours laid over the bundle's USD resources, same relative paths under runtime\ (PATCHES.md): MaterialX's
 # lamp shaders with Storm's and Cycles' falloff. Text files read at run time, so USD itself is not rebuilt.
