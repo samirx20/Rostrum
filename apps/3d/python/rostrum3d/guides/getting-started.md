@@ -28,7 +28,7 @@ The steps here use single operations and pixel tools, the way to fix one thing y
 In a script, things stand on the ground: a mesh's `y` is the height of its base above the ground (**changed**: it was its
 middle; `y_world=` for that); place by relation with `place_on(other, beside="left")` and `row([...])`; frame with
 `shot("shot_1", frame=c, at=(1/3, 0.5), fill=0.6)`; your own light adds to the start key and rim (guide `script`).
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`; render_still / render_video refuse open faults unless `keep: {id: why}` explains them.
+Check with `look_frame` (a quick frame in seconds) and judge it yourself; `notes: true` adds measurements if you want them. Renders always write what you asked.
 
 ### 1. The body: ONE clay, every part a piece of it
 

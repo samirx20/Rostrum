@@ -169,13 +169,12 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
     return done, [done / Path(p).name for p in req.values()], out
 
 
-@tools.tool("render_still", {"properties": {**ITEM_SHOT, **TIME, "quality": QUALITY_ARG, **SETTINGS, **faults.KEEP,
+@tools.tool("render_still", {"properties": {**ITEM_SHOT, **TIME, "quality": QUALITY_ARG, **SETTINGS, **faults.NOTES,
                                              "formats": {"type": "array", "items": {"enum": ["png", "exr"]}, "minItems": 1, "uniqueItems": True,
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
-    """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. Checked first (as look_frame):
-    the reply opens NOT DONE: with each fault or DONE:, and a file with open faults is kept as <name>.NOT-DONE unless
-    `keep` explains each. A job: inspect_job shows progress. Guide 'rendering'."""
+    """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. `notes: true`
+    also lists what the checks measured (as look_frame). A job: inspect_job shows progress. Guide 'rendering'."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, s = frame_of(ctx, info, args), render_settings(doc, info)
@@ -195,17 +194,16 @@ def render_still(ctx, args):
             job.progress(round(f * 100), 100, f"drawing {f:.0%}{left}")
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
                                  _cycles(args, renderer, s), ctx.app.folder, passes, step=drawn)
-        png = next((f for f in files if f.suffix == ".png"), None)       # an EXR-only still: only the geometry is judged
-        found = shot_faults.check(doc.data, info, [frame], {frame: png} if png else {}, ctx.app.folder, renderer)
-        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, files)     # open faults: the files are held back as .NOT-DONE and this raises
+        png = next((f for f in files if f.suffix == ".png"), None)       # an EXR-only still: only the geometry is measured
+        found = shot_faults.check(doc.data, info, [frame], {frame: png} if png else {}, ctx.app.folder, renderer) if faults.asked(args) else None
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
-                      "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=[*engine.take_notices(), *notes], faults=found)
+                      "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=engine.take_notices(), faults=found)
 
     return ctx.job(f'render_still {info["id"]} f{frame}', job_fn, key=f"still|{item}|{info['id']}|{frame}|{renderer}|{w}|{args}|{doc.seq}")
 
 
-@tools.tool("render_video", {"properties": {**ITEM_SHOT, "quality": QUALITY_ARG, **SETTINGS, **faults.KEEP,
+@tools.tool("render_video", {"properties": {**ITEM_SHOT, "quality": QUALITY_ARG, **SETTINGS, **faults.NOTES,
                                              "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default 0."},
                                              "end": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start: the last frame. Default: the shot's end."},
                                              "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as EXR (with passes) for the Editor."},
@@ -216,8 +214,8 @@ def render_still(ctx, args):
 def render_video(ctx, args):
     """An mp4 of a shot (or `start`–`end`), plus a small <name>-share.mp4; `exr` keeps EXR frames, `output_folder` copies
     the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` / `estimate_only`
-    measure first. First, middle and last frames are checked (NOT DONE: / DONE:; refused unless `keep` explains each
-    fault). A job. Guide 'rendering'."""
+    measure first. `notes: true` also lists what the checks measured on the first, middle and last frames. A job.
+    Guide 'rendering'."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))
     if gate is None or not gate.wait(ESTIMATE_WAIT_S):
@@ -414,14 +412,16 @@ def video_job(ctx, args, gate: Gate | None = None):
             gate.decide()
         job.progress(kept, count, f"frame {kept} of {count}; {note}")
         t_draw = time.perf_counter()
-        seen = {}                                          # the first, middle and last picture's faults, read before the PNGs go
+        seen, asked = {}, faults.asked(args)              # notes asked for: the first, middle and last picture's, read before the PNGs go
         done, paths, _ = video(ctx.tool, doc, info, scene0, engine, (w, h), renderer, cycles, f0, f1, ctx.app.folder, exposure, keep_exr, passes,
                                progress=lambda i, n: job.progress(i, n, f"frame {i} of {n}; {note}"), stopped=job.cancel_requested.is_set,
                                say=lambda words: job.progress(count, count, words),
-                               peek=lambda pngs: seen.update(pngs=[x for f, p in pngs.items() for x in shot_faults.picture(p, info["id"], shot_faults.when_of(info, f))]))
-        found = shot_faults.check(doc.data, info, sorted({f0, (f0 + f1) // 2, f1}), {}, ctx.app.folder)
-        found = list({x["id"]: x for x in [*seen.get("pngs", []), *found]}.values())
-        notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, paths[:2])      # open faults: the mp4 and its share copy are held back, this raises
+                               peek=(lambda pngs: seen.update(pngs=[x for f, p in pngs.items() for x in shot_faults.picture(p, info["id"], shot_faults.when_of(info, f))]))
+                               if asked else None)
+        found = None
+        if asked:
+            found = shot_faults.check(doc.data, info, sorted({f0, (f0 + f1) // 2, f1}), {}, ctx.app.folder)
+            found = list({x["id"]: x for x in [*seen.get("pngs", []), *found]}.values())
         learn_key = estimate_learn.key(ctx.app.folder, item, info["id"], renderer)
         if est is not None and todo > 0:         # what the guess missed, for the next guess of this shot
             estimate_learn.record(learn_key, est / estimate_learn.factor(learn_key), time.perf_counter() - t_draw)
@@ -435,7 +435,7 @@ def video_job(ctx, args, gate: Gate | None = None):
                      {"frames": count, "kept_frames": kept, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done),
                       **data_est, "seconds": round(took, 1), "seconds_per_frame": round(took / max(todo, 1), 3),
                       **({"copies": [str(c) for c in copies]} if copies else {})},
-                     [*paths, *copies], warnings=[*said, *notes, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])],
+                     [*paths, *copies], warnings=[*said, *engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])],
                      faults=found)
 
     def job_fn(job):

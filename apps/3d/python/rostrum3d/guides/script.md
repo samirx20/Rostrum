@@ -7,14 +7,15 @@ file (only posing a clay asks the engine to measure its shape); the same fields 
 ## The way to work: one script, look, edit, re-run
 
 1. Write the **whole scene** as one script (`run_script` with `path` to a .py file you keep, or `source` + a `name`).
-2. Look (`look_frame`, `look_frame what "sheet"`).
+2. Look (`look_frame` is the main check: a quick frame in seconds; `what "sheet"` for the whole shot) and judge it yourself.
+   `notes: true` on a look or render adds measured notes, if you want them.
 3. Edit **that same script** (the whole text, with your change) and run it again under **the same name**. It replaces what
    it made: changed values change, keys are rewritten, things you deleted from the script go (the reply lists them; `edit_undo`
    brings them back). What a person changed by hand is kept and listed as held back.
 
-A re-run that leaves out most of what its last run made (2 or more things, more than half) is refused, naming them, so a
-one-line tweak sent under the script's name never wipes the scene. For a small change on its own, use a **new** name and
-`edit("ball", y=0.3)`; to really take things out, `remove("wall", "ball")`.
+A re-run that leaves out most of what its last run made (2 or more things, more than half) still runs, and the reply warns
+which things it removed (`edit_undo` brings them back). For a small change on its own, use a **new** name and
+`edit("ball", y=0.3)`; to take things out on purpose, `remove("wall", "ball")`.
 
 ## A character: one clay, posed by its joints
 
@@ -154,7 +155,7 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
   the document as it is. A value a person (or another script, or `edit_document`) changed since is kept, and `run_script` lists it as
   *held back* with who changed it. To make the script win, run again with `force: ["key.x"]` (those keys) or `force: true` (all).
 - Items and keys the script no longer makes are removed (listed in the reply); things a person added themselves are left alone.
-  Leaving out most of what it made is refused (see "The way to work").
+  Leaving out most of what it made runs, with a warning naming them (see "The way to work").
 - Give a script a stable `name` (`run_script`'s `name`, default `agent_script.py`) and re-run under it to merge. A different name is a
   different script: its own new things go beside the first script's; what it makes under an id already in the scene, it takes over.
   A counted id (`mesh_1`) skips ids already in the scene.
@@ -185,7 +186,7 @@ them like its own, in the same run (one undo step):
   lights its own, +1 twice that, −1 half; it sets `intensity` (Same brightness at any size, scaled by the distance squared)
   and `exposure` (= the stops). The distance is to what it aims at, or `at_distance=` metres. A dome: exposure −1 + stops.
 - **Made again, a thing keeps what you didn't say:** `shot("shot_1", end=3)` keeps its camera; `light("key_light",
-  intensity=8)` keeps its place and aim. A shot with no camera is refused when the script runs, naming the fix.
+  intensity=8)` keeps its place and aim. A shot with no camera is seen through the default view, and the reply says so.
 
 The same goes for anything another script or a person made: **made again under its id**, this script replaces it (never a
 second copy). From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
