@@ -32,7 +32,7 @@ def wave_faults(track, info: dict, id_: str, item: dict, balls, posed, keyed) ->
     par, names = PB.parents(item), PB.joint_names(item)
     rest = skin.transforms(bones)
     scale = PB.scale_of(track.fr.world(id_, info["start"]))
-    for joint in sorted(n for n in keyed if _swings(bones[n][0])):
+    for joint in sorted(n for n in keyed if _swings(bones[n][0]) and _limb(names[n])):
         sub = [n for n in range(len(par)) if joint in _chain(par, n)]
         moved = _moves(track, posed, balls, sub)
         if moved is None or moved < STILL * info["width"]:
@@ -139,3 +139,8 @@ def _turning(s: dict, back: float) -> list[int]:
             way, hi = 1, f
     end = hi if way > 0 else lo if way < 0 else fs[-1]
     return out + ([end] if end != out[-1] else [])
+
+
+def _limb(name: str) -> bool:
+    """A left or right part (an arm, a hand, a leg) waves; a head tilt or a body sway is secondary motion, not a wave."""
+    return name.endswith((".L", ".R")) or name.startswith(("Left", "Right"))

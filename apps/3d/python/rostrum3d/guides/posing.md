@@ -80,7 +80,7 @@ leaves the part where it was put.
 # swings side to side by a good share of the figure's height (here ~12 cm), three swings and more, until the shot ends;
 # the other arm hangs relaxed. A 2 cm move reads as still. Turning points every 0.35 s, not 0.5 or 1 s: stills one
 # second apart would catch the same pose.
-c.pose(0, **{"picture-right hand": {"up": 0.06, "out": -0.02}, "picture-left hand": {"up": -0.03, "out": 0.01}})  # a real move: 0 m keys nothing
+c.pose(0, **{"picture-right hand": {"up": 0.06, "out": 0.02}, "picture-left hand": {"up": -0.03, "out": 0.01}})  # a real move: 0 m keys nothing
 c.pose(0.4, **{"picture-right hand": {"up": 0.14, "out": -0.03, "forward": 0.05}})       # the lift
 for i in range(8):                                                                      # a swing every 0.35 s to the end
     c.pose(0.8 + 0.35 * i, **{"picture-right hand": {"up": 0.17, "out": -0.11, "forward": 0.06} if i % 2 == 0  # in, by the head
