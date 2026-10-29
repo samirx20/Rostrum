@@ -668,7 +668,8 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         // (readback.rs); or read now where the GPU cannot.
         s.sink.as_ref().ok_or("encode frames need an encoder (open.encode)")?;
         let mut wait_ms = 0.0;
-        if s.painter.start_read(index, &s.color, s.deep)? {
+        let nv12 = s.sink.as_ref().is_some_and(|k| k.wants_nv12());
+        if s.painter.start_read(index, &s.color, s.deep, nv12)? {
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             while s.painter.reads_in_flight() > 1 {
                 wait_ms += collect(s)?;
@@ -812,7 +813,7 @@ fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut
 fn collect(s: &mut Session) -> Result<f64, String> {
     let t = Instant::now();
     let (raw, index, ready) = s.painter.finish_read()?;
-    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready, repeat: false, nv12: false };
+    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready, repeat: false, nv12: s.painter.last_read_nv12 };
     s.sink.as_mut().ok_or("no encoder")?.push(px)?;
     Ok(t.elapsed().as_secs_f64() * 1000.0)
 }
