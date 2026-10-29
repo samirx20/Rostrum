@@ -11,6 +11,7 @@ quoting the brief (rostrum_core.mcp.brief_keep). Anything less (a png, a part of
 preview and is never refused. The screen's Export button is the person's: never gated (exporting.py)."""
 from __future__ import annotations
 
+from rostrum_core.mcp.brief_keep import register
 from rostrum_core.mcp.faults import fault
 
 from . import edge_cut, look_empty, review
@@ -61,6 +62,24 @@ FIX = {
     "edge_cut": "move or scale the subject so it sits inside the frame, or let it leave the frame fully",
     "rig_cut": "move or scale the character so it sits inside the frame, or let it leave fully",
 }
+# A kept fault's why must quote the brief's words that ASK for it (rostrum_core.mcp.brief_keep): "a camera through 5
+# depth layers" cannot keep a title cut by the edge. Undertow r1 (faults-zero bench) quoted that clause to keep its cuts.
+_CROP = ["crop", "cropped", "cut by the frame", "cut by the edge", "cut off", "off the edge", "bleed", "bleeds", "past the edge",
+         "beyond the frame", "out of frame", "partly out", "close-up", "close up", "extreme close", "fills the frame", "frame edge"]
+_OVER = ["overlap", "overlapping", "layered", "on top of", "superimposed", "double exposure", "collage", "stacked",
+         "through the text", "over the text", "behind the text", "crossing"]
+for _k in ("edge_cut", "rig_cut", "device_cut", "push_cut", "push_bars", "text_edge", "text_margin"):
+    register(_k, _CROP, "a crop at the frame edge")
+for _k in ("text_crossed", "text_on_text", "pointer_on_text", "painted_over", "ghost_text", "text_clipped"):
+    register(_k, _OVER, "things laid over each other")
+for _k in ("empty", "sparse"):
+    register(_k, ["black", "blank", "empty", "negative space", "minimal", "fade to black", "darkness", "void", "pause"],
+             "an empty or near-empty frame")
+register("end_small", ["small", "tiny", "subtle", "discreet", "understated"], "a small end card")
+for _k in ("screen_spill", "outside"):
+    register(_k, ["spill", "spills", "breaks out", "break out", "out of the screen", "pops out", "beyond the screen"],
+             "a layer breaking out of its screen")
+register("speck", ["dot", "point", "speck", "spark", "grows from"], "a dot that grows")
 OTHER = "look at it at that time (look_frame) and move, resize or re-time the layer it names"
 
 

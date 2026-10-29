@@ -90,5 +90,6 @@ they are listed as "worth a look", never refused.
   motion. Its faults are named (film formats) but it is never refused.
 - **Fix** each fault in the script and export again, or **keep** the ones the brief asks for:
   `keep: {"text_edge:title": "the brief says \"cropped by the right edge on purpose\""}`. The why must quote the brief
-  stored with `brief("...")` in the script (its words in quotes, or three or more of them in a row); a why that does
-  not is refused and the fault's fix says why. Ids are the ones the reply names (`kind:layer`, or `kind@seconds`).
+  stored with `brief("...")` in the script (its words in quotes, or three or more of them in a row), and the quoted
+  words must ask for that kind of fault (a crop or bleed for a cut, an overlap for texts on each other, blank or
+  negative space for an empty stretch); a why that does not is refused and the fault's fix says why. Ids are the ones the reply names (`kind:layer`, or `kind@seconds`).

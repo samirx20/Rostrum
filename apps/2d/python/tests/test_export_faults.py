@@ -44,3 +44,8 @@ def test_keep_quoting_the_brief_passes_and_an_unquoted_one_is_refused(tmp_path):
     quoted = {f["id"]: 'the brief asks for "cropped by the right edge on purpose"' for f in found}
     faults.deliver(found, brief_keep.screen(found, quoted, data), "render_export", film)
     assert film.is_file()
+    data, found, film = _found(tmp_path)            # a quote that asks for something else keeps nothing (Undertow r1)
+    other = {f["id"]: 'the brief says "A 3 s title card"' for f in found}
+    with pytest.raises(RostrumError) as e:
+        faults.deliver(found, brief_keep.screen(found, other, data), "render_export", film)
+    assert "never asks for a crop at the frame edge" in str(e.value)
