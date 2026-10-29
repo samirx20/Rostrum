@@ -25,7 +25,8 @@ the same id (`light("sky", kind="dome", intensity=0.5)`) is replaced by it, fiel
 `edit("ground", baseColor=…)` (or `item("ground")`) is a handle on it changing only the fields given, and on anything this
 script made earlier; asked twice, the same handle. `remove("a", "b")` takes things out. The script then owns them (a re-run
 under its name changes them again); a field a person changed since is held back, as for any script. A re-run that leaves
-out most of what its last run made is refused (script_rerun.py).
+out most of what its last run made goes through and its reply names what went (script_rerun.py). A shot with no camera
+is seen through the default view, said in the reply (script_shot.default_view).
 
 Ground first (script_ground.py): a mesh, import or group made directly in the scene stands on the ground, its `y` the height of
 its base above it (`y_world=` for its origin's world height); place by relation with place_on / row (script_place.py); frame
@@ -457,7 +458,7 @@ class Build:
         script), else the document's own."""
         doc = self.doc
         if doc is not None:
-            script_rerun.guard(self)                         # a re-run leaving out most of what it made: refused
+            script_rerun.guard(self)                         # a re-run leaving out most of what it made: said in the reply
             before = set(self.owned)
             script_rerun.remade(self)                        # made again under an id already in the scene: replaces it
             for lst in ROOT_LISTS:                           # made again under a new-scene id: replaces that one
@@ -468,7 +469,6 @@ class Build:
             for id_ in start_lights.replaced(doc, self.root["items"], lambda i, lst: _start_owned(doc, i, lst),
                                              self.replace_lights):              # replace_start_lights=True, or a dome
                 self.owned.setdefault(id_, "items")
-        script_shot.check(self)                              # a shot with no camera: refused, naming the fix
         if doc is None or not self.owned:
             return
         base = doc.script_bases.setdefault(name, KIND.blank())
@@ -623,6 +623,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
                                "(brightness=0); give brightness= in stops (−1 half, +1 twice) to change it")
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed: {e}", API) from e
+    script_shot.default_view(b)                              # a shot with no camera: the default view, said
     b.take_over(name)
     return Tree(b.root, b.notes)
 

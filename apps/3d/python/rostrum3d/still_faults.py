@@ -122,7 +122,4 @@ def frozen_end(data: dict, info: dict, folder=None, sim: dict | None = None, fr=
     x, end = (f - s0) / fps, (s1 - s0) / fps
     what = (f"nothing moves from {x:.1f} s to the end ({still:.1f} s still"
             + (f"; the last thing moving is {last[1]})" if last else "; nothing in the shot moves at all)"))
-    return [F.fault(f"frozen_end:{info['id']}", what,
-                    "carry the action or a small settle/idle (breath, head tilt, slow camera push) to the last frame, or end "
-                    f"the shot at {min(x + 0.5, end):.1f} s; keep it only if the brief asks for a hold",
-                    f"frame {f}, {x:.2f} s")]
+    return [F.note(f"frozen_end:{info['id']}", what, f"frame {f}, {x:.2f} s")]

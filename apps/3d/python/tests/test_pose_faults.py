@@ -29,7 +29,7 @@ def _pose(found: dict) -> dict:
 def test_an_arm_swung_through_the_head_names_the_joint_and_how_far_to_turn_it():
     found = _found('c.bend("arm.R", {0: (0, 0, 0), 1.5: (0, 0, -150), 3: (0, 0, -150)})\n')
     hit = [v for k, v in found.items() if k.startswith("through_body:buddy.")]
-    assert hit and "into its head" in hit[0]["what"] and "°" in hit[0]["fix"], found
+    assert hit and "into its head" in hit[0]["what"] and "fix" not in hit[0], found
     good = _found('c.bend("arm.R", {0: (0, 0, 0), 1.5: (0, 0, -60), 3: (0, 0, -60)})\n')
     assert not [k for k in good if k.startswith("through_body:")], good
 
@@ -54,6 +54,6 @@ def test_an_eye_on_the_rim_of_a_turned_head_reads_beside_it_and_one_at_the_front
     """gaps6 Hello r1 still 1: the head turned ~40°, the attached eye on its rim stuck out past the head's outline."""
     turned = _found('c.bend("head", {0: (0, 45, 0), 3: (0, 45, 0)})\n')
     assert "on_rim:eye" in turned and "pokes" in turned["on_rim:eye"]["what"], turned
-    assert "less toward that side" in turned["on_rim:eye"]["fix"] and "x " in turned["on_rim:eye"]["fix"], turned
+    assert "fix" not in turned["on_rim:eye"], turned
     front = _found('c.bend("head", {0: (0, 5, 0), 3: (0, 5, 0)})\n')
     assert "on_rim:eye" not in front, front

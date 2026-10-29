@@ -93,9 +93,6 @@ def flat(data: dict, info: dict, f: int, png, folder=None, when: str = "") -> li
     if stops is None or stops >= FLAT_STOPS:
         return []
     shadow = "" if _casts_shadow(data) else ", and no light casts a shadow (only the sky, or Casts shadows off), so nothing grounds it"
-    return [F.fault(f"flat_light:{id_}",
-                    f"flat: {id_}'s lit and dark sides differ by {stops:.1f} stops in the picture (under {FLAT_STOPS:g}){shadow}",
-                    "make the key rake across what the camera sees: move it to the side and lower (about level with the top of "
-                    f"{id_}, beside it rather than in front), or turn {id_} / the camera so two faces show; lower the fill (the "
-                    "sky's exposure, or a fill light's brightness) so the far side drops about 2 stops under the key; keep the "
-                    "key's shadows on (shadows=True) and high enough to drop a shadow beside it; if flat is meant, keep it", when)]
+    return [F.note(f"flat_light:{id_}",
+                   f"{id_}'s lit and dark sides differ by {stops:.1f} stops in the picture (the check reads under "
+                   f"{FLAT_STOPS:g} as flat){shadow}", when)]

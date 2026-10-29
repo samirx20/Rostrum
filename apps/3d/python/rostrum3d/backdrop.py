@@ -53,8 +53,6 @@ def backdrop_edge(track, info: dict, boxes: dict, check: list[int]) -> list[dict
     if misses < SHARE * RAYS * RAYS:
         return []
     where = "across the top" if top <= RAYS // 2 else "over much"
-    return [F.fault(f"backdrop_edge:{dome}", f"the sky photo ({dome}) shows {where} of the picture past the floor: its room's "
-                    f"walls, lamps and edges cross the shot (about {100 * misses // (RAYS * RAYS)} % of it)",
-                    f'turn the photo off for the camera: edit("{dome}", seenByCamera=False) (it still lights and reflects; '
-                    "the shot's background colour shows there, so set it near the floor's), or tilt the camera down; "
-                    "if the photo is meant to be seen, keep it", when(info, f))]
+    return [F.note(f"backdrop_edge:{dome}", f"the sky photo ({dome}) shows {where} of the picture past the floor: its room's "
+                   f"walls, lamps and edges cross the shot (about {100 * misses // (RAYS * RAYS)} % of it)",
+                   when(info, f))]

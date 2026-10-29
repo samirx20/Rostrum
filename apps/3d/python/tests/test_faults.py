@@ -1,5 +1,5 @@
 """rostrum3d/faults.py: the document faults judges cap a piece for, in the shot's one fault list (mcp/shot_faults.check):
-a part of a figure coming apart, a subject leaving the picture, no floor in the picture; ids stable for `keep`."""
+a part of a figure coming apart, a subject leaving the picture, no floor in the picture; ids stable across re-runs."""
 from rostrum_core import Document, Who
 from rostrum_core.mcp import App, Runtime
 
@@ -29,8 +29,12 @@ def test_a_drifting_arm_and_a_cube_leaving_are_faults_in_the_one_list_and_open_l
     found, doc = _faults(SRC)
     assert "separated:arm" in found and "cm gap" in found["separated:arm"]["what"], found
     assert "leaves_frame:cube" in found and "cut_edge:cube" not in found, found     # one fault per thing
-    reply = Runtime(App("rostrum-3d", {"scene": doc}), motion_look.tools).call("look_motion", {}, Who.agent("t"))[0]
-    assert reply["summary"].startswith("NOT DONE:") and "[separated:arm]" in reply["summary"], reply["summary"][:300]
+    rt = Runtime(App("rostrum-3d", {"scene": doc}), motion_look.tools)
+    reply = rt.call("look_motion", {}, Who.agent("t"))[0]
+    assert "notes" not in reply and "[separated:arm]" not in reply["summary"]          # checks only when asked
+    reply = rt.call("look_motion", {"notes": True}, Who.agent("t"))[0]
+    last = reply["summary"].split("\n")[-1]
+    assert last.startswith("Notes (") and "[separated:arm]" in last and "NOT DONE" not in reply["summary"], last[:300]
 
 
 def test_still_and_in_frame_is_done_and_a_camera_looking_up_has_no_floor():
@@ -47,7 +51,7 @@ def test_a_seen_sky_photo_past_the_floor_is_a_backdrop_edge_and_an_unseen_one_is
     still = SRC.replace('.key("x", {0: 0.17, 2: 0.5}).key("y", {0: 0.45, 2: 0.07})', "").replace('.key("z", {0: 0, 2: 2.5})', "")
     seen = still + 'light("sky", kind="dome", texture="sky:studio")\n'
     found, _ = _faults(seen)
-    assert "backdrop_edge:sky" in found and "seenByCamera=False" in found["backdrop_edge:sky"]["fix"], found
+    assert "backdrop_edge:sky" in found and "fix" not in found["backdrop_edge:sky"], found
     found, _ = _faults(seen.replace('texture="sky:studio"', 'texture="sky:studio", seenByCamera=False'))
     assert "backdrop_edge:sky" not in found, found
     found, _ = _faults(seen.replace('camera("cam", z=4, y=0.8)', 'camera("cam", z=4, y=2.5, rx=-35)'))

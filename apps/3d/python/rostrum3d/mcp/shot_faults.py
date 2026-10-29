@@ -1,7 +1,8 @@
-"""Faults first, for a 3D shot (rostrum_core/mcp/faults.py): what the shot camera's picture and the scene's geometry say is wrong,
-named before anything else in a look / render reply.
+"""Notes for a 3D shot (rostrum_core/mcp/faults.py): what the shot camera's picture and the scene's geometry measure, run only
+when a look / render call asks for them (`notes: true`) and listed at the end of its reply. A note never changes the reply,
+the files or their names: anything here can be deliberate.
 
-Three checks, each with a stable fault id so `keep: {id: why}` names it across re-runs:
+The checks, each with a stable note id the agent can follow across re-runs:
   dark:<shot> / blown:<shot>  the picture (its pixels): mean brightness under DARK_MEAN of full, or CLIPPED_PCT % of the pixels
                               with a channel at white (facts.measure; the same numbers inspect_exposure gives).
   out_of_frame:<item>         a shown shape (not ground-sized) wholly outside the picture on every sampled frame.
@@ -19,7 +20,7 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               says what each cloth ends on.
   flat_light:<item>           the biggest subject's lit and dark sides under light_faults.FLAT_STOPS apart in the picture
                               (light_faults.py; first picture only, not Stylized).
-  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / touches_body / face_unmatched / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
+  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
                               document over the whole shot (rostrum3d/faults.py), in the same list.
 """
 from __future__ import annotations
@@ -58,11 +59,9 @@ def picture(png, shot: str, when: str) -> list[dict]:
     mean = m["luminance"]["mean"] / 255
     out = []
     if mean < DARK_MEAN:
-        out.append(F.fault(f"dark:{shot}", f"the picture is nearly black: mean brightness {mean:.2f} of 1 (under {DARK_MEAN:g})",
-                           "raise the key light about 2 stops (its intensity ×4) or put back the starting lights (key_light, rim_light, sky); look_frame what \"exposure\" shows the numbers", when))
+        out.append(F.note(f"dark:{shot}", f"mean brightness {mean:.2f} of 1 (under {DARK_MEAN:g}: nearly black)", when))
     if m["clipped_pct"] > CLIPPED_PCT:
-        out.append(F.fault(f"blown:{shot}", f"{m['clipped_pct']:g} % of the picture is blown out to white (over {CLIPPED_PCT:g} %)",
-                           "lower the lights' intensity (halve it) or the shot's Exposure; look_frame what \"exposure\" shows where", when))
+        out.append(F.note(f"blown:{shot}", f"{m['clipped_pct']:g} % of the picture is at white (over {CLIPPED_PCT:g} %)", when))
     return out
 
 
@@ -197,12 +196,11 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
                 continue
             if (id_ := f"{'out_of_frame' if gone else 'cut_edge'}:{c['item']}") not in seen:
                 seen.add(id_)
-                out.append(F.fault(id_, f"{c['item']} is wholly outside the picture (past the {' and '.join(c['edges'])} edge)",
-                                   f"move it into the shot or frame it (shot.frame on {c['item']}); if it is meant to be unseen, keep it", when_of(info, f))
-                           if gone else F.fault(id_, f"{c['item']} is cut by the {' and '.join(c['edges'])} edge of the picture ({c['outside'] * 100:.0f} % of it is outside)",
-                                   f"move the camera back or frame it whole (shot.frame on {c['item']}), or move {c['item']} inside; if the cut is meant, keep it", when_of(info, f)))
-    for kind, word, fix in (("floating", "floats {m:.2f} m above the ground with nothing under it", "place_on the ground: y = {y:.3f}; if it is meant to hover, keep it"),
-                            ("sinking", "sinks {m:.2f} m into the ground", "lift it: place_on the ground, y = {y:.3f}")):
+                out.append(F.note(id_, f"{c['item']} is wholly outside the picture (past the {' and '.join(c['edges'])} edge)", when_of(info, f))
+                           if gone else F.note(id_, f"{c['item']} crosses the {' and '.join(c['edges'])} edge of the picture ({c['outside'] * 100:.0f} % of it is outside)",
+                                               when_of(info, f)))
+    for kind, word in (("floating", "is {m:.2f} m above the ground with nothing under it (resting on it: y = {y:.3f})"),
+                       ("sinking", "is {m:.2f} m into the ground (resting on it: y = {y:.3f})")):
         if not per:
             continue
         judged = set().union(*(r["judged"] for _, r in per))
@@ -212,9 +210,8 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
             m, on = r0[kind][id_] if kind == "floating" else (r0[kind][id_], None)
             sign = 1 if kind == "sinking" else -1
             y = _own_y(data, id_) + sign * m
-            what, how = (word, fix) if on is None else (f"floats {{m:.2f}} m above {on} with nothing touching it",
-                                                       f"{id_}.place_on({on}) (y = {{y:.3f}}); if it is meant to hover, keep it")
-            out.append(F.fault(f"{kind}:{id_}", f"{id_} " + what.format(m=m), how.format(y=y), when_of(info, f0)))
+            what = word if on is None else f"is {{m:.2f}} m above {on} with nothing touching it (resting on it: y = {{y:.3f}})"
+            out.append(F.note(f"{kind}:{id_}", f"{id_} " + what.format(m=m, y=y), when_of(info, f0)))
     return out
 
 
@@ -260,14 +257,3 @@ def sample(info: dict, count: int = 3) -> list[int]:
     a, b = info["start"], info["end"]
     return sorted({a, (a + b) // 2, b}) if count >= 3 else [a]
 
-
-def deliver(found: list[dict], keep: dict | None, where: str, files: list) -> list[str]:
-    """The checks on a final file are notes, never a refusal (Sam, 2026-10-29: "what if it's deliberate? we only provide
-    tools"): the files stay under their names, `keep` marks the faults left on purpose, and the reply's NOT DONE line
-    lists the rest. Returns apply_keep's notes plus one saying which faults the delivered file still shows."""
-    notes = F.apply_keep(found, keep)
-    left = F.still_open(found)
-    if left:
-        notes.append(f"{where}: written with {len(left)} open fault(s) as notes ({', '.join(f['id'] for f in left)}); "
-                     "look at the file and decide")
-    return notes
