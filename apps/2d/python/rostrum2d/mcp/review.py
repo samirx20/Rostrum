@@ -14,19 +14,19 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from . import edge_cut, look_empty, render
-from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_room
+from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_room, review_spill
 from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
-CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts)   # each (Sampled) -> faults: a new check registers here
+CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
         "text_crossed": 90, "text_clipped": 91, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
-        "device_cut": 92, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
+        "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "small_text_edge": 28, "washed": 25}
 
 
@@ -137,7 +137,7 @@ def look_review(ctx, args):
     on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text partly crossed (10-85 %
     of it) by a layer in front for 1 s or more (a group's own background counts; fully under a panel or sheet is hidden, a frosted scrim never counts), with where to
     place the block instead; a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other; a pointer (a layer named cursor, pointer, mouse, finger or hand)
-    covering a fifth of a label; an end card whose mark or lock-up is tiny in the frame; a device (device()) cut by the frame edge
+    covering a fifth of a label; an end card whose mark or lock-up is tiny in the frame; a layer in a device's screen hanging past the screen's edge (the screen not clipping); a device (device()) cut by the frame edge
     where it is placed, or nibbled by a camera push-in while its sides show (with the camera key, the share of the film it is
     cut and a frame.fit fix; a deep push-in filling the picture is meant and only listed in data.info, with the screen texts it
     cuts); a character more than half hidden behind layers in front, or on a bare set (under 3 things or 15 % of the frame

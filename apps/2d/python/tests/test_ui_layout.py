@@ -81,3 +81,28 @@ def test_blocks_take_their_colours_from_the_screen_they_sit_on():
     dark, light = run(src.format(screen="")), run(src.format(screen=', screen="#ffffff"'))
     assert dark.item("tabs")["bgColor"] == U.DARK["paper"] and dark.item("tabs_label1")["color"] == U.DARK["muted"]
     assert light.item("tabs")["bgColor"] == U.LIGHT["paper"]
+
+
+def test_device_draws_the_asked_kind_never_a_swap():
+    """Canary 3E R8: device("laptop", ...) drew a phone (the first argument is the id). The id names the kind when kind is
+    left out; a device it can't draw, or an id naming another kind than kind=, is refused."""
+    assert U.device_kind("laptop") == "laptop" and U.device_kind("macbook_hero") == "laptop"
+    assert U.device_kind("hero") == "phone" and U.device_kind("screen", "browser") == "browser"
+    for args in (("tablet",), ("laptop", "phone"), ("x", "tablet")):
+        with pytest.raises(ValueError):
+            U.device_kind(*args)
+    d = run('comp("main", width=1920, height=1080, fps=30, duration=1)\nscr = device("laptop", fit=0.74)\n')
+    group = next(l for l in d.data["comps"][0]["layers"] if l["id"] == "laptop")
+    assert group["name"] == "Laptop" and any(c["id"] == "laptop_base" for c in group["layers"])
+
+
+def test_a_card_hanging_off_a_device_screen_is_named_once():
+    """Canary 3E R8: a chart card hung off a laptop's screen and the look said nothing. The outermost spilling layer is
+    named (the card, not its words); a screen that clips (overflow="hidden") is not."""
+    from rostrum2d.mcp import review
+    src = ('comp("main", width=1920, height=1080, fps=30, duration=1)\nscr = device("laptop", fit=0.5{})\nwith scr:\n'
+           '    with column("box", h=900, bg="#ffffff"):\n        text("label", body="Revenue", size=30)\n')
+    for clip, named in (("", ["box"]), (', overflow="hidden"', [])):
+        d = run(src.format(clip))
+        faults, _ = review.doc_faults(d.data, d.data["comps"][0], None, "t")
+        assert [f["id"] for f in faults if f["kind"] == "screen_spill"] == named

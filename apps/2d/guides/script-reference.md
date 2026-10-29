@@ -246,7 +246,8 @@ a group of path layers, one per symbol.
 ### Screens (guide `ui-and-product-animation`)
 
 - `device(id, kind="phone" | "laptop" | "browser", fit=share of the picture's height, anchor=, screen=colour)` sizes and
-  centres itself and returns its screen, a column.
+  centres itself and returns its screen, a column. Left out, `kind` is the device the id names (`device("laptop")` draws
+  a laptop), else a phone; a device it can't draw (a tablet) or an id naming another kind than `kind=` is refused.
 - `status_bar`, `nav_bar`, `tab_bar`, `list_rows`, `card`, `button`, `toggle`, `bars` made in it (or any container) go
   one under the other, full width.
 - `pointer()` and `tap(pointer, target, at=)` land the tip beside a button's words with a press.

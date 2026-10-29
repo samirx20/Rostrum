@@ -12,8 +12,8 @@ drop_gap.py, faults.py), read from there, never copied.
 """
 from __future__ import annotations
 
-from . import drop_gap, moments as mo, rival
-from .faults import SQUASH_DB
+from . import drop_gap, moments as mo, rise_gap, rival
+from .faults import DULL_DB, SQUASH_DB
 from .speech_room import TARGET_DB
 
 # (measured key, at least / at most, pass, near, words, unit); near = the stated distance a kept moment must be within
@@ -34,6 +34,8 @@ RULES = {
     "early_climax": [("off_s", ">=", -mo.CLIMAX_EARLY_S, -0.75, "loudest moment against the downbeat", " s")],
     "early_rival": [("rival_x", "<=", rival.SHARE, 1.15, "the attack before it", "x the moment's")],
     "build_at_ceiling": [("headroom_db", ">=", mo.CEILING_NEAR_DB, 1.0, "build under the file's loudest peak", " dB")],
+    "gap_before": [("gap_s", "<=", rise_gap.GAP_S, 0.8, "quiet before the peak", " s")],
+    "dull_top": [("brightest_db", ">=", DULL_DB, DULL_DB - 2.0, "brightest tenth's 4–16 kHz against 250 Hz–1 kHz", " dB")],
     "busy_speech_band": [("room_db", ">=", TARGET_DB, TARGET_DB - 1.5, "voice over the music in 1–4 kHz", " dB")],
 }
 

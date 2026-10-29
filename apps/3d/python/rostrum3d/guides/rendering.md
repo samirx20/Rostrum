@@ -75,6 +75,15 @@ Things to know:
 - **Masks have hard edges** (one sample a pixel), so an edge can look stepped when a mask is used on its own.
 - Passes need the final renderer (Cycles); a quick (Storm) render saves the picture alone.
 
+## Glass, liquid and bright bounces
+
+Every Cycles picture (the Final look, Render, every quality) follows light through up to 12 surfaces, 12 of them glass
+(seeing through a bottle with a liquid in it takes 4–6), and up to 4 matte and 4 shiny bounces. Light that reaches a
+matte surface only through glass or off a mirror-like one (a liquid's colour inside a bottle, the floor beside it) is
+found with that glass blurred, and a bounced sample's brightness is capped, so few samples leave soft grain, not white
+spots the noise clean-up spreads into blotches. Direct light, and what the camera sees through the glass, stay sharp.
+The cost: light that sharp glass focuses onto a floor (a caustic) is softer and dimmer than in life.
+
 ## The time
 
 The time is **measured**, never guessed. When the sheet opens with nothing measured yet, the row says "Measuring…" while a short test runs in

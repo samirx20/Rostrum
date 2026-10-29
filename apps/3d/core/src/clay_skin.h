@@ -90,6 +90,8 @@ class Skinning {
     PXR_NS::GfVec3f lo, hi;    // posed bounds
   };
   void weigh(Block& b) const;
+  // n points' weights averaged over a ball of `radius` round each (clay_skin.cpp smooth_share)
+  void smooth_weights(const float* xyz, size_t n, double radius, int* idx, float* w) const;
   void pose_block(Block& b) const;
   Affine blend_at(const Block& b, int tri, const double bary[3]) const;
   // one point's move from its influences (bone, weight): dual quaternions mixed with a share of the linear blend

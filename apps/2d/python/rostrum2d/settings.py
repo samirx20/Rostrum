@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 from rostrum_core import builds, userhome
+from rostrum_core.engine_copy import run_exe
 
 APP = Path(__file__).resolve().parents[2]                          # <root>/apps/2d
 ROOT = APP.parents[1]
@@ -47,10 +48,11 @@ def engine_candidates() -> list[Path]:
 
 
 def engine_exe() -> Path | None:
-    """The 2D engine program (ROSTRUM2D_ENGINE as given, else the newest build); None = not built or installed."""
-    if _env_path("ROSTRUM2D_ENGINE"):
-        return _env_path("ROSTRUM2D_ENGINE")
-    return builds.newest(engine_candidates(), "the 2D engine")
+    """The 2D engine program to start (ROSTRUM2D_ENGINE, else the newest build); None = not built or installed. A dev
+    build under engine/target (named by the variable or not) is started from a run copy (rostrum_core/engine_copy.py:
+    a rebuild never fails with "file in use" while a server runs); an engine outside it runs as given."""
+    exe = _env_path("ROSTRUM2D_ENGINE") or builds.newest(engine_candidates(), "the 2D engine")
+    return run_exe(exe, "2d", APP / "engine" / "target") if exe else None
 
 
 def engine_missing_reason() -> str | None:

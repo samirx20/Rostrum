@@ -19,13 +19,16 @@ BRIGHT_PCT = 90            # the brightest tenth of the piece: a dull mix has no
 SPAN_S = 5.0               # growth: the first 5 s that play against the 5 s from the climax or lift
 
 
-def _ratios(m, sr) -> tuple[np.ndarray, np.ndarray]:
-    """(frame start times, top-vs-low-mid dB) of the playing frames."""
+def _ratios(m, sr, weight=None) -> tuple[np.ndarray, np.ndarray]:
+    """(frame start times, top-vs-low-mid dB) of the playing frames. `weight(freqs)`: a power gain per frequency applied
+    first (a filter's |H|^2: what the measure would read with that EQ on the mix, shelf_try.py)."""
     if len(m) < FRAME:
         return np.zeros(0), np.zeros(0)
     fr = np.lib.stride_tricks.sliding_window_view(m, FRAME)[::FRAME] * np.hanning(FRAME)
     P = np.abs(np.fft.rfft(fr, axis=1)) ** 2
     f = np.fft.rfftfreq(FRAME, 1.0 / sr)
+    if weight is not None:
+        P = P * weight(f)
     lv = 10 * np.log10(P.sum(axis=1) + 1e-20)
     keep = lv > lv.max() - PLAYING_DB
     band = lambda lo, hi: P[:, (f >= lo) & (f < hi)].sum(axis=1) + 1e-20

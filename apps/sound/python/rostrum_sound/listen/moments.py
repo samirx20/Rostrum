@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import attack, drop_gap, stop_fall
+from . import attack, drop_gap, rise_gap, stop_fall
 from . import rival as rival_attack
 from .brightness import growth
 from .core import load, mono, num
@@ -32,6 +32,7 @@ CLIMAX_LATE_S, CLIMAX_EARLY_S = 3.0, 0.5   # an orchestra blooms 1–2 s after a
 HOLD_S = 3                 # a climax holds while each 1 s after it is at least as loud as the 3 s before; under 3 s it is cut short
 CEILING_NEAR_DB, CEILING_DBFS = 1.5, -3.0  # the build's peak within 1.5 dB of a file peak at -3 dBFS or more: at the ceiling
 LIFT_LU = 2.0              # a lift: the 3 s after it at least this much louder than the 3 s before
+QUIET_LUFS = -70.0         # a stretch quieter than this (or past the file's end) is measured as this: silence, not -inf
 GROW_DB = 6.0              # the top end of a climax or lift at least this much brighter than the start (open builds: +11 to +15)
 KINDS = ("hit", "stop", "drop", "climax", "lift", "entry", "voice")
 
@@ -116,7 +117,7 @@ def _drop(m, sr, ev, at):
 def _lift(y, sr, at):
     """A section lift is heard as the music growing, not as one onset: the 3 s after against the 3 s before."""
     from .bs1770 import integrated
-    cut = lambda s0, s1: integrated(y[max(0, int((at + s0) * sr)):int((at + s1) * sr)], sr)
+    cut = lambda s0, s1: max(QUIET_LUFS, integrated(y[max(0, int((at + s0) * sr)):int((at + s1) * sr)], sr))
     rise = cut(0.0, 3.0) - cut(-3.0, 0.0)
     return [{"kind": "flat_lift", "at_s": at, "measured": {"rise_lu": num(rise, 1)}}] if rise < LIFT_LU else []
 
@@ -127,7 +128,7 @@ def _climax(wav, m, sr, y, at):
     from .bs1770 import integrated
     from .loudness import loudest
     out = [f for f in _hit(wav, m, sr, at, "climax") if not f["kind"].startswith("no_")]
-    cut = lambda s0, s1: integrated(y[max(0, int((at + s0) * sr)):max(1, int((at + s1) * sr))], sr)
+    cut = lambda s0, s1: max(QUIET_LUFS, integrated(y[max(0, int((at + s0) * sr)):max(1, int((at + s1) * sr))], sr))
     build = cut(-3.5, -0.5)
     held = next((s for s in range(HOLD_S) if cut(s, s + 1) < build), HOLD_S)
     if held < HOLD_S and build > -70:
@@ -168,12 +169,12 @@ def check(wav, moments, drums=None) -> list[dict]:
         if kind in ("hit", "stop", "entry"):
             out += _hit(wav, m, sr, at, kind)
         elif kind == "lift":
-            out += _lift(y, sr, at) + _flat_top(wav, at)
+            out += _lift(y, sr, at) + _flat_top(wav, at) + rise_gap.faults(y, sr, at)
         elif kind == "drop":
             end = mo.get("end")
             out += _drop(m, sr, ev, at) + drop_gap.faults(m, sr, at, float(end) if end is not None else drop_gap.return_of(moments, at), drums)
         elif kind == "climax":
-            out += _climax(wav, m, sr, y, at) + _flat_top(wav, at)
+            out += _climax(wav, m, sr, y, at) + _flat_top(wav, at) + rise_gap.faults(y, sr, at)
         elif kind == "voice" and mo.get("end") is not None:
             out += _voice(y, sr, at, float(mo["end"]))
     return sorted(out, key=lambda f: f["at_s"])

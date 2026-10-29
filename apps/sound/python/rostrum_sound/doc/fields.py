@@ -46,6 +46,9 @@ FIELDS = {
         Param.choice("sampleRate", list(deliver.RATE_LABELS), group="Output", importance="deep", label="Sample rate",
                      labels=deliver.RATE_LABELS, help="How finely this song's sound is stored; export uses it unless "
                                                       "you pick another."),
+        Param.text("brief", group="Brief", importance="deep", label="Brief",
+                   help="The brief this song answers, in its own words (script: brief(\"...\")). A fault is kept on "
+                        "purpose only when its reason quotes the part of the brief that asks for it."),
         Param.text("picture", group="Picture", importance="secondary", control="file",
                    filters=["Videos (*.mp4 *.mov *.webm *.mkv *.avi)"], help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
         V.time("pictureAt", group="Picture", importance="secondary", label="Picture starts",

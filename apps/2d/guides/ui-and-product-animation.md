@@ -104,7 +104,7 @@ for a 390 px wide screen and scaled to the screen they are made in).
 
 | Call | Makes |
 |---|---|
-| `scr = device(id, kind="phone" \| "laptop" \| "browser", fit=, anchor="center" \| "left" \| "right", margin=, x=, y=, w=, h=, body=, screen=, overflow=, url=, **column words)` | the device from shapes and returns its **screen**: a column filling the screen (`padding=`, `gap=`, `justify=` change it). `scr.w`, `scr.h` are its size. `layer(id)` is the whole device (move, scale or tilt that). Given `x`, `y`, `w`, `h` win over `fit` / `anchor`. |
+| `scr = device(id, kind="phone" \| "laptop" \| "browser", fit=, anchor="center" \| "left" \| "right", margin=, x=, y=, w=, h=, body=, screen=, overflow=, url=, **column words)` | the device from shapes and returns its **screen**: a column filling the screen (`padding=`, `gap=`, `justify=` change it). `scr.w`, `scr.h` are its size. `layer(id)` is the whole device (move, scale or tilt that). Given `x`, `y`, `w`, `h` win over `fit` / `anchor`. Left out, `kind` is the device the id names (`device("laptop")` draws a laptop; `macbook`, `iphone` work too), else a phone; a device it can't draw (tablet, watch, TV) or an id naming another kind than `kind=` is refused, never swapped. |
 | `status_bar(time="9:41", color=, h=)` | the time on the left, signal, Wi-Fi and battery on the right |
 | `nav_bar(title, back=, action=, h=)` | a big title, an optional back label and action word, all inside its own height |
 | `tab_bar(labels, active=0, accent=)` | tabs across the screen's bottom, each an icon square and a label |
