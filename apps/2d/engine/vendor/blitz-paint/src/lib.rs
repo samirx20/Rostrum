@@ -11,6 +11,7 @@ mod svg_filter;
 mod glow;
 mod gradient;
 mod ink;
+pub use ink::page_ink;
 mod kurbo_css;
 mod layers;
 mod particles;
