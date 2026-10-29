@@ -28,7 +28,7 @@ KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS), "mesh": ("shape", SHAPE
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay", "copies")      # scene items (USD prims)
 KEYED = (*ITEMS, "effector", "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine", "copies")
-LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
+LISTS = {"doc": ["items", "materials", "shots", "poses", "collections"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
          "camera": ["keys"],
          "clay": ["steps", "bones", "keys", "paints", "paintmasks"],   # its steps build its shape, in order (clay_fields.py); its joints (ops_pose.py)
@@ -49,7 +49,7 @@ for _type in SIM.TYPES:                          # the Simulation group is never
     STILL[_type] = STILL.get(_type, set()) | SIM.NAMES
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
-          "bone": "Bone", "clay": "Clay", "copies": "Copies", "effector": "Change near", "claystep": "Clay step"}
+          "bone": "Bone", "collection": "Collection", "clay": "Clay", "copies": "Copies", "effector": "Change near", "claystep": "Clay step"}
 KEYED_TOGGLES = {"visible"}                    # toggles keys may drive: on / off at each key, nothing in between
 
 

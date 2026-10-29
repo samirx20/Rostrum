@@ -22,10 +22,10 @@ from rostrum_core.tree import walk
 
 from rostrum_core.errors import codes
 
-from . import clay_dabs, clay_fields, copies_fields, fields as F, graph, mirror, paint_fields, paint_view
+from . import clay_dabs, clay_fields, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
-HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",),
+HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",),
          "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
@@ -100,6 +100,7 @@ def _ref(problems, item, field, value, ids, what):
 _KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
           for t, ps in F.FIELDS.items()}
 _KNOWN["material"].add(graph.FIELD)                  # its blocks graph (graph.py): data the graph.* ops write, never a row
+_KNOWN["shot"].add(shot_layer.FIELD)                 # Only in this shot: its own values (shot_layer.py), written by *.set_in_shot
 
 
 def check(data: dict) -> list[str]:
@@ -108,6 +109,8 @@ def check(data: dict) -> list[str]:
     problems, everything = [], list(walk(data, LISTS))
     by_type = lambda *types: {i["id"] for i in everything if i.get("type") in types}  # noqa: E731
     materials, items, cameras = by_type("material"), by_type(*F.ITEMS), by_type("camera")
+    collections, by_id = by_type("collection"), {i["id"]: i for i in everything}
+    problems += collection_kit.problems(data, LISTS)
     for item in everything:
         for key in LISTS.get(item.get("type"), []):
             for child in item.get(key, []):
@@ -133,9 +136,10 @@ def check(data: dict) -> list[str]:
                 if item.get(ref) == item["id"]:
                     problems.append(f"{item['id']}: can't {word} itself")
                 _ref(problems, item, ref, item.get(ref), items, "item")
-        if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item, not itself
+        if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item or collection, not itself
             for linked in item.get("lightsOnly", "").split():
-                _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
+                _ref(problems, item, "lightsOnly", linked, (items | collections) - {item["id"]},
+                     "item or collection" if collections else "item")
         if t == "combine":
             _check_combine(item, problems)
         if t == "copies":
@@ -165,6 +169,7 @@ def check(data: dict) -> list[str]:
                 _ref(problems, item, face, item.get(face), materials, "material")
         if t == "shot":
             _ref(problems, item, "camera", item.get("camera"), cameras, "camera")
+            problems += shot_layer.problems(item, by_id)
             if item.get("end", 0) <= item.get("start", 0):
                 problems.append(f'shot {item["id"]}: ends ({item.get("end")} s) before it starts ({item.get("start")} s)')
     return problems
@@ -172,7 +177,7 @@ def check(data: dict) -> list[str]:
 
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                tidy=lambda calls, folder=None: paint_view.tidy(clay_dabs.tidy(calls, folder)),   # view strokes: flat
-               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
+               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})   # collections: made with the first
 
 # painting on meshes and clays (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one
 # channel; a clay's strokes are kept on its surface (anchors, reach: paint_fields.STROKE, clay_paint.py)

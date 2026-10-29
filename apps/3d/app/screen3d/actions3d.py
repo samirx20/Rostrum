@@ -207,4 +207,10 @@ ACTIONS += [
            do="frame-selection", valid=lambda f: bool(framed(f.doc, f.ids, f.screen.get("camera", ""))),
            why="Frame the selection works on shapes, clay, groups and lights (not the shot's own camera)."),
 ]
+# Collections (PR1, rostrum3d/collection_kit.py): the selection becomes a named set (the scene list's Collections row)
+ACTIONS.append(Action(
+    "collection:new", "New collection", kinds=F.ITEMS, min_targets=2, importance="secondary", rank=60, group="collection",
+    panel=False,       # two or more: a single item's menu is full (eight at most); one joins later by Add selected
+    calls=lambda f: [{"op": "collection.add", "args": {"items": list(f.ids)}}], done="Made a collection of {what}",
+    why="New collection works on two or more scene items: select the ones to keep together first."))
 LIST = ActionList(ACTIONS, KEYS3D, noun="solid")

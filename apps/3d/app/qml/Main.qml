@@ -142,6 +142,7 @@ AppShell {
                      && !blockSettings.visible      // a picked block's settings take its place (BlockSettings.qml)
             above: Column {     // the item's material (SPEC §6.1) by importance: its row with the picker, then the material's
                 width: parent ? parent.width : 0           // primary settings (Base colour …), so the colour is never under a fold
+                ShotOnlySwitch { width: parent.width }     // 2+ shots: Changes  All shots | Only <shot> (bridge_shot_only.py)
                 MaterialRow { id: materialRow; width: parent.width }
                 Repeater {
                     model: backend.mats.head
