@@ -8,11 +8,13 @@ from __future__ import annotations
 import math
 
 from . import aim, fields as F
+from .compile import RESOLVED
 
 FOV = 60.0                                            # vertical, degrees
 AIMABLE = ("rect", "disk", "strip", "sphere", "spot", "distant")
+
 CAMERA_ID = "rostrum_through_light"
-_SENT = [p for p in F.FIELDS["camera"] if p.name not in ("aim", "aimX", "aimY", "aimZ", "aimItem")]
+_SENT = [p for p in F.FIELDS["camera"] if p.name not in RESOLVED]        # what the compiler sends of a camera
 
 
 def find_item(scene: dict, id_: str, frame: int):
