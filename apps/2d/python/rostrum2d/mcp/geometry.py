@@ -16,6 +16,8 @@ from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size  # the one size rule
 
+from . import outline
+
 VISIBLE_OPACITY = 0.01
 
 
@@ -130,6 +132,8 @@ def covers(node: dict, x: float, y: float) -> bool:
     x0, y0, x1, y1 = node["paint"]
     if not (x0 <= lx <= x1 and y0 <= ly <= y1):
         return False
+    if outline.hollow(node):                         # a ring or an outlined box paints only its stroke band
+        return outline.near(node, lx, ly)
     w, h = node["size"]
     return boxes.ink_at(node["layer"], node["frame"], lx / (w or 1), ly / (h or 1))      # a drawing: a painted pixel
 

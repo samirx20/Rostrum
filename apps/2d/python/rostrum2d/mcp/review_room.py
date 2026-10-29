@@ -11,6 +11,7 @@ from .geometry import comp_size, drawn_box, flatten
 from .review_facts import TITLE_H, _runs, _span
 
 SAFE = 0.025          # a title's box closer than this share of the frame width to an edge is at the edge
+WIDE = 0.5            # a text line this share of the frame's width or wider is held to the margin too, however small
 CROWD = 0.05          # two stacked layers closer than this share of the title's height are crowded
 SETTLED, STEADY = 1.5, 0.1  # ... held this long (s), the gap changing less than this share of the title's height
 NEIGHBOUR = 4.0       # ... a layer up to this many times the title's area (bigger: a backdrop behind it)
@@ -63,10 +64,13 @@ def facts(comp: dict, times: list[float], step: float) -> list[dict]:
         clipped = {n["id"] for n in nodes if n["type"] == "group" and n["props"].get("clip")}
         seen = [n for n in nodes if _seen(n, W, H) and not clipped & set(n["within"])]     # not screen content in a clipped group
         titles = [n for n in lettered.texts(seen) if drawn_box(n)[3] - drawn_box(n)[1] >= TITLE_H * H]   # painted words too
-        for n in titles:
+        wide = [n for n in lettered.texts(seen) if n not in titles and drawn_box(n)[2] - drawn_box(n)[0] >= WIDE * W]
+        for n in titles + wide:                 # a small line spanning the frame (a credit) runs into its edges too
             x0, y0, x1, y1 = drawn_box(n)
             if (hit := _margin(n, W, H)) and hit[1] > -0.03 * (x1 - x0):      # further past it: review_facts names it cut off
                 edge.setdefault((n["id"], hit[0]), []).append((t, hit[1]))
+        for n in titles:
+            x0, y0, x1, y1 = drawn_box(n)
             for o in ([] if n["layer"].get("matte") else seen):     # a matted title shows only where its matte is
                 if o is n or o["id"] == n.get("lettering") or edge_cut.soft(o["layer"]) or _related(n, o) or o["matte_for"] or o["type"] == "group" and not o["paint"]:
                     continue
@@ -109,7 +113,7 @@ def facts(comp: dict, times: list[float], step: float) -> list[dict]:
             px = min(r[1] for r in rows if t0 <= r[0] < t1)
             where = f"runs {-px:.0f} px past" if px < 0 else f"is {px:.0f} px from"
             out.append({"kind": "text_edge" if px < 0 else "text_margin", "start": t0, "end": t1, "id": lid,
-                        "text": f'{_span(t0, t1)}: title "{lid}" {where} the {side} edge of the frame (a safe margin is '
+                        "text": f'{_span(t0, t1)}: text "{lid}" {where} the {side} edge of the frame (a safe margin is '
                                 f'{SAFE * W:.0f} px): it reads as running into the edge'})
     tight: dict[str, tuple] = {}
     for (low, up), rows in crowd.items():           # a pair that holds its gap (a lock-up), not a shape drifting past

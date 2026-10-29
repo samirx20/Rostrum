@@ -150,12 +150,12 @@ def look_review(ctx, args):
     edge; an old heading still faintly showing behind a new one; a set of parts (a chart's bars, a list's rows) not shown while
     the rest of its group is; a plain card opening empty; a character's pose barely changing for 6 s or more; an arm held nearly straight for 4 s or more;
     a character's arms or legs thin next to its body; framing held
-    10 s or more (no camera move or cut); a stretch where nothing moves; a subject cut by the edge; a title inside the edge's safe margin;
+    10 s or more (no camera move or cut); a stretch where nothing moves; a subject cut by the edge; a title, or any text line half the frame wide (a credit), inside the edge's safe margin;
     a stray small dot that later grows; a layer showing outside the screen it sits in; a lock-up whose parts touch; a washed-out stretch;
     a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film); opening shots that look alike (the same layers
     on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text partly crossed (10-85 %
     of it) by a layer in front for 1 s or more (a group's own background counts; fully under a panel or sheet is hidden, a frosted scrim never counts), with where to
-    place the block instead; a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other; a pointer (a layer named cursor, pointer, mouse, finger or hand)
+    place the block instead; the outline of a hollow ring, frame or stroked path in front running through a text's letters for 0.5 s or more, even faint (a ring around the words, clear of them, is fine); a text cut by the edge of the screen or box that clips it (4-96 % of its letters outside, 1 s or more); two showing texts on top of each other (or one line printed into the next one's letters; a text on a path measured along its path); a pointer (a layer named cursor, pointer, mouse, finger or hand)
     covering a fifth of a label; an end card whose mark or lock-up is tiny in the frame; a layer in a device's screen hanging past the screen's edge (the screen not clipping); a device (device()) cut by the frame edge
     where it is placed, or nibbled by a camera push-in while its sides show (with the camera key, the share of the film it is
     cut and a frame.fit fix; a deep push-in filling the picture is meant and only listed in data.info, with the screen texts it

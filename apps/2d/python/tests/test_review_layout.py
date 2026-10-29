@@ -104,3 +104,12 @@ def test_a_scramble_is_not_text_on_text_but_a_real_overlap_on_it_is():
     assert review_layout.overlaps(_sampled(line)) == []
     rows = review_layout.overlaps(_sampled(line + 'text("orbit", body="ORBIT", size=30, x=165, y=92)\n'))
     assert rows and {r["kind"] for r in rows} == {"text_on_text"} and all("orbit" in r["ids"] for r in rows)
+
+
+def test_a_ring_crosses_the_letters_it_runs_through_but_not_the_title_inside_its_hole():
+    """A hollow shape paints only its outline: a ring around a title neither hides nor crosses it; one through it does."""
+    title = 'text("title", body="Shaped", size=30, x=160, y=90)\n'
+    ring = 'shape("ring", shape="ellipse", w={d}, h={d}, filled=False, stroke="#f60", strokeWidth=3, x=160, y=90, opacity=0.4)\n'
+    assert review_layout.overlaps(_sampled(title + ring.format(d=170))) == []
+    rows = review_layout.overlaps(_sampled(title + ring.format(d=60)))
+    assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["title", "ring"])] and "outline" in rows[0]["text"]
