@@ -12,7 +12,7 @@ The **Keys | Curves** switch is there once something in the scene has an animate
 
 ## 2. Read it
 
-- Each animated setting is a line in its own colour. The left side lists them under their layer's name, with their lowest and highest value. Click a setting's name to hide its line or show it again (faded name = hidden); click a layer's name to hide or show all of its lines. Each line fills the view's height (its own lowest to highest value), so a small move and a big one are both easy to see. Hide all but one to see it clearly. With one line, its highest and lowest value show at the right edge.
+- Each animated setting is a line in its own colour. The left side lists them under their layer's name, with their lowest and highest value. Click a setting's name to hide its line or show it again (faded name = hidden); click a layer's name to hide or show all of its lines. Each line fills the view's height (its own lowest to highest value), so a small move and a big one are both easy to see. Hide all but one to see it clearly. Each line's highest and lowest value show at the right edge in its colour; when several lines end at the same height, their values stack one under another.
 - Time goes left to right. Value goes bottom to top.
 - A diamond is a key. A key that sits on a marker shows the marker's name above it.
 - Before the first key and after the last, the line is faint: the value holds there.

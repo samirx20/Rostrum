@@ -425,7 +425,8 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
   - **Curves** (the header's **Keys | Curves**, there once something is animated): the value curves on the same time
     scale. With nothing picked, every animated item's curves; pick an item to see only its own; **Picked | All curves**
     switches between the two (the animation panel's **All curves** opens it with everything). Click a setting's name to
-    hide or show its line, an item's name for all its lines; each line fills the view's height. Drag a diamond to change
+    hide or show its line, an item's name for all its lines; each line fills the view's height, its lowest and highest
+    value written at the right edge in its colour (lines that end at one height stack their values). Drag a diamond to change
     a key's time and value (it snaps like the rows; Ctrl moves freely). Click a key for its handles and drag one to shape
     the ease (it becomes Custom). Right-click a key for the Ease list. Each drag is one undo step. Agents:
     `key.set {ease: "custom", x1, y1, x2, y2}` does what a handle drag does.
