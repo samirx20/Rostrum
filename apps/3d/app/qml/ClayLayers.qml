@@ -4,7 +4,7 @@ import RostrumKit
 // The Clay panel's sculpt layers (PR4; screen3d/clay_layers_qt.py, `viewport.clay.layersObj`). Absent until the clay
 // has one (the Steps head's "+ Layer" makes it). Base first, then each layer: a click says where the next stroke goes
 // (clay.set sculptLayer), the eye turns a layer off and on (claylayer.set on), a double-click names it, the number is its
-// Amount; the chosen layer's Amount row sits under the list (the kit's InspectorRow: drag, type, scrub) with its "⋯"
+// Amount; the chosen layer's Amount row sits under the list (the kit's InspectorRow: drag, type, scrub) with its "Layer ▾"
 // menu (Bake into Base, Remove layer).
 Column {
     id: box
@@ -94,7 +94,7 @@ Column {
     RowButton {
         objectName: "clayLayerMore"
         visible: box.layers.chosen !== ""
-        text: "⋯"
+        text: "Layer"
         menu: [{ value: "bake", label: "Bake into Base" }, { value: "remove", label: "Remove layer" }]
         onChosen: (v) => v === "bake" ? box.layers.bake(box.layers.chosen) : box.layers.remove(box.layers.chosen)
     }

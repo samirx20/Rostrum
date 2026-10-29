@@ -47,7 +47,7 @@ class StepRows(QObject):
         self.b, self.step, self._scrub = b, "", None
         params = [p for p in F.FIELDS[kind]
                   if (p.name in names if names else p.name not in OFF_ROWS and p.group != "Step data")]
-        self._static = rows.layout(SimpleNamespace(params=params), "Step")
+        self._static = rows.layout(SimpleNamespace(params=params), "Step" if kind == "claystep" else "Layer")
         self.model = RowsModel(rows.ROLES, self)
 
     def pick(self, step: dict | None):

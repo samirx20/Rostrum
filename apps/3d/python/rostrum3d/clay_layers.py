@@ -63,9 +63,9 @@ def scaled(step: dict, a: float) -> dict:
     if a >= 1.0:
         return step
     if step.get("step") == "stroke":
-        return {**step, "strength": float(step.get("strength", 0.5)) * a}
+        return {**step, "strength": round(float(step.get("strength", 0.5)) * a, 6)}
     if step.get("shape", "sphere") in ("sphere", "capsule"):
-        return {**step, "radius": float(step.get("radius", 0.1)) * a}
+        return {**step, "radius": round(float(step.get("radius", 0.1)) * a, 6)}
     return step
 
 

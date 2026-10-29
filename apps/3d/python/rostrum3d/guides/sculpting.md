@@ -102,7 +102,7 @@ then dial it from nothing (0 %) to as sculpted (100 %), or switch it off, withou
    name is its Amount; the eye switches it off and on; double-click its name to rename it ("smile").
 4. Click **Base** to sculpt on the Base again; click a layer to add to it. Make another layer for a frown: both can show
    at once, at their own Amounts.
-5. **⋯** under the Amount: **Bake into Base** keeps the strokes as they show now and removes the layer; **Remove layer**
+5. **Layer ▾** under the Amount: **Bake into Base** keeps the strokes as they show now and removes the layer; **Remove layer**
    takes the layer and its strokes away. Each is one undo step.
 
 How it is made: the Base's steps first, then each layer's, top to bottom. A layer's strokes work at their strength ×
