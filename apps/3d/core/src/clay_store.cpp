@@ -36,6 +36,10 @@ constexpr size_t kUndoBytes = size_t(512) << 20;   // ... at most this much per 
 constexpr size_t kCacheOverUndo = 8;               // more steps than this to apply: the cache file is quicker
 constexpr size_t kReplayTogether = 8;              // at least this many strokes in a row: replayed in parallel
 
+double steady_ms() {  // the steady clock in ms since its epoch (the window's now_ms: viewport_item.cpp)
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 double ms_since(std::chrono::steady_clock::time_point t0) {
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
@@ -207,6 +211,7 @@ struct Store::Impl {
   int last_blocks = 0;                      // the last publish: blocks, ms meshing them, ms writing them (sculpt replies)
   double last_mesh_ms = 0, last_usd_ms = 0;
   void publish(Entry& e) {
+    blocks.set_slots(e.path, e.vol->voxel() > kKeepCopyGrain);  // a clay that won't preview: its dabs re-write blocks
     std::vector<BlockKey> keys;
     if (e.full) {
       e.vol->take_dirty();
@@ -711,6 +716,7 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
   Impl& s = *p_;
   if (!s.live) throw Error("sculpt.phase: no stroke begun; send phase \"begin\" first");
   const auto t0 = std::chrono::steady_clock::now();
+  const double tStart = steady_ms();
   Impl::Live& l = *s.live;
   Entry& e = s.entry(l.item, "sculpt.item");
   if (l.fine) l.fine->wait_ready();       // the preview (made from the begin on; counted in applyMs)
@@ -849,6 +855,8 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
     r.normal = V3{float(nn[0]), float(nn[1]), float(nn[2])};
   }
   r.ms = ms_since(t0);
+  r.tStart = tStart;
+  r.tEnd = steady_ms();
   return r;
 }
 

@@ -92,6 +92,7 @@ struct Blocks::Impl {
   std::map<SdfPath, std::unique_ptr<Skinning>> skins;  // CL5: the skinned clays' rest surfaces and weights
   std::set<SdfPath> stale;  // CL6: clays whose Cycles whole no longer matches their blocks (clay_whole.h)
   std::map<SdfPath, Slot> slots;  // 3d-dab-viewer: each block prim's own surface and its slot (clay_slots.h)
+  std::set<SdfPath> slotted;      // clays whose full-detail blocks are drawn as slots too (set_slots)
   Slot* slot_of(const SdfPath& prim) {
     auto it = slots.find(prim);
     return it == slots.end() ? nullptr : &it->second;
@@ -106,14 +107,15 @@ struct Blocks::Impl {
     const TfToken& dflt = SdfFieldKeys->Default;
     const auto attr = [&](const char* name) { return prim.AppendProperty(TfToken(name)); };
     const size_t nt = sl.triangles();
-    if (!slots_on()) {  // as before: shared points, sized to the surface (an emptied block: one triangle of no area)
+    sl.soup = slots_on() && (is_preview_key(key_of(prim)) || slotted.count(prim.GetParentPath()));
+    if (!sl.soup) {  // shared points, sized to the surface (an emptied block: one triangle of no area)
       const bool none = nt == 0;
       layer->SetField(attr("faceVertexCounts"), dflt, VtValue(VtIntArray(none ? 1 : nt, 3)));
       layer->SetField(attr("faceVertexIndices"), dflt, VtValue(none ? VtIntArray{0, 1, 2} : sl.indices));
       layer->SetField(attr("points"), dflt, VtValue(none ? VtVec3fArray(3, sl.at) : pts));
       layer->SetField(attr("normals"), dflt, VtValue(none ? VtVec3fArray(3, GfVec3f(0, 0, 1)) : nrm));
       layer->SetField(attr("extent"), dflt, VtValue(extent_of(pts, sl.at)));
-      sl.cap = none ? 1 : nt;
+      sl.cap = 0;  // (made a slot later: its face lists written then)
       sl.shownPoints = std::move(pts);
       sl.shownNormals = std::move(nrm);
       return;
@@ -249,7 +251,7 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
       color[i] = GfVec3f(kNoMaterialGrey * sh);
     }
     // per corner, as the points (the padding unshaded)
-    if (!slots_on()) {
+    if (!sl.soup) {
       layer->SetField(shadePath, dflt, VtValue::Take(shade));
       layer->SetField(colorPath, dflt, VtValue::Take(color));
     } else {
@@ -381,7 +383,7 @@ void Blocks::set_st(const SdfPath& clay, const BlockKey& key, VtVec2fArray st) {
         ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->faceVarying));
   }
   const Slot* sl = p_->slot_of(path);
-  layer->SetField(stPath, SdfFieldKeys->Default, slots_on() ? VtValue(slot_padded(st, sl ? sl->cap : st.size() / 3)) : VtValue(st));
+  layer->SetField(stPath, SdfFieldKeys->Default, sl && sl->soup ? VtValue(slot_padded(st, sl->cap)) : VtValue(st));
   p_->stale.insert(clay);
   check(mark, "writing the unfolding of " + path.GetString());
 }
@@ -392,6 +394,11 @@ void Blocks::clear_st(const SdfPath& clay, const BlockKey& key) {
   drop_st(p_->layer, path);
   p_->stale.insert(clay);
   check(mark, "taking the unfolding off " + path.GetString());
+}
+
+void Blocks::set_slots(const SdfPath& clay, bool on) {
+  if (on) p_->slotted.insert(clay);
+  else p_->slotted.erase(clay);
 }
 
 bool Blocks::whole_stale(const SdfPath& clay) const { return p_->stale.count(clay) != 0; }

@@ -2,7 +2,8 @@
 // point and triangle counts changed every time; Storm then gave each a new place in its shared graphics buffers,
 // moved the buffers' other contents along (~130 copies on the card a dab), made a new index list per block (each
 // block's own triangles) and rebuilt its draw batches: ~7.5 ms of a dab's drawing, 40-60 ms on a stroke's first.
-// So a block prim holds its triangles one after another, each with its own 3 corners ("triangle soup"):
+// So a prim a dab re-writes (a live stroke's preview part; a full-detail block of a clay that doesn't preview:
+// Blocks::set_slots) holds its triangles one after another, each with its own 3 corners ("triangle soup"):
 //  - its face lists are the same for every prim of a size (0 1 2 3 4 5 ...: one shared index list in Storm, written
 //    only when the slot grows), and its points and normals keep their count while the block's surface changes, so
 //    Storm copies the new values into the same place (no move, no new list, no rebuilt batch);
@@ -28,7 +29,8 @@ struct Slot {
   PXR_NS::VtVec3fArray points, normals;  // the block's surface at rest, one per vertex
   PXR_NS::VtIntArray indices;            // 3 per triangle
   PXR_NS::VtVec3fArray shownPoints, shownNormals;  // as last drawn (posed, for a skinned clay)
-  size_t cap = 0;                        // triangles the prim holds (0: not drawn yet)
+  size_t cap = 0;                        // triangles the prim holds (0: not drawn as a slot yet)
+  bool soup = false;                     // drawn as a slot (else shared points, sized to the surface)
   PXR_NS::GfVec3f at{0.0f};              // where an empty block's triangles sit (so bounds and framing don't move)
   size_t triangles() const { return indices.size() / 3; }
 };
@@ -36,7 +38,7 @@ struct Slot {
 // the slot's size for `n` triangles: the next of 64, 96, 128, 192, 256, ... with a quarter to spare, at least
 // kPreviewSlot for a live stroke's preview part (made ahead, empty, by the store's ring: its first fill mid-stroke
 // must not grow it) and kBlockSlot for a block
-constexpr size_t kPreviewSlot = 1024, kBlockSlot = 128;
+constexpr size_t kPreviewSlot = 1536, kBlockSlot = 128;
 size_t slot_capacity(size_t n, bool preview);
 // the face lists of a slot of `cap` triangles (shared arrays: one per size)
 PXR_NS::VtIntArray slot_counts(size_t cap);

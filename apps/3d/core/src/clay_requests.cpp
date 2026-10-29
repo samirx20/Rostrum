@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <utility>
@@ -118,8 +119,12 @@ bool Core::sculpt_ahead(const JsObject& o, bool duringDraw) {
   if (px.empty()) return false;
   ahead_key_ = points_key(o);
   clay::Store* store = clay_.get();
-  ahead_ = std::async(std::launch::async, [store, sv, px = std::move(px)] {
-    return store->sculpt_compute(px, sv->ray(), sv->ppm());
+  const double asked = std::chrono::duration<double, std::milli>(
+                           std::chrono::steady_clock::now().time_since_epoch()).count();
+  ahead_ = std::async(std::launch::async, [store, sv, asked, px = std::move(px)] {
+    clay::SculptReply r = store->sculpt_compute(px, sv->ray(), sv->ppm());
+    r.tAsked = asked;
+    return r;
   });
   return true;
 }
@@ -231,7 +236,8 @@ JsObject Core::sculpt(const JsObject& o) {
   JsObject out{{"ok", JsValue(true)}, {"dabs", JsValue(r.dabs)}, {"ms", JsValue(r1(r.ms))}, {"dabMs", JsValue(r1(r.ms))},
                {"applyMs", JsValue(r1(r.applyMs))}, {"meshMs", JsValue(r1(r.meshMs))}, {"usdMs", JsValue(r1(r.usdMs))},
                {"blocks", JsValue(r.blocks)},
-               {"hit", JsValue(r.hit)}};  // dabMs: the dab's own time (the client overwrites `ms` with its round trip)
+               {"hit", JsValue(r.hit)}, {"tDab0", JsValue(r.tStart)}, {"tDab1", JsValue(r.tEnd)}};
+  if (r.tAsked > 0) out["tAsked"] = JsValue(r.tAsked);  // the clay work ran early (sculpt_ahead)  // dabMs: the dab's own time (the client overwrites `ms` with its round trip)
   if (r.hit) {  // where the brush is (world), for the brush ring on the screen
     const GfVec3d p = toWorld.Transform(GfVec3d(r.point.x, r.point.y, r.point.z));
     GfVec3d n = toClay.GetTranspose().TransformDir(GfVec3d(r.normal.x, r.normal.y, r.normal.z));
