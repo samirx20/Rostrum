@@ -8,6 +8,8 @@ are where the layer shows on screen. The frame itself is not listed (it is not d
 """
 from __future__ import annotations
 
+import contextlib
+
 
 from rostrum2d import boxes, fields as F, follow, swap
 from rostrum2d.drawing import frame_number
@@ -39,7 +41,31 @@ def _invert(m):
     return (d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det)
 
 
+_MEMO: list[dict] = []          # while a review runs (memo()): flatten results by (comp, t, world), shared by its checks
+
+
+@contextlib.contextmanager
+def memo():
+    """One review pass: every check asking for the same comp at the same time gets the same flattened layers (they
+    read them, never change them). The Argon look flattened each moment 4 times: 576 walks of a 72 s film."""
+    _MEMO.append({})
+    try:
+        yield
+    finally:
+        _MEMO.pop()
+
+
 def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
+    if _MEMO and only is None:
+        key = (id(comp), round(float(t), 6), world)
+        got = _MEMO[-1].get(key)
+        if got is None:
+            got = _MEMO[-1][key] = _flatten(comp, t, world, None)
+        return got
+    return _flatten(comp, t, world, only)
+
+
+def _flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
     """Every layer of a composition at time t, bottom of the stack first. `world`: corners and matrices in world px, where the
     world view draws each layer (frame/view.py `world_matrix`), instead of in the picture. Each: id, type, name, props (evaluated),
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size), paint (the
