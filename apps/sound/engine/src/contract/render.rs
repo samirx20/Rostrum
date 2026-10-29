@@ -91,7 +91,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let took = t0.elapsed().as_secs_f64();
     let sr = s.sample_rate;
     // The song's end (ending.rs): where a ring-out died away, or whether a given length cut the sound.
-    let ending = match (c.ending, s.range) {
+    let ending = match (c.ending.clone(), s.range) {
         (Some((song, ring, held, given)), None) => Some(super::ending::finish(&mut mix, song, ring, s.fade_out_samples, held, given, sr as f64).map_err(Error::render)?),
         _ => None,
     };
