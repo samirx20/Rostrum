@@ -52,12 +52,18 @@ struct Cloth {
   std::vector<std::array<float, 2>> st;         // per point (u v), carried to the stored file
   bool refined = false;                         // refine made it finer
   int wake = 0;                                 // Falls from: frames after the start it holds its first shape (others land on it), then falls
+  // A garment (PR7): pairs of points sewn together (one piece's edge to another's), pulled closed over `sewTime` seconds
+  // from the start (each pair's gap shrinking evenly to nothing), then held welded. A cloth with seams arrives already fine
+  // (the app triangulates its pattern), so refine doesn't split it: it only drops what has no area and renumbers the pairs.
+  std::vector<std::array<int, 2>> seams;
+  double sewTime = 0.5;
   std::string name() const { return item; }
 };
 
 // Makes a cloth's mesh fine enough to fold, in whatever space its points are: a single four-point face (a plane) becomes a
 // 96 × 96 grid; anything else has every triangle split in four until no edge is longer than 1/96 of its size (at most
-// kMaxClothTriangles). Drops faces with no area and points no face uses. Deterministic. (64 folded in 2–3 cm facets:
+// kMaxClothTriangles); a cloth with seams is only triangulated. Drops faces with no area and points no face uses (seam
+// pairs follow the renumbering; a pair on a dropped point is dropped). Deterministic. (64 folded in 2–3 cm facets:
 // broad rubbery bulges with a stepped outline; 96 gives fabric-sized wrinkles at about twice the simulation time.)
 constexpr int kClothGrid = 96;
 constexpr size_t kMaxClothTriangles = 40000;

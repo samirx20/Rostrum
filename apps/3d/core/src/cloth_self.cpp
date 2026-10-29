@@ -25,6 +25,12 @@ uint32_t hash(int x, int y, int z, uint32_t n) {
 ClothSelf::ClothSelf(const Cloth& c, double k) {
   rest_.reserve(c.points.size());
   for (const V3& p : c.points) rest_.push_back({float(p[0] * k), float(p[1] * k), float(p[2] * k)});
+  sewn_.assign(c.points.size(), -1);
+  for (const auto& sp : c.seams)
+    if (sp[0] >= 0 && sp[1] >= 0 && size_t(sp[0]) < sewn_.size() && size_t(sp[1]) < sewn_.size()) {
+      if (sewn_[size_t(sp[0])] < 0) sewn_[size_t(sp[0])] = sp[1];
+      if (sewn_[size_t(sp[1])] < 0) sewn_[size_t(sp[1])] = sp[0];
+    }
   std::vector<double> e;
   for (const auto& t : c.triangles)
     for (int i = 0; i < 3; ++i) {
@@ -34,6 +40,12 @@ ClothSelf::ClothSelf(const Cloth& c, double k) {
   if (e.empty()) return;
   std::nth_element(e.begin(), e.begin() + long(e.size() / 2), e.end());
   h_ = kThick * e[e.size() / 2] * k;
+}
+
+bool ClothSelf::own(size_t i, size_t j, float own2) const {
+  const auto &ri = rest_[i], &rj = rest_[j];
+  const float rx = ri[0] - rj[0], ry = ri[1] - rj[1], rz = ri[2] - rj[2];
+  return rx * rx + ry * ry + rz * rz < own2;
 }
 
 void ClothSelf::step(JPH::PhysicsSystem& physics, JPH::BodyID id) {
@@ -77,9 +89,9 @@ void ClothSelf::step(JPH::PhysicsSystem& physics, JPH::BodyID id) {
             const uint32_t j = sorted_[s];
             if (j == i || cell_[j] != q || (j < i && v[j].mInvMass > 0)) continue;  // each free pair once
             if ((v[i].mPosition - v[j].mPosition).LengthSq() > reach2) continue;
-            const auto &ri = rest_[i], &rj = rest_[j];
-            const float rx = ri[0] - rj[0], ry = ri[1] - rj[1], rz = ri[2] - rj[2];
-            if (rx * rx + ry * ry + rz * rz < own2) continue;
+            if (own(i, j, own2) || (sewn_[i] >= 0 && own(size_t(sewn_[i]), j, own2)) ||
+                (sewn_[j] >= 0 && own(i, size_t(sewn_[j]), own2)))
+              continue;
             pairs_.push_back({uint32_t(i), j});
           }
         }

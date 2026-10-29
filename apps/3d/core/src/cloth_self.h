@@ -17,7 +17,7 @@ namespace r3d::sim {
 // Once per physics step, after the step: every two points of the cloth closer than its thickness (0.9 of its typical edge,
 // so no point can slip between the three corners of a triangle) are pushed apart to it, each by its share of the weight
 // (a held or pinned point doesn't move), unless they were that close in the cloth's first shape (its own neighbours: one
-// ring of the mesh). Their speed towards each other is taken away, and their sliding along each other slows a little
+// ring of the mesh; for a garment, also near each other across a seam, measured from a point's sewn partner). Their speed towards each other is taken away, and their sliding along each other slows a little
 // (cloth on cloth), so the pass only ever takes energy out. Points are found through a spatial hash of cells 1.3 thicknesses
 // wide, so a 96 × 96 sheet costs about a millisecond a step. A cloth that is asleep is left as it is.
 class ClothSelf {
@@ -28,7 +28,9 @@ class ClothSelf {
 
  private:
   std::vector<std::array<float, 3>> rest_;  // the first shape, scaled
+  std::vector<int> sewn_;                   // a garment's point sewn to this one (cloth_sew.h), else -1
   double h_ = 0;
+  bool own(size_t i, size_t j, float own2) const;  // neighbours in the first shape
   // scratch, kept between steps
   std::vector<std::array<int, 3>> cell_;
   std::vector<uint32_t> start_, sorted_;
