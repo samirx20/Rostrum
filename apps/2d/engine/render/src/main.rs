@@ -49,6 +49,7 @@ mod export_crew;
 mod export_workers;
 mod export_pool;
 mod sksl;
+mod slide;
 mod stage_profile;
 mod still_runs;
 mod warmup;

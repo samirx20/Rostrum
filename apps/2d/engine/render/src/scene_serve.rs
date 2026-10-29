@@ -338,6 +338,20 @@ impl Staged {
         Staged { t, pieces, samples: vec![], bases: vec![], eval_ms: 0.0 }
     }
 
+    /// The frame's own stage pieces (slide.rs reads its frame wrappers).
+    pub(crate) fn pieces(&self) -> &[String] {
+        &self.pieces
+    }
+
+    /// Motion-blurred: drawn from its sub-frames (slide.rs draws such a frame whole).
+    pub(crate) fn blurred(&self) -> bool {
+        !self.samples.is_empty()
+    }
+
+    pub(crate) fn eval_ms(&self) -> f64 {
+        self.eval_ms
+    }
+
     /// Tests: each motion-blur sub-frame's stage pieces.
     #[cfg(test)]
     pub(crate) fn sample_pieces(&self) -> &[Vec<String>] {
