@@ -760,6 +760,14 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                 let blend = node.primary_styles().map_or(peniko::BlendMode::default(), |s| crate::blend::css_blend(&s));
                 scene.draw_cached_streak(k, &streak.moves, streak.rect, blend)
             } => return,
+            Some(crate::runs::Run::Streaks(k, s, n)) if {
+                let node = &self.dom.as_ref().tree()[node_id];
+                let blend = node.primary_styles().map_or(peniko::BlendMode::default(), |s| crate::blend::css_blend(&s));
+                (s..s + n).all(|s| {
+                    let streak = crate::runs::streak(s);
+                    scene.draw_cached_streak(k, &streak.moves, streak.rect, blend)
+                })
+            } => return,
             Some(crate::runs::Run::Shift(m)) => return self.render_element(scene, node_id, Affine::new(m) * parent_style_transform, clip_rect),
             Some(crate::runs::Run::Keep(k)) if scene.begin_kept(k) => {
                 self.render_element(scene, node_id, parent_style_transform, clip_rect);

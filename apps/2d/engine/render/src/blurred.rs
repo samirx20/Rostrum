@@ -51,6 +51,8 @@ pub(crate) fn draw(
         // The sub-frames draw different layers: each staged and painted whole, averaged.
         return whole(s, samples, cuts, timed).map(|_| (0, 0));
     }
+    let measured = measured(s, &kids, streaks);
+    let streaks = &measured[..];
     let varies: Vec<bool> = (0..n).map(|p| cuts.iter().any(|c| c[p] != cuts[0][p])).collect();
     let streak = |p: usize| streaks.get(p).and_then(Option::as_ref);
     let view = s.painter.view();
@@ -111,18 +113,19 @@ pub(crate) fn draw(
             // edge px: it is painted at each of its moves instead, alone, and averaged into its picture (`edge`). One that
             // covers the whole frame (a backdrop) streaks its edge px, as its picture would continue past it.
             let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
-            let seen = [x0, y0, x0 + size.0 as f64 / k, y0 + size.1 as f64 / k];
-            let wide = view == (1.0, 0.0, 0.0) && blitz_paint::viewport().is_none();
-            let far = if wide { [seen[0] - MARGIN, seen[1] - MARGIN, seen[2] + MARGIN, seen[3] + MARGIN] } else { seen };
-            // How far past the frame each run's streak reads (device px; None: not known).
+            let Frame { seen, far, wide } = frame(view, size);
+            // How far past the frame each run's streak reads (device px; None: not known): a group drawn child by child
+            // as far as its farthest child's.
             let past: Vec<Option<f64>> = runs.iter().map(|(run, m)| {
-                let r = reads(joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?, &m.moves, seen, far, 1.0 / k);
-                Some([seen[0] - r[0], seen[1] - r[1], r[2] - seen[2], r[3] - seen[3]].into_iter().fold(0.0, f64::max) * k)
+                if !m.subs.is_empty() {
+                    return Some(m.subs.iter().map(|(sm, r)| beyond(*r, sm, seen, far, k)).fold(0.0, f64::max));
+                }
+                Some(beyond(joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?, &m.moves, seen, far, k))
             }).collect();
             let edge: Vec<bool> = runs.iter().zip(&past).map(|((run, m), past)| {
                 let long = taps(&m.moves, view, size).len() > 2;   // a streak of 2 px or less smears the edge by that much at most
                 let crossing = run.clone().any(|i| streak(i).is_none_or(|st| st.reach.is_none() || crosses(st.ink, seen)));
-                long && crossing && !(wide && past.is_some_and(|p| p < MARGIN - 1.0))
+                m.subs.is_empty() && long && crossing && !(wide && past.is_some_and(|p| p < MARGIN - 1.0))
             }).collect();
             // A run whose streak never reaches the frame isn't drawn.
             let off: Vec<bool> = runs.iter().map(|(run, _)| run.clone().all(|i| streak(i).and_then(|st| st.reach).is_some_and(|r| r[2] <= seen[0] || r[0] >= seen[2] || r[3] <= seen[1] || r[1] >= seen[3]))).collect();
@@ -130,6 +133,9 @@ pub(crate) fn draw(
             // painted at each of its moves (`edge`) has its own. At most `most_kept` pictures a step, the runs past them
             // the next step's.
             let spots: Vec<Option<Spot>> = runs.iter().map(|(run, m)| {
+                if !m.subs.is_empty() {
+                    return None; // a group drawn child by child: a picture of its own
+                }
                 let ink = joined(run.clone().map(|i| streak(i).filter(|st| st.reach.is_some()).map(|st| st.ink)))?;
                 let reach = joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?;
                 Some(Spot { reads: reads(reach, &m.moves, seen, far, 1.0 / k), ink })
@@ -217,14 +223,19 @@ pub(crate) fn draw(
                     }
                     continue;
                 }
-                plan.insert(kids[run.start], Run::Streak(slot[i], moves.len()));
                 for k in run.start + 1..run.end {
                     plan.insert(kids[k], Run::Skip);
                 }
+                let rect = |b: [f64; 4]| [((b[0] - x0) * k).floor() as f32, ((b[1] - y0) * k).floor() as f32, ((b[2] - x0) * k).ceil() as f32, ((b[3] - y0) * k).ceil() as f32];
+                if !m.subs.is_empty() {
+                    plan.insert(kids[run.start], Run::Streaks(slot[i], moves.len(), m.subs.len()));
+                    moves.extend(m.subs.iter().map(|(sm, r)| blitz_paint::Streak { moves: on_device(sm, view, size), rect: Some(rect(*r)) }));
+                    continue;
+                }
+                plan.insert(kids[run.start], Run::Streak(slot[i], moves.len()));
                 // The run's reach: every piece's, joined (unknown for one: the whole frame).
                 let reach = joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)));
-                let rect = reach.map(|b| [((b[0] - x0) * k).floor() as f32, ((b[1] - y0) * k).floor() as f32, ((b[2] - x0) * k).ceil() as f32, ((b[3] - y0) * k).ceil() as f32]);
-                moves.push(blitz_paint::Streak { moves: on_device(&m.moves, view, size), rect });
+                moves.push(blitz_paint::Streak { moves: on_device(&m.moves, view, size), rect: reach.map(rect) });
             }
             end = q;
             once += end - p;
@@ -247,6 +258,68 @@ pub(crate) fn draw(
     }
     crate::profile::label("frame");
     Ok((once, drawn))
+}
+
+/// `streaks`, those of layers whose size the scene doesn't give (text, paths) measured on the frame's one layout (where
+/// the painter's layers say they paint: blitz-paint `page_ink`, their blurs, shadows and glows included), so they are
+/// culled, share pictures and streak past the frame's edge as any other layer, instead of being painted at each of their
+/// moves for not knowing where they are; and a group whose children each move their own way (`parts`) made one kept
+/// picture with a streak per child (`subs`) when it can be.
+fn measured(s: &Session, kids: &[NodeId], streaks: &[Option<Streak>]) -> Vec<Option<Streak>> {
+    let mut out = streaks.to_vec();
+    // Where node `n` paints and its picture's reach under `moves` (page px), 2 px round it as `reach` adds.
+    let swept = |n: NodeId, moves: &Moves| {
+        let b = blitz_paint::page_ink(&s.doc, s.doc.get_node(n)?)?;
+        let moves: Vec<crate::rig::math::Aff> = moves.iter().map(|m| crate::rig::math::Aff { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }).collect();
+        crate::motion::streak::swept([b.x0 - 2.0, b.y0 - 2.0, b.x1 + 2.0, b.y1 + 2.0], &moves)
+    };
+    let (view, size) = (s.painter.view(), s.painter.size());
+    let Frame { seen, far, wide } = frame(view, size);
+    for (p, st) in out.iter_mut().enumerate() {
+        let Some(st) = st.as_mut() else { continue };
+        if st.reach.is_none() && st.parts.is_empty() && !st.blends {
+            if let Some((reach, ink)) = swept(kids[p], &st.moves) {
+                (st.reach, st.ink) = (Some(reach), ink);
+            }
+        } else if !st.parts.is_empty() && st.keeps {
+            // A group whose children each move their own way: one kept picture, a streak per child, when each child's
+            // streak reads only its own picture and none reads past the kept picture (else drawn at each move).
+            let Some(subs) = st.parts.iter().map(|(id, m)| Some((m.clone(), swept(s.doc.get_element_by_id(id)?, m)?))).collect::<Option<Vec<_>>>() else { continue };
+            let k = view.0 as f64;
+            let spots: Vec<Spot> = subs.iter().map(|(m, (reach, ink))| Spot { reads: reads(*reach, m, seen, far, 1.0 / k), ink: *ink }).collect();
+            let apart = (0..spots.len()).all(|a| (a + 1..spots.len()).all(|b| shares(Some(spots[a]), Some(spots[b]))));
+            let inside = subs.iter().all(|(m, (reach, ink))| taps(m, view, size).len() <= 2 || !crosses(*ink, seen) || wide && beyond(*reach, m, seen, far, k) < MARGIN - 1.0);
+            if apart && inside && !subs.is_empty() {
+                st.reach = joined(subs.iter().map(|(_, (r, _))| Some(*r)));
+                st.ink = joined(subs.iter().map(|(_, (_, i))| Some(*i))).unwrap_or(st.ink);
+                st.subs = subs.into_iter().map(|(m, (r, _))| (m, r)).collect();
+                st.blends = false;
+            }
+        }
+    }
+    out
+}
+
+/// The frame a step's streaks are drawn into (page px): what shows (`seen`), as far as kept pictures go past it (`far`),
+/// and whether the page is drawn at its own size (an export, a still: `wide`; kept pictures then go MARGIN px past it).
+struct Frame {
+    seen: [f64; 4],
+    far: [f64; 4],
+    wide: bool,
+}
+
+fn frame(view: (f32, f32, f32), size: (u32, u32)) -> Frame {
+    let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
+    let seen = [x0, y0, x0 + size.0 as f64 / k, y0 + size.1 as f64 / k];
+    let wide = view == (1.0, 0.0, 0.0) && blitz_paint::viewport().is_none();
+    let far = if wide { [seen[0] - MARGIN, seen[1] - MARGIN, seen[2] + MARGIN, seen[3] + MARGIN] } else { seen };
+    Frame { seen, far, wide }
+}
+
+/// How far past the frame a streak over `reach` under `moves` reads its picture (device px; `k` device px per page px).
+fn beyond(reach: [f64; 4], moves: &Moves, seen: [f64; 4], far: [f64; 4], k: f64) -> f64 {
+    let r = reads(reach, moves, seen, far, 1.0 / k);
+    [seen[0] - r[0], seen[1] - r[1], r[2] - seen[2], r[3] - seen[3]].into_iter().fold(0.0, f64::max) * k
 }
 
 /// How far past the frame's edges a page drawn at its own size keeps its streak pictures (device px, each side): a

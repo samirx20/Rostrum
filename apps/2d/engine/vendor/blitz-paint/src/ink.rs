@@ -150,3 +150,30 @@ fn own_reach(styles: &style::properties::ComputedValues, b: Rect, text: Option<f
     }
     r
 }
+
+/// Rostrum patch (streak blur, round 5): where `node`'s subtree paints, in page px (the root's space at scale 1): its ink
+/// (`descend`: boxes, glyph overhang, shadows, filters, glows, an inline svg's drawing) carried through its ancestors'
+/// places, each ancestor's filter spreading it further. The size the painter gives a layer the scene can't (a text, a
+/// path), read before it is painted. None when it can't be bounded.
+pub fn page_ink(dom: &BaseDocument, node: &Node) -> Option<Rect> {
+    let mut up = vec![];
+    let mut at = node.layout_parent.get();
+    while let Some(id) = at {
+        let n = dom.get_node(id)?;
+        up.push(n);
+        at = n.layout_parent.get();
+    }
+    // Each ancestor's place on the page, outermost first; then the node's.
+    let mut m = Affine::IDENTITY;
+    let mut spread = 0.0;
+    for n in up.iter().rev() {
+        m = placed(n, m, 1.0);
+        let filter = n.primary_styles().and_then(|s| crate::filters::convert_filters(&s.get_effects().filter.0));
+        if let Some(e) = filter.map(|f| f.expansion_rect()) {
+            let [a, b, c, d, _, _] = m.as_coeffs();
+            spread += [e.x0, e.y0, e.x1, e.y1].into_iter().map(f64::abs).fold(0.0, f64::max) * a.hypot(b).max(c.hypot(d));
+        }
+    }
+    let ink = descend(dom, node, placed(node, m, 1.0), 1.0, true)?;
+    Some(ink.inflate(spread, spread))
+}

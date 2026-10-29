@@ -17,6 +17,9 @@ pub enum Run {
     /// Rostrum patch (streak blur): kept picture `k` averaged over streak `s`'s moves (`set_streaks`), one draw for a
     /// layer that only moved through the shutter (`PaintScene::draw_cached_streak`).
     Streak(usize, usize),
+    /// Rostrum patch (streak blur, round 5): kept picture `k` averaged over each of the `n` streaks from `s` on, one draw
+    /// each, every streak over its own part of the picture: a group whose children each move their own way.
+    Streaks(usize, usize, usize),
     /// Rostrum patch (streak blur): the node painted as it is laid out, moved by an affine in page px (CSS `matrix()`
     /// order): a layer that only moved but blends with what is under it, drawn at each sub-frame without a new layout.
     Shift([f64; 6]),

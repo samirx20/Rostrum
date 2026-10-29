@@ -256,8 +256,10 @@ when the matte moves with it (a pan over a title and the water that reveals it).
 A layer that runs past the edge of the frame streaks what lies past it too, in the same single paint, unless it moves
 more than about 128 px while the shutter is open. A layer on Add, Screen or Multiply streaks the same way, laid on
 with its blend. A layer that only moves but blends otherwise (a glow, another blend mode, frosted glass), or that runs
-far past the edge that fast, is redrawn at each step without a new layout; so is a group whose children each move their
-own way (bubbles rising in a group the frame pans past), each child moved to its place at that step. A fade or a colour
+far past the edge that fast, is redrawn at each step without a new layout. A group whose children each move their own
+way (bubbles rising in a group the frame pans past) is painted once and smeared child by child; only when its children
+pass close enough to smear into each other is it redrawn at each step, each child moved to its place. Titles and paths
+streak like any other layer, their size read from the frame's layout. A fade or a colour
 change within one step is taken at the frame's time. Only a layer whose shape changes while the shutter is open (a path
 changing shape, letters playing their keys, a layer whose matte changes or slides across it, a group whose children
 change more than their place) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
