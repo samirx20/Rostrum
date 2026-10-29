@@ -516,19 +516,19 @@ impl Painter {
         self.cache.cached.push(image);
     }
 
+    /// Keeps `image` (the picture of a motion-blurred frame's layers drawn so far, blurred.rs) as kept picture `cached().len()`.
+    pub fn push_cached(&mut self, image: skia_safe::Image) {
+        self.cache.cached.push(image);
+    }
+
     /// Lets the kept pictures go (the frame is done).
     pub fn clear_cached(&mut self) {
         self.cache.cached.clear();
     }
 
-    /// How many pictures are kept; `truncate_cached(n)` lets those after the first n go (a motion-blur bucket's moved
-    /// layers, scene_serve.rs `buckets`, once the bucket is drawn).
+    /// How many pictures are kept.
     pub fn cached_len(&self) -> usize {
         self.cache.cached.len()
-    }
-
-    pub fn truncate_cached(&mut self, n: usize) {
-        self.cache.cached.truncate(n);
     }
 
     /// The view every paint draws through: (scale, page px at the picture's left, top).

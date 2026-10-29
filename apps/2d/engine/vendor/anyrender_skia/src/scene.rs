@@ -244,6 +244,42 @@ impl SkiaScenePainter<'_> {
         }
     }
 
+    /// Rostrum patch (streak blur): the canvas's device-px rect (origin included), cut to `rect` when given; None when
+    /// nothing of it is left (the draw is then skipped).
+    fn streak_area(&self, rect: Option<[f32; 4]>) -> Option<skia_safe::Rect> {
+        let info = self.inner.image_info();
+        let (x0, y0) = (self.cache.origin.0 as f32, self.cache.origin.1 as f32);
+        let mut area = skia_safe::Rect::from_xywh(x0, y0, info.width() as f32, info.height() as f32);
+        if let Some([l, t, r, b]) = rect {
+            if !area.intersect(skia_safe::Rect::new(l, t, r, b)) {
+                return None;
+            }
+        }
+        (!area.is_empty()).then_some(area)
+    }
+
+    /// Rostrum patch (streak blur): `paint` over `area` (device px, origin included), whatever the layer's matrix.
+    fn fill_device(&mut self, area: skia_safe::Rect, paint: &Paint) {
+        self.inner.save();
+        self.inner.reset_matrix();
+        self.inner.translate((-self.cache.origin.0 as f32, -self.cache.origin.1 as f32));
+        self.inner.draw_rect(area, paint);
+        self.inner.restore();
+    }
+
+    /// Rostrum patch (motion-blur buckets): kept picture `k` moved by `m` (as `draw_cached_moved`), over `area` only.
+    fn draw_moved_over(&mut self, k: usize, m: [f64; 6], area: skia_safe::Rect) -> bool {
+        let Some(image) = self.cache.cached.get(k).cloned() else { return false };
+        let [a, b, c, d, e, f] = m.map(|v| v as f32);
+        let local = skia_safe::Matrix::new_all(a, c, e, b, d, f, 0.0, 0.0, 1.0);
+        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+        let Some(shader) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&local)) else { return false };
+        let mut paint = Paint::default();
+        paint.set_shader(shader);
+        self.fill_device(area, &paint);
+        true
+    }
+
     /// Rostrum patch (round 8): `content` replayed under `transform` into a fresh transparent image of w × h px,
     /// made by this canvas (GPU when it is; its colour type, so 16-bit renders stay 16-bit).
     fn paint_offscreen(&mut self, content: &anyrender::Scene, transform: kurbo::Affine, w: f64, h: f64) -> Option<skia_safe::Image> {
@@ -903,20 +939,47 @@ impl PaintScene for SkiaScenePainter<'_> {
     /// Rostrum patch (motion-blur buckets): kept picture `k` drawn moved by `m` (device px), sampled smoothly; past its
     /// edges it is stretched (clamped), so a few px the move uncovers at the frame's edge are its edge px, not a gap.
     fn draw_cached_moved(&mut self, k: usize, m: [f64; 6]) -> bool {
+        let Some(area) = self.streak_area(None) else { return true };
+        self.draw_moved_over(k, m, area)
+    }
+
+    /// Rostrum patch (streak blur): kept picture `k` averaged over `moves` (each as `draw_cached_moved`'s, premultiplied,
+    /// sampled smoothly and stretched past its edges) by one runtime shader, in place of a copy drawn per move; only
+    /// over `rect` (device px as the canvas's own rect, origin included) when given, nothing when it misses the canvas.
+    fn draw_cached_streak(&mut self, k: usize, moves: &[[f64; 6]], rect: Option<[f32; 4]>) -> bool {
+        if moves.is_empty() || moves.len() > STREAK_MOVES {
+            return false;
+        }
+        let Some(area) = self.streak_area(rect) else { return true };
+        match moves {
+            [m] => return self.draw_moved_over(k, *m, area),
+            _ if moves.len() > STREAK_MOVES => return false,
+            _ => {}
+        }
         let Some(image) = self.cache.cached.get(k).cloned() else { return false };
-        let [a, b, c, d, e, f] = m.map(|v| v as f32);
-        let local = skia_safe::Matrix::new_all(a, c, e, b, d, f, 0.0, 0.0, 1.0);
+        let Some(effect) = streak_effect() else { return false };
+        // Each move's inverse, two rows of (x, y, 1) weights: a picture px read for each canvas px.
+        let mut data = vec![0u8; effect.uniform_size()];
+        let (Some(rows), Some(count)) = (effect.find_uniform("m"), effect.find_uniform("n")) else { return false };
+        let mut put = |at: usize, v: f32| data[at..at + 4].copy_from_slice(&v.to_ne_bytes());
+        for (i, m) in moves.iter().enumerate() {
+            let a = kurbo::Affine::new(*m);
+            if a.determinant().abs() < 1e-12 {
+                return false;
+            }
+            let [ia, ib, ic, id, ie, iff] = a.inverse().as_coeffs();
+            for (j, v) in [ia, ic, ie, 0.0, ib, id, iff, 0.0].into_iter().enumerate() {
+                put(rows.offset() + (i * 8 + j) * 4, v as f32);
+            }
+        }
+        put(count.offset(), moves.len() as f32);
         let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
-        let Some(shader) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&local)) else { return false };
+        let Some(child) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, None) else { return false };
+        let children = [skia_safe::runtime_effect::ChildPtr::Shader(child)];
+        let Some(shader) = effect.make_shader(skia_safe::Data::new_copy(&data), &children, None) else { return false };
         let mut paint = Paint::default();
         paint.set_shader(shader);
-        let info = self.inner.image_info();
-        self.inner.save();
-        self.inner.reset_matrix();
-        self.inner.translate((-self.cache.origin.0 as f32, -self.cache.origin.1 as f32));
-        let (x0, y0) = (self.cache.origin.0 as f32, self.cache.origin.1 as f32);
-        self.inner.draw_rect(skia_safe::Rect::from_xywh(x0, y0, info.width() as f32, info.height() as f32), &paint);
-        self.inner.restore();
+        self.fill_device(area, &paint);
         true
     }
 
@@ -2444,6 +2507,35 @@ fn runtime_window_filter(r: &anyrender::filters::RuntimeShaderFilter) -> Option<
         anyrender::filters::shader_errors::push("the matteWindow effect's shader compiled but Skia could not build its filter".to_string());
     }
     filter
+}
+
+/// Most moves one streak averages (`draw_cached_streak`): the shader's loop bound and its `m` array (two rows a move).
+const STREAK_MOVES: usize = 128;
+
+/// Rostrum patch (streak blur): the picture (`image`) averaged over `n` inverse moves, each two rows of `m`; the sum is
+/// kept in float, as 128 adds in half would lose the low bits.
+const STREAK_SKSL: &str = "uniform shader image;
+uniform float4 m[256];
+uniform float n;
+half4 main(float2 p) {
+    float4 sum = float4(0);
+    for (int i = 0; i < 128; i++) {
+        if (float(i) >= n) break;
+        float4 r0 = m[2 * i];
+        float4 r1 = m[2 * i + 1];
+        sum += float4(image.eval(float2(dot(r0.xy, p) + r0.z, dot(r1.xy, p) + r1.z)));
+    }
+    return half4(sum / n);
+}";
+
+/// The streak shader, compiled once per thread (None, said once on stderr, if Skia refuses it: the caller draws copies).
+fn streak_effect() -> Option<skia_safe::RuntimeEffect> {
+    thread_local! {
+        static EFFECT: Option<skia_safe::RuntimeEffect> = skia_safe::RuntimeEffect::make_for_shader(STREAK_SKSL, None)
+            .map_err(|e| eprintln!("rostrum: the motion-blur streak shader failed to compile: {e}"))
+            .ok();
+    }
+    EFFECT.with(|e| e.clone())
 }
 
 /// The effect a shader program belongs to (its first line, written by the SVG filter reader).

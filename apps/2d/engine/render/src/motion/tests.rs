@@ -169,8 +169,9 @@ fn blur_steps_follow_the_move_on_screen() {
     assert_eq!(steps(10_000.0), super::steps::MOST);
 }
 
-/// motion/hold.rs: in a motion-blurred frame, a layer that drifts under a quarter pixel while the shutter is open is
-/// staged as at the frame's time in every sub-frame (painted once), and one that moves further is staged per sub-frame.
+/// motion/hold.rs, streak.rs: in a motion-blurred frame, a layer that drifts under a quarter pixel while the shutter is
+/// open is drawn as at the frame's time (painted once, no streak), and one that moves further is one streak, its move
+/// in every sub-frame; nothing is staged per sub-frame.
 #[test]
 fn a_layer_drifting_under_a_quarter_pixel_is_held_and_a_moving_one_is_not() {
     let mut slow = item("slow", "shape", json!({ "x": 50.0, "y": 50.0, "w": 40.0, "h": 40.0 }));
@@ -181,11 +182,15 @@ fn a_layer_drifting_under_a_quarter_pixel_is_held_and_a_moving_one_is_not() {
     comp["layers"] = json!([slow, fast]);
     let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
     let staged = crate::scene_serve::stage_at(&scene, 0.5, &json!({})).unwrap();
-    let samples = staged.sample_pieces();
-    assert!(samples.len() >= 8);
+    assert!(staged.sample_pieces().is_empty(), "the page is laid out once");
+    let streaks = staged.streaks();
     let (s, f) = (1, 2); // background, slow, fast
-    assert!(samples.iter().all(|p| p[s] == samples[0][s]), "the slow layer is held");
-    assert!(samples.windows(2).any(|w| w[0][f] != w[1][f]), "the fast layer moves");
+    assert!(streaks[s].is_none(), "the slow layer is held");
+    let moves = &streaks[f].as_ref().expect("the fast layer is a streak").moves;
+    assert!(moves.len() >= 8);
+    // 200 px/s, half a frame at 30 fps open: 3.33 px from the first sub-frame's move to the last's, centred.
+    let (first, last) = (moves[0][4], moves[moves.len() - 1][4]);
+    assert!((first + last).abs() < 1e-6 && (last - first - 3.333).abs() < 0.5, "{first} {last}");
 }
 
 /// B1: a rack focus doesn't change a still layer's depth-of-field blur between the sub-frames of one frame (the focus
@@ -201,9 +206,8 @@ fn a_rack_focus_keeps_a_still_layer_one_piece_through_the_shutter() {
     comp["layers"] = json!([cam, still, fast]);
     let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
     let staged = crate::scene_serve::stage_at(&scene, 0.1, &json!({})).unwrap();
-    let samples = staged.sample_pieces();
-    assert!(samples.len() >= 8);
-    let piece = |p: &Vec<String>| p.iter().find(|x| x.contains("cam~still")).cloned().unwrap();
-    assert!(samples.iter().all(|p| piece(p) == piece(&samples[0])), "the still layer's blur is the same in every sub-frame");
-    assert!(samples.windows(2).any(|w| w[0] != w[1]), "the fast layer moves");
+    assert!(staged.sample_pieces().is_empty(), "the page is laid out once");
+    let streaks = staged.streaks();
+    assert!(streaks[1].is_none(), "the still layer is one piece, blurred once");
+    assert!(streaks[2].is_some(), "the fast layer is a streak");
 }
