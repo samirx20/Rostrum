@@ -96,8 +96,9 @@ blurs each layer: where two layers that move differently overlap, it differs a l
 A layer laid on with add, screen or multiply streaks like the others, its streak laid on with its own blend (anyrender
 `draw_cached_streak` takes it): those blends are linear in the layer's picture, so the average of the layer laid on at
 each move is its average picture laid on once (`still_runs.rs` `keeps`; blends inside a layer stay inside it, its element
-an isolated group). A layer that only moves but blends otherwise (another blend mode, a glow drawn from its own picture,
-frosted glass) is painted as laid out, moved to each sub-frame (one per px of its path), over the layers under it and
+an isolated group). A layer that glows from its own picture streaks as one picture too (its glow adds onto its own
+isolated group); one seen through a track matte does not yet. A layer that only moves but blends otherwise (another blend
+mode, a glow seen through a track matte, frosted glass) is painted as laid out, moved to each sub-frame (one per px of its path), over the layers under it and
 averaged: no layout per step. A group the same in every sub-frame but for its own place and its children's, each child
 only moving its own way (bubbles rising in a group the frame pans past: `streak.rs` `split`), is painted once as one
 kept picture and laid on as one streak per child over that child's part of it (`Streak.subs`, blurred.rs `measured`),
@@ -139,8 +140,8 @@ a fast preview while playing; or a timing test at 8 vs 16). The screen's playbac
 **Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
 
 **Cost:** one layout of the page, two paints (the streak pictures, then the frame), and one streak pass per moving
-layer (its cost grows with its steps); a layer that blends other than add, screen or multiply (a glow drawn from its own
-picture among them), a group whose children's streaks would read each other's pictures, or a layer reading too far past
+layer (its cost grows with its steps); a layer that blends other than add, screen or multiply (a glow seen through a track
+matte among them), a group whose children's streaks would read each other's pictures, or a layer reading too far past
 the frame's edge costs a paint per step; a layer that changes while the shutter is open costs a stage and paint per step.
 
 ## Trails

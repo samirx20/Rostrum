@@ -16,14 +16,19 @@ pub fn regroups(piece: &str) -> bool {
 /// A motion-blurred frame may paint the piece once into a picture of its own and streak that picture (blurred.rs), laid
 /// on with its layer's own blend `blend` (CSS): when it regroups, or when that blend averages exactly (the average of
 /// the layer laid on at each move is the average picture laid on once: normal, plus-lighter, screen and multiply are
-/// linear in the layer's picture) and nothing in it reads what is under it (frosted glass), is drawn apart (held,
-/// tapped) or glows from its own picture (`data-glow`: kept, its glow came out up to 33/255 off the painted steps on
-/// Undertow's title). Blends inside the layer stay inside it: its element is a stacking context (it is always moved
-/// by a transform), an isolated group for them (blitz-paint blend.rs).
+/// linear in the layer's picture) and nothing in it reads what is under it (frosted glass) or is drawn apart (held,
+/// tapped). A layer that glows from its own picture (`data-glow`) is kept too: its glow adds onto its own isolated
+/// group, so the picture is linear (blur r6: the 2-6/255 it was off came from the painter's halved blurs, fixed in
+/// anyrender_skia `gaussian_blur`). Not one seen through a track matte: on Undertow r2's title, the matted water and
+/// the text after it came out up to 33/255 off the painted steps, with its glow or without; not yet traced.
+/// Blends inside the layer stay inside it: its element is a stacking context (it is always moved by a transform), an
+/// isolated group for them (blitz-paint blend.rs).
 pub fn keeps(piece: &str, blend: &str) -> bool {
+    let glows_matted = piece.contains("data-glow") && piece.contains("data-track-matte");
     regroups(piece)
         || matches!(blend, "normal" | "plus-lighter" | "screen" | "multiply")
-            && !["backdrop-filter", "data-shutter-held", "data-tap", "data-glow"].iter().any(|k| piece.contains(k))
+            && !glows_matted
+            && !["backdrop-filter", "data-shutter-held", "data-tap"].iter().any(|k| piece.contains(k))
 }
 
 /// The move that carries the picture drawn through matrix `from` to where matrix `to` draws it, in device px of a
@@ -54,7 +59,8 @@ mod tests {
         assert!(!super::regroups(add));
         assert!(super::keeps(add, "plus-lighter") && super::keeps(add, "multiply"));
         assert!(!super::keeps(add, "overlay"), "an overlay's average isn't the average laid on");
-        assert!(!super::keeps("<div data-glow=\"8 1\" style=\"\"></div>", "normal"));
+        assert!(super::keeps("<div data-glow=\"8 1\" style=\"\"></div>", "normal"), "a glow is one picture");
+        assert!(!super::keeps("<div data-track-matte=\"alpha\"><div></div><div data-glow=\"8 1\"></div></div>", "normal"), "KNOWN OPEN: not seen through a matte");
         assert!(!super::keeps("<div style=\"backdrop-filter:blur(4px);\"></div>", "normal"));
     }
 

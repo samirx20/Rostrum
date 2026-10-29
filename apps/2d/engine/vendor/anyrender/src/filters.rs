@@ -456,6 +456,16 @@ impl FilterEffect {
         Self::GaussianBlur(GaussianBlurFilter {
             std_deviation: radius,
             edge_mode: EdgeMode::None,
+            smooth: false,
+        })
+    }
+
+    /// Rostrum patch (blur r6): a Gaussian blur halved without aliasing (`GaussianBlurFilter::smooth`).
+    pub fn smooth_blur(radius: f32) -> Self {
+        Self::GaussianBlur(GaussianBlurFilter {
+            std_deviation: radius,
+            edge_mode: EdgeMode::None,
+            smooth: true,
         })
     }
 
@@ -678,6 +688,10 @@ mod blur {
         pub std_deviation: f32,
         /// Edge mode determining how pixels beyond the input bounds are handled.
         pub edge_mode: EdgeMode,
+        /// Rostrum patch (blur r6): a backend that runs a wide blur at a lower resolution softens each level before
+        /// halving it, so the result doesn't change with where the layer sits to a fraction of a px. For a sharp
+        /// source moving under a glow (letters); it costs a pass at full size, so only glows ask for it.
+        pub smooth: bool,
     }
 }
 
