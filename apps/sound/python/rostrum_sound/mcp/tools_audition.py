@@ -7,7 +7,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from .. import audition, hear
+from .. import audition, hear, master_memo
 from ..doc import markers
 from .range_target import _seconds
 
@@ -32,10 +32,12 @@ def _song_stretch(ctx, doc, args) -> Reply:
         raise RostrumError(codes.BAD_ARGUMENT, "render_audition", f"from {a:.2f} s to {b:.2f} s",
                            f"is not a stretch of 0 to {hear.MOST_S:g} s", hint="For a longer part: render_mix with from / to.")
     solo = list(args.get("solo") or []) + ([args["track"]] if args.get("track") else [])
-    r = hear.hear(ctx.app.state.engine, d, a, b, solo=solo or None, mute=args.get("mute"), master=args.get("master", True))
+    r = hear.hear(ctx.app.state.engine, d, a, b, solo=solo or None, mute=args.get("mute"), master=args.get("master", True),
+                  song=master_memo.song_of(ctx.app.state.folder, doc.item_id))
     files, images = [r["file"]], []
     said = (f"Heard {r['from_s']:.2f}-{r['to_s']:.2f} s" + (f" (solo {', '.join(solo)})" if solo else "")
-            + f": {r.get('lufs', -70):.1f} LUFS, true peak {r.get('truePeak', -120):.1f} dBTP. {r['file']}" + (" (from the cache)" if r["cached"] else ""))
+            + f": {r.get('lufs', -70):.1f} LUFS, true peak {r.get('truePeak', -120):.1f} dBTP. {r['file']}" + (" (from the cache)" if r["cached"] else "")
+            + (" Level: the song's master as last measured, before your latest change." if r.get("mastered") == "earlier" else ""))
     data = {k: v for k, v in r.items() if k != "series"}
     if args.get("look"):
         png = str(ctx.app.state.look_dir(doc.item_id) / "audition.png")
@@ -65,7 +67,7 @@ def register(tools: Tools):
         "notes": {"type": "boolean", "default": False, "description": "Also the listening notes inside the stretch: the song's asked moments (markers named hit, stop, drop, climax ...) measured, a true peak over the ceiling, clipped samples. Notes to read, never a verdict."},
         "bars": {"type": "integer", "default": audition.BARS, "description": "With only `track` or `entry`: how many bars of the track's notes to play."}}})
     def render_audition(ctx, args):
-        """Hear any moment in about a second, without a full render: a stretch of the song as written now (`from` / `to`, or `at` ± `around`; `solo` / `mute`), rendered alone (unchanged tracks come from the render cache) and kept by content, so the same stretch again is instant. `look` adds its picture, `notes` the listening notes inside it. Or try a sound: `entry` plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or a file as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; nothing in the song changes."""
+        """Hear any moment in about a second, without a full render: a stretch of the song as written now (`from` / `to`, or `at` ± `around`; `solo` / `mute`), sounding exactly as that stretch of the full render_mix does (the song's own master and level; until the song's first render the first stretch takes a full-song pass), rendered alone (unchanged tracks from the render cache, a changed one only around the stretch) and kept by content, so the same stretch again is instant. `look` adds its picture, `notes` the listening notes inside it. Or try a sound: `entry` plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or a file as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; nothing in the song changes."""
         track, entry = args.get("track"), args.get("entry")
         stretch = not entry and ("to" in args or "at" in args or not track)
         doc = ctx.document(args.get("item")) if track or not entry else None
