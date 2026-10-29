@@ -55,15 +55,12 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
                 a, b = cuts[run[0]][0], cuts[run[-1]][1]
                 parts = _parts(run, cuts)
                 saves = [(cuts[p[-1]][1] - a, home / f"part{cuts[p[0]][0]}.{os.getpid()}.partial.mp4") for p in parts]
+                jobs = [(f, [cuts[i][0] - cuts[p[0]][0] for i in p[1:]], [files[i] for i in p]) for p, (_, f) in zip(parts, saves)]
+                placer = _Placer(jobs)               # each part cut into its segments as soon as it is saved, while the next draws
                 try:
                     got = _draw(io_export, eng, s, start, fps, a, b, saves, _part_progress(progress, drawn, to_draw))
                 finally:                             # every part saved whole, also when the request failed, into its segments
-                    for p, (_, f) in zip(parts, saves):
-                        if f.is_file():
-                            try:
-                                _place(f, [cuts[i][0] - cuts[p[0]][0] for i in p[1:]], [files[i] for i in p])
-                            finally:
-                                f.unlink(missing_ok=True)
+                    placer.finish()
                 facts = {**got, **facts}
                 drawn += b - a
     for f in files:                                  # used now: the last removed when the cache is over its cap
@@ -108,10 +105,58 @@ def _parts(run: list[int], cuts) -> list[list[int]]:
     return parts
 
 
+class _Placer:
+    """Cuts each saved part into its segments (`_place`) on a thread of its own as soon as the engine's encoder has saved
+    it (a part's file is renamed into place only when whole), so the cutting (~0.15 s a part) overlaps the drawing of the
+    parts after it instead of following the whole request. A placed part's file stays until `finish`: after an engine
+    restart engine_export.py `_saved` goes on from the first part file not there. `finish` waits for the thread, places
+    what is left (a failed request keeps every part saved whole), removes the part files and raises the first failure."""
+
+    POLL_S = 0.05
+
+    def __init__(self, jobs: list[tuple[Path, list[int], list[Path]]]):
+        import threading
+        self.jobs, self.next, self.error = jobs, 0, None
+        self.done = threading.Event()
+        self.thread = threading.Thread(target=self._watch, name="2d-export-placer", daemon=True)
+        self.thread.start()
+
+    def _place_next(self) -> bool:
+        f, cuts, into = self.jobs[self.next]
+        if not f.is_file():
+            return False
+        _place(f, cuts, into)
+        self.next += 1
+        return True
+
+    def _watch(self):
+        try:
+            while self.next < len(self.jobs) and not self.done.is_set():
+                if not self._place_next():
+                    self.done.wait(self.POLL_S)
+        except Exception as e:                       # raised by finish, on the export's own thread
+            self.error = e
+
+    def finish(self):
+        self.done.set()
+        self.thread.join()
+        if self.error is not None:
+            raise self.error
+        try:
+            while self.next < len(self.jobs):
+                if not self._place_next():           # not saved (the request failed): skipped, the rest may still be there
+                    self.next += 1
+        finally:
+            for f, _, _ in self.jobs:
+                f.unlink(missing_ok=True)
+
+
 def _place(part: Path, cuts: list[int], into: list[Path]) -> None:
-    """A saved part into its segments' files (`cuts`: where each after the first starts, in the part's frames)."""
+    """A saved part into its segments' files (`cuts`: where each after the first starts, in the part's frames). The
+    part's own file stays (`_Placer` removes it): a part of one segment is linked to it, not moved."""
     if not cuts:
-        part.replace(into[0])
+        into[0].unlink(missing_ok=True)
+        os.link(part, into[0])
     elif not _split(part, cuts, into):
         raise RuntimeError(f"{part.name}: the encoder did not start a picture group at every segment cut {cuts}")
 
