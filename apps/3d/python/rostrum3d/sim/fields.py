@@ -63,7 +63,7 @@ CLOTH_ITEM = [
     N("clothWeight", "Weight", "Simulation", 0.01, 5, 0.01, "kg/m²", S, CLOTH, default=0.2,
       help="How heavy a square metre of it is: silk 0.05, cotton 0.2, denim 0.4, felt or leather 1"),
     N("stiffness", "Stiffness", "Simulation", 0, 1, 0.01, "", S, CLOTH, default=0.3,
-      help="0 folds like silk, 1 bends like thin card"),
+      help="0 folds like silk, 0.3 like light cotton, 1 bends like thin card"),
     N("clothAir", "Air", "Simulation", 0, 4, 0.05, "", S, CLOTH, default=1.0,
       help="How much the air holds it up as it falls: 1 room air (a light sheet floats down and its edges lift), "
            "0 none (drops like a stone), 2–4 slower and softer still"),
