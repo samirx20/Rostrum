@@ -84,9 +84,10 @@ would make, the reply says so (`spotSize`, about a sixth of the body's width at 
 ### 4. The wave: bend the joints at several times
 
 In the script, after the last piece: `c.bend(joint, {seconds: (x, y, z)})` turns a joint by those degrees about the
-clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(seconds, **{"picture-right hand": {"up": 0.1}})`
-moves a part's end at that time instead (a world point, or up / out / forward metres from its rest; chain `.pose(…)`
-calls for a wave; "picture-left hand" names the hand on the picture's left; the reply notes a target out of reach). The first one finds the joints from the shape (with the engine):
+clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(seconds, **{"picture-right hand": {"up": 0.22, "out": -0.15}})`
+moves a part's end at that time instead (a world point, or up / out / forward metres from its rest; for a wave that
+reads, the hand goes over the head and swings about half the figure's height, three times or more, to the shot's
+end: guide `posing` › For agents; "picture-left hand" names the hand on the picture's left; the reply notes a target out of reach). The first one finds the joints from the shape (with the engine):
 `body`, `chest`, `head`, `arm.L` / `forearm.L`, `foot.L` …; `.R` is the character's right, the −x side, on the
 picture's left. A wrong joint name fails with the list of the ones it has.
 

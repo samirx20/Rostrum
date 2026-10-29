@@ -24,9 +24,15 @@ from its shape. Not separate meshes in groups (they drift apart and need moving 
 ```python
 c = clay("buddy", radius=0.07)                         # a ball standing on the ground: its middle at (0, 0.07, 0)
 c.lump((0, 0.195, 0), 0.055, name="head")             # every position: x, HEIGHT ABOVE THE GROUND, z
-c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")   # held a little out; Mirror makes the other side
-c.pose(0, **{"picture-right hand": {"up": 0.1}}).pose(0.4, **{"picture-right hand": {"up": 0.12, "out": 0.04}})  # a wave
-c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})       # or one joint by degrees about the clay's X, Y, Z from rest
+c.lump((0.055, 0.12, 0), 0.02, to=(0.19, 0.06, 0), name="arm")   # held a little out; Mirror makes the other side
+# a wave that reads on camera: the hand goes up ABOVE the head and swings side to side by about half the figure's
+# height (here 15 cm), three swings and more, until the shot ends; the other arm hangs relaxed. A 2 cm move reads as still.
+c.pose(0, **{"picture-right hand": {"up": 0.06, "out": -0.02}, "picture-left hand": {"up": -0.03, "out": -0.06}})  # a real move: 0 m keys nothing
+c.pose(0.4, **{"picture-right hand": {"up": 0.19, "out": -0.02, "forward": 0.03}})       # the lift
+for i, t in enumerate([0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2]):                             # one swing every 0.4 s to the end
+    c.pose(t, **{"picture-right hand": {"up": 0.22, "out": -0.15, "forward": 0.03} if i % 2 == 0   # over the head
+                 else {"up": 0.17, "out": 0, "forward": 0.03}})                                    # out to the side
+# c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})   # instead of pose: one joint by degrees about the clay's X, Y, Z from rest
 mesh("eye", shape="sphere", radius=0.01, x=0.02, y=0.21, z=0.05, attach_to=c)   # rides the head's bone
 ```
 

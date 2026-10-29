@@ -64,11 +64,13 @@ def look_frame(ctx, args):
         said, facts = picture_facts.line(dest, scene, renderer)
         more, more_facts = picture_facts.copies_line(getattr(engine, "copies", {}), picture_facts.item_names(doc.data.get("items", [])))
         said, facts = said + more, {**facts, **more_facts}
+        miss, miss_facts = picture_facts.storm_misses(doc.data, renderer)
+        said, facts = said + miss, {**facts, **miss_facts}
         if not args.get("through"):                    # a light's view has no shot camera to read the text through
             words, text = text_facts.sentence(text_facts.seen_texts(doc, info, frame, w / h))
             said, facts = said + words, {**facts, **text}
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
-        found = None if args.get("through") else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder)   # a light's view is not the shot's picture
+        found = None if args.get("through") else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
         return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
                       **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts},
@@ -126,7 +128,7 @@ def look_sheet(ctx, args):
                 pngs.append(png)
                 job.progress(i + 1, len(frames))
             sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for p, f in zip(pngs, frames)], tile_w, cols, dest)
-            found = shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder)       # the tiles are still on disk here
+            found = shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder, renderer)       # the tiles are still on disk here
         return Reply(f'Contact sheet of {info["id"]}: {len(frames)} frames, {frames[0]}–{frames[-1]} ({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), '
                      f'{renderer}, {sw}×{sh}.', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
                                                  "cols": cols, "camera": info["camera"]}, [dest], [dest],

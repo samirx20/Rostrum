@@ -283,7 +283,7 @@ farther light, or a light that grazes the face.
 
 ## What the fast view can't show
 
-Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. Light under the surface shows only as a slight tint toward the colour inside. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film, bump, or glass bending what is behind it (tinted glass shows as a thin film of its colour). Always judge those in a Cycles still.
+Storm (the fast view and `quality: fast`) shows base colour, metal, roughness, glass (without blur), clear coat, glow and the screen picture. Light under the surface shows only as a slight tint toward the colour inside. It **doesn't** show brushing and its direction, sheen, coat colour and coat IOR, thin film, bump, or glass bending what is behind it (tinted glass shows as a thin film of its colour). Always judge those in a Cycles still. A quick look says so itself: `look_frame` and a `run_script` look in Storm end with **"The quick look (Storm) can't show: steel (brushing (anisotropy 0.7) is applied by Cycles only, metal: …)"** for each material on a shown item that needs Final, so brushed metal that reads as grey plastic there is not taken for the result. Check it with `look_frame` `quality: "final"` at a small `width` (480), or `what: "material"` with `quality: "final"`.
 
 ## Checking your surface
 

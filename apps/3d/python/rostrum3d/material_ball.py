@@ -5,6 +5,7 @@ from __future__ import annotations
 from . import fields as F
 from .material_fields import FINAL_ONLY, QUICK_APPROX
 
+PLAIN = {"anisotropy": "brushing", "sheen": "fabric sheen", "thinFilm": "rainbow film", "subsurface": "light under the surface"}
 BALL_SHAPE = {"shape": "sphere", "radius": 0.5, "segments": 48}     # the picker's ball (a unit-ish sphere)
 
 
@@ -27,5 +28,6 @@ def final_reasons(values: dict) -> list[str]:
         out.append(f'metal: metallic {v["metallic"]:g} is mostly reflection, and Storm reflects only a blurred sky')
     if v["coat"] > 0:
         out.append(f'clear coat {v["coat"]:g}: a second reflection layer Storm does not draw')
-    out += [f"{k} {v[k]!r} is applied by Cycles only" for k in sorted(FINAL_ONLY | QUICK_APPROX) if v.get(k) != base.get(k)]
+    out += [f"{PLAIN[k] + ' (' if k in PLAIN else ''}{k} {v[k]!r}{')' if k in PLAIN else ''} is applied by Cycles only"
+            for k in sorted(FINAL_ONLY | QUICK_APPROX) if v.get(k) != base.get(k)]
     return out

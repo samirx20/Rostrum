@@ -7,7 +7,7 @@ from rostrum_core.mcp.combine import combine
 
 GROUPS = [
     ("look_frame", "See the shot through its camera (`width`: the picture's width in px). Checked looks open NOT DONE: "
-     "(dark, cut, floating, apart, leaving, no floor) or DONE:.",
+     "(dark, cut, floating, apart, leaving, no floor, flat light) or DONE:; a quick look names the materials Storm can't show.",
      {"frame": "look_frame", "sheet": "look_sheet", "shots": "look_shots", "material": "look_material",
       "shape": "look_shape", "paint": "look_paint", "coverage": "look_coverage", "where": "look_where",
       "exposure": "inspect_exposure"}, "frame"),
