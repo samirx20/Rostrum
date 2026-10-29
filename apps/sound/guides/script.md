@@ -139,7 +139,7 @@ so playback lands under its loudness target; a render (`render_mix`, `look`) use
 `safetyClip`. Effects on the whole mix go on the master the same way as on a track: `master.effect("eq", bands=[{"shape":
 "highshelf", "freq": 4000, "gain": 4, "q": 0.7}])` (the dull-top fault names the gain that clears it).
 
-An instrument's playable range (a recorded one has no samples outside it, and the render refuses the note):
+An instrument's playable range (a recorded one has no samples outside it: such a note is played from its nearest sample, stretched to the written pitch, and run_script and render_mix name it):
 `inspect_engine {"name": "<builtIn name>"}` before writing its part.
 
 There is no bit-crush effect. For a worn, lo-fi sound the tools are `tape` (wow, flutter, age, and a record's surface:

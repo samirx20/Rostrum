@@ -191,6 +191,11 @@ pub fn select(regions: &[Region], key: u8, vel: u8, nth: u32, rand: f64) -> Vec<
     select_on(regions, false, key, vel, nth, rand)
 }
 
+/// The key nearest `key` that a region plays on its start (none when the instrument has no such region).
+pub fn nearest_key(regions: &[Region], key: u8) -> Option<u8> {
+    regions.iter().filter(|r| !r.cc_only && !r.on_release).map(|r| key.clamp(r.lokey, r.hikey.max(r.lokey))).min_by_key(|k| (*k as i32 - key as i32).abs())
+}
+
 /// The same for the regions a note's end plays (`on_release`) or its start (else).
 pub fn select_on(regions: &[Region], on_release: bool, key: u8, vel: u8, nth: u32, rand: f64) -> Vec<&Region> {
     regions.iter().filter(|r| !r.cc_only && r.on_release == on_release && key >= r.lokey && key <= r.hikey && vel >= r.lovel && vel <= r.hivel && rand >= r.lorand && (rand < r.hirand || r.hirand >= 1.0) && nth % r.seq_length.max(1) + 1 == r.seq_position).collect()
@@ -298,7 +303,12 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
             let key = midi.round().clamp(0.0, 127.0) as u8;
             let nth = { let c = struck.entry(key).or_insert(0); *c += 1; *c - 1 };
             let rand = ((k as u64 * 0x9E37_79B9 + j as u64 * 0x85EB_CA6B + key as u64) % 10007) as f64 / 10007.0;
-            let hits = select(&regions, key, vel, nth, rand);
+            let mut hits = select(&regions, key, vel, nth, rand);
+            if hits.is_empty() {
+                // Outside the keys its samples cover: played as written, from the nearest key it has (repitched to the
+                // written pitch; a tool plays what was written as closely as the instrument can, and the reply names it).
+                if let Some(near) = nearest_key(&regions, key) { hits = select(&regions, near, vel, nth, rand); }
+            }
             if hits.is_empty() {
                 // Named as written: the file's keys less its offset.
                 let written = |k: u8| k as i32 - spec.key_offset as i32;
