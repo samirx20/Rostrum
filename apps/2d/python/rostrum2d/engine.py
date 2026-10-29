@@ -14,7 +14,8 @@ a short request that was cut off (a frame, a measure) is sent again. An engine t
 request's time limit is ended and counts as dead: no wait on it can hang (a stuck graphics driver once kept the
 window from ever showing). One line goes to the log (stderr) and `notice`
 holds a sentence for the person. Dying again within QUICK_S of a restart is not retried: every request then fails
-with one plain sentence (GAVE_UP). An export is never sent again (Cancel ends the engine on purpose).
+with one plain sentence (GAVE_UP). An export restarts its engine itself and goes on from the part it was on
+(engine_export.py, at most RESTARTS times); Cancel ends the engine on purpose and is never restarted.
 """
 from __future__ import annotations
 
@@ -143,14 +144,18 @@ class Engine:
         _log_line(f"the 2D drawing engine stopped (exit code {code}) and was restarted (new pid {self.pid}); old log: {old}")
         if self.scene is not None:
             try:
-                self._send({"scene": self.scene}, 60.0, None)
+                self._send({"scene": self.scene, **({"depth": self.depth} if self.depth != 8 else {})}, 60.0, None)
             except _Died:
                 return self._restart()               # this soon: gives up, loudly
         self.notice = RESTARTED
 
+    depth = 8               # bits per channel the engine was last loaded at (io/export.py reloads at 16): a restart keeps it
+
     def _request(self, req: dict, timeout_s: float = 60.0, progress=None, stuck=None) -> dict:
         if self.proc.poll() is not None:             # it died between requests
             self._restart()
+        if "scene" in req and "depth" in req:
+            self.depth = req["depth"]
         try:
             return self._send(req, timeout_s, progress, stuck)
         except _Died:
@@ -159,10 +164,11 @@ class Engine:
             self._restart()
             return self._send(req, timeout_s, progress, stuck)
 
-    def _send(self, req: dict, timeout_s: float, progress, stuck=None) -> dict:
+    def _send(self, req: dict, timeout_s: float, progress, stuck=None, on_line=None) -> dict:
         """`timeout_s`: the longest wait for the next line (each export progress line starts it again). `stuck(seen)`
         (`seen`: the last progress line or None): words naming what got stuck; with it a wait that runs out raises Stuck
-        (never sent again), without it _Died (a short request is sent once more to a fresh engine)."""
+        (never sent again by _request), without it _Died (a short request is sent once more to a fresh engine).
+        `on_line(line)`: each progress line as it is, instead of `progress`."""
         t0 = last = time.perf_counter()
         seen = None
         try:
@@ -183,7 +189,9 @@ class Engine:
                 if "progress" not in out or "ok" in out:     # export's per-frame progress lines
                     break
                 seen, last = out, time.perf_counter()
-                if progress:
+                if on_line:
+                    on_line(out)
+                elif progress:
                     _progress(progress, out)
         except OSError as e:
             raise _Died(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
@@ -332,17 +340,13 @@ class Engine:
 
     def export(self, req: dict, progress=None) -> dict:
         """The engine's `export` request, watched: the engine sends a line per frame, and when none comes for
-        FRAME_LIMIT_S it is ended and Stuck names where it stopped.
-        No limit on the whole: a long film is fine while frames keep coming."""
-        fps, start = self._props()["fps"], req.get("start", 0.0)
-
-        def stuck(seen):
-            done = seen["progress"] if seen else 0
-            at = round(start * fps) + done
-            if seen is None:
-                return f"drew no frame of the export, not even its first (frame {at}, {start:.2f} s)"
-            return f"drew nothing after {done} of {seen['of']} frames: stuck at frame {at} ({at / fps:.2f} s) or one just after"
-        return self._request({"export": {**req, "progress": True}}, FRAME_LIMIT_S, progress, stuck)
+        FRAME_LIMIT_S it is ended and Stuck names where it stopped. No limit on the whole: a long film is fine while
+        frames keep coming. An engine that dies or gets stuck is restarted and the export goes on from the part it was
+        on, the finished parts kept (engine_export.py); `progress` gets the whole export's frames and time left."""
+        from . import engine_export
+        if self.proc.poll() is not None:             # it died between requests
+            self._restart()
+        return engine_export.run(self, req, progress, lambda r, limit, on_line, stuck: self._send(r, limit, None, stuck, on_line))
 
     def kill(self):
         """End the process on purpose (Cancel): it is never restarted, and a request after this fails."""
