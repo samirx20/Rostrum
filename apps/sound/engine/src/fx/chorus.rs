@@ -21,13 +21,14 @@ pub struct Chorus {
     buf: [Vec<f64>; 2],
     w: usize,
     phase: f64,
+    started: bool,
     now: (f64, f64),
 }
 
 impl Chorus {
     pub fn new(rate: f64, depth: &Param, mix: &Param, spread: f64, sr: f64) -> Self {
         let n = ((BASE_S + SWEEP_S) * sr).ceil() as usize + 4;
-        Chorus { rate, spread, depth: depth.clone(), mix: mix.clone(), sr, buf: [vec![0.0; n], vec![0.0; n]], w: 0, phase: 0.0, now: (depth.at(0.0), mix.at(0.0)) }
+        Chorus { rate, spread, depth: depth.clone(), mix: mix.clone(), sr, buf: [vec![0.0; n], vec![0.0; n]], w: 0, phase: 0.0, started: false, now: (depth.at(0.0), mix.at(0.0)) }
     }
 
     /// The line `ch` read `d` samples back (fractional: a 4-point Hermite curve between samples).
@@ -49,6 +50,11 @@ impl Chorus {
         let n = self.buf[0].len();
         let (base, sweep) = (BASE_S * self.sr, SWEEP_S * self.sr);
         let step = 2.0 * PI * self.rate / self.sr;
+        if !self.started && t0 > 0 {
+            // A render that starts later in the song (a heard stretch): the sweep where it is at that frame.
+            self.phase = (step * t0 as f64) % (2.0 * PI);
+        }
+        self.started = true;
         for i in 0..l.len().min(r.len()) {
             if (t0 + i) % BLOCK == 0 {
                 let t = (t0 + i) as f64 / self.sr;

@@ -274,7 +274,9 @@ const LEGATO_SKIP: f64 = 0.09; // seconds of the sample's attack a legato note e
 pub const LEGATO_FADE: f64 = 0.07;
 
 /// Adds the notes (one instrument) into the buffers.
-pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32], sr: f64) -> Result<(), String> {
+/// `span`: a heard stretch (mix/window.rs): every note still counts for the round robin, choke groups and legato; only
+/// those that sound in it are played.
+pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32], sr: f64, span: Option<(usize, usize)>) -> Result<(), String> {
     let regions = instrument(&spec.file)?;
     let mut order: Vec<usize> = (0..notes.len()).collect();
     order.sort_by_key(|&i| notes[i].start);
@@ -305,6 +307,9 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
                 return Err(format!("{}: no sample for {} (key {}) at velocity {vel}; the instrument plays {}–{}", spec.file, name(key), written(key), name(lo), name(hi)));
             }
             let (off, release, legato) = ends[i];
+            if !crate::mix::window::heard(span, n.start, off.saturating_sub(n.start), sr) {
+                continue;
+            }
             let level = spec.gains.iter().find(|(k, _)| *k == key).map_or(0.0, |g| g.1);
             for r in hits {
                 let sample = if spec.even { cached(&r.sample, tame::read)?.0.clone() } else { cached(&r.sample, read_wav)? };

@@ -21,11 +21,12 @@ fn freeverb_clip(c: &Clip) -> bool {
 /// Effect presets Rostrum used to make and no longer does (PURPOSE.md: no cheap effects); an old song that has one is refused naming it.
 const RETIRED_PRESETS: &[&str] = &["whoosh", "swoosh", "swish", "swipe", "sweep", "transition", "zap", "laser", "portal", "warp", "glitch"];
 
-fn render_clip(c: &Clip, sr: f64) -> Result<(Vec<f32>, Vec<f32>), String> {
+/// `span`: a heard stretch in the clip's own frames (mix/window.rs): a score plays only its notes heard there.
+fn render_clip(c: &Clip, sr: f64, span: Option<(usize, usize)>) -> Result<(Vec<f32>, Vec<f32>), String> {
     let (mut l, mut r) = (vec![0.0f32; c.samples], vec![0.0f32; c.samples]);
     let mut stretched = false;
     match &c.content {
-        Content::Score { voices } => voices::score::render_score(voices, &mut l, &mut r, sr)?,
+        Content::Score { voices } => voices::score::render_score(voices, &mut l, &mut r, sr, span)?,
         Content::Sfx { preset, .. } if RETIRED_PRESETS.contains(&preset.as_str()) => return Err(format!("this song has a {preset}, which Rostrum no longer makes; remove it or replace it")),
         Content::Sfx { preset, material, duration, volume, pitch, pan_from, pan_to } => {
             sfx::render_sfx(&sfx::Sfx { preset, material: material.as_ref(), duration: *duration, volume: *volume, pitch: *pitch, pan_from: *pan_from, pan_to: *pan_to }, &mut l, &mut r, sr)
@@ -113,14 +114,20 @@ fn render_bed_clip(c: &Clip, layout: Layout, sr: f64) -> Result<Vec<Vec<f32>>, S
     Ok(chs)
 }
 
-/// Every clip of track `t`, rendered on all cores; results in the track's order.
-pub(super) fn render_track_clips(s: &Schedule, t: usize) -> Result<Vec<Vec<Vec<f32>>>, String> {
+/// Every clip of track `t`, rendered on all cores; results in the track's order. `span`: a heard stretch (song frames,
+/// mix/window.rs): a clip not heard in it stays silent, a score plays only its notes heard there.
+pub(super) fn render_track_clips(s: &Schedule, t: usize, span: Option<(usize, usize)>) -> Result<Vec<Vec<Vec<f32>>>, String> {
     let sr = s.sample_rate as f64;
     let track = &s.tracks[t];
     crate::mix::par::map((0..track.clips.len()).collect(), |c| {
         let clip = &track.clips[c];
         let t0 = std::time::Instant::now();
-        let r = if track.bed { render_bed_clip(clip, s.layout, sr) } else { render_clip(clip, sr).map(|(l, r)| vec![l, r]) };
+        // In the clip's frames; a clip turned round or at another speed plays all its notes (its time is not the song's).
+        let own = span.filter(|_| clip.reverse.is_none() && clip.rate.is_none()).map(|(a, b)| (a.saturating_sub(clip.start_sample), b.saturating_sub(clip.start_sample)));
+        if !crate::mix::window::heard(span, clip.start_sample, clip.samples, sr) {
+            return Ok(vec![vec![0.0f32; clip.samples]; if track.bed { s.layout.channels() } else { 2 }]);
+        }
+        let r = if track.bed { render_bed_clip(clip, s.layout, sr) } else { render_clip(clip, sr, own).map(|(l, r)| vec![l, r]) };
         prof(&format!("clip {} #{c}", track.name), t0);
         r
     })

@@ -29,7 +29,8 @@ pub fn safety_clip(x: f64) -> f64 {
 /// The master bus before its gain: `inputs` (the direct tracks in schedule order, then the buses that reach the
 /// master) summed, the tail included, then the time warps, the master reverb and the master inserts. Block by block
 /// onto a tape; time warps or a whole-take insert need the whole bus, so with one of those it is summed in memory.
-fn summed(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Tape, String> {
+/// `span`: a heard stretch with its lead-in (window.rs): only those frames are summed (none of the above is there).
+fn summed(s: &Schedule, inputs: &[Arc<Tape>], span: Option<(usize, usize)>) -> Result<Tape, String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let buf = s.total_samples + s.tail_samples;
     let nch = layout.channels();
@@ -45,9 +46,10 @@ fn summed(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Tape, String> {
         chain.block(&mut bed::slices(&mut bus), 0).map_err(|e| format!("master: {e}"))?;
         return Tape::spill(&bus);
     }
-    let mut out = TapeWriter::new(nch, buf)?;
-    for t0 in (0..buf).step_by(BLOCK) {
-        let n = BLOCK.min(buf - t0);
+    let (lo, hi) = span.unwrap_or((0, buf));
+    let mut out = TapeWriter::span(nch, buf, lo, hi)?;
+    for t0 in (lo..hi).step_by(BLOCK) {
+        let n = BLOCK.min(hi - t0);
         let mut block = vec![vec![0.0f32; n]; nch];
         for t in inputs {
             for (dst, src) in block.iter_mut().zip(t.read(t0, n)?) {
@@ -108,25 +110,40 @@ fn wrapped(s: &Schedule, pre: &Tape, at: usize, n: usize) -> Result<Vec<Vec<f32>
 pub fn master(s: &Schedule, inputs: &[Arc<Tape>], in_memory: bool) -> Result<Mix, String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let nch = layout.channels();
-    let pre = summed(s, inputs)?;
+    let span = crate::mix::window::master_span(s);
+    let pre = summed(s, inputs, span)?;
     let mut gain = crate::mix::mastergain::MasterGain::new(s);
     let (from, total) = (gain.offset, gain.total);
+    // The song frames the mastering stage works on: a stretch with its lead-in, mastered with the song's decisions
+    // (window.rs); a stretch heard in the song without them, the whole song (the stretch is cut from it, and the song's
+    // decisions are reported); else the file's frames (a part mastered on its own).
+    let (st0, stn) = match (span, s.range, &s.master) {
+        (Some((lo, hi)), ..) => (lo, hi - lo),
+        (None, Some(_), Some(_)) if s.in_song => (0, s.total_samples),
+        _ => (from, total),
+    };
+    gain.skip = from - st0;
     let lin = gain.clone();
     let gained = |at: usize, n: usize| -> Result<Vec<Vec<f32>>, String> {
-        let mut b = wrapped(s, &pre, from + at, n)?;
+        let mut b = wrapped(s, &pre, st0 + at, n)?;
         for c in b.iter_mut() {
-            c.iter_mut().enumerate().for_each(|(i, v)| *v = (*v as f64 * lin.lin(at + i)) as f32);
+            c.iter_mut().enumerate().for_each(|(i, v)| *v = (*v as f64 * lin.lin_song(st0 + at + i)) as f32);
         }
         Ok(b)
     };
     let weights = layout.weights();
-    let (mastered, report) = match &s.master {
-        Some(m) => {
-            let (sp, r, d) = crate::fx::master::master_blocks(&gained, nch, total, &weights, m, sr, !in_memory)?;
+    let (mastered, report) = match (&s.master, span.and(s.master_as)) {
+        (Some(m), Some(d)) => {
+            let (sp, r, d) = crate::fx::master::window::master_window(&gained, nch, stn, &weights, m, sr, &d, !in_memory)?;
             gain.dynamics = Some(Arc::new(d));
             (Some(sp), r)
         }
-        None => (None, Default::default()),
+        (Some(m), None) => {
+            let (sp, r, d) = crate::fx::master::master_blocks(&gained, nch, stn, &weights, m, sr, !in_memory)?;
+            gain.dynamics = Some(Arc::new(d));
+            (Some(sp), r)
+        }
+        (None, _) => (None, Default::default()),
     };
     gain.norm = 10f64.powf(report.gain_db / 20.0);
     let mut mix = Mix { layout, out: None, peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, safety_clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], reduction_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: report, bands: [-140.0; 5], loud: None, levels: vec![], inputs: vec![] };
@@ -154,8 +171,8 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>], in_memory: bool) -> Result<Mix
     for at in (0..total).step_by(CHUNK) {
         let n = CHUNK.min(total - at);
         let mut out = match &mastered {
-            Some(sp) => sp.read(at, n)?,
-            None => gained(at, n)?,
+            Some(sp) => sp.read(gain.skip + at, n)?,
+            None => gained(gain.skip + at, n)?,
         };
         if mastered.is_some() {
             for m in gain.mastering(at, n)? {

@@ -62,15 +62,17 @@ fn sum(track: &Track, clips: &[Vec<Vec<f32>>], feeders: &[&Tape], chans: usize, 
 /// One track from its clips (and the layers feeding it) to its place in the bed, reverb send included, on a tape.
 /// A feeder stays stereo: its bus places the sum. With it, the tap before the fader when the track sends from
 /// there (buses.rs).
-pub(super) fn track_out(s: &Schedule, track: &Track, clips: &[Vec<Vec<f32>>], feeders: Vec<&Tape>, buf: usize) -> Result<(TapeWriter, Option<TapeWriter>), String> {
+/// `span`: a heard stretch (song frames, mix/window.rs): only those frames are worked out; the rest of the tape is silent.
+pub(super) fn track_out(s: &Schedule, track: &Track, clips: &[Vec<Vec<f32>>], feeders: Vec<&Tape>, buf: usize, span: Option<(usize, usize)>) -> Result<(TapeWriter, Option<TapeWriter>), String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let named = |e: String| format!("track \"{}\": {e}", track.name);
     let (chans, chain_layout) = if track.bed { (layout.channels(), layout) } else { (2, Layout::Stereo) };
     let mut chain = Chain::new(&track.effects, chain_layout, sr).map_err(named)?;
     // The bed the track lands in: a feeder's or a stereo song's is stereo; panned or placed, the song's bed.
     let placed = if track.bed || (track.into.is_none() && (track.surround.is_some() || layout != Layout::Stereo)) { layout } else { Layout::Stereo };
-    let mut out = TapeWriter::new(placed.channels(), buf)?;
-    let mut pre = if crate::mix::buses::has_pre(track) { Some(TapeWriter::new(layout.channels(), buf)?) } else { None };
+    let (lo, hi) = span.filter(|_| !chain.whole()).unwrap_or((0, buf));
+    let mut out = TapeWriter::span(placed.channels(), buf, lo, hi)?;
+    let mut pre = if crate::mix::buses::has_pre(track) { Some(TapeWriter::span(layout.channels(), buf, lo, hi)?) } else { None };
     let mut tone = ToneFilter::new(&track.tone, sr);
     let neutral = track.tone == "neutral" || track.tone.is_empty();
     let mut panner = match (&track.surround, track.into) {
@@ -80,8 +82,8 @@ pub(super) fn track_out(s: &Schedule, track: &Track, clips: &[Vec<Vec<f32>>], fe
     let mut send = BedReverb::new(placed.channels(), placed, &s.track_reverb_space, track.reverb, sr);
     let vol = fader(track);
     let step = if chain.whole() { buf.max(1) } else { BLOCK };
-    for t0 in (0..buf).step_by(step) {
-        let n = step.min(buf - t0);
+    for t0 in (lo..hi).step_by(step) {
+        let n = step.min(hi - t0);
         // A bed track is played as it is: no layers feed it.
         let mut st = sum(track, clips, if track.bed { &[] } else { &feeders }, chans, t0, n)?;
         if track.bed {
