@@ -269,7 +269,9 @@ engine. Each channel is one file named as a **UDIM set** with its one tile, `<it
 (`lid_colour.1001.png`, `lid_roughness.1001.png`; Relief is `height`, Metal `metal`), plus `<item>_paint.json`, a short
 list of channel → file, its set name (`lid_colour.<UDIM>.png`) and whether it is colour (sRGB) or raw numbers. A mesh
 whose faces have their own materials also gets `<item>__<material>_<channel>.1001.png` for each painted face
-material. The pictures sit on the item's paint unfold (the UVs painting uses: a mesh's `uvs`, a clay's own unfold).
+material. The pictures sit on the item's paint unfold (the UVs painting uses: a mesh's `uvs`, a clay's own unfold). A clay's
+unfold leaves Rostrum with nothing else yet (Make clean mesh doesn't carry paint), so its exported pictures are for
+looking at and keeping; a mesh's fit the mesh wherever its UVs go.
 An item with no paint layer is refused. Nothing in the document changes.
 
 - For agents: `paint.export` with `target: [mesh or clay]`, `args: {folder}` (absolute, or inside the project).
