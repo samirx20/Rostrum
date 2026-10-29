@@ -1,9 +1,11 @@
 # PR6 check: UDIM sets (pictures in tiles) in the Quick view and in Cycles. Through the lock:
 #   heavy.ps1 run "<team>: udim check" gpu <venv python> apps\3d\tools\udim_check.py <out folder>
 # A card 2 m wide whose surface runs over two tiles (u 0..2), from an OBJ whose .mtl names tile 1001 only
-# (t.1001.png, red "1001"; t.1002.png beside it, blue "1002"). Left: the import with the file's own material; right:
-# the same file wearing a Rostrum material whose picture is t.1001.png. Each must show red 1001 | blue 1002, in both
-# renderers (udim-quick-vs-cycles.png). Then a material naming a set with no tile must be refused, loudly.
+# (t.1001.png, red "1001"; t.1002.png beside it, blue "1002"). Left: the import with the file's own material; middle:
+# a USD file (referenced as it is) whose texture is written t.<UDIM>.png; right: the OBJ wearing a Rostrum material
+# whose picture is t.1001.png. Each must show red 1001 | blue 1002, in both renderers (udim-quick-vs-cycles.png):
+# along the cards' middle row the coloured stretches go red, blue three times. Then a material naming a set with no
+# tile must be refused, loudly.
 import sys
 from pathlib import Path
 
@@ -36,16 +38,62 @@ def files(folder: Path) -> Path:
     (folder / "card.obj").write_text(
         "mtllib card.mtl\nv -1 0 0\nv 1 0 0\nv 1 1 0\nv -1 1 0\nvt 0 0\nvt 2 0\nvt 2 1\nvt 0 1\nvn 0 0 1\n"
         "usemtl card\nf 1/1/1 2/2/1 3/3/1 4/4/1\n", encoding="utf-8")
+    (folder / "card.usda").write_text(USDA, encoding="utf-8")
     return folder / "card.obj"
+
+
+USDA = """#usda 1.0
+(
+    defaultPrim = "Card"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+def Xform "Card"
+{
+    def Mesh "Mesh" (prepend apiSchemas = ["MaterialBindingAPI"])
+    {
+        int[] faceVertexCounts = [4]
+        int[] faceVertexIndices = [0, 1, 2, 3]
+        point3f[] points = [(-1, 0, 0), (1, 0, 0), (1, 1, 0), (-1, 1, 0)]
+        texCoord2f[] primvars:st = [(0, 0), (2, 0), (2, 1), (0, 1)] (interpolation = "vertex")
+        rel material:binding = </Card/Mat>
+    }
+    def Material "Mat"
+    {
+        token outputs:surface.connect = </Card/Mat/S.outputs:surface>
+        def Shader "S"
+        {
+            uniform token info:id = "UsdPreviewSurface"
+            color3f inputs:diffuseColor.connect = </Card/Mat/T.outputs:rgb>
+            token outputs:surface
+        }
+        def Shader "T"
+        {
+            uniform token info:id = "UsdUVTexture"
+            asset inputs:file = @./t.<UDIM>.png@
+            float2 inputs:st.connect = </Card/Mat/R.outputs:result>
+            token inputs:sourceColorSpace = "sRGB"
+            float3 outputs:rgb
+        }
+        def Shader "R"
+        {
+            uniform token info:id = "UsdPrimvarReader_float2"
+            string inputs:varname = "st"
+            float2 outputs:result
+        }
+    }
+}
+"""
 
 
 def scene(obj: Path, picture: str) -> dict:
     src = f'''
 tiles = material("tiles", baseColor="#ffffff", roughness=0.9, baseColorTexture={str(picture)!r})
-import_usd("own", file={str(obj)!r}, x=-1.1)
-import_usd("mine", file={str(obj)!r}, x=1.1, material="tiles")
+import_usd("own", file={str(obj)!r}, x=-2.3)
+import_usd("usd", file={str(obj.with_suffix(".usda"))!r}, x=0)
+import_usd("mine", file={str(obj)!r}, x=2.3, material="tiles")
 light("sky", kind="dome", color="#ffffff", intensity=1)
-cam = camera("cam", focalLength=35, y=0.5, z=4.2).aim((0, 0.5, 0))
+cam = camera("cam", focalLength=35, y=0.5, z=6.8).aim((0, 0.5, 0))
 shot("s", camera=cam, fps=24, start=0, end=1)
 '''
     doc = Document.new(KIND)
@@ -63,15 +111,23 @@ def quick(eng) -> Image.Image:
 
 
 def halves(pic: Image.Image, label: str):
-    """Each card's left half red and right half blue: sampled at the middle of each half."""
+    """Along the cards' middle row, the coloured stretches (wider than 8 px) go red, blue three times: each card's
+    tile 1001 then 1002 (wherever the renderer framed them; a tile's white digits don't split it)."""
     a = np.asarray(pic, np.float32)
-    for name, cx in (("file's own material", W * 0.27), ("Rostrum material", W * 0.73)):
-        for side, dx, want in (("left (1001)", -W * 0.1, 0), ("right (1002)", W * 0.1, 2)):
-            px = a[int(H * 0.42), int(cx + dx)]
-            ok = int(np.argmax(px)) == want and px[want] > 1.3 * np.delete(px, want).max()
-            print(("ok  " if ok else "FAIL"), label, name, side, px.round().tolist())
-            if not ok:
-                FAILS.append(f"{label} {name} {side}")
+    rows = np.nonzero((a.max(2) - a.min(2) > 40).any(1))[0]
+    row = a[(rows.min() + rows.max()) // 2] if len(rows) else a[H // 2]
+    colour = np.where(row.max(1) - row.min(1) <= 40, -1, np.argmax(row, 1))   # 0 red, 2 blue, -1 grey or white
+    runs, start = [], 0
+    for x in range(1, W + 1):
+        if x == W or colour[x] != colour[start]:
+            if colour[start] >= 0 and x - start > 8 and (not runs or runs[-1] != ("red" if colour[start] == 0 else "blue" if colour[start] == 2 else "other")):
+                runs.append("red" if colour[start] == 0 else "blue" if colour[start] == 2 else "other")
+            start = x
+    ok = runs == ["red", "blue"] * 3
+    print(("ok  " if ok else "FAIL"), label, "cards read", " ".join(runs) or "nothing",
+          "(file's own material | USD by reference | Rostrum material)")
+    if not ok:
+        FAILS.append(f"{label}: {' '.join(runs)}")
 
 
 def main():
@@ -92,7 +148,7 @@ def main():
         d = ImageDraw.Draw(out)
         for i, (p, t) in enumerate([(q, "Quick view"), (c, "Cycles (Final)")]):
             out.paste(p, (0, 30 + i * (H + 30)))
-            d.text((8, 5 + i * (H + 30)), t + "  (left: the file's own material; right: a Rostrum material)",
+            d.text((8, 5 + i * (H + 30)), t + "  (left: OBJ, its own material; middle: USD, by reference; right: a Rostrum material)",
                    fill="black", font=font)
         out.save(OUT / "udim-quick-vs-cycles.png")
         print("picture", OUT / "udim-quick-vs-cycles.png")
