@@ -19,7 +19,7 @@ Three checks, each with a stable fault id so `keep: {id: why}` names it across r
                               says what each cloth ends on.
   flat_light:<item>           the biggest subject's lit and dark sides under light_faults.FLAT_STOPS apart in the picture
                               (light_faults.py; first picture only, not Stylized).
-  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
+  separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / touches_body / fused / face_unmatched / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
                               document over the whole shot (rostrum3d/faults.py), in the same list.
 """
 from __future__ import annotations

@@ -2,7 +2,12 @@
 entries of the shot's one fault list (faults.py):
 
   through_body:<clay>.<joint>  a part of the figure passes into another part that is not its neighbour (a waving hand through
-                               the head) deeper than it did at rest; names the joint to turn and about how far.
+                               the head) deeper than it did at rest; names the joint to turn and about how far (pose_touch.py).
+  touches_body:<clay>.<joint>  such a part comes up against the other (within the blend) and they meet on the picture: one lump.
+  fused:<clay>.<a>~<b>         two lumps on parts that aren't neighbours sit inside each other's blend at rest: a web of clay
+                               joins them and stretches when posed (pose_fuse.py).
+  face_unmatched:<a>~<b>       a mirrored pair of features (two eyes) differ in size or height, or one shows much smaller
+                               on the picture: covered by a lump (a brow) or sunk by a turn (pose_face.py).
   off_body:<item>              a small thing attached to the figure (an eye, a nose, a hat) that leaves its posed surface or slides
                                over it (it rides one bone while the part it sits on turns with another).
   on_rim:<item>                such a feature seen on or past the outline of the part it sits on: reads as beside it (pose_rim.py).
@@ -18,12 +23,13 @@ import math
 from rostrum_core.mcp import faults as F
 
 from . import aim, follow, pose_body as PB, skin
+from .pose_face import face_faults
+from .pose_fuse import fused
 from .pose_rim import on_rim
+from .pose_touch import chain as _chain, through_touch
+from .pose_wave import wave_faults
 
 STEP_S = 0.25            # frames checked: one every this many seconds
-THROUGH_M = 0.004        # a part this much deeper into another than at rest …
-THROUGH_R = 0.35         # … and this share of the thinner part's radius passes through it
-CLEAR_M = 0.01           # the fix turns the joint so the part clears by this
 OFF = 0.5                # an attached thing off the surface, or slid, by this share of its own size
 SMALL = 0.35             # attached things smaller than this share of the figure are features (eyes, a nose)
 STILL = 0.025            # a keyed part moving less than this share of the picture's width reads as still
@@ -42,14 +48,6 @@ def _keyed(item: dict) -> set[int]:
     return {n for n, (b, _) in enumerate(skin.bones_of(item)) if any(k.get("prop") in skin.TURN for k in b.get("keys", []))}
 
 
-def _chain(par: list[int], n: int) -> list[int]:
-    out = []
-    while n >= 0:
-        out.append(n)
-        n = par[n]
-    return out
-
-
 def pose_faults(track, info: dict, check: list[int]) -> list[dict]:
     out = []
     for id_ in track.ids():
@@ -61,43 +59,14 @@ def pose_faults(track, info: dict, check: list[int]) -> list[dict]:
             continue
         fs = sorted(set(frames(info)) | set(check)) if len(check) > 1 else check
         posed = {f: PB.posed(track.fr, id_, balls, f) for f in fs}
-        out += _through(track, info, id_, item, balls, posed, keyed)
+        out += fused(track, info, id_, item, balls, keyed)
+        out += through_touch(track, info, id_, item, balls, posed, keyed)
         out += _still(track, info, id_, item, balls, posed, keyed)
+        out += wave_faults(track, info, id_, item, balls, posed, keyed)
         feats = _features(track, id_, balls, posed)
         out += _off_body(track, info, id_, posed, feats)
         out += on_rim(track, info, id_, item, balls, posed, [(i, own, on) for i, own, on, _ in feats])
-    return out
-
-
-def _through(track, info, id_, item, balls, posed, keyed) -> list[dict]:
-    par, names = PB.parents(item), PB.joint_names(item)
-    near = lambda a, b: a == b or par[a] == b or par[b] == a                       # noqa: E731
-    pairs = [(i, j, ri + rj - math.dist(p, q)) for i, (p, ri, a) in enumerate(balls) for j, (q, rj, b) in enumerate(balls)
-             if i < j and not near(a, b) and (set(_chain(par, a)) ^ set(_chain(par, b))) & keyed]
-    worst: dict[int, tuple] = {}
-    for f, now in posed.items():
-        for i, j, d0 in pairs:
-            (p, ri, a), (q, rj, b) = now[i], now[j]
-            over = ri + rj - math.dist(p, q) - max(d0, 0.0)
-            if over <= max(THROUGH_M, THROUGH_R * min(ri, rj)):
-                continue
-            mi, mj = (math.dist(p, balls[i][0]), math.dist(q, balls[j][0]))
-            mover, other = (i, j) if (a in keyed or mi >= mj) and not (b in keyed and mj > mi) else (j, i)
-            joint = next((n for n in _chain(par, now[mover][2]) if n in keyed), now[mover][2])
-            if joint not in worst or over > worst[joint][0]:
-                worst[joint] = (over, f, mover, other)
-    out = []
-    for joint, (over, f, mover, other) in worst.items():
-        m = skin.transforms(skin.bones_of(item), track.fr.held(id_, f) / track.fr.fps)[joint]
-        head = aim.point(track.fr.world(id_, f), aim.point(m, [0.0, 0.0, 0.0]))
-        lever = max(math.dist(head, posed[f][mover][0]), 1e-3)
-        deg = math.degrees(math.atan2(over + CLEAR_M, lever))
-        part, into = names[posed[f][mover][2]], names[posed[f][other][2]]
-        out.append(F.fault(f"through_body:{id_}.{names[joint]}",
-                           f"{id_}'s {part} passes {over * 100:.1f} cm into its {into}",
-                           f"turn {names[joint]} about {deg:.0f}° further away from the {into} at "
-                           f"{(f - info['start']) / info['fps']:.1f} s (c.bend(\"{names[joint]}\", …)), so the {part} clears it "
-                           f"by {CLEAR_M * 100:.0f} cm; or move the {into} out of its path", _when(info, f)))
+        out += face_faults(track, info, id_, item, balls, posed, feats)
     return out
 
 
