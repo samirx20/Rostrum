@@ -33,11 +33,25 @@ def apply_keep(faults: list[dict], keep: dict | None) -> list[str]:
     for f in faults:
         if f["id"] in keep:
             f["kept"] = keep[f["id"]]
-    return [f'keep names "{k}", which is not a fault here (faults: {", ".join(sorted(ids)) or "none"}).' for k in keep if k not in ids]
+    return [f'keep names "{k}", which is not a fault here (faults: {_ids(sorted(ids)) or "none"}).' for k in keep if k not in ids]
 
 
 def still_open(faults: list[dict]) -> list[dict]:
     return [f for f in faults if not f.get("kept")]
+
+
+PER_KIND = 3        # faults of one kind written out in the headline; the rest are counted (every id stays in the data)
+KINDS = 6           # kinds written out; the rest are named with their counts
+IDS = 12            # ids named in a list of ids before "and N more"
+
+
+def kind_of(fault_id: str) -> str:
+    """A fault's kind: its id's part before ':' or '@' (`cut_edge:ball` -> `cut_edge`)."""
+    return fault_id.replace("@", ":").split(":", 1)[0]
+
+
+def _ids(ids: list[str]) -> str:
+    return ", ".join(ids[:IDS]) + (f" and {len(ids) - IDS} more" if len(ids) > IDS else "")
 
 
 def _line(f: dict) -> str:
@@ -46,12 +60,26 @@ def _line(f: dict) -> str:
 
 
 def headline(faults: list[dict]) -> str:
-    """The reply's first line: NOT DONE with every open fault (what, when, fix), or DONE (with what was kept)."""
+    """The reply's first line: NOT DONE with the open faults grouped by kind (the first PER_KIND of each written out with
+    what, when, fix, then how many more; kinds in the order their first fault comes, so a caller's ranking holds), or DONE
+    (with what was kept). Short however many faults there are: every id stays in the data, and keep / deliver take any."""
     left, kept = still_open(faults), [f for f in faults if f.get("kept")]
-    said = f" Kept on purpose: {', '.join(f['id'] for f in kept)}." if kept else ""
+    said = f" Kept on purpose: {_ids([f['id'] for f in kept])}." if kept else ""
     if not left:
         return f"DONE: checked, no open faults.{said}"
-    return f"NOT DONE: {len(left)} fault{'s' * (len(left) != 1)}. " + " | ".join(_line(f) for f in left) + said
+    groups: dict[str, list[dict]] = {}
+    for f in left:
+        groups.setdefault(kind_of(f["id"]), []).append(f)
+    parts = []
+    for kind, fs in list(groups.items())[:KINDS]:
+        parts += [_line(f) for f in fs[:PER_KIND]]
+        if len(fs) > PER_KIND:
+            parts.append(f"and {len(fs) - PER_KIND} more {kind} (ids in data)")
+    rest = list(groups.items())[KINDS:]
+    if rest:
+        parts.append("also " + ", ".join(f"{len(fs)} {kind}" for kind, fs in rest) + " (in data)")
+    count = f"{len(left)} fault{'s' * (len(left) != 1)}" + (f" of {len(groups)} kinds" if len(groups) > 1 else "")
+    return f"NOT DONE: {count}. " + " | ".join(parts) + said
 
 
 def deliver(faults: list[dict], keep: dict | None, where: str, file: str | Path | None = None) -> list[str]:
