@@ -1,5 +1,6 @@
 // The GPU output step (gpu_output.rs). OUT: a frame's halves to output codes; FLAGS: per BLOCK pixels of a row, bit 0
-// = a pixel the CPU must redo, bit 1 = differs from the picture the target slot holds (`prev`).
+// = a pixel the CPU must redo, bit 1 = differs from the picture the target slot holds (`prev`). LUMA / CHROMA: the
+// 8-bit output codes (`cur`) to the encoder's NV12 planes, nv12.rs's integer formula and constants (its `glsl_defines`).
 uniform sampler2D src;
 uniform usampler2D codes;
 uniform usampler2D cur;
@@ -34,7 +35,24 @@ uint code(uint h, uvec2 p, uint k) {
     uint t = e >> 8u;
     return (e & 255u) + (t != 0u && dither(p.x, p.y, k) >= t ? 1u : 0u);
 }
-#ifdef FLAGS
+#if defined(LUMA) || defined(CHROMA)
+// A pixel over black, each channel rounded to a code (nv12.rs `over_black`). Wrapping uint sums, as nv12.rs.
+uvec3 over_black(ivec2 p) { uvec4 c = texelFetch(cur, p, 0); return (c.rgb * c.a + 127u) / 255u; }
+#endif
+#if defined(LUMA)
+layout(location = 0) out uint o;
+void main() {
+    uvec3 q = over_black(ivec2(gl_FragCoord.xy));
+    o = (Y0 + YR * q.r + YG * q.g + YB * q.b) >> FRAC;
+}
+#elif defined(CHROMA)
+layout(location = 0) out uvec2 o;
+void main() {
+    ivec2 p = ivec2(gl_FragCoord.xy) * 2;
+    uvec3 s = over_black(p) + over_black(p + ivec2(1, 0)) + over_black(p + ivec2(0, 1)) + over_black(p + ivec2(1, 1));
+    o = uvec2((C0 + CBB * s.b - CBR * s.r - CBG * s.g) >> FRAC, (C0 + CRR * s.r - CRG * s.g - CRB * s.b) >> FRAC);
+}
+#elif defined(FLAGS)
 layout(location = 0) out uint o;
 void main() {
     int y = int(gl_FragCoord.y), x0 = int(gl_FragCoord.x) * BLOCK;

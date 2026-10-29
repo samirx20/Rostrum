@@ -19,6 +19,12 @@
 //! its next frames' stage markup (E7) while it lays out and paints, so the processor's cores and the graphics card
 //! are kept busy. The pictures are the same whatever the count (a frame is a function of its time). A failure on any
 //! worker stops the export with the frame it failed at; the encoder must then have taken exactly every frame, in order.
+//!
+//! `saves` (a held encoder, `encode.keep`): [{end, file}], the export cut into files as it goes: the frames before
+//! `end` (counted from the export's first) since the cut before are saved as `file`, each finished and renamed into
+//! place by the encoder while the frames after it are drawn (encode_mp4.rs `--keep`). The last `end` is the export's
+//! frame count. A stop or a crash keeps every file saved before it whole, and nothing of the one it was in. The reply's
+//! `saved` counts the files and `saveWaitS` is how long the end waited for the encoder to finish the last ones.
 
 use std::time::Instant;
 
@@ -84,6 +90,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
             };
         }
     }
+    let saves = saves_of(req, n, s.sink.as_ref().is_some_and(Sink::is_kept))?;
     let warning = painting_warning(&s.painting);
     if let Some(w) = &warning {
         eprintln!("2D engine: {w}");
@@ -91,7 +98,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
     let span = Span { start, fps, n };
-    let (rows, costs, worker_start_s, workers_made, turn_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
+    let (rows, costs, worker_start_s, workers_made, turn_s) = export_crew::draw_all(held, s, req, span, workers, saves.iter().map(|(e, f, _)| (*e, f.clone())).collect(), progress)?;
     let kept = s.sink.as_ref().is_some_and(Sink::is_kept);
     if kept {
         serve::drain(s)?;
@@ -103,12 +110,17 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
             return Err(format!("export: the encoder took {} frames of {n}{}", sink.pushed(), if sink.in_order() { "" } else { ", out of order" }));
         }
     }
-    if kept {
+    let mut save_wait_s = 0.0;
+    if kept && saves.is_empty() {
         // a held encoder saves this export's frames as its file and goes on running (a wrong count above is never saved)
         let file = req["file"].as_str().ok_or("export encode keep needs file")?;
         s.sink.as_mut().unwrap().save(file)?;
+    } else if kept {
+        // the save marks went in with the frames (sink_turn.rs); the last files are being finished
+        let files: Vec<(u32, String)> = saves.iter().map(|(_, f, k)| (*k, f.clone())).collect();
+        save_wait_s = s.sink.as_mut().unwrap().wait_saved(&files)?;
     }
-    if let Some(file) = req["file"].as_str() {
+    for file in req["file"].as_str().into_iter().chain(saves.iter().map(|(_, f, _)| f.as_str())) {
         if std::fs::metadata(file).map_or(true, |m| m.len() == 0) {
             return Err(format!("export wrote no file: {file}"));
         }
@@ -132,6 +144,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     timing.insert("workerStartS".into(), json!(worker_start_s));
     timing.insert("workersMade".into(), json!(workers_made));
     timing.insert("turn".into(), json!({ "convertS": turn_s[0], "waitS": turn_s[1], "handS": turn_s[2] }));
+    timing.insert("saveWaitS".into(), json!(save_wait_s));
     timing.insert("repeatedFrames".into(), json!(rows.iter().filter(|r| r.repeat).count()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);
@@ -142,9 +155,30 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         // held for the next export, under the settings it was started with
         s.kept_encoder = s.sink.take().zip(s.kept_key.take()).map(|(sink, k)| (k, sink));
     }
-    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "read": read, "workers": workers, "budgetMB": budget_mb });
+    let mut reply = json!({ "ok": true, "frames": n, "saved": saves.len(), "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "read": read, "workers": workers, "budgetMB": budget_mb });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)
+}
+
+/// The request's `saves` as (end, file, frames in it), checked: a held encoder's, ends rising to the frame count.
+fn saves_of(req: &Value, n: u64, kept: bool) -> Result<Vec<(usize, String, u32)>, String> {
+    let Some(list) = req["saves"].as_array() else { return Ok(vec![]) };
+    if !kept {
+        return Err("export saves needs a held MP4 encoder (encode keep, encode-mp4 --keep)".into());
+    }
+    let mut out: Vec<(usize, String, u32)> = vec![];
+    for s in list {
+        let (end, file) = (s["end"].as_u64().unwrap_or(0), s["file"].as_str().unwrap_or(""));
+        let before = out.last().map_or(0, |l| l.0 as u64);
+        if end <= before || end > n || file.is_empty() {
+            return Err(format!("export saves: each is {{end, file}}, ends rising from above 0 to the export's {n} frames; got {s}"));
+        }
+        out.push((end as usize, file.to_string(), (end - before) as u32));
+    }
+    if out.last().map(|l| l.0 as u64) != Some(n) {
+        return Err(format!("export saves: the last end must be the export's {n} frames (the frames after it would go in no file)"));
+    }
+    Ok(out)
 }
 
 fn write_csv(path: &str, start: f64, fps: f64, rows: &[Row]) -> Result<(), String> {

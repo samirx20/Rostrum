@@ -1,6 +1,9 @@
 """An MP4 export drawn in segments (export_segments.py), each kept by its key in the cache (CACHE, capped at CAP_GB,
 the longest unused removed first): a re-export draws only the segments whose key changed and joins all of them with
-FFmpeg's concat, without re-encoding (`-c copy`, as engine_export.py joins its parts). One engine draws: an export
+FFmpeg's concat, without re-encoding (`-c copy`). Each run of neighbouring segments to draw is one engine request
+carrying its parts' ends and files (the engine's `saves`, a part = up to 10 s of whole segments): its held encoder
+finishes each part's file at its end while the frames after it are drawn, and each part is cut into its segments
+(FFmpeg, no re-encoding), so a stop or a crash keeps every finished part and the next export draws only the rest (engine_export.py goes on from the first one missing after a restart). One engine draws: an export
 already keeps the processor and graphics card busy with its own workers (engine export_workers.rs), and a second
 engine would double the card memory on a 4 GB card. A failed segment fails the export; nothing under the final name.
 """
@@ -42,39 +45,32 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
     todo = [i for i, f in enumerate(files) if not f.is_file()]
     total = max(1, round((end - start) * fps))
     to_draw = sum(cuts[i][1] - cuts[i][0] for i in todo)
-    facts, drawn, whole = {}, 0, None
+    facts, drawn = {}, 0
     if todo:
         with engine_factory() as eng:
             if on_stop:                              # run_stop ends the engine at once, even mid-frame
                 on_stop(eng.kill)
             eng.load(scene)
-            for run in _runs(todo, cuts):
+            for run in _runs(todo):
                 a, b = cuts[run[0]][0], cuts[run[-1]][1]
-                got = _draw(io_export, eng, s, start, fps, a, b, home / f"run{a}.{os.getpid()}.partial.mp4",
-                            _part_progress(progress, drawn, to_draw))
-                facts = {**got, **facts}
+                parts = _parts(run, cuts)
+                saves = [(cuts[p[-1]][1] - a, home / f"part{cuts[p[0]][0]}.{os.getpid()}.partial.mp4") for p in parts]
                 try:
-                    if len(run) == 1:
-                        Path(got["file"]).replace(files[run[0]])
-                    elif not _split(Path(got["file"]), [cuts[i][0] - a for i in run[1:]], [files[i] for i in run]):
-                        for i in run:                # the encoder did not start a picture group at each cut: one request each
-                            one = _draw(io_export, eng, s, start, fps, *cuts[i], home / f"one{cuts[i][0]}.{os.getpid()}.partial.mp4", None)
-                            Path(one["file"]).replace(files[i])
-                    elif len(run) == len(files):     # the whole export in one request: the film is that file, not its pieces joined again
-                        whole = Path(got["file"])
-                finally:
-                    if whole is None:
-                        Path(got["file"]).unlink(missing_ok=True)
+                    got = _draw(io_export, eng, s, start, fps, a, b, saves, _part_progress(progress, drawn, to_draw))
+                finally:                             # every part saved whole, also when the request failed, into its segments
+                    for p, (_, f) in zip(parts, saves):
+                        if f.is_file():
+                            try:
+                                _place(f, [cuts[i][0] - cuts[p[0]][0] for i in p[1:]], [files[i] for i in p])
+                            finally:
+                                f.unlink(missing_ok=True)
+                facts = {**got, **facts}
                 drawn += b - a
     for f in files:                                  # used now: the last removed when the cache is over its cap
         os.utime(f)
-    try:
-        _join([whole] if whole else files, target)
-    finally:
-        if whole:
-            whole.unlink(missing_ok=True)
-    # Read back without decoding: every segment was checked when it was drawn (io/export.py) and the join only copies
-    # their packets, so counting the packets (one a frame) and reading the size proves the film whole.
+    _join(files, target)
+    # Read back without decoding: the engine checked each segment's frame count as its encoder saved it and the join
+    # only copies their packets, so counting the packets (one a frame) and reading the size proves the film whole.
     facts = {**facts, "checked": readback.check("mp4", target, total, w, h, False), "alpha": False, "depth": 8}
     facts.update(file=str(target), frames=total, fps=fps)
     took = time.perf_counter() - t0
@@ -85,36 +81,39 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
     return facts
 
 
-def _runs(todo: list[int], cuts) -> list[list[int]]:
-    """The segments to draw, in runs of neighbours, each run one engine request then split at the segment cuts and kept
-    in the cache at once. A run is at most one engine part (engine_export.PART_FRAMES, a whole number of segments), so a
-    stopped or failed export keeps every run it finished and the next export draws only the rest: as one request for
-    the whole film, a stop at frame 309 of 900 lost all 309 (Undertow, 2026-10-29). The engine draws a longer request
-    in parts of this size anyway (one engine request each), so a run adds only its own read-back check and split."""
-    from rostrum2d.engine_export import PART_FRAMES
-    seg = cuts[0][1] - cuts[0][0] if cuts else 1
-    most = max(seg, PART_FRAMES // max(seg, 1) * seg)
+def _runs(todo: list[int]) -> list[list[int]]:
+    """The segments to draw, in runs of neighbours: each run one engine request (its frames follow on). Only a re-export
+    with changes in several places sends more than one."""
     runs: list[list[int]] = []
     for i in todo:
-        r = runs[-1] if runs else None
-        if r and r[-1] == i - 1 and cuts[i][1] - cuts[r[0]][0] <= most:
-            r.append(i)
+        if runs and runs[-1][-1] == i - 1:
+            runs[-1].append(i)
         else:
             runs.append([i])
     return runs
 
 
-def _draw(io_export, eng, s: dict, start: float, fps, a: int, b: int, part: Path, progress) -> dict:
-    """Frames a..b of the export into `part`, checked to hold b - a frames; a failure leaves no `part`."""
-    part.unlink(missing_ok=True)
-    try:
-        got = io_export.export(eng, "mp4", part, False, 8, start + a / fps, start + b / fps, progress, s.get("quality"), s.get("bitrate"))
-        if got["frames"] != b - a:
-            raise RuntimeError(f"frames {a}-{b - 1} came back as {got['frames']} frames, not {b - a}")
-    except BaseException:
-        part.unlink(missing_ok=True)
-        raise
-    return {**got, "file": str(part)}
+def _parts(run: list[int], cuts) -> list[list[int]]:
+    """A run's segments in parts of at most engine_export.PART_FRAMES (whole segments): the engine's encoder saves a file
+    at each part's end and Python cuts it into its segments. A file per 2 s segment made the encoder switch writers 33
+    times a film: 73 against 147 frames a second, and with two writers made ahead the encoder process died (member B's
+    bench, 2026-10-29). A stop or crash keeps every part saved before it."""
+    from rostrum2d.engine_export import PART_FRAMES
+    parts: list[list[int]] = []
+    for i in run:
+        if parts and cuts[i][1] - cuts[parts[-1][0]][0] <= PART_FRAMES:
+            parts[-1].append(i)
+        else:
+            parts.append([i])
+    return parts
+
+
+def _place(part: Path, cuts: list[int], into: list[Path]) -> None:
+    """A saved part into its segments' files (`cuts`: where each after the first starts, in the part's frames)."""
+    if not cuts:
+        part.replace(into[0])
+    elif not _split(part, cuts, into):
+        raise RuntimeError(f"{part.name}: the encoder did not start a picture group at every segment cut {cuts}")
 
 
 def _split(run: Path, cuts: list[int], into: list[Path]) -> bool:
@@ -140,6 +139,16 @@ def _split(run: Path, cuts: list[int], into: list[Path]) -> bool:
         for p in pieces:
             p.unlink(missing_ok=True)
     return True
+
+
+def _draw(io_export, eng, s: dict, start: float, fps, a: int, b: int, saves: list[tuple[int, Path]], progress) -> dict:
+    """Frames a..b of the export, saved by the engine as `saves` [(end frame counted from a, file)] as it draws: each file
+    in place once whole, so a failure keeps the ones finished and never a half one. Checked to hold b - a frames."""
+    got = io_export.export(eng, "mp4", saves[-1][1], False, 8, start + a / fps, start + b / fps, progress,
+                           s.get("quality"), s.get("bitrate"), saves=saves)
+    if got["frames"] != b - a:
+        raise RuntimeError(f"frames {a}-{b - 1} came back as {got['frames']} frames, not {b - a}")
+    return got
 
 
 def _part_progress(progress, before: int, of: int):

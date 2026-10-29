@@ -25,7 +25,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, small_toolset, tool_groups, tool_text
+from . import export_beats, export_wait, inspect_keys, project_tool, script_look, session_clock, small_toolset, tool_groups, tool_text, warm
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -104,6 +104,7 @@ def main(argv=None):
     start = start_choice(a.project, a.item)
     app = make_app(start.folder, start.items)
     agent_start.settle(app, start)                  # on disk, remembered, and said in the instructions and first reply
+    warm.prewarm()                                  # the looks' engine readied while the agent reads and writes
     anyio.run(_serve, app)
 
 

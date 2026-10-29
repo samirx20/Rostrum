@@ -14,10 +14,13 @@ def _engine_request(eng: Engine, req: dict, **kw) -> dict:
 
 def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | None = None,
            start: float = 0.0, end: float | None = None, progress=None, quality: str | None = None,
-           bitrate: float | None = None, gif: dict | None = None) -> dict:
+           bitrate: float | None = None, gif: dict | None = None, saves: list[tuple[int, Path]] | None = None) -> dict:
     """Export the engine's loaded scene (seconds `start`..`end`) as `fmt`; returns the facts read back from the file.
     `quality` (formats.QUALITY) or an exact `bitrate` (Mbit/s): for the formats that take one (mp4). `gif`: its {size, rate}
-    (formats.GIF_SIZES, GIF_RATES; the defaults when left out)."""
+    (formats.GIF_SIZES, GIF_RATES; the defaults when left out). `saves` (mp4, export_cache.py's segments): [(end frame,
+    file)], the frames cut into files as they are drawn (the engine's `saves`; `out` is then the last file). Each is
+    finished and in place as soon as its frames are encoded, so a stop keeps them; the engine checks each file's frame
+    count, and the caller reads back what it joins them into (not each file here)."""
     f = formats.get(fmt)
     if eng.scene is None:
         raise EngineError("no scene loaded (Engine.load)")
@@ -42,6 +45,10 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     req = {"start": start, "end": end, "alpha": alpha, "encode": encode}
     if f.video:
         req["file"] = target
+    if saves:
+        if fmt != "mp4" or Path(saves[-1][1]) != out:
+            raise ValueError("saves: an mp4 export whose file is the last one saved")
+        req["saves"] = [{"end": e, "file": str(p)} for e, p in saves]
     if depth != 8:                                   # the engine sends 16-bit frames only while loaded that way
         _engine_request(eng, {"scene": eng.scene, "depth": depth})
     try:
@@ -53,7 +60,7 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
         w, h, fps, count = shape
     else:
         count = reply["frames"]
-    facts = readback.check(fmt, target, count, w, h, alpha, depth, seconds=(end - start) if shape else None)
+    facts = None if saves else readback.check(fmt, target, count, w, h, alpha, depth, seconds=(end - start) if shape else None)
     return {"file": target, "frames": count, "fps": fps, **({"seconds": end - start} if shape else {}), "alpha": alpha, "depth": depth, "checked": facts,
             **({"kbps": rate.kbps} if rate.kbps and rate.quality is None else {}),
             **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {}),

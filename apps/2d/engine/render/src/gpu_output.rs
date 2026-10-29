@@ -31,6 +31,10 @@ const FRAMEBUFFER: u32 = 0x8D40;
 const COLOR_ATTACHMENT0: u32 = 0x8CE0;
 const RGBA_INTEGER: u32 = 0x8D99;
 const RED_INTEGER: u32 = 0x8D94;
+const RG_INTEGER: u32 = 0x8228;
+/// R8UI, RG8UI: the marks, NV12's Y and Cb Cr planes.
+const R8UI: u32 = 0x8232;
+const RG8UI: u32 = 0x8238;
 const PIXEL_PACK_BUFFER: u32 = 0x88EB;
 /// RGBA16F: a copy of a frame as stored (gpu_output_queue.rs).
 const HALF_RGBA: u32 = 0x881A;
@@ -147,7 +151,8 @@ pub fn cpu_rects(flags: &[u8], fw: usize, w: u32) -> Vec<[u32; 4]> {
 
 pub struct GpuOutput {
     f: Fns,
-    programs: [u32; 2],
+    /// Output codes, marks, NV12's Y and Cb Cr (gpu_output_queue.rs).
+    programs: [u32; 4],
     vao: u32,
     codes: u32,
     /// Which table is in `codes` (its address).
@@ -169,7 +174,13 @@ impl GpuOutput {
     /// Loads GL 3.3 and builds both programs; an Err names what failed.
     pub fn new(load: impl Fn(&CString) -> *const c_void) -> Result<GpuOutput, String> {
         let f = Fns::load(&load).ok_or("the GPU output step needs OpenGL 3.3")?;
-        let programs = [program(&f, "")?, program(&f, &format!("#define FLAGS\n#define BLOCK {BLOCK}\n"))?];
+        let nv12 = crate::nv12::glsl_defines();
+        let programs = [
+            program(&f, "")?,
+            program(&f, &format!("#define FLAGS\n#define BLOCK {BLOCK}\n"))?,
+            program(&f, &format!("#define LUMA\n{nv12}"))?,
+            program(&f, &format!("#define CHROMA\n{nv12}"))?,
+        ];
         let (mut vao, mut codes, mut pbo, mut src_fbo) = (0, 0, 0, 0);
         (f.GenVertexArrays)(1, &mut vao);
         (f.GenFramebuffers)(1, &mut src_fbo);
@@ -190,7 +201,7 @@ impl GpuOutput {
         let f = &self.f;
         (f.ActiveTexture)(0x84C2);
         let out = target(f, &mut self.cur, (w, h, out_format(deep)))?;
-        let flags = target(f, &mut self.flags, (fw, h, 0x8232))?; // R8UI
+        let flags = target(f, &mut self.flags, (fw, h, R8UI))?;
         let slot = holds.map(|k| k.1);
         let prev = slot.and_then(|s| self.kept[s].as_ref()).filter(|k| Some(k.1) == holds).map(|k| k.0.tex);
         self.passes(src, w, codes, deep, screen, out, flags, prev);
@@ -390,7 +401,8 @@ fn target(f: &Fns, t: &mut Option<Target>, size: (u32, u32, u32)) -> Result<(u32
         (f.BindTexture)(TEXTURE_2D, tex);
         nearest(f);
         let (format, ty) = match size.2 {
-            0x8232 => (RED_INTEGER, 0x1401),
+            R8UI => (RED_INTEGER, 0x1401),
+            RG8UI => (RG_INTEGER, 0x1401),
             HALF_RGBA => (0x1908, 0x140B), // RGBA, HALF_FLOAT
             _ => (RGBA_INTEGER, 0x1401),
         };
