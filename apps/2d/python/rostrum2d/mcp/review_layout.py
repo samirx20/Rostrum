@@ -7,9 +7,9 @@ from __future__ import annotations
 import re
 
 from . import outline, review_blocks
-from .geometry import covers, drawn_box
+from .geometry import covers
 from .review_cover import _in_front, _over, _related
-from .review_sample import Sampled, runs
+from .review_sample import Sampled, box as drawn_box, meets, runs
 
 PARTIAL = (0.1, 0.85)     # a layer in front painting over this share of one of a text's lines crosses it (over more of
                           # its whole box: the text is hidden)
@@ -79,15 +79,17 @@ def _texts(s: Sampled, nodes: list[dict], by: dict):
     for k, n in enumerate(nodes):
         if n["type"] != "text" or not s.seen(n) or n["opacity"] < 0.25 or not (box := _box(s, n, by)):
             continue
-        front = [o for o in nodes[k + 1:] if not _related(n, o) and s.seen(o) and o["type"] != "text"
+        front = [o for o in nodes[k + 1:] if meets(drawn_box(o), box) and not _related(n, o) and s.seen(o) and o["type"] != "text"
                  and o["props"].get("blend", "normal") == "normal" and o["opacity"] >= OPAQUE]      # a full-frame cover hides too
+                 # (a layer whose box misses the text's paints none of it)
         if _share(front, box) < HIDDEN:
             yield k, n, box, front
 
 
 def _panelled(s: Sampled, between: list[dict], box) -> bool:
     """An opaque panel lies between a layer behind a text and the text, over the text's box: the layer is hidden there."""
-    return any(_in_front(s, o) and o["opacity"] >= OPAQUE and not outline.hollow(o) and _over(o, box) >= HIDDEN for o in between)
+    return any(meets(drawn_box(o), box) and _in_front(s, o) and o["opacity"] >= OPAQUE and not outline.hollow(o)
+               and _over(o, box) >= HIDDEN for o in between)
 
 
 def _pointer(o: dict, by: dict) -> bool:
@@ -162,10 +164,9 @@ def overlaps(s: Sampled) -> list[dict]:
         texts = list(_texts(s, nodes, by))
         for k, n, box, front in texts:
             for j, o in enumerate(nodes):        # an outline drawn through the letters (its band, not its box), in front
-                if j == k or j < k and _panelled(s, nodes[j + 1:k], box):    # or behind: it shows between the letters
-                    continue
-                if (outline.hollow(o) and o["opacity"] >= LINE_SEEN and _in_front(s, o) and not _related(n, o)
-                        and not _pointer(o, by) and (share := _through(o, _glyphs(box))) >= THROUGH):
+                if (j != k and outline.hollow(o) and o["opacity"] >= LINE_SEEN and _in_front(s, o) and not _related(n, o)
+                        and not _pointer(o, by) and (share := _through(o, _glyphs(box))) >= THROUGH
+                        and not (j < k and _panelled(s, nodes[j + 1:k], box))):    # or behind: it shows between the letters
                     lined.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
             for o in front:
                 if outline.hollow(o) or not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or _pointer(o, by):
