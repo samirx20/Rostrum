@@ -159,7 +159,7 @@ def main():
         W.pump(0.4)
         W.check(v.paint.brush.stamp["texture"].startswith("brushtip_"), "the loaded picture is the stamp's picture")
 
-        type_into(win, root, "row:size", "90")
+        type_into(win, root, "row:size", "110")
         type_into(win, root, "row:depth", "100")
         snap(screen, "2b-star-size-depth")
 
@@ -177,11 +177,12 @@ def main():
 
         # a second stamp beside it, turned 45 degrees
         type_into(win, root, "row:turn", "45")
-        side = QPoint(round(mid.x() + 95), round(mid.y() + 40))
+        side = QPoint(round(mid.x() + 125), round(mid.y() + 70))
         QTest.mouseMove(win, side)
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, side)
         W.pump(20, lambda: len(relief_strokes(b.doc)) > n + 1, "the second stamp")
         W.check(len(relief_strokes(b.doc)) == n + 2, "a second click laid a second stamp")
+        print("stamp reach (m):", [round(x.get("reach") or 0, 4) for x in relief_strokes(b.doc)])
         QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier)
         W.pump(1)
 
