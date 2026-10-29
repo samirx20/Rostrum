@@ -12,7 +12,8 @@ The trail stays drawn, in the brush's colour and width, until the painted pictur
 
 Stamp (on a Relief layer, `_stamping`): the press is the whole gesture: its one point (picked, or kept as drawn From
 the view) becomes one paint.stamp at the release (paint_mode.stamp_calls / view_stamp_calls), one undo step; moves
-change nothing.
+change nothing. A Stamp on a mesh is always kept as clicked in the view (`_by_view`), so it stands upright as seen
+(rostrum3d.stamp_turn); on a clay it is picked (`at` on the surface: upright is the clay's +Y there).
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ class PaintStroke:
         self._pts, self._trail, self._busy, self._next, self._up = [], [], False, None, False
         self._anchors, self._moved, self._mpp = [], [0.0, 0.0], None      # a clay's: anchors, 3D / screen run, m per px
         self._scene, self._cam = self.v.sent()        # one scene for the whole drag: the engine loads it once
-        if self._where == "view":
+        if self._by_view():
             self._pose = self.v.drawn_pose()
         self._add(x, y)
 
@@ -46,10 +47,14 @@ class PaintStroke:
         if self._up and self._scene is None and not self._busy and not self._pts:
             return                                    # a stroke Esc cancelled (cancel()): its release changes nothing
         self._up = True
-        if self._where == "view" and self._scene is not None:
+        if self._by_view() and self._scene is not None:
             return self._finish_view()
         if not self._busy:
             self._finish()
+
+    def _by_view(self) -> bool:
+        """The press is kept as drawn on the view's picture: From the view, or a Stamp on a mesh."""
+        return self._where == "view" or (self._stamping() and (self._item() or {}).get("type") == "mesh")
 
     @property
     def stroking(self) -> bool:
@@ -95,8 +100,14 @@ class PaintStroke:
         items = [i for i in r["view"] if self.b.doc.has(i) and self.b.doc.item(i).get("type") in P.CANVASES]
         if it is None or not items:
             self._clear_trail()
-            return self.b.say("From the view: the stroke crossed nothing paintable.")
+            return self.b.say("Stamp: click on the model." if self._stamping()
+                              else "From the view: the stroke crossed nothing paintable.")
         if self._stamping():
+            if self._where != "view":                 # a Stamp on the mesh being painted only
+                items = [i for i in items if i == self._id]
+                if not items:
+                    self._clear_trail()
+                    return self.b.say(f"Paint lands on {self._name()} only: click on it.")
             calls = P.view_stamp_calls(items[:1], self._id, self._active, self.brush.stamp, self.brush.values["size"],
                                        {**r["pose"], "points": r["points"]})
             self._holding = True
@@ -132,7 +143,7 @@ class PaintStroke:
         w, h = self.v._size
         self._trail.append([x * self.v._scale / w, y * self.v._scale / h])
         self.trailChanged.emit()
-        if self._where == "view":                     # kept as drawn: picture px of the view, pressure 1
+        if self._by_view():                     # kept as drawn: picture px of the view, pressure 1
             self._pts.append([round(x * self.v._scale, 2), round(y * self.v._scale, 2), 1.0])
             return
         if self._busy:
@@ -158,7 +169,7 @@ class PaintStroke:
             return
         if isinstance(r, dict) and "view" in r:
             return self._land_view(r)
-        if isinstance(r, str) and self._where == "view":
+        if isinstance(r, str) and self._by_view():
             self._busy = False
             self._clear_trail()
             return self.b.fail_line(f"Error: paint from the view: {r}")
@@ -213,7 +224,7 @@ class PaintStroke:
             return self.b.say(f"Paint lands on {self._name()} only: start the stroke on it." if it else "")
         if self._stamping():                      # one whole picture where the press was
             reach = P.clay_reach(self.brush.values["size"], self._mpp, self._mpp_screen) if clay else 0.0
-            calls = P.stamp_calls(it, self._active, self.brush.stamp, self.brush.values["size"], anchors, pts, reach)
+            calls = P.stamp_calls(it, self._active, self.brush.stamp, anchors, reach)
             self._holding = True
             if not self.b._guard(lambda: self.b._apply(calls, f"Stamp on {self._name()}")):
                 self._clear_trail()

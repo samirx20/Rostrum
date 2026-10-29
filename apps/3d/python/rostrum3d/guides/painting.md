@@ -74,16 +74,16 @@ scale pattern, a stitched seam, a coin's face.
      **Load picture…** at the end of its list brings in your own picture file: it is kept in the project and picked.
      A loaded picture raises where it is **bright** and stays flat where it is black (a picture with see-through parts
      raises where it is opaque). Grey raises part of the way.
-   - **Size**: how wide the picture lands, in pixels of the paint picture (of the screen, From the view). The disc
-     at the pointer shows it.
+   - **Size**: how wide the whole picture lands (its longest side): on a mesh and From the view in pixels of the
+     screen, on a clay in pixels of the paint picture. The disc at the pointer shows it. The picture's corners are
+     always kept: nothing of it is cut off.
    - **Depth**: how far it raises the surface; below 0 % it sinks it instead (pressed in).
-   - **Turn**: the picture's turn, in degrees.
+   - **Turn**: the picture's turn in degrees, clockwise. At 0 the picture stands upright: on a mesh (and From the
+     view) the way it stands on your screen; on a clay with the clay's own up (towards its top, or towards its back
+     where the surface faces straight up or down). It stays upright when you sculpt the clay again.
 3. Click on the model: the whole picture lands there once. **Each stamp is one undo step**; clicking again stamps
    again (drag does nothing more while stamping). On a clay the stamp stays on its spot when you sculpt the clay again.
 4. Shift+F (Final): Relief shows in Final and in the render. Too strong: undo, lower Depth, click again.
-
-The Turn is measured on the model's laid-flat paint picture, which can lie at any angle on the surface: if the picture
-lands turned, undo and change Turn.
 
 ## How to: a roughness scuff on a glossy lid
 
@@ -123,9 +123,12 @@ lands turned, undo and change Turn.
 - **Stamp a picture** (`paint.stamp`, one call, one undo step): `target: [mesh or clay]`, `args: {picture, size,
   depth, turn}` plus where: `at: [x, y, z, nx, ny, nz]` on a clay (look_at's `local` + `localNormal`; `size` in
   metres), `point: [x, y]` in paint picture px (`size` in px), or `viewPoint: [x, y]` in px of a view with `shot` (or
-  `eye`, `target`, `fov`, `width`, `height`; `size` in screen px). `picture` is a picture file (kept in the project:
-  bright = raised) or a tip picture's name. `depth` -1..1 (below 0 sinks). It goes on the item's top Relief layer
-  (`layer` to choose one), made when there is none. It is one stroke of one dab, so `inspect_paint_strokes` and
+  `eye`, `target`, `fov`, `width`, `height`; `size` in screen px). `size` is the whole picture's longest side; its
+  corners are never cut off (a padded copy of the picture is kept in the project for stamping). `picture` is a picture
+  file (kept in the project: bright = raised) or a tip picture's name. `depth` -1..1 (below 0 sinks). `turn` is
+  clockwise degrees from upright: with `viewPoint` the view's up, with `at` the clay's own +Y on the surface (−Z where
+  it faces straight up or down), worked out again each time the clay is reshaped; with `point` the paint picture's
+  up. It goes on the item's top Relief layer (`layer` to choose one), made when there is none. It is one stroke of one dab, so `inspect_paint_strokes` and
   `look_frame what "paint"` see it like any stroke.
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.

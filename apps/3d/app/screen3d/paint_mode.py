@@ -127,21 +127,17 @@ def start_stamp() -> dict:
             "depth": DEPTH.default, "turn": TURN.default}
 
 
-def stamp_calls(item: dict, layer: str, stamp: dict, size_px: float, anchors: list, points: list,
-                reach: float) -> list[dict]:
-    """One click's stamp as one call: on a clay at its first anchor (the stamp's width 2 × reach, metres), on a mesh
-    at its first canvas point (the brush size, px)."""
-    args = {"picture": stamp["texture"], "depth": stamp["depth"], "turn": stamp["turn"], "layer": layer}
-    if item.get("type") == "clay":
-        args.update(at=list(anchors[0][:6]), size=round(2 * reach, 6))
-    else:
-        args.update(point=list(points[0][:2]), size=float(size_px))
-    return [{"op": "paint.stamp", "target": [item["id"]], "args": args}]
+def stamp_calls(item: dict, layer: str, stamp: dict, anchors: list, reach: float) -> list[dict]:
+    """One click's stamp on a clay as one call, at its anchor (the picture's width 2 × reach, metres). A mesh's is
+    kept as clicked in the view (view_stamp_calls), so it stands upright as seen."""
+    return [{"op": "paint.stamp", "target": [item["id"]],
+             "args": {"picture": stamp["texture"], "depth": stamp["depth"], "turn": stamp["turn"], "layer": layer,
+                      "at": list(anchors[0][:6]), "size": round(2 * reach, 6)}}]
 
 
 def view_stamp_calls(items: list[str], paint_item: str, active: str, stamp: dict, size_px: float,
                      view: dict) -> list[dict]:
-    """A Stamp click From the view: one paint.stamp per item under it (the painted item on its active layer; another
+    """A Stamp click kept as clicked in the view (From the view, or on a mesh): one paint.stamp per item under it (the painted item on its active layer; another
     on its top Relief layer, made when it has none), at the click's px of that view (size in screen px)."""
     cam = {k: view[k] for k in ("eye", "target", "fov", "frame", "width", "height")}
     base = {"picture": stamp["texture"], "depth": stamp["depth"], "turn": stamp["turn"], "size": float(size_px),

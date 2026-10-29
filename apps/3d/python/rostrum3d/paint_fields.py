@@ -86,6 +86,11 @@ STROKE = [
                       "px. Laid on the surface the camera sees there each time the paint is made (moving the item "
                       "re-lands it); `points` may be left out. Drawn across several items it is kept on each"),
     *_camera("view", "Path", "the stroke was drawn"),
+    Param.number("stampTurn", label="Stamp turn", min=-360, max=360, unit="°", group="Path", importance=D,
+                 default=None, nullable=True,
+                 help="A stamp's turn as asked (paint.stamp): its `angle` is worked out each time it is laid so that 0 "
+                      "is upright (from the view: the screen's up; on a clay: its +Y on the surface), then turned "
+                      "clockwise by this (stamp_turn.py). Left out = the angle is used as it is"),
     Param.text("viewShot", label="Drawn through", group="Path", importance=D, default=None, nullable=True,
                help="The shot whose camera the stroke was drawn through, when it was (for reports)"),
 ]

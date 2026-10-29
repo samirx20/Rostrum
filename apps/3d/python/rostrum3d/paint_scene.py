@@ -26,7 +26,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_paint import canvas, library
 
-from . import clay_paint, paint_bleed, paint_view
+from . import clay_paint, paint_bleed, paint_view, stamp_turn
 from .material_fields import DOC_ONLY, MATERIAL
 from .paint_fields import CHANNELS
 
@@ -279,7 +279,7 @@ def _pic_id(pic) -> str:
 
 def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
     """(the kit canvas as drawn, {layer id: projected picture laid on the canvas}, their cache keys) for a job."""
-    held = clay_paint.laid(job["item"], surface) if surface is not None else job["item"]
+    held = clay_paint.laid(stamp_turn.upright_on_clay(job["item"], surface), surface) if surface is not None         else job["item"]
     if pics:
         held = paint_view.laid(held, pics, job["item"].get("paintSize", 2048))
     splats, keys = _splats(job, pics, held) if job.get("sources") else ({}, {})

@@ -51,7 +51,7 @@ class PaintMode(PaintStroke, QObject):
     brushObj = Property(QObject, lambda s: s.brush, constant=True)
     coverageObj = Property(QObject, lambda s: s.coverage, constant=True)   # "Seen by Hero 01: 62 % painted" + tint
     trail = Property("QVariantList", lambda s: s._trail, notify=trailChanged)       # parts of the viewport, 0..1
-    cursorRadius = Property(float, lambda s: max(2.0, s.brush.values["size"] / 2 * (1.0 if s._where == "view" else s._ratio)),
+    cursorRadius = Property(float, lambda s: max(2.0, s.brush.values["size"] / 2 * (1.0 if s._by_view() else s._ratio)),
                             notify=trailChanged)
     where = Property(str, lambda s: s._where, notify=changed)          # "surface" | "view" (the Brush group's switch)
     wheres = Property("QVariantList", lambda s: P.WHERE, constant=True)
@@ -160,6 +160,7 @@ class PaintMode(PaintStroke, QObject):
             self._how = how
             self._sync_stamp()
             self.changed.emit()
+            self.trailChanged.emit()                  # the brush disc's size follows (screen px on a mesh)
 
     @Slot(str)
     def setActive(self, layer_id):
