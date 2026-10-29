@@ -9,8 +9,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "clay_step.h"
@@ -172,10 +174,24 @@ inline float eikonal(float a, float b, float c) {
   return u;
 }
 
+// 3d-clay-once: ROSTRUM3D_CLAY_REACH=0 turns off the two short cuts below (an A/B on one build; the same values)
+inline bool reach_on() {
+  static const bool on = [] {
+    const char* v = std::getenv("ROSTRUM3D_CLAY_REACH");
+    return !(v && std::string(v) == "0");
+  }();
+  return on;
+}
+
 // Re-level: voxels with fixed[i] keep their value; the others get the distance from the fixed ones (Jacobi upwind
 // eikonal), up to `width`, keeping their sign. Unknown voxels of `init` start at the width; only `work` is updated
 // (work is inside ext, and ext reaches one chunk past work, so every neighbour read is a filled voxel; the rest of
 // ext is read as it is).
+// 3d-clay-once: a pass works only the chunks of `work` that changed in the pass before, or touch one across a face
+// (a voxel reads its 6 neighbours). The others would compute what they hold: their inputs are the same as in the
+// last pass that worked them, and that pass left them as they were, so both buffers already hold those values.
+// Bit for bit the same as working all of `work` every pass; a front moving out from the surface leaves settled
+// chunks behind it.
 inline void relevel(const Box& b, float*& v, float*& next, const uint8_t* fixed, float width, const std::vector<int>& init,
              const std::vector<int>& ext, const std::vector<int>& work) {
   par(init, [&](int ci) {
@@ -186,10 +202,14 @@ inline void relevel(const Box& b, float*& v, float*& next, const uint8_t* fixed,
   par(ext, [&](int ci) { b.copy(ci, v, next); });
   if (work.empty()) return;
   const int passes = int(std::ceil(width)) + 1;
-  for (int pass = 0; pass < passes; ++pass) {
+  const bool skip = reach_on();
+  std::vector<uint8_t> moved(skip ? size_t(b.chunks()) : 0, 0);
+  std::vector<int> active = work;
+  for (int pass = 0; pass < passes && !active.empty(); ++pass) {
     const float* cur = v;
     float* out = next;
-    par(work, [&](int ci) {
+    par(active, [&](int ci) {
+      bool changed = false;
       b.each(ci, [&](int x, int y, int z, size_t i) {
         if (fixed[i]) return;
         const float big = width;
@@ -203,11 +223,46 @@ inline void relevel(const Box& b, float*& v, float*& next, const uint8_t* fixed,
         const float az = std::min(nb(lz > 0, -64, z > 0, x, y, z - 1), nb(lz < 7, 64, z < b.nz - 1, x, y, z + 1));
         const float u = std::min(eikonal(ax, ay, az), std::fabs(cur[i]));
         out[i] = sgn(cur[i]) * std::min(u, width);
+        changed = changed || out[i] != cur[i];
       });
+      if (skip) moved[ci] = changed;
     });
-    // fixed voxels and chunks not in `work` never change, so after the swap both buffers agree on them
+    // fixed voxels and chunks not worked never change, so after the swap both buffers agree on them
     std::swap(v, next);
+    if (!skip) continue;
+    std::vector<int> again;
+    for (int ci : work) {
+      const int cx = ci % b.cnx, cy = (ci / b.cnx) % b.cny, cz = ci / (b.cnx * b.cny);
+      const int sx = 1, sy = b.cnx, sz = b.cnx * b.cny;
+      if (moved[ci] || (cx > 0 && moved[ci - sx]) || (cx < b.cnx - 1 && moved[ci + sx]) ||
+          (cy > 0 && moved[ci - sy]) || (cy < b.cny - 1 && moved[ci + sy]) || (cz > 0 && moved[ci - sz]) ||
+          (cz < b.cnz - 1 && moved[ci + sz]))
+        again.push_back(ci);
+    }
+    for (int ci : active) moved[ci] = 0;
+    active.swap(again);
   }
+}
+
+// 3d-clay-once: the chunks of `work` a relevel to `width` can change: those within its passes of a chunk of `ext`
+// holding a fixed voxel. A voxel farther than that from every fixed one keeps the width it starts at (each pass carries
+// a distance one voxel on), so leaving the others out of `work` gives the same values, bit for bit; a piece's widening
+// and re-levelling worked its whole shell, most of it far from any surface.
+inline std::vector<int> reached(const Box& b, const uint8_t* fixed, float width, const std::vector<int>& ext,
+                                const std::vector<int>& work) {
+  if (!reach_on()) return work;
+  std::vector<uint8_t> has(size_t(b.chunks()), 0);
+  par(ext, [&](int ci) {
+    bool any = false;
+    b.each(ci, [&](int, int, int, size_t i) { any = any || fixed[i] != 0; });
+    has[ci] = any;
+  });
+  const int passes = int(std::ceil(width)) + 1;
+  const std::vector<uint8_t> inReach = dilate(has, b.cnx, b.cny, b.cnz, (passes + 7) / 8);
+  std::vector<int> out;
+  for (int ci : work)
+    if (inReach[ci]) out.push_back(ci);
+  return out;
 }
 
 struct Shape {  // one capsule (a == b: sphere), voxel units
