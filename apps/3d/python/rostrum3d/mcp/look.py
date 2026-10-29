@@ -6,6 +6,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
+from rostrum_core.mcp.faults import NOTES, asked
 from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
@@ -38,7 +39,7 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
     return cam["id"]
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
+@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **NOTES, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
 def look_frame(ctx, args):
     """One frame (`through` a light, `onion` ghosts, `highlight` clay steps); says what is clipped, how texts read."""
     doc, info = doc_and_shot(ctx, args)
@@ -70,7 +71,7 @@ def look_frame(ctx, args):
             words, text = text_facts.sentence(text_facts.seen_texts(doc, info, frame, w / h))
             said, facts = said + words, {**facts, **text}
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
-        found = None if args.get("through") else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
+        found = None if args.get("through") or not asked(args) else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
         return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
                       **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts},
@@ -96,7 +97,7 @@ def _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene):
     return " Outlined: " + "; ".join(said) + ".", {"highlight": marks}
 
 
-@tools.tool("look_sheet", {"properties": {**ITEM_SHOT, **LOOK, "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default 0."},
+@tools.tool("look_sheet", {"properties": {**ITEM_SHOT, **LOOK, **NOTES, "start": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default 0."},
                                            "end": {"type": "number", "minimum": 0, "description": "Seconds from the shot's start. Default: its last frame."},
                                            **COUNT,
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 3."},
@@ -128,7 +129,8 @@ def look_sheet(ctx, args):
                 pngs.append(png)
                 job.progress(i + 1, len(frames))
             sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for p, f in zip(pngs, frames)], tile_w, cols, dest)
-            found = shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder, renderer)       # the tiles are still on disk here
+            found = (shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder, renderer)     # the tiles are still on disk here
+                     if asked(args) else None)
         return Reply(f'Contact sheet of {info["id"]}: {len(frames)} frames, {frames[0]}–{frames[-1]} ({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), '
                      f'{renderer}, {sw}×{sh}.', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
                                                  "cols": cols, "camera": info["camera"]}, [dest], [dest],

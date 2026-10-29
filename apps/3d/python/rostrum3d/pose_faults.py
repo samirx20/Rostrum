@@ -8,9 +8,9 @@ entries of the shot's one fault list (faults.py):
                                on the picture: covered by a lump (a brow) or sunk by a turn (pose_face.py).
   off_body:<item>              a small thing attached to the figure (an eye, a nose, a hat) that leaves its posed surface or slides
                                over it (it rides one bone while the part it sits on turns with another).
-  on_rim:<item>                such a feature seen on or past the outline of the part it sits on: reads as beside it (pose_rim.py).
+  on_rim:<item>                such a feature seen on or past the outline of the part it sits on: as the camera sees it, beside it (pose_rim.py).
   reads_still:<clay>.<joint>   a keyed joint whose whole motion moves its part less than STILL of the picture's width: on screen it
-                               reads as no motion (a "wave" of 2 cm).
+                               shows no motion (a "wave" of 2 cm).
 
 The figure as balls (pose_body.py), at frames every STEP_S of the shot; nothing is rendered.
 """
@@ -73,13 +73,10 @@ def _still(track, info, id_, item, balls, posed, keyed) -> list[dict]:
         moved = _moves(track, posed, balls, [n for n in range(len(par)) if joint in _chain(par, n)])
         if moved is None or moved >= STILL * w:
             continue
-        need = STILL * w * 1.6 / max(moved, 0.5)
         f = next(iter(posed))
-        out.append(F.fault(f"reads_still:{id_}.{names[joint]}",
-                           f"{names[joint]} is keyed but moves its part only {moved:.0f} px ({moved / w * 100:.1f} % of the picture's "
-                           "width) over the shot: on screen it reads as still",
-                           f"make the move about {need:.0f}× bigger (turn {names[joint]} further each way, or pose its end farther) "
-                           "so it travels at least 4 % of the picture; if the stillness is meant, keep it", _when(info, f)))
+        out.append(F.note(f"reads_still:{id_}.{names[joint]}",
+                          f"{names[joint]} is keyed but its part travels only {moved:.0f} px ({moved / w * 100:.1f} % of the "
+                          "picture's width) over the shot", _when(info, f)))
     return out
 
 
@@ -139,9 +136,8 @@ def _off_body(track, info, id_, posed, features) -> list[dict]:
             how = ("it is not attached, so it stays where it was put" if it.get("follow") != id_ else
                    "it rides the figure as a whole, not its parts (followPose off)" if not it.get("followPose") else
                    f"it rides {names[follow.nearest_bone(fr.items[id_], follow.rest_spot(fr, iid, id_))]}")
-            out.append(F.fault(f"off_body:{iid}", f"{iid} slides {slid * 100:.1f} cm off {id_}'s {names[on]}: {how}",
-                               f"attach it where it sits: attach_to={id_} (it then rides the posed {names[on]}); "
-                               "if it is meant to come off, keep it", _when(info, f)))
+            out.append(F.note(f"off_body:{iid}", f"{iid} slides {slid * 100:.1f} cm off {id_}'s {names[on]}: {how}",
+                              _when(info, f)))
             break
     return out
 

@@ -45,9 +45,8 @@ def sim_faults(data: dict, info: dict, folder, fs: list[int], at: int | None = N
             cut = [f for f, s in seen.items() if s[0] == "part"]
             if cut:
                 sides = sorted({e for f in cut for e in seen[f][1]}) or ["edge"]
-                out.append(F.fault(f"cut_edge:{id_}", f"cloth {id_} is cut by the {'/'.join(sides)} edge of the picture "
-                                   f"({len(cut)} of {len(seen)} looks)", "frame the whole drape: move the camera back or widen "
-                                   "the lens (shot.frame on it after the simulation); if the cut is meant, keep it", when(info, cut[0])))
+                out.append(F.note(f"cut_edge:{id_}", f"cloth {id_} is cut by the {'/'.join(sides)} edge of the picture "
+                                  f"({len(cut)} of {len(seen)} looks)", when(info, cut[0])))
         elif item["type"] == "copies":
             out += _copies(data, info, where, fr, cams, id_, check)
     return out
@@ -91,7 +90,6 @@ def _copies(data, info, where, fr, cams, id_, check) -> list[dict]:
         if hit:
             side = max(hit, key=hit.get)
             n = sum(hit.values())
-            out.append(F.fault(f"cut_edge:{id_}", f"{n} cop{'y' if n == 1 else 'ies'} of {id_} land on or past the "
-                               f"{'/'.join(sorted(hit))} edge of the picture (most at the {side})", "aim the pour or the camera so "
-                               "they land well inside the picture; if the cut is meant, keep it", when(info, f)))
+            out.append(F.note(f"cut_edge:{id_}", f"{n} cop{'y' if n == 1 else 'ies'} of {id_} land on or past the "
+                              f"{'/'.join(sorted(hit))} edge of the picture (most at the {side})", when(info, f)))
     return out

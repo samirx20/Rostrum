@@ -18,17 +18,18 @@ it adds the sentence the Export sheet shows ("Will land at -16.4 LUFS: reaching 
 `push_max_limit`, the `maxLimit` that reaches it. How much is a lot: over ~3 dB of limiting starts to flatten acoustic
 drums and piano, so for acoustic music tame the peaks (`edit_loudness tame_peaks`) rather than push the limiter. Over
 3 dB the reply names the limiter (how much, where, which part drives it), and when one part plays exposed there (a solo
-piano, a voice, 60 % or more of the signal) or a dense mix takes over 6 dB, `squashed_mix` is a fault: the delivery is
-refused until the quiet parts come up, the arrangement thickens where it is thin, the driving part is tamed, or the
+piano, a voice, 60 % or more of the signal) or a dense mix takes over 6 dB, `squashed_mix` is a fault note: the file is still written, and the note says what would help: the quiet parts come up, the arrangement thickens where it is thin, the driving part is tamed, or the
 target comes down (listening.md › Faults). Raising `maxLimit` until the target is met is not the fix. `maxLimit` is in dB, 0 to 12 in the
 document (`master.set`; the screen's **Most limiting**).
 
-**A render reaches the target by itself.** A mastered `render_mix` (and `run_script` `look`) measures the song first and,
-when gentle limiting would leave it more than 0.5 LU under the target, renders that file with `maxLimit` raised as far as
-the target needs (at most 6 dB, so hits and stops keep their attack; a higher `maxLimit` of the song's own is used as it is). The song keeps its own `maxLimit`, so playback stays transparent; the reply says how far
-the limit went and how many dB of limiting it took (`data.loudness.pushed`), and how to make it the song's own. When that
-is short the file lands under and the `loudness` fault names the fix (tame the peaks, turn a track down, or a lower
-target). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
+**A render does not change the master's limiter.** A mastered `render_mix` (and `run_script` `look`) renders the
+song with the master as written. When gentle limiting leaves it more than 0.5 LU under the target, the file lands under
+and the `loudness` note names the tools: `master(maxLimit=...)`, `edit_loudness` (`tame_peaks`, `trim_track`), a lower
+target, or `render_mix` `limit_to_target: true` (this file's limit raised as far as the target needs, at most 6 dB; the
+song keeps its own); your pick. The fault allows 0.5 LU, or the brief's own tolerance when the brief states one ("about -16 LUFS integrated
+(within 1 LU)": anything from -17 to -15 passes). On a piece with an asked hit the hit carries the loudness: the fix
+then keeps the bed after the hit quiet and aims at the quiet end of the brief's range (`master(loudness=-17)`), never
+lifts the quiet parts after the hit (that buries it: `buried_hit`, listening.md). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
 are in the file. `edit_loudness` is for when the limiting a render reports is too much for the music.
 
 **Making the master need less limiting: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target
@@ -142,12 +143,12 @@ that plays now; when the master can't reach the target it says where the file wi
 Most limiting, one undo step) or **Keep it dynamic** (the file stays at the level it reaches, and the sheet says so). When reaching it takes over ~3 dB of limiting, **Tame the peaks first** adds a measured gentle compressor to the peakiest track (one undo step), so the push needs far less. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
-target allows plays under the target; a render pushes that file onto it and says how many dB of limiting it took (`edit_loudness` when that is too much); with it off the limiter works
+target allows plays under the target; a render says how many dB of limiting it took and leaves the master as written (`edit_loudness` when that is too much); with it off the limiter works
 as hard as it must. Either way the fix is at the source: turn the loud parts down rather than squeezing harder.
 
 ## Checking (agents)
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is refused while a fault is open (the file is kept as `<name>.NOT-DONE.wav`) unless `keep: {id: "why"}` explains it, and every why quotes the brief (in quotes, or 3 or more of its words in a row) where it asks for that fault: `brief("...")` in the script stores the brief's own words on the song (a dull top is kept for "dark, muffled", never for "a piano chord progression"); with no brief stored, or a why that does not quote it, the keep is refused and the fault's fix says why; a fault on the moment the brief asked for (its words say so) can be kept only after a render that tried the fix, and only when it measures within the stated distance of passing (its words say what passes and from where it may be kept); further off, fix it, or move the moment itself in the script (`moment(name, at=...)` or `expect`) when the brief allows another time. The mix's own faults: `loudness` (more than 0.5 LU off the target), `duck:<track>` (a duck under a voice dipping under 3 dB), `marker_onset:<marker>` (a marker named hit / stop / drop ... with nothing starting within 30 ms), `true_peak` (over the master's ceiling), `clipped` (samples cut flat), `rings_past_end` (after the ring `ring_past_length` allows, sound above -50 dBFS after the song's end).
+Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`), and any open fault is listed in the reply as a note for you to read. `keep: {id: "why"}` only marks a note as left on purpose (any why, no brief quote needed); it is stored, never refused. `brief("...")` in the script stores the brief's own words on the song, which the notes use (a dull top is expected for "dark, muffled", not for "a piano chord progression"). To clear a note, fix the script, or move the moment itself (`moment(name, at=...)` or `expect`) when the brief allows another time. The mix's own faults: `loudness` (more than 0.5 LU off the target), `duck:<track>` (a duck under a voice dipping under 3 dB), `marker_onset:<marker>` (a marker named hit / stop / drop ... with nothing starting within 30 ms), `true_peak` (over the master's ceiling), `clipped` (samples cut flat), `rings_past_end` (after the ring `ring_past_length` allows, sound above -50 dBFS after the song's end).
 
 1. `render_mix` (stems on). Its reply already has integrated LUFS, true peak and each track's level.
 2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments, room for speech (under a voice: +6 dB or more).

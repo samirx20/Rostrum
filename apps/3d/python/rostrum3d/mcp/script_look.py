@@ -1,6 +1,7 @@
 """run_script `look` for 3D: after the merge, one contact sheet of the first shot through its camera (Storm, or Stylized for a
-shot whose Quality is Stylized) and the shot's faults (shot_faults: too dark / blown out, a subject cut by the frame, floating
-or sinking), the same reply. App.script_look calls `after_run`; the merge stands whatever happens to the look."""
+shot whose Quality is Stylized), and with `notes: true` the shot's checks (shot_faults: too dark / blown out, a subject cut by
+the frame, floating or sinking) as notes, the same reply. App.script_look calls `after_run`; the merge stands whatever happens
+to the look."""
 from __future__ import annotations
 
 import tempfile
@@ -31,14 +32,14 @@ def frames_for(look, info: dict) -> tuple[list[int], list[str]]:
 
 def after_run(ctx, doc, look, reply: Reply) -> Reply:
     try:
-        return _looked(ctx, doc, look, reply)
+        return _looked(ctx, doc, look, reply, getattr(ctx, "asked_notes", False))
     except RostrumError as e:
-        reply.summary += f"\nLook FAILED, no picture or faults: {e.line()} The script itself was merged; look_frame (what \"frame\" or \"sheet\") to look."
+        reply.summary += f"\nLook FAILED, no picture: {e.line()} The script itself was merged; look_frame (what \"frame\" or \"sheet\") to look."
         reply.data["look"] = {"failed": e.line()}
         return reply
 
 
-def _looked(ctx, doc, look, reply: Reply) -> Reply:
+def _looked(ctx, doc, look, reply: Reply, notes: bool = False) -> Reply:
     shots = doc.data.get("shots", [])
     info = dict(shot_info(doc.data, shots[0]["id"])) if shots else None
     if not info or not info.get("camera"):
@@ -57,7 +58,7 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             draw.render(ctx.tool, f"frame {f} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=f,
                         width=w, height=h, png=str(pngs[f]), **_settings(renderer))
         sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for f, p in pngs.items()], TILE_W, min(3, len(frames)), dest)
-        found = shot_faults.check(doc.data, info, frames, pngs, ctx.app.folder, renderer)
+        found = shot_faults.check(doc.data, info, frames, pngs, ctx.app.folder, renderer) if notes else None
     reply.summary += (f"\nLooked at {info['id']} through {info['camera']}: {len(frames)} frames, {frames[0]}–{frames[-1]} "
                       f"({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), {renderer}, {sw}×{sh}.")
     miss, miss_facts = picture_facts.storm_misses(doc.data, renderer)

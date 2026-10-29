@@ -1,4 +1,4 @@
-"""ending(kind, at): every chosen part lands on `at`, nothing runs past it, the length leaves room for the kind, the
+"""ending(kind, at): every chosen part lands on `at`, nothing runs past it, the length (when the script set none) leaves room for the kind, the
 home chord follows key(), and root["ending"] keeps what was asked (the ending check reads it). Wrong here is only heard."""
 import pytest
 from rostrum_core import RostrumError
@@ -14,13 +14,13 @@ for i in range(4):
     b.note("G2", at=bar(i + 1), dur=beats(4))
     d.hit("kick", at=bar(i + 1))
 p.note("E5", at=bar(5) + beats(1), dur=beats(1))                            # after the ending: dropped
-length(bar(7)); marker("end", at=bar(5))
+{length}marker("end", at=bar(5))
 {ending}
 """
 
 
-def run(ending, key="D minor"):
-    return run_source(BAND.format(key=key, ending=ending), "song.py")
+def run(ending, key="D minor", length=""):
+    return run_source(BAND.format(key=key, ending=ending, length=length), "song.py")
 
 
 def _notes(tree, id_):
@@ -42,6 +42,12 @@ def test_ring_lands_every_part_on_at_and_rings_past_it():
     assert tree["length"] == pytest.approx(16 + _notes(tree, "piano")[-1]["dur"] + 1.0)   # at + the ring + its tail (60 bpm)
     assert tree["ringOut"] is True
     assert tree["ending"] == {"kind": "ring", "at": "#end", "at_s": 16.0, "home": "D minor"}
+
+
+def test_a_length_the_script_set_stays():
+    """Sam, 2026-10-29: a tool never moves what the writer set; the reply gives the arithmetic instead."""
+    tree = run('ending("ring", at="#end")', length="length(bar(7)); ")
+    assert tree["length"] == {"beat": 24.0} and tree["ringOut"] is True
 
 
 def test_button_is_short_and_the_length_leaves_the_room_tail():

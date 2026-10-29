@@ -5,14 +5,13 @@ so the usual way to work is "write the whole scene as one script, look, edit, re
   failed run): this run takes it over and replaces it, field by field; never a second copy, never "already in this
   document". A field a person changed since is kept (held back by the merge, or here when no script holds it).
 - Ids counted for things the script leaves unnamed (mesh_1 …) skip ids other things in the scene already use.
-- A re-run that leaves out most of what its last run made (2 or more things, more than half) is refused, naming them:
-  a one-line tweak sent under the script's name would otherwise remove the rest. `remove("a", "b")` says it is meant.
+- A re-run that leaves out most of what its last run made (2 or more things, more than half) goes through and its reply
+  names them, so a one-line tweak sent under the script's name by mistake is seen at once (edit_undo brings them back).
 """
 from __future__ import annotations
 
 import copy
 
-from rostrum_core.errors import RostrumError, codes
 from rostrum_core.tree import walk
 
 from .kind import KIND
@@ -68,19 +67,15 @@ def dropped(b) -> list[tuple[str, str]]:
 
 
 def guard(b) -> None:
-    """Refuse a re-run that would take out most of what the script made (see the module's note)."""
+    """Say so (b.notes) when a re-run takes out most of what the script made (see the module's note); it is never stopped."""
     gone = dropped(b)
     base = b.doc.script_bases.get(b.name) if b.doc is not None else None
     last = sum(1 for lst in ROOT_LISTS for n in (base or {}).get(lst, []) if in_scene(b.doc, lst, n["id"]) is not None)
     if len(gone) < 2 or len(gone) * 2 <= last:
         return
     names = ", ".join(f'"{i}"' for i, _ in gone)
-    raise RostrumError(
-        codes.BAD_ARGUMENT, "", f'script "{b.name}"',
-        f"would remove {len(gone)} of the {last} things its last run made ({names}), so nothing was changed. A re-run "
-        "under the same name replaces everything the script made: send the whole script with your edit",
-        hint=f'To change a few things only, run a short script under a NEW name with edit("id", …). If removing them is '
-             f'meant, add remove({names}) to the script.')
+    b.notes.append(f'this run of script "{b.name}" removed {len(gone)} of the {last} things its last run made: {names} '
+                   "(a re-run under the same name replaces what the script made; edit_undo brings them back)")
 
 
 def keep_fields(b, ids: set) -> None:

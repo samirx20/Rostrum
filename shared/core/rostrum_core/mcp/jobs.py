@@ -245,7 +245,7 @@ class InProcessJobs:
 def outcome(job: Job, where: str) -> Reply:
     """The reply for a job: the result when done, a progress line while it runs, an error when it failed or was stopped."""
     if job.status == "failed" and job.error is not None and job.error.code == codes.CHECK_FAILED:
-        raise job.error.within(where)                 # refused for open faults (faults.deliver): its own words, not "nothing was written"
+        raise job.error.within(where)                 # the job's own check failed (a file it can't read): its own words
     if job.status == "failed":
         raise RostrumError(codes.JOB_FAILED, where, job.id, f"({job.label}) failed: {job.reason}", hint="The job's output is incomplete; nothing was written.")
     if job.status == "cancelled":

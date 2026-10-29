@@ -24,7 +24,7 @@ WAIT_S = 150.0
 AGAIN = "and run_script again with the edited source, the same name and look"
 SCHEMA = {"anyOf": [{"type": "boolean"}, {"type": "object"}],
           "description": "Render and listen: true, or render_mix's arguments (`folder`: a delivery)."}
-LEAD = "One script for the whole piece, run with `look`; fix it and re-run under the same name until DONE:. "
+LEAD = "One script for the whole piece, run with `look`; listen, change it and re-run under the same name (`notes: true` adds the checks' measurements). "
 
 
 def _allowed(ctx) -> set:
@@ -59,7 +59,7 @@ def _rendered(ctx, rargs) -> Reply:
 
 def after_run(ctx, doc, look, reply: Reply) -> Reply:
     """App.script_look: the merge's reply, then the render and its listening check."""
-    r = _rendered(ctx, render_args(look, _allowed(ctx), getattr(doc, "item_id", None)))    # ctx.tool is run_script: a check, never refused for open faults
+    r = _rendered(ctx, render_args(look, _allowed(ctx), getattr(doc, "item_id", None)))    # notes only when asked (notes: true)
     said = r.summary.replace(session_clock.AGAIN, AGAIN)
     return Reply(f"{reply.summary}\n{said}", {**reply.data, "look": r.data}, [*reply.files, *r.files], [*reply.images, *r.images],
                  [*reply.warnings, *r.warnings], reply.changed, r.faults)

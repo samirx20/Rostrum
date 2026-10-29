@@ -137,7 +137,7 @@ ARG_OF = {
     ("render_midi", "name"): "File name without its type.",
     ("render_mix", "folder"): "Also copy the files to this folder.",
     ("render_mix", "expect"): "Moments to check; default hit-like markers.",
-    ("render_mix", "keep"): "Faults left on purpose: {id: why}, why quoting the brief.",
+    ("render_mix", "keep"): "Faults left on purpose: {id: why}, the why is only recorded, never refused.",
     ("render_mix", "ring_past_length"): "Ring out past the length.",
     ("render_midi", "path"): "Where to write the .mid.",
     ("run_open_project", "folder"): "The project folder (absolute; made when new).",

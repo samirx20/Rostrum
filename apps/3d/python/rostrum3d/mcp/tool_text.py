@@ -21,7 +21,7 @@ ARG = {
     "samples": "Cycles samples per pixel.",
     "denoise": "Cycles noise clean-up.",
     "passes": "EXR layers beside Beauty (Cycles); [] = Beauty alone.",
-    "keep": "Faults left on purpose: {fault_id: \"why\"}, marked kept in the reply; faults are notes, the file is always written.",
+    "notes": "Also list the checks' measured notes; off by default.",
     "x": "Pixels from the picture's left.",
     "y": "Pixels from the picture's top.",
     "zoom": "[x0, y0, x1, y1] canvas px.",

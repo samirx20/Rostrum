@@ -177,7 +177,7 @@ def words(f) -> str:
              f"the parts share it (the most, {who}, {d['share_pct']:g} %), but past {DENSE_DB:g} dB even a full mix pumps") if who else ""
     where = f" over {LINE_DB:g} dB at {_spans_said(d['spans'])}" if d.get("spans") else ""
     what = (f"the master limiter squashes the mix: up to {d['reduced_db']:.1f} dB of gain reduction{where}" + (f", {alone}" if alone else "")
-            + f" (passes at {LINE_DB:g} dB or less, keepable up to {NEAR_DB:g} dB, only when the brief asks for a squashed sound)")
+            + f" (passes at {LINE_DB:g} dB or less, fine to leave only when the brief asks for a squashed sound)")
     quiet = ", ".join(f"{a:g}–{b:g} s" for a, b in d.get("quiet") or [])
     if d.get("lift_db"):
         lift = (f"raise the quiet parts: on this render edit_loudness lift_quiet would ride {quiet or 'the quiet stretches'} up by "
