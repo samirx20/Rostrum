@@ -67,7 +67,7 @@ GfFrustum frustum_of(const UsdStageRefPtr& stage, const ViewCamera& c, int frame
 std::optional<Lens> lens_of(const UsdStageRefPtr& stage, const ViewCamera& c, int frame) {
   if (c.camera.IsEmpty()) return std::nullopt;
   const GfCamera cam = UsdGeomCamera(stage->GetPrimAtPath(c.camera)).GetCamera(UsdTimeCode(frame));
-  if (cam.GetFStop() <= 0) return std::nullopt;
+  if (cam.GetFStop() <= 0 || cam.GetFStop() >= kClosedFStop) return std::nullopt;  // no depth of field
   return Lens{cam.GetFStop(), cam.GetFocusDistance(), cam.GetFocalLength() * GfCamera::FOCAL_LENGTH_UNIT,
               cam.GetHorizontalAperture() * GfCamera::APERTURE_UNIT};
 }
