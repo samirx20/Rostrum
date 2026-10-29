@@ -105,16 +105,16 @@ def math_parts(tex: str, size: float = 64, x: float = 0, y: float = 0) -> list[t
         if len(codes) == 0:
             continue
         k = fsize / 100
-        items.append((ox, oy + float(verts[:, 1].max()) * k, _slug(chr(num)), (verts, codes, ox, oy, k)))
+        items.append((ox, oy + float(verts[:, 1].max()) * k, _slug(chr(num)), (verts, codes, ox, oy, k), False))
     for rx, ry, w, h in parsed.rects:
         h = max(h, size * 0.04)                  # a rule always shows
-        items.append((rx, ry + h, "bar", (rx, ry, w, h)))
+        items.append((rx, ry + h, "bar", (rx, ry, w, h), True))
     if not items:
         raise ValueError(f"math_text: {tex!r} typesets to nothing visible")
     left, top = min(i[0] for i in items), max(i[1] for i in items)
     out = []
-    for _l, _t, what, a in sorted(items, key=lambda t: (t[0], -t[1])):
-        if what == "bar":
+    for _l, _t, what, a, is_rule in sorted(items, key=lambda t: (t[0], -t[1])):
+        if is_rule:                              # by kind, not name: the glyph "|" is also called "bar"
             bx0, by0, w, h = a
             bx, by = x + bx0 - left, y + top - by0
             d = f"M{bx:.2f} {by:.2f} L{bx + w:.2f} {by:.2f} L{bx + w:.2f} {by - h:.2f} L{bx:.2f} {by - h:.2f} Z"
