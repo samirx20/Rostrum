@@ -25,6 +25,8 @@ pub mod trackcache;
 mod trackcache_tests;
 pub mod wavio;
 pub mod window;
+#[cfg(test)]
+mod window_tests;
 pub mod wavwriter;
 
 pub fn load(path: &str) -> Result<schedule::Schedule, String> {

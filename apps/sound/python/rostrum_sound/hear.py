@@ -62,6 +62,8 @@ def hear(engine, doc: dict, start: float, end: float, solo=None, mute=None, mast
              "render_audition", beside=(LEVELS,))
     if song and not alone and not given:
         master_memo.remember(song, k, r)              # worked out over the song now: the next stretch renders on its own
+    if song and given and not fresh:                  # the song changed since it was measured: measured again, for the next
+        master_memo.refresh(engine, song, k, compile_doc(doc, master=master) if alone else schedule)
     rng = r.get("range") or [start, end]
     got = {"from_s": round(rng[0], 3), "to_s": round(rng[1], 3), "seconds": round(rng[1] - rng[0], 3), **{k: r[k] for k in KEEP if k in r},
            "mastered": "alone" if not master else "earlier" if given and not fresh else "song", "windowed": bool(r.get("windowed"))}

@@ -37,7 +37,7 @@ def _song_stretch(ctx, doc, args) -> Reply:
     files, images = [r["file"]], []
     said = (f"Heard {r['from_s']:.2f}-{r['to_s']:.2f} s" + (f" (solo {', '.join(solo)})" if solo else "")
             + f": {r.get('lufs', -70):.1f} LUFS, true peak {r.get('truePeak', -120):.1f} dBTP. {r['file']}" + (" (from the cache)" if r["cached"] else "")
-            + (" Level: the song's master as last measured, before your latest change." if r.get("mastered") == "earlier" else ""))
+            + (" Level: the song's master from before your latest change; the next listen has it measured again." if r.get("mastered") == "earlier" else ""))
     data = {k: v for k, v in r.items() if k != "series"}
     if args.get("look"):
         png = str(ctx.app.state.look_dir(doc.item_id) / "audition.png")
