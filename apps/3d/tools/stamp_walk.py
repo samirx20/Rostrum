@@ -61,6 +61,36 @@ def ring(path: Path):
     Image.fromarray(((d > 70) & (d < 110)).astype(np.uint8) * 255).save(path)
 
 
+def star(path: Path):
+    """A bold five-pointed star (white = raised): its points show the stamp's Turn."""
+    yy, xx = np.mgrid[:256, :256] - 128.0
+    ang, r = np.arctan2(xx, -yy), np.hypot(xx, yy)
+    edge = 60 + 55 * np.abs(((ang * 5 / (2 * np.pi)) % 1.0) - 0.5) * 2      # 115 at a point, 60 between
+    Image.fromarray((r < edge).astype(np.uint8) * 255).save(path)
+
+
+def type_into(win, root, row_name, text):
+    """Click the row's number box and type `text` (real keys)."""
+    row = W.find(root, row_name)
+    box, stack = None, [row] if row is not None else []
+    while stack:
+        it = stack.pop()
+        if "NumberField" in it.metaObject().className() and it.isVisible():
+            box = it
+            break
+        stack += it.childItems()
+    W.check(box is not None, f"{row_name}: its number box is on screen")
+    if box is None:
+        return
+    W.click(win, box)
+    W.pump(0.3)
+    QTest.keyClick(win, "a", Qt.ControlModifier)
+    for ch in text:
+        QTest.keyClick(win, ch)
+    QTest.keyClick(win, Qt.Key_Return)
+    W.pump(0.5)
+
+
 def relief_strokes(doc):
     return [s for p in doc.item("blob").get("paints", []) if p.get("channel") == "height" for s in p["strokes"]]
 
@@ -69,6 +99,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     project = Path(tempfile.mkdtemp(prefix="rostrum-stampwalk-"))
     ring(project / "ring.png")
+    star(project / "star.png")
     app = qt_app()
     doc = Document.new(KIND, folder=project, item="scene")
     doc.run_script("scene.py", run_source(SCENE, "scene.py"))
@@ -124,9 +155,13 @@ def main():
         # 3. Load picture… (the file handed in as the dialog would)
         row = W.find(root, "row:texture")
         if row is not None:
-            QMetaObject.invokeMethod(row, "loadChoice", Q_ARG("QVariant", str(project / "ring.png")))
+            QMetaObject.invokeMethod(row, "loadChoice", Q_ARG("QVariant", str(project / "star.png")))
         W.pump(0.4)
         W.check(v.paint.brush.stamp["texture"].startswith("brushtip_"), "the loaded picture is the stamp's picture")
+
+        type_into(win, root, "row:size", "90")
+        type_into(win, root, "row:depth", "100")
+        snap(screen, "2b-star-size-depth")
 
         # 4. one click on the clay
         n = len(relief_strokes(b.doc))
@@ -140,6 +175,16 @@ def main():
         W.check(bool(got) and len(got[-1].get("anchors") or []) == 1, "the stamp is one dab on the clay's surface")
         snap(screen, "3-stamped")
 
+        # a second stamp beside it, turned 45 degrees
+        type_into(win, root, "row:turn", "45")
+        side = QPoint(round(mid.x() + 95), round(mid.y() + 40))
+        QTest.mouseMove(win, side)
+        QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, side)
+        W.pump(20, lambda: len(relief_strokes(b.doc)) > n + 1, "the second stamp")
+        W.check(len(relief_strokes(b.doc)) == n + 2, "a second click laid a second stamp")
+        QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier)
+        W.pump(1)
+
         # 5. undo, redo, Final
         QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier)
         W.pump(1)
@@ -147,11 +192,20 @@ def main():
         QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier | Qt.ShiftModifier)
         W.pump(1)
         W.check(len(relief_strokes(b.doc)) == n + 1, "Ctrl+Shift+Z puts it back")
+        QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier | Qt.ShiftModifier)
+        W.pump(1)
+        W.check(len(relief_strokes(b.doc)) == n + 2, "Ctrl+Shift+Z again: the turned one back too")
         QTest.keyClick(win, Qt.Key_B)
         W.pump(1)
+        QTest.keyClick(win, Qt.Key_Escape)              # nothing selected: no handles over the stamps
+        W.pump(0.5)
         QTest.keyClick(win, Qt.Key_F, Qt.ShiftModifier)
-        W.pump(25)
+        W.pump(30)
         snap(screen, "4-final")
+        pic = Image.open(OUT / "4-final.png")
+        cx, cy = round(mid.x() * pic.width / win.width()), round(mid.y() * pic.height / win.height())
+        pic.crop((cx - 260, cy - 200, cx + 260, cy + 200)).resize((1040, 800)).save(OUT / "4-final-closeup.png")
+        print("picture", OUT / "4-final-closeup.png")
         W.check(not v.status.startswith("Error"), f"no viewport error ({v.status or '-'})")
     finally:
         screen.close()

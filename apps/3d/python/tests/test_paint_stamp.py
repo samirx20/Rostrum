@@ -89,3 +89,51 @@ def test_turn_0_from_the_view_is_the_screens_up(tmp_path):
     assert paint_view.lay(a, upright, "lid", 256)[0]["angle"] == 0
     assert paint_view.lay(b, upright, "lid", 256)[0]["angle"] == 30
     assert paint_view.lay(a, turned, "lid", 256)[0]["angle"] == -90    # the picture's up (sin a, −cos a) = −x
+
+
+def _scattered_plane(folder, cells=40, side=0.2):
+    """A clay surface file (CLS1) of a flat square facing +z, each triangle its own tiny piece of the paint picture,
+    the pieces shuffled: as a real clay's unfolding is (many small pieces, nothing of the picture next to its place)."""
+    import struct
+    g = np.linspace(-side / 2, side / 2, cells + 1)
+    x, y = np.meshgrid(g, g)
+    pts = np.stack([x.ravel(), y.ravel(), np.zeros(x.size)], 1)
+    k = np.arange(cells * cells)
+    i, j = k // cells, k % cells
+    a, b, c, d = i * (cells + 1) + j, i * (cells + 1) + j + 1, (i + 1) * (cells + 1) + j + 1, (i + 1) * (cells + 1) + j
+    tris = np.concatenate([np.stack([a, b, c], 1), np.stack([a, c, d], 1)])
+    m, per = len(tris), int(np.ceil(np.sqrt(len(tris))))
+    slot = np.random.default_rng(3).permutation(m)
+    cx, cy = (slot % per) / per, (slot // per) / per
+    corner = np.array([[0.15, 0.15], [0.85, 0.15], [0.85, 0.85]]) / per
+    uv = np.stack([cx, cy], 1)[:, None, :] + corner[None]
+    f = folder / "surf" / "surface.cls"
+    f.parent.mkdir(parents=True)
+    f.write_bytes(b"CLS1" + struct.pack("<5I", 1, 512, len(pts), m, 0) + pts.astype("<f4").tobytes()
+                  + np.tile([0, 0, 1.0], (len(pts), 1)).astype("<f4").tobytes() + tris.astype("<i4").tobytes()
+                  + uv.astype("<f4").tobytes())
+    from rostrum3d import clay_paint
+    return clay_paint.read(f)
+
+
+def test_a_clay_stamp_lands_whole_however_its_surface_is_cut(tmp_path):
+    """The bug it guards: on a clay laid flat in many small pieces, a stamp drawn as one dab on the flat picture kept
+    only scraps of the picture (the relief showed nothing)."""
+    from rostrum3d import paint_scene
+    surface = _scattered_plane(tmp_path)
+    d = _doc(tmp_path)
+    Image.fromarray(np.full((64, 64), 255, np.uint8)).save(tmp_path / "white.png")
+    d.apply({"op": "paint.stamp", "target": ["head"], "args": {"picture": "white.png", "at": [0, 0, 0, 0, 0, 1],
+                                                               "size": 0.08, "depth": 1}}, SAM)
+    item = {**d.item("head"), "paintSize": 512}
+    held, splats, keys = paint_scene._laid({"item": item}, surface, {})
+    layer = item["paints"][0]["id"]
+    assert not held["paints"][0]["strokes"] and keys[layer]                 # laid as a decal, not a kit dab
+    a = splats[layer][..., 3]
+    mid = surface.points[surface.tris].mean(1)                             # each triangle's middle and its texel
+    uv = surface.uv.mean(1)
+    px = a[np.clip(((1 - uv[:, 1]) * 512).astype(int), 0, 511), np.clip((uv[:, 0] * 512).astype(int), 0, 511)]
+    inside = np.abs(mid[:, :2]).max(1) < 0.036                             # under the 8 cm picture
+    outside = np.abs(mid[:, :2]).max(1) > 0.045
+    assert inside.sum() > 100 and (px[inside] > 0.9).all()                  # all of the picture, on every piece
+    assert (px[outside] < 0.05).all()

@@ -26,7 +26,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_paint import canvas, library
 
-from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_turn
+from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_decal, stamp_turn
 from .material_fields import DOC_ONLY, MATERIAL
 from .paint_fields import CHANNELS
 
@@ -286,12 +286,26 @@ def _pic_id(pic) -> str:
 
 
 def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
-    """(the kit canvas as drawn, {layer id: projected picture laid on the canvas}, their cache keys) for a job."""
+    """(the kit canvas as drawn, {layer id: projected picture and a clay's stamps laid on the canvas}, their cache keys)
+    for a job. A clay's stamps are laid as decals (stamp_decal.py: a dab on its many small flat pieces would break
+    up), under their layer's own strokes."""
     item = _filled(job["item"])
+    stamps = {}
+    if surface is not None:
+        stamps = {p["id"]: [s for s in p.get("strokes", []) if stamp_decal.is_stamp(s)] for p in item.get("paints", [])}
+        stamps = {k: v for k, v in stamps.items() if v}
+        if stamps:
+            item = {**item, "paints": [{**p, "strokes": [s for s in p.get("strokes", []) if not stamp_decal.is_stamp(s)]}
+                                       for p in item["paints"]]}
     held = clay_paint.laid(stamp_turn.upright_on_clay(item, surface), surface) if surface is not None else item
     if pics:
         held = paint_view.laid(held, pics, job["item"].get("paintSize", 2048))
     splats, keys = _splats(job, pics, held) if job.get("sources") else ({}, {})
+    size = job["item"].get("paintSize", 2048)
+    for lid, strokes in stamps.items():
+        decal = stamp_decal.layer_rgba(surface, strokes, size)
+        splats[lid] = _over(splats[lid], decal) if lid in splats else decal
+        keys[lid] = [keys.get(lid, ""), stamp_decal.key(surface, strokes)]
     return held, splats, keys
 
 
