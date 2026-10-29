@@ -69,6 +69,18 @@ Only the settings that apply to the chosen format are shown.
    is visible while it runs. `run_stop` stops a render at once, even mid-frame, and works on a render another session
    or server started (that program stops it within a few seconds); `inspect_job` with no id lists those too. The app
    holds no lock between programs: a render that ended or was stopped leaves nothing that blocks the next one.
+7. **Exporting again draws only what changed.** An MP4 is drawn in 2-second pieces, and each piece is kept (in Rostrum's
+   cache folder, the oldest pieces removed past 4 GB). The next export of the same film reuses every piece nothing changed
+   in and draws only the others, then joins them into one file without encoding them again. A layer counts for the
+   seconds between its **Starts at** and **Ends at** (a little longer with a trail or smear); the frame, the
+   composition's own settings, the quality and a new version of the app count for every piece. Change one 6-second
+   section of a 70-second film and the next export draws about 6–8 seconds. Agents: the reply says it, such as
+   "Re-rendered 3 of 35 segments (6 s), the rest reused; took 41 s", and its `segments` has the numbers.
+8. Agents: an MP4 export (`format: "mp4"`, or `what: "video"`) **returns at once** with a job id and draws in the
+   background from a copy of the document taken at the call, so edits made meanwhile are not in that file. Keep working
+   and ask `inspect_job` with the id (`wait_s` up to 25) for its progress and, once done, the finished reply. To wait in
+   the call instead, pass `wait_s` (seconds, up to 600). Other formats wait in the call by default (120 s). A piece that
+   fails to draw fails the whole export: nothing is written under the final name.
 
 Next: [first-animation.md](first-animation.md), [files.md](files.md).
 

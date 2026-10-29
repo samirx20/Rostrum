@@ -237,7 +237,7 @@ for i, r in enumerate(rows):
 ```
 
 Then check one or two (`look_frame {comp: "card_1", time: 2.5}`) and export each: `render_export {comp: "card_0",
-format: "mp4", name: "Lisbon"}`, one call per row (each waits for its own file in the same call, `wait_s`; past it the reply gives the job to ask `inspect_job`). Re-running the script
+format: "mp4", name: "Lisbon"}`, one call per row (each returns its job id at once and renders in the background; `inspect_job` gives each finished file). Re-running the script
 with an edited table updates every card and keeps what a person moved by hand.
 
 ## Full Python: numpy, files, your own maths

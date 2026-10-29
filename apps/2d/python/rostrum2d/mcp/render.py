@@ -136,13 +136,10 @@ def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress
     """Export to `<name>.partial.mp4`, then rename: a failed export never leaves a file under the final name. `on_stop`: a
     job's on_cancel, given the engine's end (run_stop ends the engine at once, even mid-frame)."""
     from rostrum2d.engine import Engine
+    from . import export_cache
     part = mp4.with_name(mp4.stem + ".partial.mp4")
-    try:
-        with Engine() as eng:
-            if on_stop:
-                on_stop(eng.kill)
-            eng.load(scene)
-            out = eng.video(part, start=start, end=end, progress=progress, quality=quality, bitrate=bitrate)
+    try:            # only the segments whose layers changed since the last export are drawn again (export_cache.py)
+        out = export_cache.export(scene, {"start": start, "end": end, "quality": quality, "bitrate": bitrate}, part, progress, Engine, on_stop)
     except Exception as e:
         raise _fail(where, f"the video {mp4.name} (partial file, if any: {part})", e) from e
     if not part.is_file() or part.stat().st_size == 0:

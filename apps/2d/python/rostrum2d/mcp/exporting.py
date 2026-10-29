@@ -92,6 +92,13 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
                 "checked": {"layers": len(doc.get("layers", [])), "size": (doc.get("w"), doc.get("h")), "baked": baked}, "report": report}
     if s.get("area"):                                # a picture of an area of the world (export_area.py), not of the frame
         return export_area.pictures(where, scene, s, target, progress, engine_factory)
+    if fmt == "mp4":                                 # in segments, each kept by its content: a re-export draws only what changed
+        from . import export_cache
+        try:
+            facts = export_cache.export(scene, s, target, progress, engine_factory or _engine, on_stop)
+        except Exception as e:  # noqa: BLE001  a segment, the join or the read-back: one loud failure
+            raise _fail(where, f"the {fmt} export {target.name}", e) from e
+        return with_sound(where, facts, target, s, folder)
     from rostrum2d.io.export import export
     try:
         with (engine_factory or _engine)() as eng:

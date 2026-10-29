@@ -73,9 +73,8 @@ def checked(job, frames: int, mp4: Path, shown: Path, data: dict, comp: dict, st
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."},
                                             **faults.NOTES}})
 def render_video(ctx, args):
-    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It waits for its job in this call (wait_s,
-    default 120 s) and answers with the finished file; past that it answers with the job id:
-    ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
+    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It returns at once with the job id
+    (`wait_s` waits for the file in the call); ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
@@ -126,19 +125,21 @@ def render_video(ctx, args):
             quiet, cuts = checked(job, info["frames"], files[0], files[-1], data, comp_now, start, end)
             found, notes = film_faults.of_export(data, comp_now, start, end, ctx.tool, [dict(q) for q in quiet[1]], cuts[1])
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to and beside else ""
+        from .export_tool import segments_said      # (export_tool imports this module)
         took = info["timing"]["totalS"]
         video = files[-1] if len(files) > 1 else files[0]           # the deliverable: the copy asked for, else the render
         heard = (f"with sound (the project's mix{', song ' + str(info['sound']['song']) if info['sound'].get('song') else ''}, "
                  "checked present in the file)" if info.get("sound") else "silent (no sound track: the project has no "
                  "sound, or sound was off)")
         also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
-        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
-                     f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said} '
+        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s'
+                     + (f' on {info["adapter"]}' if info.get("adapter") else "")
+                     + (f' ({segments_said(info["segments"])})' if info.get("segments") else "") + f'. The video: {video}, {heard}.{also}{said} '
                      f'{exporting.next_steps(f'look_frame what "sheet", start {start:g}, end {end:g}', bool(info.get("sound")), folder or doc.folder)}',
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
-                      "timing": info["timing"], "workers": info.get("workers")}
+                      "timing": info["timing"], "workers": info.get("workers"), "segments": info.get("segments")}
                      | ({"quiet_stretches": quiet[1], "edge_cuts": cuts[1]} if noting else {}), files,
                      warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w] + notes, faults=found)
 
