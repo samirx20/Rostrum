@@ -27,11 +27,14 @@ effects), sections, markers and a master. You build it from ONE Python script an
 Call `render_audition` on the moment (`{"at": "#drop", "around": 2}`, or `from` / `to`). Every reply carries the stretch
 as numbers, times in song seconds (`data.measure`; `measure: false` leaves them out, `step` sets the row length):
 
-- `Loudness per 0.5 s`: LUFS of each row. **Did the lift happen?** Compare the rows before and after the marker.
+- `Loudness per 0.5 s`: LUFS of each row, and the `loudest row`. **Did the lift happen?** Compare the rows before and
+  after the marker. **Is the climax the loudest moment?** Check the `loudest row` against its time: a swell that keeps
+  growing after the downbeat is loudest later, even when its strongest hit is on time.
 - `Bands per row`: dB in sub (<60 Hz), bass (60-250), lowMid (250-1k), mid (1-4 kHz) and high (4-16 kHz) per row.
   **Did the low end drop out?** Read sub and bass across the marker.
-- `Mix hits`: where the mix's level jumps, each with its peak (dBFS), and the loudest. **Is the hit the loudest?** Check
-  that `loudest` is at the hit's time and compare its dB with the other hits.
+- `Mix hits`: where the mix's level jumps, each with its peak (dBFS), and the `strongest hit` (the sharpest attack, not
+  the loudest moment). **Does the hit strike?** Check that the strongest hit is at the hit's time and compare its dB with
+  the other hits.
 - `Part <id>`: each track alone before the master, over the stretch: LUFS, peak, when it first and last sounds, where its
   sounds start, its bands. **Did the drums stop?** Their `sounds a-b` ends where you wrote the stop, and no starts follow.
   **Which part sits in 1-4 kHz under a voice?** Compare each part's `mid` with the voice track's.

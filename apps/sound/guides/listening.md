@@ -1,6 +1,6 @@
 # Listening without ears: the look tools
 
-You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. To hear a moment without a render use `render_audition` (any bars or a marker ± seconds, about a second): its reply reads the stretch as numbers (loudness and bands per 0.5 s, the mix's hits and the loudest, each part's level and starts, what is written and sounding there; start-here › "You can't hear"); `look: true` adds its wave, loudness and spectrum. For the whole file render first
+You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. To hear a moment without a render use `render_audition` (any bars or a marker ± seconds, about a second): its reply reads the stretch as numbers (loudness and bands per 0.5 s, the loudest row, the mix's hits and the strongest attack, each part's level and starts, what is written and sounding there; start-here › "You can't hear"); `look: true` adds its wave, loudness and spectrum. For the whole file render first
 (`render_mix`, then `inspect_job` until it is done; or `run_script` with `look`, which writes and renders in
 one call); every look tool reads the last render unless you pass `wav`.
 Two read the document instead and need no render: `look_arrangement` (about 0.05 s), and `look_music` (`what: "harmony"`) on a song

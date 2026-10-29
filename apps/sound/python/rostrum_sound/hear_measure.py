@@ -2,7 +2,8 @@
 read as measurements, never a verdict.
 
     measure(wav, r, step=None)  # -> {"step_s", "loudness": [{"t", "lufs"}], "bands": [{"t", sub, bass, lowMid, mid, high}],
-                                #     "hits": [{"t", "db"}], "loudest": {"t", "db"}, "parts": [{id, lufs, peak_db, from_s, to_s,
+                                #     "hits": [{"t", "db"}], "strongest_hit": {"t", "db"},
+                                #     "loudest_row": {"t", "lufs"}, "parts": [{id, lufs, peak_db, from_s, to_s,
                                 #     onsets, bands}]}
     lines(m, written=None)      # the same, as a few lines of plain numbers
 
@@ -11,7 +12,8 @@ Times are song seconds. `loudness`: LUFS (K-weighted, BS.1770) over each `step` 
 250-1k, mid 1-4 kHz, high 4-16 kHz), so the mix's rows and each part's figures name the same ranges. `hits`: where the
 mix's level jumps (10 ms frames, RISE_DB over the loudest of the 50 ms before, above -50 dBFS, 80 ms apart: the engine's
 rule for a part's starts, with a smaller rise since in a mix other parts ring under a hit), with the peak (dBFS) of the
-50 ms from there. `parts`: each track alone as it reaches the mix (before the
+50 ms from there; `strongest_hit` is the sharpest attack, `loudest_row` the loudest stretch of sound (a
+swell can be loudest after its strongest hit). `parts`: each track alone as it reaches the mix (before the
 master), as the engine measured it over the stretch: integrated LUFS, peak, when it first / last sounds, where its
 sounds start, its bands. A start in the stretch's first 20 ms is not counted (the cut begins there, so everything
 sounding would read as a start). Reading the WAV and measuring a 4 s stretch takes a few tens of milliseconds.
@@ -120,7 +122,8 @@ def measure(wav: str, r: dict, step: float | None = None) -> dict:
     loud, bands = _rows(y, sr, a, step)
     hits = _hits(y, sr, a)
     return {"step_s": step, "loudness": loud, "bands": bands, "hits": hits,
-            "loudest": max(hits, key=lambda h: h["db"]) if hits else None, "parts": _parts(r, a)}
+            "strongest_hit": max(hits, key=lambda h: h["db"]) if hits else None,
+            "loudest_row": max(loud, key=lambda x: x["lufs"]) if loud else None, "parts": _parts(r, a)}
 
 
 def _num(v) -> str:
@@ -129,12 +132,14 @@ def _num(v) -> str:
 
 def lines(m: dict, written: dict | None = None) -> str:
     """The numbers as a few plain lines (times in song seconds)."""
-    out = [f"Loudness per {m['step_s']:g} s (LUFS, row from): " + ", ".join(f"{r['t']:.1f}s {r['lufs']:.1f}" for r in m["loudness"])]
+    top = m.get("loudest_row")
+    out = [f"Loudness per {m['step_s']:g} s (LUFS, row from): " + ", ".join(f"{r['t']:.1f}s {r['lufs']:.1f}" for r in m["loudness"])
+           + (f"; loudest row {top['t']:.1f}s {top['lufs']:.1f}" if top else "")]
     out.append("Bands per row (dB; sub<60 Hz, bass 60-250, lowMid 250-1k, mid 1-4k, high 4-16k):")
     out += [f"  {r['t']:.1f}s " + " ".join(f"{k} {r[k]:.0f}" for k, _, _ in BANDS) for r in m["bands"]]
     hits = m["hits"]
     out.append(f"Mix hits ({len(hits)}, s @ dBFS): " + (", ".join(f"{h['t']:g}@{h['db']:.1f}" for h in hits[:16])
-               + (f" ... {len(hits) - 16} more" if len(hits) > 16 else "") + f"; loudest {m['loudest']['t']:g}@{m['loudest']['db']:.1f}" if hits else "none"))
+               + (f" ... {len(hits) - 16} more" if len(hits) > 16 else "") + f"; strongest hit {m['strongest_hit']['t']:g}@{m['strongest_hit']['db']:.1f}" if hits else "none"))
     for p in m["parts"]:
         sounds = f"sounds {p['from_s']:g}-{p['to_s']:g}" if p["from_s"] is not None else "silent here"
         ons = p["onsets"]
