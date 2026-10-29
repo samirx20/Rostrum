@@ -37,12 +37,13 @@ def part_point(fr, part: str):
     owner, _, joint = part.partition(".")
     if owner not in fr.items:
         raise ValueError(f'no item or joint "{part}" (a joint is "<clay>.<joint>", e.g. "buddy.hand.L")')
+    from .pose_ik import Rig
+    from .pose_names import resolve
     item = fr.items[owner]
     chain = skin.bones_of(item)
-    names = PB.joint_names(item)
-    if joint not in names:
-        raise ValueError(f'"{owner}" has no joint "{joint}"; its joints: {", ".join(names) or "none (no bones)"}')
-    b = names.index(joint)
+    if not chain:
+        raise ValueError(f'"{owner}" has no joints (no bones)')
+    b = resolve(joint, Rig(item), f'"{owner}"')       # the pose tools' own name lookup: hand.R, "right hand", Humanoid names
     end = [0.0, float(chain[b][0].get("length", 0.0)), 0.0]
 
     def at(f: int) -> list[float]:
