@@ -128,7 +128,7 @@ def _times_sheet(ctx, doc, comp, args: dict):
     return _sheet_of(ctx, doc, comp, sorted(set(frames)), args)
 
 
-@tools.tool("look_sheet", {"properties": {**ITEM_COMP, **look_quality.QUALITY, **video_frames.VIDEO, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
+@tools.tool("look_sheet", {"properties": {**ITEM_COMP, **look_quality.QUALITY, **video_frames.VIDEO, **TIMES, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                            "end": {"type": "number", "minimum": 0, "description": "Seconds. Default (and the comp's duration): the last frame."},
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
@@ -139,13 +139,21 @@ def look_sheet(ctx, args):
     each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
     a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, at preview quality (the canvas's
     picture, only motion blur left out; quality "final" for the export's), so a big sheet stays quick.
-    For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet.
+    For moments you choose (not evenly spaced) give `times: [..]` instead of start / end / count: a sheet of exactly
+    those moments (the same as look_frame with `times`).
     `video`: the path of a finished mp4 (render_export's `video`): the sheet is made of the film's own frames (start / end /
-    count in the film's seconds), to check the file you delivered, not the composition."""
+    count, or times, in the film's seconds), to check the file you delivered, not the composition."""
+    if "times" in args:
+        spread = [k for k in ("start", "end", "count") if k in args]
+        if spread:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"times" with "{spread[0]}"', "were both given", ["times", *spread],
+                               "Give times for those moments, or start / end / count for evenly spaced ones.")
     if "video" in args:
         _no_quality(ctx, args)
-        return video_frames.video_sheet(ctx, args, None)
+        return video_frames.video_sheet(ctx, args, args.get("times"))
     doc, comp = doc_and_comp(ctx, args)
+    if "times" in args:
+        return _times_sheet(ctx, doc, comp, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     last = (round(duration * fps) - 1) / fps
     start, end, count = args.get("start", 0.0), args.get("end", last), args.get("count", 8)
