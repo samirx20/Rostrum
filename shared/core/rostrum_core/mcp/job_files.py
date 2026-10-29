@@ -24,7 +24,10 @@ from ..scratch import running
 KEEP_S = 24 * 3600                               # an ended job's file stays this long
 ENDED = ("done", "failed", "cancelled")
 POLL_S = 1.0                                     # how often a running job's owner looks for a stop asked from outside
+SWEEP_S = 600.0                                  # old ended files are cleared at most this often per program (a look ends a job a second)
 _writing = threading.Lock()
+_made: set = set()                               # folders this program has made (a look writes a job file a few times)
+_swept = [0.0]                                   # when this program last cleared old ended files (monotonic)
 
 
 def folder() -> Path:
@@ -36,7 +39,9 @@ def write(state: dict) -> None:
     d = folder()
     with _writing:                               # one write at a time in this program: the latest state lands last
         try:
-            d.mkdir(parents=True, exist_ok=True)
+            if d not in _made:
+                d.mkdir(parents=True, exist_ok=True)
+                _made.add(d)
             tmp = d / f"{state['job_id']}.{os.getpid()}.tmp"
             mine = {"pid": os.getpid(), "updated": time.time()}
             if os.environ.get("ROSTRUM_CALL_SESSION"):    # call.py's session: it stays until its jobs have ended
@@ -48,15 +53,19 @@ def write(state: dict) -> None:
                     break
                 except PermissionError:
                     time.sleep(0.025)
-        except OSError:
-            pass                                 # seeing a job from outside is a help; the job itself never fails for it
+        except OSError:                          # seeing a job from outside is a help; the job itself never fails for it
+            _made.discard(d)                     # (the folder may have been removed: made again next time)
 
 
 def ended(state: dict) -> None:
-    """The job's end, kept for KEEP_S (older ended files are cleared on the way); a stop asked for it is dropped."""
+    """The job's end, kept for KEEP_S (older ended files are cleared on the way, at most every SWEEP_S: the folder holds
+    thousands); a stop asked for it is dropped."""
     write(state)
     try:
         (folder() / f"{state['job_id']}.stop").unlink(missing_ok=True)
+        if time.monotonic() - _swept[0] < SWEEP_S and _swept[0]:
+            return
+        _swept[0] = time.monotonic()
         old = time.time() - KEEP_S
         for p in folder().glob("*.json"):
             if p.stat().st_mtime < old:

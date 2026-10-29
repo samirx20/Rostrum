@@ -149,6 +149,7 @@ class Cache:
         self.clock = clock
         self._seen, self._added, self._scanned = None, 0, 0.0   # bytes at the last trim's scan, put since, when
         self._aside, self._again = None, False          # the trim running aside (_due), and go round again
+        self.puts = 0                                   # entries this program has put: a reader caching what it built from them sees a new one
 
     def path(self, kind: str, key: str) -> Path:
         if not kind or "/" in kind or "\\" in kind or kind.startswith("."):
@@ -168,6 +169,7 @@ class Cache:
         """Run `make(tmp_folder)` to fill a new entry, then publish it. If `make` raises, nothing is kept and the
         error goes on (loud). If the same entry appeared meanwhile (another app made it), that one is used."""
         folder = self.path(kind, key)
+        self.puts += 1
         if self.get(kind, key):
             return folder
         tmp = folder.parent / f".tmp-{key[:16]}-{uuid.uuid4().hex[:8]}"
@@ -192,6 +194,7 @@ class Cache:
             shutil.rmtree(tmp, ignore_errors=True)
             raise
         self._added += meta["bytes"]
+        self.puts += 1                                  # counted again once it is there (it was missing while being made)
         if self._due():
             if self._aside and self._aside.is_alive():
                 self._again = True                      # the running trim goes round once more

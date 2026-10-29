@@ -78,40 +78,71 @@ def depth(occ: np.ndarray) -> np.ndarray:
     return np.sqrt(d)
 
 
+def _shift(o) -> tuple[tuple, tuple]:
+    """(to, from) slices pairing each cell with its neighbour at −o (what np.roll(a, o) puts there), no wrap-around:
+    the grid's outer layer is outside, so the wrapped cells never count."""
+    to = tuple(slice(d, None) if d > 0 else slice(None, d) if d < 0 else slice(None) for d in o)
+    fr = tuple(slice(None, -d) if d > 0 else slice(-d, None) if d < 0 else slice(None) for d in o)
+    return to, fr
+
+
 def walk(occ: np.ndarray, start: tuple) -> np.ndarray:
-    """How far each inside cell is from `start` walking inside the clay (26 neighbours; inf where it can't reach)."""
+    """How far each inside cell is from `start` walking inside the clay (26 neighbours; inf where it can't reach).
+    Relaxed from the cells that just got nearer until none does: each cell's shortest float32 path sum, whatever the
+    order the steps are tried in."""
     g = np.full(occ.shape, np.inf, dtype=np.float32)
-    g[start] = 0.0
-    steps = [(o, math.sqrt(sum(c * c for c in o))) for o in _OFFSETS]
-    for _ in range(4 * sum(occ.shape)):
-        before = g.copy()
-        for o, w in steps:
-            np.minimum(g, np.roll(g, o, axis=(0, 1, 2)) + w, out=g)
-            g[~occ] = np.inf
-        if np.array_equal(before, g):
+    if not occ[start]:
+        return g
+    idx = np.flatnonzero(occ)                               # inside cells are never on the outer layer: x + o fits
+    pos = np.full(occ.size, -1, dtype=np.int64)
+    pos[idx] = np.arange(len(idx))
+    strides = (occ.shape[1] * occ.shape[2], occ.shape[2], 1)
+    nbr = pos[idx[:, None] + np.array([sum(c * s for c, s in zip(o, strides)) for o in _OFFSETS])]      # (cells, 26)
+    w = np.array([math.sqrt(sum(c * c for c in o)) for o in _OFFSETS], dtype=np.float32)
+    near = np.full(len(idx), np.inf, dtype=np.float32)
+    front = np.array([pos[np.ravel_multi_index(tuple(int(s) for s in start), occ.shape)]])
+    near[front] = 0.0
+    while front.size:
+        to, val = nbr[front], near[front][:, None] + w
+        m = to >= 0
+        to, val = to[m], val[m]
+        m = val < near[to]
+        if not m.any():
             break
+        to, val = to[m], val[m]
+        np.minimum.at(near, to, val)
+        front = np.unique(to)
+    g.ravel()[idx] = near
     return g
 
 
 def _pieces(occ: np.ndarray, band: np.ndarray) -> np.ndarray:
-    """Connected pieces of cells sharing a band (26 neighbours): each inside cell's label (the flat index of one cell
-    of its piece); −1 outside."""
-    n = occ.size
-    lab = np.where(occ.ravel(), np.arange(n), n).reshape(occ.shape)
-    big = np.where(occ, band, -1)
+    """Connected pieces of cells sharing a band (26 neighbours): each inside cell's label (the flat index of the
+    piece's first cell); −1 outside."""
+    idx = np.nonzero(occ.ravel())[0]
+    pos = np.full(occ.size, -1, dtype=np.int64)
+    pos[idx] = np.arange(len(idx))
+    pos = pos.reshape(occ.shape)
+    a_, b_ = [], []
+    for o in _OFFSETS[13:]:                                     # each neighbour pair once
+        to, fr = _shift(o)
+        a, b = pos[to], pos[fr]
+        m = (a >= 0) & (b >= 0) & (band[to] == band[fr])
+        a_.append(a[m])
+        b_.append(b[m])
+    a, b = np.concatenate(a_), np.concatenate(b_)
+    lab = np.arange(len(idx))                                   # union-find: a root hooks onto the smaller root
     while True:
-        before = lab.copy()
-        for o in _OFFSETS:
-            nb, nb_band = np.roll(lab, o, axis=(0, 1, 2)), np.roll(big, o, axis=(0, 1, 2))
-            same = occ & (nb_band == big)
-            np.minimum(lab, np.where(same, nb, n), out=lab)
-        flat = np.append(lab.ravel(), n)                       # pointer jumping: a label's own label
-        for _ in range(4):
-            flat[:-1] = flat[flat[:-1]]
-        lab = flat[:-1].reshape(occ.shape)
-        if np.array_equal(before, lab):
+        la, lb = lab[a], lab[b]
+        diff = la != lb
+        if not diff.any():
             break
-    return np.where(occ, lab, -1)
+        np.minimum.at(lab, np.maximum(la, lb)[diff], np.minimum(la, lb)[diff])
+        while not np.array_equal(nxt := lab[lab], lab):         # pointer jumping to the roots
+            lab = nxt
+    out = np.full(occ.size, -1, dtype=np.int64)
+    out[idx] = idx[lab]
+    return out.reshape(occ.shape)
 
 
 # --- the tree
@@ -144,14 +175,18 @@ def _tree(occ, dist, g, width):
         nodes.append(_Node(i, int(band.ravel()[sorted_cells[a]]), b - a, float(d.max()), pos, far))
     # links: a piece hangs from the piece of the band before it it touches most
     touch: dict[int, dict[int, int]] = {}
+    key = occ.size + 1
     for o in _OFFSETS[13:]:                                     # each neighbour pair once (and the other way below)
-        nb_lab, nb_band = np.roll(lab, o, axis=(0, 1, 2)), np.roll(band, o, axis=(0, 1, 2))
-        for hi_lab, lo_lab, hi_band, lo_band in ((lab, nb_lab, band, nb_band), (nb_lab, lab, nb_band, band)):
+        to, fr = _shift(o)
+        here_lab, nb_lab, here_band, nb_band = lab[to], lab[fr], band[to], band[fr]
+        for hi_lab, lo_lab, hi_band, lo_band in ((here_lab, nb_lab, here_band, nb_band),
+                                                 (nb_lab, here_lab, nb_band, here_band)):
             m = (hi_lab >= 0) & (lo_lab >= 0) & (hi_band == lo_band + 1)
             if not m.any():
                 continue
-            pairs, counts = np.unique(np.stack([hi_lab[m], lo_lab[m]], 1), axis=0, return_counts=True)
-            for (h, l_), c in zip(pairs.tolist(), counts.tolist()):
+            codes, counts = np.unique(hi_lab[m] * key + lo_lab[m], return_counts=True)     # pairs, sorted
+            for code, c in zip(codes.tolist(), counts.tolist()):
+                h, l_ = divmod(code, key)
                 row = touch.setdefault(where[h], {})
                 row[where[l_]] = row.get(where[l_], 0) + c
     for n in nodes:

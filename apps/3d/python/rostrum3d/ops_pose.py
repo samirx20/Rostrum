@@ -33,9 +33,34 @@ def use_engine(engine, folder=None):
         shots = doc.get("shots") or []
         if not shots:
             raise ValueError("the document has no shot yet, so the engine can't build the scene (shot.add first)")
-        engine.ensure_scene(C.describe(doc, shots[0]["id"], folder))
+        engine.ensure_scene(_with_held_skins(C.describe(doc, shots[0]["id"], folder), getattr(engine, "_held", None)))
         return engine.clay_grid(id_, cells)
     _GRID = grid if engine is not None else None
+
+
+def _clays(items: list) -> dict:
+    out = {}
+    for n in items:
+        if n.get("type") == "clay":
+            out[n["id"]] = n
+        out.update(_clays(n.get("children", [])))
+    return out
+
+
+def _with_held_skins(scene: dict, held: dict | None) -> dict:
+    """The scene for a clay's grid, keeping the bones the engine already holds on a clay whose shape is unchanged.
+    A script being run has taken its clay's bones off to find them again; sent like that, the engine would put the
+    clay at rest and weigh every block again when the look's scene brings the same bones back (seconds on a figure).
+    The grid measures the shape at rest, so the bones it holds change nothing in it. A changed shape goes without."""
+    if not held:
+        return scene
+    before = _clays(held.get("items", []))
+    for id_, n in _clays(scene.get("items", [])).items():
+        old = before.get(id_)
+        if ("skin" not in n and old and "skin" in old and old.get("steps") == n.get("steps")
+                and old["props"].get("detail") == n["props"].get("detail")):
+            n["skin"] = old["skin"]
+    return scene
 
 
 def use_grid(fn):

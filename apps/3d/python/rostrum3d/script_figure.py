@@ -59,11 +59,22 @@ ground_top, rest_on_ground, settle = script_ground.ground_top, script_ground.res
 # --- joints
 def _scene(b) -> dict:
     """The open document with what the script made so far over it (top level, by id): what the engine builds."""
-    data = copy.deepcopy(b.doc.data) if b.doc is not None else {lst: [] for lst in LISTS}
-    for lst in LISTS:
+    doc = b.doc.data if b.doc is not None else {lst: [] for lst in LISTS}
+    data = {k: v if k in LISTS else _copy(v) for k, v in doc.items()}
+    for lst in LISTS:                                   # only the document's nodes the script doesn't replace are copied
         mine = {n["id"]: n for n in b.root.get(lst, [])}
-        data[lst] = [mine.pop(n["id"], n) for n in data.get(lst, [])] + list(mine.values())
+        data[lst] = [mine.pop(n["id"]) if n["id"] in mine else _copy(n) for n in data.get(lst, [])] \
+            + list(mine.values())
     return data
+
+
+def _copy(v):
+    """copy.deepcopy for the document's plain data (dicts, lists, text, numbers), ~5× faster; anything else deep-copied."""
+    if type(v) is dict:
+        return {k: _copy(x) for k, x in v.items()}
+    if type(v) is list:
+        return [_copy(x) for x in v]
+    return v if v is None or type(v) in (str, int, float, bool) else copy.deepcopy(v)
 
 
 def find_joints(b, node: dict):
