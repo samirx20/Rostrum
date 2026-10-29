@@ -163,13 +163,12 @@ humanize by hand.
 
 You can't hear the result, so check what you can measure and say plainly what you can't.
 
-1. **Before rendering:** `look_arrangement` shows every part by pitch over the numbered bars and sections, shaded by its written level (velocity × volume), with each part's level in dB and its lowest and highest note. Check that the parts
-   enter where you meant, that registers don't pile up, and that the peak looks like a peak.
+1. **Before rendering:** `look_arrangement` shows every part by pitch over the numbered bars and sections, shaded by its written level (velocity × volume), with each part's level in dB and its lowest and highest note. The parts' entries against the bars,
+   how registers stack and how the written levels run are all in the picture; `render_audition` then plays any stretch you want to hear (about a second).
 2. **Harmony:** `look_music` with `what: "harmony"` reports the chord in each bar and checks the written notes: notes
-   out of the instrument's range, voices crossing, close intervals too low, and notes outside the key. Fix every one
-   you didn't mean. It reads the written notes, so no render is needed.
-3. **After rendering:** `look_sound` with `what: "loudness"` should show the short-term curve rising into the peak; its
-   summary names the loudest moment and its time (the loudest 3 s and 0.4 s, and the highest sample): check the peak lands where you meant.
+   out of the instrument's range, voices crossing, close intervals too low, and notes outside the key. Each one is a fact about the written notes; change what you didn't mean. It reads the written notes, so no render is needed.
+3. **After rendering:** `look_sound` with `what: "loudness"` draws the short-term curve; its
+   summary names the loudest moment and its time (the loudest 3 s and 0.4 s, and the highest sample).
    `what: "levels"` shows whether a part is buried. `what: "low_end"` and `what: "clash"` show low parts or two parts
    in one range fighting each other.
 4. Print what a helper wrote (`print(voice(prog))`) to read the notes before you commit to them.

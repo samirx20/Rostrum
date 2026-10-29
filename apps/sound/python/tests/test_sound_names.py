@@ -85,7 +85,7 @@ def test_a_resumed_agent_session_gets_its_song_back(tmp_path, monkeypatch):
     assert agent_last.recall("rostrum-sound", KIND.ext)["item"] == "song"
 
 
-def test_the_fix_pass_asks_for_a_listen_names_the_time_and_counts_the_passes_left():
+def test_the_closing_line_names_the_quick_listen_and_the_time_left_never_a_fix():
     class Time:
         now = 0.0
         def __call__(self): return self.now
@@ -94,5 +94,5 @@ def test_the_fix_pass_asks_for_a_listen_names_the_time_and_counts_the_passes_lef
     clock.begin()
     t.now = 180
     said = session_clock.fix_pass(clock, 20.0)
-    assert "look_music" in said and "each weak moment" in said and "12 min 00 s of your 15 min" in said and "about 4 more passes" in said
+    assert "render_audition" in said and "fix" not in said.lower() and "12 min 00 s of your 15 min" in said and "about 4 more renders" in said
     assert "min" not in session_clock.fix_pass(session_clock.Clock(t))

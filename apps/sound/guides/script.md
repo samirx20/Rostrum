@@ -1,11 +1,9 @@
 # The Sound script API (run_script)
 
-**The whole piece is one script, under one name.** Write it, run it with `run_script` and `look: true` (it renders and listens), read the listening
-check in the reply (loudness, the weakest asked moments with their fixes, faults such as "leading silence", "tempo far from
-the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
+**The whole piece is one script, under one name.** Write it, run it with `run_script`, see it with `look_arrangement` (no render), hear the moment you care about with `render_audition` (about a second; `{"at": "#chorus", "around": 2}`, `look: true` for its picture), judge it yourself, edit the script and run it again under the same name; `render_mix` is for delivering. `edit_document` is for one-off
 touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`), and any open fault is listed in the reply as a note for you to read. `keep: {id: "why"}` only marks a note as left on purpose (any why, no brief quote needed); it is stored, never refused. `brief("...")` in the script stores the brief's own words on the song, which the notes use. To clear a note, fix the script, or move the moment itself (`moment(name, at=...)` or `expect`) when the brief allows another time.
+Checks are measurements given on request: `render_mix` with `notes: true` (in `run_script`: `look: {"notes": true}`) ends its reply with `Notes (n): [id] what was measured (when) | ...`: observations, never instructions and never a gate; the reply has no header and without `notes` no check runs. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`). `brief("...")` in the script stores the brief's own words on the song, which the notes read. There is no `keep`: a note you disagree with needs no answer.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
@@ -23,7 +21,7 @@ Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery 
 **A script's shape** (a technique; every name is below):
 
 ```python
-brief("<the brief you were given, word for word>")      # 0. a kept fault quotes it (keep)
+brief("<the brief you were given, word for word>")      # 0. the notes read it
 tempo(96); key("F major"); length(bar(17))                 # 1. the song's map: tempo (changes), meter, key, length
 marker("lift", at=bar(9)); section("verse", bar(1), bar(9))  #    sync points as markers, sections as named spans
 CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}              # 2. the music as data: bar -> chord, a dict you edit

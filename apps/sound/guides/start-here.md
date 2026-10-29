@@ -7,17 +7,17 @@ effects), sections, markers and a master. You build it from ONE Python script an
 
 1. **Write the whole piece as one script**, starting with the brief you were given, word for word: `brief("...")`.
    Then the song's map (tempo, key, length, sections, markers), every track's notes, the effects, the mix and the master
-   target.
-2. **Run it with `run_script` and `look: true`**, under one `name` for the song. It merges the script, renders the mix and
-   listens.
-3. **Read the faults.** The reply opens `NOT DONE:` (each fault is a note with its id, its time and a fix) or `DONE:`.
-   The notes are for you to read; nothing is blocked.
-4. **Fix the script, not the song**, and run it again **under the same name**. A removed track, note or marker disappears;
-   nothing is copied. A new name that makes the same tracks is refused (it would double every note).
-5. Repeat until the notes say what you want, then deliver with `render_mix` (`name`, `folder`, `format`). The file is
-   always written where you ask; the reply lists any open faults as notes. A note you leave on purpose can be marked
-   with `keep: {"fault_id": "why"}` (`"dull_top": "dark, muffled was asked"`): it only records your reason, it is never
-   refused. Else fix the script, or move the moment itself when the brief allows.
+   target. Run it with `run_script` under one `name` for the song.
+2. **See it: `look_arrangement`** (about 0.05 s, no render): who plays when, how loud and how high, the bars numbered.
+3. **Hear the moment you care about: `render_audition`** (about a second, no full render):
+   `{"from": {"bar": 9}, "to": {"bar": 11}}` or `{"at": "#chorus", "around": 2}`; `solo` / `mute` pick who is heard;
+   `look: true` adds the stretch's picture (wave, loudness, spectrum). The same stretch again comes back instantly.
+4. **Judge it yourself, then change the script** and run it again **under the same name**. A removed track, note or marker
+   disappears; nothing is copied. A new name that makes the same tracks is refused (it would double every note).
+5. Repeat 2–4 on the next moment. **`render_mix` only to deliver** (`name`, `folder`, `format`): the file is always
+   written where you ask, at the song's full length (`trim` is off unless you pass `trim: true`). Add `notes: true` (to
+   `run_script`: `look: {"notes": true}`) when you want measurements: the reply then ends `Notes (n): ...`, observations
+   (an id, what was measured, when) to read; nothing is required of you and nothing is blocked.
 
 ## Bars first
 
@@ -34,13 +34,13 @@ effects), sections, markers and a master. You build it from ONE Python script an
   writes plain notes you can edit.
 - **Keep a part moving:** `strings.shape("vol", 0.4, 1.0, over=(bar(1), "#climax"), curve="late")` plays it softer to
   louder (loud sample layers come in on the way up, held chords swell); `"bright"` opens a lowpass, `"art"` switches
-  articulation. A build that goes flat before its climax is a fault; a part that never changes in a build is a warning
+  articulation. A part that never changes in a build shows as a note when notes are asked
   (`inspect_guide 'writing-music'` › Keep it moving).
 - **The ending:** `ending("ring", at="#end")` lands every part together on the home chord and sets the length so it
   rings out (a length the script set before stays); `"button"` is a short hit, `"fade"` a written fade. The reply says where it lands, where the ring dies and
   the file's length: with an asked length, put `at` so the ring dies by it. A loop takes no ending (`inspect_guide 'script'` › Ending a song).
 - **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
-  rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).
+  rests before it, stops the band and strikes its layers; its checks come back as notes (`inspect_guide 'script'` › Moments that read).
 
 ## A tiny example (a technique, not a piece)
 
@@ -58,17 +58,17 @@ master(loudness=-16, truePeak=-1)
 Run it as `{"name": "song", "look": true, "source": "<the script>"}`. Every script name (track, note, chord, hit, voice,
 comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 
-## The five tools to start with
+## The tools to start with
 
-- `run_script`: build or rebuild the song from the script; `look: true` renders and listens in the same call.
-- `look_sound`: the mix as numbers: loudness and faults (default), each track's level, low end, clashes, spectrum, stereo.
+- `run_script`: build or rebuild the song from the script; `look: true` also renders it in the same call.
+- `render_audition`: hear any stretch in about a second (see the loop above).
+- `look_sound`: the mix as numbers: loudness and measured faults (default), each track's level, low end, clashes, spectrum, stereo.
 - `look_music`: the music as facts: where sounds start against `expect`, beats and swing, pitch, key and chords.
 - `inspect_guide`: these guides by `topic` (`{"topic": "script"}`); with no topic, the list.
-- `render_mix`: the delivered file and stems; it lands on the master's loudness target and says how much limiting that took.
+- `render_mix`: the delivered file and stems (full length); it lands on the master's loudness target and says how much limiting that took.
 
 Speech under music: `track("vo", role="dialogue")`, then `music.duck()` dips under every dialogue track for whole lines.
-Every other tool: `inspect_tools`. `look_arrangement` shows the written song as a picture without rendering;
-`edit_document` is for one-off touch-ups on a song no script owns.
+Every other tool: `inspect_tools`. `edit_document` is for one-off touch-ups on a song no script owns.
 
 ## Never
 
