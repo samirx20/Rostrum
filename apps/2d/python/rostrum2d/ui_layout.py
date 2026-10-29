@@ -9,6 +9,8 @@ the container they are made in, script_layout.py and guide lay-out-a-screen):
 """
 from __future__ import annotations
 
+import re
+
 from . import fields as F
 from rostrum_core.keys import keys_of
 
@@ -16,6 +18,11 @@ from .evaluate import value_at
 
 SHAPES = {"phone": (430, 900), "laptop": (1240, 800), "browser": (1280, 800)}
 FIT = {"phone": 0.82, "laptop": 0.74, "browser": 0.74}
+# Words that name a device, in an id or a kind: the kind they mean (None: a device device() does not draw). A device is
+# never swapped for another: device("laptop") draws a laptop, device("tablet") is refused, device("phone", kind="laptop")
+# is refused as a mismatch (canary 3E R8: device("laptop", ...) silently drew a phone).
+DEVICE_WORDS = {**{k: k for k in SHAPES}, "iphone": "phone", "smartphone": "phone", "macbook": "laptop",
+                **{k: None for k in ("tablet", "ipad", "watch", "smartwatch", "tv", "television", "desktop", "monitor", "imac")}}
 INK, MUTED, LINE, PAPER, ACCENT = "#111827", "#6b7280", "#e5e7eb", "#ffffff", "#4f46e5"     # starting colours
 BASE_W = 390.0              # the width the blocks' starting sizes are drawn for; they scale with the parent's width
 
@@ -62,6 +69,27 @@ def palette(build) -> dict:
     c = ground(build).lstrip("#")[:6].ljust(6, "0")
     r, g, b = (int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
     return LIGHT if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 else DARK
+
+
+def device_kind(id_, kind=None) -> str:
+    """The kind device() draws: `kind` when given, else the device the id names ("laptop", "macbook_hero"), else a phone.
+    A kind it can't draw, or an id naming another device than `kind`, is refused with what it can draw."""
+    kind_in = kind
+    words = [w for w in re.split(r"[^a-z]+", str(id_).lower()) if w in DEVICE_WORDS]
+    named = DEVICE_WORDS[words[0]] if words else None
+    can = ", ".join(SHAPES)
+    if kind is None:
+        if words and named is None:
+            raise ValueError(f'device "{id_}": a {words[0]} is not a device device() draws (kinds: {can}); pick the nearest '
+                             f'with kind= (device("{id_}", kind="laptop")) or build it from shapes')
+        return named or "phone"
+    kind = DEVICE_WORDS.get(str(kind).lower())          # an everyday name ("macbook") is the kind it names
+    if kind is None:
+        raise ValueError(f'device {id_}: kind "{kind_in}" is not one of {can}')
+    if named and named != kind:
+        raise ValueError(f'device "{id_}": the id names a {named} but kind="{kind}"; the first argument is the device id '
+                         f'(device("{named}") draws a {named}): rename it or change kind=')
+    return kind
 
 
 def device_box(kind, build, x=None, y=None, w=None, h=None, fit=None, anchor="center", margin=None):

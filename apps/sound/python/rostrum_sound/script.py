@@ -1,5 +1,6 @@
 """The Sound script layer for `run_script`: Python source -> the document tree it describes.
 
+    brief("A dark, muffled 4-bar piano loop at 90 bpm")                # the brief as given: a kept fault quotes it
     tempo(96); length(bar(9)); beats_per_bar(4)                        # 6/8: beats_per_bar(6); beat_unit(8)
     marker("drop", at=bar(5)); tempo_change(bar(5), 132); key("D minor"); section("verse", bar(1), bar(5))
     s = track("strings", sfz=r"C:\\...\\Violins.sfz", volume=0.8)      # instrument inferred from sfz= / builtIn= / kit=
@@ -39,7 +40,7 @@ from . import script_build, script_moment, script_ops, script_scope, script_seco
 from .script_time import Beat, Beats, plain, until
 
 _asked = threading.local()
-API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)", "bus(id, **fields)",
+API = ["brief(text)", "tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)", "bus(id, **fields)",
        "marker(name, at, shared=False)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)",
        *script_sync.API, *script_moment.API, *script_build.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
@@ -52,14 +53,22 @@ def scope(song: Song) -> dict:
             raise ValueError("bars count from 1")
         return Beat(meter.bar_start(song.root, n))
 
+    def ring_out(on=True, soft_end=True):
+        """Off: the song stops hard at its length, no ring-out fade (listen/clean_end.py). Needs the length first."""
+        if song.root.get("length") is None:
+            raise ValueError("ring_out() needs the song's length first: write length(...) before ring_out(False)")
+        song.set(ringOut=bool(on), endFade=bool(soft_end))
+
     def vel_curve(points, start, end):
         """f(time) -> the velocity a phrase curve gives at that time (for accents on top of a phrase)."""
         ph = EX.phrase(start, end, points, "vel_curve")
 
         return lambda t: ph.velocity(t, {**song.root, "markers": song.marks()}, "vel_curve", hold=True)
     return {
+        "brief": lambda words: song.set(brief=words),       # the brief's own words: a kept fault quotes them (brief.py)
         "tempo": lambda bpm: song.set(tempo=bpm),
         "length": lambda t: song.set(length=t),
+        "ring_out": ring_out,
         "beats_per_bar": lambda n: song.set(beatsPerBar=n),
         "beat_unit": lambda n: song.set(beatUnit=n),
         "sample_rate": lambda hz: song.set(sampleRate=hz),

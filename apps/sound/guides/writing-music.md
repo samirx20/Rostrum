@@ -74,6 +74,8 @@ The plan becomes the first lines of the script, and the whole piece one script u
 - **Swing and timing** come from the performance layer (below). Keep written notes on the grid unless you want a
   specific push or drag that is part of the part itself.
 - **Space is groove.** A rest on the "and" before a downbeat makes the downbeat land harder.
+- **A downbeat on a marker:** `downbeat(bar(3), at="#logo lands")` puts bar 3 on the marker (the bars before it become
+  the run-up), so the groove's own downbeat lands there: put the accent on it (`d.hit("kick", at=bar(3))`, a crash).
 
 ## Arranging by register
 

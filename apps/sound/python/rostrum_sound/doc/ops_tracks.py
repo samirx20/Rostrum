@@ -10,7 +10,7 @@ from . import fields as FD
 from . import sounds
 from .registry import REGISTRY, set_fields, taken
 
-REGISTRY.operation("doc.set", "Change the tempo, length, beats per bar or sample rate of the song. Its target is the id [\"root\"] (the target column names item types, not ids).", target="doc",
+REGISTRY.operation("doc.set", "Change the tempo, length, beats per bar, sample rate or brief of the song. Its target is the id [\"root\"] (the target column names item types, not ids).", target="doc",
                    params=FD.params("doc"), label="Edit song", fields=True)(set_fields)
 
 

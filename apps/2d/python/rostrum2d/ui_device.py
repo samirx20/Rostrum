@@ -10,19 +10,19 @@ from .script_layout import in_layout
 def maker(build, box, words):
     L = build.layer
 
-    def device(id, kind="phone", x=None, y=None, w=None, h=None, fit=None, anchor="center", margin=None,
+    def device(id, kind=None, x=None, y=None, w=None, h=None, fit=None, anchor="center", margin=None,
                body="#0b0d12", screen=None, radius=None, url="app.example.com", overflow="visible", **layout):
-        """A device drawn from plain shapes, centred on (x, y). Left out, its size fills `fit` of the parent's height
+        """A device drawn from plain shapes, centred on (x, y). `kind` phone, laptop or browser; left out, the device the
+        id names (device("laptop") draws a laptop), else a phone; a device it can't draw or a mismatch is refused. Left out, its size fills `fit` of the parent's height
         (phone 0.82) keeping its shape, placed by `anchor` (center, left, right) inside `margin`. Returns its screen:
         a column filling the screen (no padding or gap, its layers stretched across it; `layout` words such as
         padding=, gap=, justify= change that); make the screen's layers inside `with` it. `screen`: the screen's
         colour (left out, none: the device's body shows through). overflow="hidden" hides what runs past the screen's
         rounded edge (left visible, a layer too big for the screen shows, so it is seen and fixed)."""
-        if kind not in U.SHAPES:
-            raise ValueError(f'device {id}: kind "{kind}" is not one of {", ".join(U.SHAPES)}')
+        kind = U.device_kind(id, kind)
         x, y, w, h = U.device_box(kind, build, x, y, w, h, fit, anchor, margin)
         place = {} if in_layout(build) else {"x": x, "y": y}       # in a container, the container places it
-        outer = L("group", id, w=w, h=h, **place)
+        outer = L("group", id, w=w, h=h, name=kind.capitalize(), **place)    # the kind drawn, named in inspect / look
         with outer:
             if kind == "phone":
                 bez = round(w * 0.033)

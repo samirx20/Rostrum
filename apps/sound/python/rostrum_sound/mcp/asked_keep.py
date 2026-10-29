@@ -8,7 +8,8 @@ brief asked for") and always shows what a passing version measures (listen/passi
 only when (1) the previous render named it too, so one fix was tried, and (2) the moment measures within the stated
 distance of passing. Further off, the moment is fixed, or moved on purpose (moment(name, at=...) / `expect` in the
 script: the check then reads the new time). A refused keep entry is set aside and the fault's fix says why; the shared
-gate (rostrum_core.mcp.faults.deliver) then refuses as usual. Every other fault keeps the shared rule: any reason."""
+gate (rostrum_core.mcp.faults.deliver) then refuses as usual. Every keep, this one too, must also quote the brief that
+asks for it (brief_keep.py, run after this screen)."""
 from __future__ import annotations
 
 from ..listen import passing
