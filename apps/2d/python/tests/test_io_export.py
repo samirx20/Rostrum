@@ -40,6 +40,18 @@ def test_wrong_frame_count_fails(tmp_path):
         readback.check("webm", tmp_path / "a.webm", 6, W, H, True)
 
 
+def test_mp4_counted_without_decoding_still_fails_loudly(tmp_path):
+    # An MP4 is read back by its packets, not decoded (readback._probe): a short or wrong-sized file must still fail.
+    out = tmp_path / "a.mp4"
+    subprocess.run([settings.ffmpeg(), "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{W}x{H}", "-r", "10",
+                    "-i", "-", "-c:v", "mpeg4", str(out)], input=_frames(4, False), check=True, capture_output=True)
+    assert readback.check("mp4", out, 4, W, H, False)["frames"] == 4
+    with pytest.raises(readback.ExportError, match="expected 6 frames"):
+        readback.check("mp4", out, 6, W, H, False)
+    with pytest.raises(readback.ExportError, match="expected 64x16"):
+        readback.check("mp4", out, 4, 64, H, False)
+
+
 def test_alpha_is_the_files_channel_not_its_pixels(tmp_path):
     # S27 H2: a solid background is opaque everywhere; with transparency kept (the default) that file is right.
     for fmt in ("webm", "gif"):

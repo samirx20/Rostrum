@@ -8,6 +8,7 @@ premultiplied, the beauty as part `rgba`.
 """
 from __future__ import annotations
 
+import functools
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -88,9 +89,11 @@ def _mp4(out, w, h, fps, depth, first, rate):
     return {"program": exe, "args": ["encode-mp4", "--tagged", out, str(w), str(h), str(fps), str(rate.kbps), *q], "repeat": True}
 
 
+@functools.cache
 def _can_write_mp4(exe: str):
     """The engine's own check, before any frame is rendered: on a Windows without Media Foundation (N editions) its
-    plain reason is raised as it is."""
+    plain reason is raised as it is. Once per engine per process (~100 ms each): a pass stays a pass, a failure is
+    not kept (an exception is never cached) and is asked again next export."""
     r = subprocess.run([exe, "encode-mp4", "--check"], capture_output=True, text=True, timeout=60,
                        creationflags=settings.NO_WINDOW)
     if r.returncode:
