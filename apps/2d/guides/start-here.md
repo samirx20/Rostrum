@@ -93,6 +93,7 @@ that the layout, an anchor or a marker can give you.
 - `type-and-kinetic-text`: fonts, per-letter animation (typing on: key opacity 0 → 1 with `letterDelay`), scrambles.
 - `easing-and-overlap`: what each ease does, checking overlap.
 - `frame-parallax-motion-blur`: moving and cutting the frame, depth, motion blur.
+- `transitions-and-carry-overs`: `transition()` (cut, fade, push, slide, wipe, iris, zoom, blur) and `carry()` from one section to the next.
 - `shape-and-path-animation`: the pen, combining shapes, drawing a stroke on.
 - `drawing-and-frame-by-frame`, `painted-backgrounds`: brush strokes, one picture per frame, big painted worlds.
 - `character-rigging-and-lip-sync`: limbs, poses, walks, mouths that follow a voice.
