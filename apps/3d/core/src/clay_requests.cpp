@@ -99,8 +99,9 @@ struct Core::StrokeView {
   }
 };
 
-bool Core::sculpt_ahead(const JsObject& o) {
+bool Core::sculpt_ahead(const JsObject& o, bool duringDraw) {
   std::lock_guard<std::mutex> l(ahead_m_);
+  if (duringDraw && !drawing_dab_) return false;  // the render thread is (or may soon be) in the clay store
   const std::shared_ptr<const StrokeView> sv = stroke_view_;
   if (!sv || !clay_ || !clay_->sculpting() || ahead_.valid() || ahead_done_ || ahead_error_) return false;
   auto ph = o.find("phase");
@@ -243,7 +244,14 @@ JsObject Core::sculpt(const JsObject& o) {
   if (a.has("view")) {
     const JsValue& v = a.need("view");
     if (!v.IsObject()) throw Error("sculpt.view: needs the view request's fields (an object)");
-    out["view"] = JsValue(view(v.GetJsObject()));
+    in_sculpt_view_ = true;  // its Hydra draw lets the next dab's clay work start (view(); the dab overlap)
+    try {
+      out["view"] = JsValue(view(v.GetJsObject()));
+    } catch (...) {
+      in_sculpt_view_ = false;
+      throw;
+    }
+    in_sculpt_view_ = false;
   }
   return out;
 }

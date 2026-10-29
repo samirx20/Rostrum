@@ -57,8 +57,10 @@ class Core {
   // are applied and their blocks meshed on a worker while the request travels to the render thread, which then only
   // writes the blocks to USD and draws. The worker never touches the stage (the camera and the clay's place come from
   // the stroke's begin, cached in stroke_view_) and nothing else calls the clay store until the request is answered.
-  // True when it started. Thread rules: sculpt_ahead on any one thread, never while the render thread answers.
-  bool sculpt_ahead(const PXR_NS::JsObject& request);
+  // True when it started. Thread rules: sculpt_ahead on any one thread, never while the render thread answers, except
+  // with `duringDraw` (the dab overlap): then it starts only while the render thread is inside a dab's own picture
+  // (Hydra drawing the blocks the dab before wrote; the clay store untouched until the next request joins it).
+  bool sculpt_ahead(const PXR_NS::JsObject& request, bool duringDraw = false);
   // the render thread, before answering anything else: waits for a started dab (its result kept for its request)
   void join_ahead();
 
@@ -106,6 +108,10 @@ class Core {
   std::optional<clay::SculptReply> ahead_done_;  // its result, waiting for its request
   std::exception_ptr ahead_error_;
   std::string ahead_done_key_;
+  // the dab overlap: sculpt() is drawing its picture (in_sculpt_view_, render thread only) and Hydra is drawing it now
+  // (drawing_dab_, under ahead_m_: while sculpt_ahead holds the lock the render thread can't leave the draw)
+  bool in_sculpt_view_ = false;
+  bool drawing_dab_ = false;
 };
 
 }  // namespace r3d

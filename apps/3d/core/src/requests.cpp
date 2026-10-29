@@ -338,8 +338,23 @@ JsObject Core::view(const JsObject& o) {
   post.projection = frustum.ComputeProjectionMatrix();
   const auto t0 = Clock::now();
   auto& hy = hydra();
+  // a dab's own picture (sculpt): while Hydra draws the blocks it wrote, the next dab's clay work may start on a
+  // worker (sculpt_ahead duringDraw; the dab overlap). Hydra reads the stage only, never the clay store.
+  struct DabDraw {
+    Core& c;
+    bool on;
+    void set(bool v) {
+      std::lock_guard<std::mutex> l(c.ahead_m_);
+      c.drawing_dab_ = v;
+    }
+    DabDraw(Core& core, bool o) : c(core), on(o) { if (on) set(true); }
+    ~DabDraw() { if (on) set(false); }
+  };
+  std::optional<DabDraw> dabDraw;
+  dabDraw.emplace(*this, in_sculpt_view_ && !final_look);
   const ViewDrawn pic = final_look ? hy.view_final(vc.camera, frustum, f, w, h, s, mem_)
                                    : hy.view(renderer, frustum, f, w, h, look, mem_);
+  dabDraw.reset();
   post.color = pic.color;
   post.depth = pic.depth;
   post.mask = pic.mask;

@@ -4,6 +4,10 @@ pointer move is a dab (`sculpt` dab), shown live; on empty space the same drag t
 hunting for the middle button), and a press and release without moving there is a click (it selects what is there).
 One request at a time on the viewport's engine thread: while the engine works, the new pointer positions wait and go
 together in the next request (none are dropped: the engine spaces the dabs along them), so it never falls behind.
+The window's own view (view_item.py) takes two at a time, the dab overlap: the next dab is posted before the last one is
+answered (and from the press on, before the begin's answer), so its clay work runs while the window draws the picture
+before (viewport_item.cpp) and the 5-50 ms hand-back of a reply to this thread is off the way to the screen. A begin
+that missed the clay is cancelled, the dabs sent early with it. ROSTRUM3D_DAB_OVERLAP=0: one at a time (to measure).
 The release ends the stroke (`sculpt` end writes the dabs file) and makes one `clay.stroke(dabs=<ref>)`: one undo step.
 The whole drag uses the scene and camera of its press. Each answer's times are kept in `timings` (tools/clay_walk.py).
 Ctrl held at the press = the opposite (clay_ring.opposite: Add <-> Carve swap the brush; Flatten, Crease and Mask send
@@ -13,6 +17,7 @@ mouse's points have two. Falloff, Spacing and Front faces only come from the cla
 """
 from __future__ import annotations
 
+import os
 import time
 
 from PySide6.QtCore import Slot
@@ -23,6 +28,7 @@ from . import dab_trace
 WORDS = {"add": "Add", "carve": "Carve", "smooth": "Smooth", "pull": "Pull", "flatten": "Flatten", "crease": "Crease",
          "mask": "Mask"}
 UNDO = {"flatten": "Puff out", "crease": "Ridge", "mask": "Unmask"}     # a stroke with `invert`, in the History
+OVERLAP = os.environ.get("ROSTRUM3D_DAB_OVERLAP", "1") != "0"           # the dab overlap (module doc)
 
 
 def _sculpt(eng, req):
@@ -32,7 +38,7 @@ def _sculpt(eng, req):
 
 class ClayStroke:
     def _stroke_reset(self):
-        self._phase, self._busy, self._up, self._ending = "", False, True, False
+        self._phase, self._inflight, self._early, self._up, self._ending = "", 0, 0, True, False
         self._pending, self._moved, self.timings = [], False, []
         self._scene = self._cam = self._stroke = None
 
@@ -44,7 +50,7 @@ class ClayStroke:
         self._drag += 1
         self._dpr, self._start, self._last, self._moved = dpr, (x, y), (x, y), False
         self._t_first = dab_trace.now()                     # the press is the begin request's oldest move (dab_trace.py)
-        self._phase, self._busy, self._up, self._pending, self.timings = "wait", False, False, [], []
+        self._phase, self._inflight, self._early, self._up, self._pending, self.timings = "wait", 0, 0, False, [], []
         self._scene, self._cam = self.v.sent()             # one scene for the whole drag: the engine loads it once
         it = self._item()
         brush, invert = R.opposite(it.get("brush", "add"), ctrl, shift)
@@ -67,7 +73,10 @@ class ClayStroke:
         if not self._pending:
             self._t_first = dab_trace.now()                 # the oldest move a request carries (dab_trace.py)
         self._pending.append(self._px(x, y, pressure))
-        if self._phase == "sculpt" and not self._busy:
+        if self._phase == "sculpt" and self._inflight < self._room():
+            self._send("dab", self._take())
+        elif self._phase == "wait" and self._room() > 1 and self._inflight < self._room():
+            self._early += 1                                # before the begin's answer (the dab overlap)
             self._send("dab", self._take())
 
     @Slot()
@@ -77,7 +86,7 @@ class ClayStroke:
         self._up = True
         if self._phase == "orbit":
             return self._orbit_done()
-        if self._phase == "sculpt" and not self._busy:
+        if self._phase == "sculpt" and not self._inflight:
             self._end()
 
     @Slot()
@@ -96,6 +105,10 @@ class ClayStroke:
         pt, p = [round(x * self._dpr * self.v._scale, 1), round(y * self._dpr * self.v._scale, 1)], R.pressure(pressure)
         return pt if p is None else [*pt, p]
 
+    def _room(self):
+        """Requests in flight at once: two to the window's own view with the dab overlap, else one."""
+        return 2 if OVERLAP and self.v.link is not None else 1
+
     def _take(self):
         pts, self._pending = self._pending, []
         return pts
@@ -109,7 +122,8 @@ class ClayStroke:
                                  "frontOnly": self._stroke["frontOnly"]}
         if phase == "end":
             req["folder"] = str(self.b.doc.folder or "")
-        scene, self._busy = self._scene, answer
+        scene = self._scene
+        self._inflight += 1 if answer else 0
         # a dab and its picture in one request (CL2): the picture drawn right after the dab, never queued behind the
         # next pointer event; the Final look (Cycles) keeps its own progressive pictures
         view = self.v._request() if phase in ("begin", "dab") and not self.v.final.on else None
@@ -186,7 +200,9 @@ class ClayStroke:
             return self._ended(r)
         if drag != self._drag:
             return
-        self._busy = False
+        self._inflight = max(0, self._inflight - 1)
+        if self._phase not in ("wait", "sculpt"):          # a dab sent early, after its begin missed or failed
+            return
         if isinstance(r, str):
             self._phase, self._up = "", True
             self.strokeBrushChanged.emit()
@@ -196,6 +212,8 @@ class ClayStroke:
                              "askMs": round(r.get("askMs", 0), 2)})
         if phase == "begin" and not r.get("hit"):           # not on the clay: this drag turns the view
             self._send("cancel", [], answer=False)
+            if self._early:
+                self.v.redraw()                             # the clay as it was, without the dabs sent early
             self._phase, self._pending = "orbit", []
             self.strokeBrushChanged.emit()
             if self._moved:
@@ -205,8 +223,10 @@ class ClayStroke:
         if not r.get("pictured"):
             self.v.redraw()                                 # the changed blocks, drawn (when no picture came along)
         if self._pending:
-            return self._send("dab", self._take())
-        if self._up:
+            if self._inflight < self._room():
+                self._send("dab", self._take())
+            return
+        if self._up and not self._inflight:
             self._end()
 
     def _orbit_done(self):
@@ -219,7 +239,7 @@ class ClayStroke:
         self._send("end", [])
 
     def _ended(self, r):
-        self._ending, self._busy = False, False
+        self._ending, self._inflight = False, 0
         self.strokeBrushChanged.emit()
         if isinstance(r, str):
             self.v.redraw()
