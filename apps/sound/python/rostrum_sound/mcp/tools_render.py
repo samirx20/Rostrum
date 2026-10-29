@@ -246,7 +246,7 @@ def register(tools: Tools):
                 except RostrumError:                         # the ears cannot read it: weakest_words says so
                     raw = None
                 heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw)
-                said += squash.line(limiter, r.get("tracks"))
+                said += squash.line(limiter, r.get("tracks"), doc.data)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
                 if raw is not None:
                     found = fault_shape.all_faults(doc, raw, r["file"], r.get("lufs"), goal, r.get("ducks"), r.get("stems"),

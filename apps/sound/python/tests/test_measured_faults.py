@@ -133,3 +133,18 @@ def test_a_solo_the_limiter_squashes_is_a_fault_and_a_gentle_master_is_not(tmp_p
     keep = asked_keep.screen(shaped, {"squashed_mix": "the brief says \"slammed\""}, {"squashed_mix"}, near)
     assert keep == {} and "keep refused" in shaped[0]["fix"]                 # 9.6 dB: too far from passing to keep
     assert brief_keep.why_not("squashed_mix", "\"Export a -14 LUFS stereo mix\"", song["data"])  # the brief never asks for it
+
+
+def test_three_tracks_of_one_piano_are_one_exposed_piano(tmp_path):
+    """Canary re-run: keys, lead and bell all on the piano (36 % each) passed 5.5 dB of limiting as a dense mix."""
+    from rostrum_sound.listen import squash
+    wav = _tones(tmp_path / "pianos.wav", [(220, 1.0)])
+    tracks = [{"id": k, "lufs": -21.6, "peak": 0.6, "rms": 0.06} for k in ("keys", "lead", "bell")]
+    curve = np.zeros(60)
+    curve[5:25] = 5.5
+    lim = {"max_db": 5.5, "worst": [{"time_s": 0.5, "reduced_db": 5.5, "drivers": []}], "_curve": curve, "curve_step_s": 0.1}
+    data = {"brief": "A calm piano piece at -14 LUFS.", "master": [{"normalize": True, "loudness": -14}],
+            "tracks": [{"id": k, "instrument": "builtIn", "builtIn": "piano"} for k in ("keys", "lead", "bell")]}
+    f = squash.fault(wav, lim, {"tracks": tracks, "data": data})
+    assert f and f[0]["measured"]["exposed"] and f[0]["measured"]["lead"] == "piano (keys, lead, bell)"
+    assert squash.fault(wav, lim, {"tracks": tracks, "data": {**data, "tracks": []}}) == []   # three different sounds: dense

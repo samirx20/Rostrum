@@ -55,37 +55,63 @@ def over_spans(curve, step=0.1) -> list[dict]:
     return sorted(sorted(rows, key=lambda r: r["from_s"] - r["to_s"])[:TOP_SPANS], key=lambda r: r["from_s"])
 
 
-def lead(lim: dict, tracks) -> dict | None:
-    """The part that drives the limiter and its share (%) of the signal there: from the stems at the worst moments over
-    the line when the render has them, else from the tracks' own meters (the highest peak, its share of the energy)."""
+def _sounds(data) -> dict:
+    """track id -> the sound it plays ("builtIn:piano"), from the document: three piano tracks are one exposed piano
+    (canary re-run: keys, lead and bell all on the piano, 36 % each, passed a 5.5 dB squash as a dense mix)."""
+    out = {}
+    for t in (data or {}).get("tracks") or []:
+        form = t.get("instrument")
+        if t.get("id") and isinstance(form, str) and isinstance(t.get(form), str):
+            out[t["id"]] = f"{form}:{t[form]}"
+    return out
+
+
+def lead(lim: dict, tracks, data=None) -> dict | None:
+    """The sound that drives the limiter and its share (%) of the signal there, the tracks playing the same sound
+    counted together: from the stems at the worst moments over the line when the render has them, else from the tracks'
+    own meters (the highest peak's sound, its share of the energy). `data`: the document's data (which sound each
+    track plays); without it each track is its own sound."""
+    sound = _sounds(data)
+    key = lambda tid: sound.get(tid, tid)   # noqa: E731
     rows = [w for w in lim.get("worst") or [] if (w.get("reduced_db") or 0) > LINE_DB and w.get("drivers")]
     if rows:
         led: dict = {}
         for w in rows:
             for d in w["drivers"]:
-                led[d["track"]] = led.get(d["track"], 0.0) + (d.get("share_pct") or 0.0)
+                led[key(d["track"])] = led.get(key(d["track"]), 0.0) + (d.get("share_pct") or 0.0)
         top = max(led, key=led.get)
-        return {"track": top, "share_pct": num(led[top] / len(rows), 0), "from": "stems"}
+        ids = sorted({d["track"] for w in rows for d in w["drivers"] if key(d["track"]) == top})
+        return {"track": _named(top, ids), "share_pct": num(led[top] / len(rows), 0), "from": "stems"}
     live = [t for t in tracks or [] if isinstance(t.get("lufs"), (int, float)) and math.isfinite(t["lufs"]) and t["lufs"] > -70]
     if not live:
         return None
-    energy = {t["id"]: 10 ** (t["lufs"] / 10) for t in live}
+    energy: dict = {}
+    for t in live:
+        energy[key(t["id"])] = energy.get(key(t["id"]), 0.0) + 10 ** (t["lufs"] / 10)
     top = max(live, key=lambda t: t.get("peak") or 0)
+    ids = [t["id"] for t in live if key(t["id"]) == key(top["id"])]
     crest = 20 * math.log10(max(top.get("peak") or 0, 1e-9) / max(top.get("rms") or 0, 1e-9)) if top.get("rms") else None
-    return {"track": top["id"], "share_pct": num(100 * energy[top["id"]] / sum(energy.values()), 0), "from": "meters",
-            "crest_db": num(crest, 1) if crest is not None else None}
+    return {"track": _named(key(top["id"]), ids), "share_pct": num(100 * energy[key(top["id"])] / sum(energy.values()), 0),
+            "from": "meters", "crest_db": num(crest, 1) if crest is not None else None}
+
+
+def _named(sound: str, ids: list) -> str:
+    """"piano (keys, lead, bell)" for a sound several tracks play; the track's own name for one."""
+    if len(ids) == 1:
+        return ids[0]
+    return f"{sound.split(':', 1)[-1]} ({', '.join(ids)})"
 
 
 def _spans_said(spans) -> str:
     return ", ".join(f"{s['from_s']:g}–{s['to_s']:g} s" for s in spans)
 
 
-def line(lim: dict | None, tracks) -> str:
+def line(lim: dict | None, tracks, data=None) -> str:
     """One sentence for the reply when the limiter pulls over the line ("" otherwise)."""
     if not lim or (lim.get("max_db") or 0) <= LINE_DB:
         return ""
     spans = over_spans(lim.get("_curve"), lim.get("curve_step_s") or 0.1)
-    who = lead(lim, tracks)
+    who = lead(lim, tracks, data)
     by = f", driven by {who['track']} ({who['share_pct']:g} % of the signal there)" if who else ""
     where = f" over {LINE_DB:g} dB at {_spans_said(spans)}" if spans else ""
     return f" Limiter: up to {lim['max_db']:.1f} dB of gain reduction{where}{by}."
@@ -124,7 +150,7 @@ def fault(wav, lim: dict | None, song: dict | None) -> list[dict]:
     if not lim or (lim.get("max_db") or 0) <= LINE_DB:
         return []
     song = song or {}
-    who = lead(lim, song.get("tracks"))
+    who = lead(lim, song.get("tracks"), song.get("data"))
     exposed = bool(who and (who["share_pct"] or 0) >= EXPOSED_PCT)
     if not exposed and lim["max_db"] <= DENSE_DB:
         return []
