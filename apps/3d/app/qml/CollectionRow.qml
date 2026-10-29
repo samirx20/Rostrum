@@ -23,8 +23,10 @@ Item {
         color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
     }
     Flickable {
+        id: strip
         x: row.labelWidth; width: row.width - x - Theme.gap; height: parent.height
         contentWidth: chips.implicitWidth; clip: true; interactive: contentWidth > width
+        WheelScroll { flick: strip }   // the first click after a wheel scroll lands (the kit's WheelScroll.qml)
         Row {
             id: chips
             anchors.verticalCenter: parent.verticalCenter
