@@ -1,6 +1,6 @@
 # PR3 walk (copies along a path, field shapes) by real input in the real 3D window (behind the person's work, never focused):
-# a scene with a 3D "HELLO" and a small dot. By real clicks and keys (bridge calls only read state, except where a line says
-# KNOWN OPEN):
+# a scene with a 3D "HELLO" and a small dot. By real clicks and keys only (bridge calls only read state; an item is chosen
+# by a click on its scene-list row):
 #   1. right-click the dot › Make copies › Line; Layout › Path in the settings rows; Path › the text; Count typed ... "1-*"
 #   2. right-click a copy › Change near › Hide; the effector's Shape › Plane; the handle dragged down by the gizmo: the
 #      copies under the wall go, those above it stay ............................................................ "2-*"
@@ -96,6 +96,16 @@ def pick(w, field, label):
     W.check(False, f"{field}: an option '{label}' in the list")
 
 
+def select_row(w, item_id):
+    """A real click on the item's scene-list row (SceneName.qml's `sceneRow:<id>`): the item is selected."""
+    row = W.find(w.win.contentItem(), f"sceneRow:{item_id}")
+    W.check(row is not None and row.isVisible(), f"the scene list shows {item_id}'s row")
+    if row is not None:
+        W.click(w.win, row)
+        W.pump(0.5)
+    W.check(w.b.selected == item_id, f"its row clicked: {item_id} is selected ({w.b.selected})")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     project = Path(tempfile.mkdtemp(prefix="rostrum-pr3walk-"))
@@ -143,13 +153,11 @@ def main():
         eff, handle = CW.of_type(doc, "effector")[0], b.selected
         W.check(doc.item(eff)["kind"] == "hide", f"the change hides ({doc.item(eff)['kind']})")
         snap(w, "2a-hide-sphere")
-        b.select(eff)            # KNOWN OPEN: the effector selected through the bridge (its scene-list row is a click away)
-        W.pump(0.5)
+        select_row(w, eff)
         pick(w, "field", "Plane")
         W.check(doc.item(eff)["field"] == "plane", f"Shape is Plane ({doc.item(eff)['field']})")
         snap(w, "2b-plane-at-handle")
-        b.select(handle)
-        W.pump(0.5)
+        select_row(w, handle)
         y0 = doc.item(handle)["y"]
         _gizmo_drag(b, win, "move1", 0, 120, False)
         W.pump(1.0)
@@ -160,8 +168,7 @@ def main():
         snap(w, "2d-plane-swept-lower")
 
         # 3. noise with a scale
-        b.select(eff)
-        W.pump(0.5)
+        select_row(w, eff)
         pick(w, "kind", "Scale")
         pick(w, "field", "Noise")
         w.type_into("radius", 0.12)

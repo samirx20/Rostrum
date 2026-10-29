@@ -114,9 +114,16 @@ class Walk:
             W.pump(0.4)
 
     def menu_open(self):
-        """Its rows are drawn only while it is open (a popup's own `visible` reads false from outside the window's tree)."""
-        first = self.entries()[:1]
-        return bool(first) and W.find(self.win.contentItem(), f"menu:{first[0]}") is not None
+        """Its rows are drawn only while it is open (a popup's own `visible` reads false from outside the window's tree).
+        Read from the drawn rows alone: asking the hub for its list while the right-click's pick is still out would make
+        the window thread wait for the engine worker, which waits for the window thread to answer the pick."""
+        stack = [self.win.contentItem()]
+        while stack:
+            it = stack.pop()
+            if it.objectName().startswith("menu:") and it.isVisible():
+                return True
+            stack += it.childItems()
+        return False
 
     def entries(self):
         """What the open menu lists (values, side-menu rows too): the hub's own list the menu was filled from (the popup's
