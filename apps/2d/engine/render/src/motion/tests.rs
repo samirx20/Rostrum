@@ -168,3 +168,22 @@ fn blur_steps_follow_the_move_on_screen() {
     assert_eq!(steps(60.0), 30);
     assert_eq!(steps(10_000.0), super::steps::MOST);
 }
+
+/// motion/hold.rs: in a motion-blurred frame, a layer that drifts under a quarter pixel while the shutter is open is
+/// staged as at the frame's time in every sub-frame (painted once), and one that moves further is staged per sub-frame.
+#[test]
+fn a_layer_drifting_under_a_quarter_pixel_is_held_and_a_moving_one_is_not() {
+    let mut slow = item("slow", "shape", json!({ "x": 50.0, "y": 50.0, "w": 40.0, "h": 40.0 }));
+    slow["anim"] = json!({ "x": [{ "t": 0.0, "v": 50.0, "ease": "linear" }, { "t": 1.0, "v": 60.0, "ease": "linear" }] }); // 10 px/s: 1/6 px while a 180° shutter is open at 30 fps
+    let mut fast = item("fast", "shape", json!({ "x": 50.0, "y": 150.0, "w": 40.0, "h": 40.0 }));
+    fast["anim"] = json!({ "x": [{ "t": 0.0, "v": 50.0, "ease": "linear" }, { "t": 1.0, "v": 250.0, "ease": "linear" }] });
+    let mut comp = item("c", "comp", json!({ "shutter": 180.0, "shutterSamples": 8.0 }));
+    comp["layers"] = json!([slow, fast]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let staged = crate::scene_serve::stage_at(&scene, 0.5, &json!({})).unwrap();
+    let samples = staged.sample_pieces();
+    assert!(samples.len() >= 8);
+    let (s, f) = (1, 2); // background, slow, fast
+    assert!(samples.iter().all(|p| p[s] == samples[0][s]), "the slow layer is held");
+    assert!(samples.windows(2).any(|w| w[0][f] != w[1][f]), "the fast layer moves");
+}

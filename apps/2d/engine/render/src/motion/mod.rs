@@ -3,6 +3,7 @@
 //! the sub-frame times scene_serve.rs `stage_at` writes a stage for, as many as the motion on screen needs (steps.rs); trails (trail.rs) and smears (smear.rs) are a
 //! post-pass on the evaluated tree, run by scene_serve.rs `markup` between `eval::at` and `stage::stage`.
 
+mod hold;
 mod shutter;
 mod smear;
 mod steps;
@@ -17,6 +18,7 @@ use crate::scene::fields::Field;
 use crate::scene::fields::Kind::{Choice, Number, Toggle};
 use crate::scene::Node;
 
+pub use hold::hold_still;
 pub use shutter::{sample_times, shutter};
 pub use smear::smear_css;
 

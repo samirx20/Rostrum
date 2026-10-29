@@ -66,6 +66,17 @@ moving under 1 px per step) keeps `shutterSamples`, at no extra cost but the pro
 millisecond each on a typical scene). Not measured: what moves inside a layer (a path's shape, letters playing their
 keys, a rig's warp, tilt's perspective); raise `shutterSamples` for those.
 
+**A layer that barely moves is drawn once** (engine `motion/hold.rs`). The steps are the frame's, set by its fastest
+layer; a layer that hardly moves while the shutter is open (a slow drift, a background, the first instant of an ease)
+would give the same picture in every step but for a fraction of a pixel. When each of its box corners (and its
+children's and its matte's, measured as above) stays within `HOLD_PX` = 0.25 px of where it is at the frame's own time,
+and its markup differs from that time's only in numbers that each stay within 0.25 (path points, letter places,
+opacity, a blur's radius), it is written as at the frame's time in every step, so it is painted once (`still_runs.rs`).
+Its streak would have been under half a pixel long; the frame differs from drawing it every step only on hard edges, by
+what moving that edge a quarter of a pixel does. A colour written in hex that changes, or a layer that starts or ends
+inside the shutter, is drawn every step as before. Export-speed bench (2026-10-29, 20 s at 1080p, blurred blobs under
+a fast title): 39 s → 31.5 s; worst frame 29 levels on one title edge, average 0.12 of a level, no visible change.
+
 **A fast frame move is cheap** (engine `scene_serve.rs` `stage_at`, `still_runs.rs`). When the frame (camera) moves
 faster than the layers do on their own, the steps are measured a second time with the frame held where it is at the
 frame's time (`steps.rs` `own_steps`): that many steps are what the layers' own moves need. The n sub-frames are then

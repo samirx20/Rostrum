@@ -246,7 +246,8 @@ keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples
 **What it costs.** Each step draws the whole frame again (every layer, its depth-of-field blur, its effects), so an
 export takes about as long as its steps: measured on a 30 s, 30 fps piece with 5 depth layers, about 250 shapes and
 depth of field, a normal frame took ~0.29 s at `shutterSamples` 8 and ~0.40 s at 16, and a whip-pan frame (about 100
-steps, chosen by the motion) ~1.6 s. Raising `shutterSamples` does not make fast moves smoother (they get their steps
+steps, chosen by the motion) ~1.6 s. A layer that hardly moves in a frame (a slow drift, a background under a fast
+title) is drawn once for that frame, not once per step, so only what moves fast pays for the steps. Raising `shutterSamples` does not make fast moves smoother (they get their steps
 anyway); it only makes every frame slower. Keep 8 unless steps show inside a layer, and look at a few frames before
 exporting the whole film.
 
