@@ -61,9 +61,17 @@ def test_shot_frames_its_subject_at_the_left_third_and_keeps_its_camera(tmp_path
     assert abs(x - 1 / 3) < 1e-4 and abs(y - 0.5) < 1e-4 and abs((max(tall) - min(tall)) / (2 * depth * tan_h) - 0.5) < 1e-3
 
 
-def test_a_shot_with_no_camera_is_refused_naming_the_fix():
-    with pytest.raises(RostrumError, match=r'shot "s" has no camera.*camera=cam'):
-        run_source('shot("s", end=2)', "t.py")
+def test_a_shot_with_no_camera_is_seen_through_the_default_view_and_says_so(tmp_path):
+    tree = run_source('shot("s", end=2)', "t.py")
+    assert tree["shots"][0]["camera"] == "s_camera" and any(i["id"] == "s_camera" and i["type"] == "camera" for i in tree["items"])
+    assert any('shot "s" has no camera: it is seen through the default view' in n for n in tree.notes)
+    d = _start(tmp_path)                                                  # the new scene's shot_1_camera is used, not doubled
+    src = 'shot("shot_1", end=3)\nshot("shot_2", end=2)'
+    tree = run_source(src, "mine.py", d)
+    assert [s.get("camera") for s in tree["shots"]] == ["shot_1_camera", "shot_2_camera"]
+    assert not any(i["id"] == "shot_1_camera" for i in tree["items"])        # shot_1 keeps the start camera
+    _run(d, src)
+    assert d.item("shot_2")["camera"] == "shot_2_camera" and d.item("shot_2_camera")["type"] == "camera"
 
 
 def test_a_light_of_its_own_keeps_the_start_lights(tmp_path):

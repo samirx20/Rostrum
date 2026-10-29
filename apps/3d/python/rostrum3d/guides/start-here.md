@@ -8,16 +8,21 @@ is an operation, and every look draws the scene again from the document.
 
 1. **Write ONE script** for the whole scene (Python, the helpers in guide `script`). Keep it in a .py file.
 2. **Run it with a look**: `run_script` with `path` (or `source`), a stable `name` and `look: true`. The reply carries
-   the picture through the shot's camera and the faults.
-3. **Read the faults.** A checked reply opens `NOT DONE:` with each fault (its id, when, and the fix) or `DONE:`:
-   too dark or blown out, a subject cut by the frame's edge, something floating above or sinking into the ground,
-   a sky photo seen past the floor.
-4. **Fix the script**, not the picture: if a shadow is wrong, move the light; if a thing is too small, check the camera
+   the picture through the shot's camera.
+3. **Look at the picture and judge it yourself.** `look_frame` is the main check: a quick Storm frame (960×540, about
+   1.5 s), so look often: after each change, a sheet (`what "sheet"`) for the whole shot. Is it dark or blown out, a
+   subject cut by the edge, something floating or sunk, a wrong pose? You decide.
+4. **Change the script**, not the picture: if a shadow is wrong, move the light; if a thing is too small, check the camera
    before scaling the thing.
 5. **Re-run under the same name.** The re-run replaces what the script made (changed values, removed items) and keeps
-   what a person moved by hand. A different name is a different script.
-6. **Deliver**: `render_still` or `render_video` (jobs: `wait: true`, or ask `inspect_job`). They refuse a file while a
-   fault is open, unless `keep: {fault_id: "why"}` explains it.
+   what a person moved by hand. A different name is a different script. If a re-run leaves out most of what the last
+   one made, it still runs and the reply names what it removed (undo brings it back).
+6. **Render**: `render_still` or `render_video` (jobs: `wait: true`, or ask `inspect_job`). They always write what you
+   asked, under the name you asked.
+
+Measurements, if you want them: pass `notes: true` on `look_frame`, `look_motion`, `run_script` (with `look`),
+`render_still` or `render_video`. The reply then ends with `Notes (n): [id] what (when) | …`: things seen and measured
+in the shot, not orders. Off by default.
 
 ## Ground, frame, place
 
@@ -27,8 +32,8 @@ to an arm tall. Units are metres, degrees and seconds; y is up; the camera stand
 
 - **Ground.** Things a script makes stand on the ground by themselves: `y` is how high a thing's base sits above the
   ground (left out: on it), never its middle; `y_world=` puts its middle at a world height (the rare floating thing).
-  A clay with no `at` / `y` stands on the ground too, its pieces' positions heights above it. The faults name anything
-  floating or sunk.
+  A clay with no `at` / `y` stands on the ground too, its pieces' positions heights above it. An explicit `y` always
+  wins. Look for anything floating or sunk.
 - **Place by relation.** `.place_on(other)` stands a thing on top of another; `.place_on(other, beside="left", gap=0.02)`
   (or `in_front_of=other`) puts it next to it by their real sizes, turned or not; `row([a, b, c], gap=0.05)` lays
   things side by side, centred. On a clay's surface at a world point: `.place_on(clay, at=(x, y, z))`.
@@ -61,12 +66,12 @@ ball.key("ry", {0: 0, 2: (180, "linear")})
 shot("shot_1", frame=[crate, ball], fill=0.5)
 ```
 
-Run it (`run_script`, `name: "scene.py"`, `look: true`), read the faults, change the script, run it again.
+Run it (`run_script`, `name: "scene.py"`, `look: true`), look at the frame, change the script, run it again.
 
 ## The core tools
 
-- `run_script`: run the whole scene script (`look: true` to see it and get its faults).
-- `look_frame`: see the shot: one frame (default), or `what` "sheet", "shots", "material", "shape", "paint",
+- `run_script`: run the whole scene script (`look: true` to see it).
+- `look_frame`: the main check. See the shot: one frame (default), or `what` "sheet", "shots", "material", "shape", "paint",
   "coverage", "where", "exposure".
 - `edit_place_on`: put a mesh, or a light's highlight, on what is at a pixel of the last look.
 - `inspect_guide`: these guides (`topic`).

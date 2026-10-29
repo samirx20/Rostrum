@@ -36,6 +36,9 @@ effects), sections, markers and a master. You build it from ONE Python script an
   louder (loud sample layers come in on the way up, held chords swell); `"bright"` opens a lowpass, `"art"` switches
   articulation. A build that goes flat before its climax is a fault; a part that never changes in a build is a warning
   (`inspect_guide 'writing-music'` › Keep it moving).
+- **The ending:** `ending("ring", at="#end")` lands every part together on the home chord and sets the length so it
+  rings out; `"button"` is a short hit, `"fade"` a written fade. The reply says where it lands, where the ring dies and
+  the file's length: with an asked length, put `at` so the ring dies by it. A loop takes no ending (`inspect_guide 'script'` › Ending a song).
 - **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
   rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).
 

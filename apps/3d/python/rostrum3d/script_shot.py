@@ -131,15 +131,22 @@ def make(b, id_, values: dict):
     return it
 
 
-def check(b):
-    """A shot without a camera can't be seen or rendered: refused here, in plain words, naming the fix."""
-    from rostrum_core.errors import RostrumError, codes
+def default_view(b):
+    """A shot the script gave no camera is seen through the default view: the new scene's camera (55 cm up, 1.6 m back,
+    50 mm, looking at the middle of the ground), `<shot>_camera`, made unless the scene already has it; the run's
+    reply says so (b.notes). Never refused: what the script wrote stays as written."""
     from rostrum_core.tree import walk
     from .kind import KIND
     for s in b.root.get("shots", []):
-        if not s.get("camera"):
-            cams = [n["id"] for tree in (b.root, b.doc.data if b.doc is not None else {}) for n in walk(tree, KIND.lists)
-                    if n.get("type") == "camera"]
-            have = f" (cameras here: {', '.join(dict.fromkeys(cams))})" if cams else " (make one: cam = camera(\"cam\", z=1.6))"
-            raise RostrumError(codes.BAD_ARGUMENT, "", f'shot "{s["id"]}"', "has no camera, so nothing can be seen through it",
-                               hint=f'Give it one: shot("{s["id"]}", camera=cam){have}.')
+        if s.get("camera"):
+            continue
+        cam = f'{s["id"]}_camera'
+        made = any(n.get("id") == cam for n in walk(b.root, KIND.lists))
+        mine = any(n.get("id") == cam for n in walk(b.doc.script_bases.get(b.name) or {}, KIND.lists)) if b.doc is not None else False
+        there = b.doc is not None and any(n.get("id") == cam and n.get("type") == "camera" for n in walk(b.doc.data, KIND.lists))
+        if not made and (mine or not there):
+            b.item("camera", cam, name=f'{s.get("name") or s["id"]} camera', focalLength=50, y=0.55, z=1.6).aim((0, 0.12, 0))
+        s["camera"] = cam
+        b.given.setdefault(s["id"], set()).add("camera")
+        b.notes.append(f'shot "{s["id"]}" has no camera: it is seen through the default view, camera "{cam}" '
+                       "(55 cm up, 1.6 m back, looking at the middle of the ground); give it yours with shot(..., camera=cam)")

@@ -15,7 +15,12 @@ from __future__ import annotations
 from ..listen import passing
 
 NEAR_S = 0.1           # a fault this close to an asked moment's time is on it
-WHOLE = ("held_tone", "near_mono", "dull_top", "leading_silence", "off_tempo", "dead_air_end")
+# Faults whose own check reads a wider stretch around the moment are on it within that stretch. Round sound-motion,
+# Vault: squashed_hit fires up to 1 s from the asked hit (listen/faults.py _squashed: the limiter bites as the hit
+# swells), so at 31.65 and 31.75 s it fell outside NEAR_S, was not "the brief's moment", and a 5.0 dB squash was kept
+# where the near rule allows 4 dB; the judges heard the hit smear and peak 0.8 s late.
+NEAR_KIND_S = {"squashed_hit": 1.0}
+WHOLE = ("held_tone", "near_mono", "dull_top", "leading_silence", "off_tempo", "bad_ending")
 MOVE = ("or, if the brief allows another time, move the moment itself in the script (moment(name, at=...) or `expect`) "
         "so the check reads it there")
 
@@ -32,7 +37,8 @@ def mark(raw: list[dict], shaped: list[dict], moments) -> dict:
             continue
         if r["kind"] in WHOLE:
             continue
-        hit = next((k for t, k in times if abs(t - float(r.get("at_s") or 0.0)) <= NEAR_S), None)
+        within = NEAR_KIND_S.get(r["kind"], NEAR_S)
+        hit = next((k for t, k in times if abs(t - float(r.get("at_s") or 0.0)) <= within), None)
         if hit:
             f["asked"] = True
             bar = passing.words(r)

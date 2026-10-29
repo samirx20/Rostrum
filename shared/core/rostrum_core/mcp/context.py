@@ -33,7 +33,7 @@ class App:
     recent: Callable[[], list] | None = None                # the person's recent projects, shown when none is open
     script_help: str = ""                                   # the script layer in brief: added to run_script's description
     opened: str = ""                                        # what is open and whose (agent_start.py): said in the instructions and the first reply
-    script_look: Callable | None = None                     # (ctx, doc, look, reply) -> Reply: run_script's `look` after the merge (stills + faults); none: no `look`
+    script_look: Callable | None = None                     # (ctx, doc, look, reply) -> Reply: run_script's `look` after the merge (stills; notes when ctx.asked_notes); none: no `look`
 
 
 class Groups:
@@ -69,6 +69,7 @@ class ToolContext:
     tools: object = None        # the server's Tools (for inspect_operations-style lookups)
     notes: list = field(default_factory=list)   # `note`: choices the tool made for the caller, sent as warnings
     seen: list = field(default_factory=list)    # the documents the call was about: their kind's warnings are sent too
+    asked_notes: bool = False   # the call passed `notes: true` (faults.py): run_script's look runs its checks only then
 
     def note(self, text: str):
         """Tell the caller about a choice made for them ("Composition \"film\" (the longest of 2)"); the server

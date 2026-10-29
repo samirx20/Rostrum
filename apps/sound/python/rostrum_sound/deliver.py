@@ -38,6 +38,7 @@ ALIASES = {"wav": "wav24"}     # what a person means by plain "wav": the default
 
 AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb tail in a quiet room
 TAIL = 0.25             # seconds kept after the last audible sound
+LOOP_DECLICK_S = 0.01   # a loop's cut at its length: only this short ramp, so the join has no click and no dip
 FOLD_S = 1.0            # a ring-out that runs past an exact length is faded to nothing over the last second of it
 RING_WARNINGS = ("The song's length is", "The last sounds still ring")    # the engine's words for a file that ends after the length
 RING_S = 2.0            # ring_past_length true: a ring-out may run this far past the length (the usual delivery allowance)
@@ -78,6 +79,7 @@ class Options:
     end: float | None = None
     length: float | None = None      # exact: the song's Length (seconds) the file must be, a ring-out folded into it (see `deliver`)
     ring: float = 0.0                # seconds a ring-out may run past `length` (ring_past_length), faded inside that
+    loop: bool = False               # the brief asks for a loop: what plays at `length` is cut there (a de-click), never faded
 
     @classmethod
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
@@ -98,7 +100,7 @@ class Options:
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {a} to {b}", "is not a stretch of the song",
                                hint='Give both `from` and `to` in seconds, with 0 ≤ from < to (or neither for the whole song).')
         return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b),
-                   None if args.get("length") is None else float(args["length"]), float(args.get("ring") or 0.0))
+                   None if args.get("length") is None else float(args["length"]), float(args.get("ring") or 0.0), bool(args.get("loop")))
 
     @property
     def spec(self) -> dict:
@@ -240,7 +242,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
-    keep, first, fold = frames, 0, 0
+    keep, first, fold, declick = frames, 0, 0, 0
     ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
     if ranged:
         first = 0
@@ -258,13 +260,15 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
         if opts.ring:                  # the ring may run on up to `ring` past it (its silent end trimmed), faded inside that
             keep = min(frames, max(keep, min(heard + int(TAIL * rate), keep + round(opts.ring * rate))))
         fold = min(int(FOLD_S * rate), keep) if frames > keep and heard > keep else 0     # still ringing where it ends: fade it inside it
+        if opts.loop and fold:         # a loop plays on into bar 1: a 1 s fade there is a dip at the join (sound-endings, Notes App)
+            fold, declick = 0, min(int(LOOP_DECLICK_S * rate), keep)
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     def one(job):
         kind, key, src, stem = job
         dest = folder / f"{stem}.{spec['ext']}"
         part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
-        n = write(part, src, keep, rate, spec, sf, first, fold)
+        n = write(part, src, keep, rate, spec, sf, first, fold or declick)
         if dest != src:
             src.unlink()
         part.replace(dest)

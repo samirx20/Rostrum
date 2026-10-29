@@ -1,6 +1,6 @@
 """The document faults of a shot that the picture checks (mcp/shot_faults.py: dark, blown, cut_edge, out_of_frame, floating,
-sinking) can't see, as entries of the same fault list (rostrum_core/mcp/faults.py: {id, what, when, fix}), so they open a reply
-as NOT DONE and hold back a final render the same way (round 4 of the 3D gaps: judges cap a piece for these; agents never noticed):
+sinking) can't see, as notes of the same list (rostrum_core/mcp/faults.py: {id, what, when}), given only when the agent asks with
+`notes: true`; they never change a reply or hold back a render (round 4 of the 3D gaps: judges cap a piece for these):
 
   separated:<part>      a part of a figure (two shapes grouped together or sunk into each other at the shot's start) that later
                         has a gap to the body;
@@ -8,7 +8,7 @@ as NOT DONE and hold back a final render the same way (round 4 of the 3D gaps: j
                         on every frame);
   cut_edge:<cloth|copies>  a cloth's simulated points, or falling copies where they land, on or past the frame edge (sim/sim_faults.py:
                         the shape boxes don't follow a simulation, so these replace shot_faults' entry of the same id);
-  no_floor:<shot>       no ground or floor anywhere in the picture: whatever stands reads as hanging in a void (round 5: Hello r1);
+  no_floor:<shot>       no ground or floor anywhere in the picture: whatever stands has no ground under it (round 5: Hello r1);
   backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py);
   through_body:<clay>.<joint> / off_body:<item> / reads_still:<clay>.<joint>  a posed figure's part through another, a feature
                         sliding off it, a keyed swing too small to see (pose_faults.py); on_rim:<item> a feature seen on the
@@ -103,7 +103,7 @@ def _linked(track: Track, a: str, b: str) -> bool:
 
 
 def doc_faults(data: dict, info: dict, folder=None, at: int | None = None, track: Track | None = None) -> list[dict]:
-    """The fault entries; [] when nothing is wrong or the shot can't be measured (a check never breaks its reply)."""
+    """The notes; [] when nothing was measured or the shot can't be measured (a check never breaks its reply)."""
     from .mcp import motion_sim
     fs = samples(info, at)
     try:
@@ -168,10 +168,8 @@ def _separations(track, info, boxes, subj, s0, check) -> list[dict]:
             f = next((f for f in check if _gap(boxes[a][f][0], boxes[b][f][0]) > limit), None)
             if f is not None and not any(x["id"] == f"separated:{small}" for x in out):
                 g = _gap(boxes[a][f][0], boxes[b][f][0])
-                out.append(F.fault(f"separated:{small}", f"part {small} comes apart from {big}: a {g * 100:.0f} cm gap "
-                                   f"(they {'were joined' if g0 < -SINK_M else 'touched'} at the start)",
-                                   f"keep the parts joined: attach_to={big} (it then moves with it), key them together, or "
-                                   "make the figure one clay", when(info, f)))
+                out.append(F.note(f"separated:{small}", f"part {small} comes apart from {big}: a {g * 100:.0f} cm gap "
+                                  f"(they {'were joined' if g0 < -SINK_M else 'touched'} at the start)", when(info, f)))
     return out
 
 
@@ -184,9 +182,8 @@ def _leaving(track, info, boxes, subj, fs, check) -> list[dict]:
         first_in = min((f for f, s in seen.items() if s[0] != "out"), default=None)
         gone = next((f for f, s in sorted(seen.items()) if s[0] == "out" and first_in is not None and f > first_in), None)
         if gone is not None:
-            out.append(F.fault(f"leaves_frame:{i}", f"{i} leaves the picture ({', '.join(seen[gone][1]) or 'behind the camera'})",
-                               "keep it in the shot: move it or the camera, or end the shot before it goes; if it is meant to "
-                               "exit, keep it", when(info, gone)))
+            out.append(F.note(f"leaves_frame:{i}", f"{i} leaves the picture ({', '.join(seen[gone][1]) or 'behind the camera'})",
+                              when(info, gone)))
     return out
 
 
@@ -212,6 +209,5 @@ def _no_floor(track, info, boxes, back, subj, check) -> list[dict]:
                 x, z = cam.eye[0] + t * d[0], cam.eye[2] + t * d[2]
                 if lo[0] <= x <= hi[0] and lo[2] <= z <= hi[2]:
                     return []
-    return [F.fault(f"no_floor:{info['id']}", "no floor or ground anywhere in the picture: what stands in it reads as hanging "
-                    "in a void with no contact shadow", "tilt the camera down or lower it so the ground shows under the subject "
-                    "(shot.frame on the subject); if the void is meant, keep it", when(info, f))]
+    return [F.note(f"no_floor:{info['id']}", "no floor or ground anywhere in the picture: what stands in it has no ground "
+                   "under it and no contact shadow", when(info, f))]

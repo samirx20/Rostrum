@@ -6,8 +6,8 @@ from __future__ import annotations
 from rostrum_core.mcp.combine import combine
 
 GROUPS = [
-    ("look_frame", "See the shot through its camera (`width`: the picture's width in px). Checked looks open NOT DONE: "
-     "(dark, cut, floating, posing, through, flat light) or DONE:.",
+    ("look_frame", "See the shot through its camera (`width`: the picture's width in px). `notes: true` adds what "
+     "the checks measured (dark, cut, floating, posing, through, flat light).",
      {"frame": "look_frame", "sheet": "look_sheet", "shots": "look_shots", "material": "look_material",
       "shape": "look_shape", "paint": "look_paint", "coverage": "look_coverage", "where": "look_where",
       "exposure": "inspect_exposure"}, "frame"),

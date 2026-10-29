@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..errors import RostrumError, codes
 from .edit_summary import sentence, summarize
+from .faults import NOTES, asked
 from .jobs import MAX_WAIT_S, outcome
 from .reply import Reply
 from .tools import Tools
@@ -86,8 +87,12 @@ def register(tools: Tools):
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
         reply = Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=[*getattr(tree, "notes", ()), *report.warnings(), *_new_advice(doc, advised)], changed=changed)
-        look = args.get("look")
-        return ctx.app.script_look(ctx, doc, look, reply) if look not in (None, False, []) and ctx.app.script_look else reply
+        look, ctx.asked_notes = args.get("look"), asked(args)
+        if look not in (None, False, []) and ctx.app.script_look:
+            reply = ctx.app.script_look(ctx, doc, look, reply)
+        if not ctx.asked_notes:
+            reply.faults = None                      # checks are notes on request, never part of an unasked reply
+        return reply
 
     @tools.tool("inspect_job", {"properties": {
         "job_id": {"type": "string", "description": "The job; without it, the whole queue in order."},
@@ -109,9 +114,10 @@ def register(tools: Tools):
 
 
 LOOK = {"look": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
-                 "description": "Look in the same call: true (6 moments) or seconds, e.g. [2, 7, 12]. The reply opens NOT DONE: "
-                                "(each fault: id, when, fix) or DONE:, with a contact sheet."}}
-LOOK_LEAD = ("Write the whole film as one script; pass look to get stills + faults back; edit and re-run under the same name. ")
+                 "description": "Look in the same call: true (6 moments) or seconds, e.g. [2, 7, 12]: a contact sheet "
+                                "to judge by eye. With notes: true the checks' measurements come too."}, **NOTES}
+LOOK_LEAD = ("Write the whole film as one script; pass look to see stills of it, judge them yourself, edit and re-run under "
+             "the same name. ")
 
 
 def with_look(tools: Tools):

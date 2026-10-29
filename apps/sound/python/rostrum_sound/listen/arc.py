@@ -48,9 +48,10 @@ OPEN_FIX = ("play the opening softer and thinner: velocity moves recorded instru
             "one or two parts and add the rest on the way up, and let the loudest moment be loud because everyone plays "
             "(tutti, sustained brass and strings), not because of higher peaks; the opening must still speak at once "
             "(a soft note that starts at once, not silence)")
-END_FIX = ("let the piece fall away after its peak: parts drop out one by one, a track.dynamics lane falling to 0.2–0.3, "
-           "the last chord soft (velocity 0.2–0.35) and short of the file's end so its tail dies away inside the file "
-           "(not a delivery fade: Ring out on, the song's length 1–2 s after the last note)")
+END_FIX = ("let the piece die away into the file's end: after its peak a track.dynamics lane falling to 0.2–0.3 and the "
+           "parts thinning (all of them still land on the last chord), the last chord soft (velocity 0.2–0.35) written "
+           "with ending(\"ring\", at=\"#end\"), which lands every part on the home chord and rings it out to the file's "
+           "end; a ring 20–35 dB under the loudest moment passes this and the ending check (bad_ending) both")
 
 
 def measure(wav) -> dict | None:
