@@ -1,12 +1,12 @@
 """Canary 3E r8: the app's own fix advice must hold on the render (dull_top's shelf), a riser that dies before its
-peak is a fault, a faded ending is a fault when the song asks for a clean one, and a fault that comes back says what
+peak is a fault, and a fault that comes back says what
 the change did."""
 from types import SimpleNamespace
 
 import numpy as np
 import soundfile as sf
 
-from rostrum_sound.listen import applied, clean_end, faults, rise_gap, shelf_try
+from rostrum_sound.listen import applied, faults, rise_gap, shelf_try
 
 SR = 48000
 
@@ -53,29 +53,6 @@ def test_a_riser_that_dies_before_its_peak_is_a_fault():
 
 def _doc(brief=None):
     return SimpleNamespace(data={"brief": brief} if brief else {}, folder=None)
-
-
-FADED = {"faded_s": 1.0, "rang_s": 2.4, "from_s": 19.0}
-
-
-def test_a_faded_end_is_a_fault_only_when_a_clean_ending_is_asked():
-    got = clean_end.fault(_doc("A cue that ends cleanly on a marker, a real ending, not a soft fade-out"), FADED)
-    assert got and got[0]["id"] == "faded_end" and "ON the marker" in got[0]["fix"]
-    assert not clean_end.fault(_doc("A 4-bar piano chord progression at 90 bpm"), FADED)
-    assert not clean_end.fault(_doc("ends cleanly"), None)          # nothing was faded, no file to read
-
-
-def test_a_clean_ending_cut_while_still_playing_is_chopped(tmp_path):
-    """Canary re-run: held notes cut at the length with Ring out off (still -7 dBFS) shipped as a 'clean ending'."""
-    t = np.arange(int(4.0 * SR)) / SR
-    for name, chopped in (("held", True), ("stab", False)):          # held to the end / dying away from 2 s
-        env = np.ones_like(t) if chopped else np.where(t < 2.0, 1.0, np.exp(-(t - 2.0) * 6))
-        y = 0.3 * np.sin(2 * np.pi * 220 * t) * env
-        path = tmp_path / f"{name}.wav"
-        sf.write(path, np.stack([y, y], axis=1), SR)
-        got = clean_end.fault(_doc("ends cleanly on a marker"), None, str(path))
-        assert bool(got and got[0]["id"] == "chopped_end") == chopped
-        assert not clean_end.fault(_doc("A piano progression"), None, str(path))
 
 
 def test_a_fault_that_comes_back_says_what_the_change_did():
@@ -148,16 +125,3 @@ def test_three_tracks_of_one_piano_are_one_exposed_piano(tmp_path):
     f = squash.fault(wav, lim, {"tracks": tracks, "data": data})
     assert f and f[0]["measured"]["exposed"] and f[0]["measured"]["lead"] == "piano (keys, lead, bell)"
     assert squash.fault(wav, lim, {"tracks": tracks, "data": {**data, "tracks": []}}) == []   # three different sounds: dense
-
-
-def test_a_fade_of_a_tail_no_listener_hears_is_not_a_faded_end(tmp_path):
-    """Round sound-motion, Morning Light: a reverb tail between -80 and -60 dBFS was 'faded' (faded_end) and 'dead air'
-    (dead_air_end) at once, so every ending was refused. A fade counts only when what it took was audible."""
-    t = np.arange(int(4.0 * SR)) / SR
-    for name, level, fault in (("quiet", 10 ** (-70 / 20), False), ("ringing", 0.1, True)):   # the tail when the fade starts at 3 s
-        env = np.where(t < 2.0, 1.0, level) * np.where(t < 3.0, 1.0, np.clip(4.0 - t, 0, 1))
-        y = 0.5 * np.sin(2 * np.pi * 220 * t) * env
-        path = tmp_path / f"{name}.wav"
-        sf.write(path, np.stack([y, y], axis=1), SR, subtype="PCM_24")
-        got = clean_end.fault(_doc("ends cleanly on a marker"), {"faded_s": 1.0, "rang_s": 2.0, "from_s": 3.0}, str(path))
-        assert bool(got and got[0]["id"] == "faded_end") == fault

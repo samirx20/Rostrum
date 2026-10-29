@@ -35,22 +35,25 @@ register("held_tone", ["drone", "drones", "pedal", "pedal tone", "held", "held c
          "a held, unchanging sound")
 register("near_mono", ["mono", "monophonic", "vintage", "radio", "telephone", "centred", "centered", "narrow",
                        "old record", "gramophone", "single speaker"], "a mono or narrow sound")
-for _k, _what in (("leading_silence", "silence or a late start"), ("dead_air_end", "silence or an early end")):
-    register(_k, ["silence", "silent", "pause", "starts at", "start at", "begins at", "comes in at",
-                  "ends at", "end at", "stops at", "gap", "breath", _TIME, _BAR], _what)
+register("leading_silence", ["silence", "silent", "pause", "starts at", "start at", "begins at", "comes in at",
+                             "ends at", "end at", "stops at", "gap", "breath", _TIME, _BAR], "silence or a late start")
 register("off_tempo", ["rubato", "free time", "free tempo", "tempo change", "tempo changes", "accelerando", "ritardando",
                        "slows down", "speeds up", "out of time"], "free or changing time")
 register("clean_ending", ["ends cleanly", "end cleanly", "clean ending", "clean end", "real ending", "hard stop",
                           "stops dead", "not a fade", "no fade", "button ending", "ends on", "end on",
                           "final chord", "final hit", "sting"], "a clean ending")
 
-
-# a fault the clean-ending check raises may be kept only when the brief asks for that ending (round sound-ascent: a
-# delivery fade was kept with "settles and decays to a quiet ending", which asks for a decay, not a fade)
-register("faded_end", ["fade out", "fades out", "fade-out", "fading out", "fade away", "fades away", "fade to silence",
-                       "fades to silence", "fade to black"], "a fade-out")
-register("chopped_end", ["cut off", "cuts off", "abrupt end", "abrupt ending", "ends abruptly", "hard cut", "cut to silence",
-                         "stops mid", "mid note", "mid-note"], "an abrupt cut")
+register("fade_ending", ["fade out", "fades out", "fade-out", "fading out", "fade away", "fades away", "fade to silence",
+                         "fades to silence", "fade to black"], "a fade-out")
+register("hard_stop", ["hard stop", "stops dead", "dead stop", "cut off", "cuts off", "abrupt end", "abrupt ending",
+                       "ends abruptly", "hard cut", "cut to silence", "stops mid", "mid note", "mid-note"], "a hard stop")
+register("loop", ["loop", "loops", "loopable", "looping", "seamless loop", "loops seamlessly"], "a loop")
+register("open_ending", ["unresolved", "open ending", "open end", "ends open", "left hanging", "hangs", "unfinished",
+                         "question mark", "ends on a question"], "an open, unresolved ending")
+# bad_ending (listen/end_check.py: one fault for every way an ending fails) may be kept only when the brief asks for that
+# ending (round sound-ascent: a delivery fade was kept with "decays to a quiet ending", which asks for a decay, not a fade)
+register("bad_ending", [*WORDS["fade_ending"], *WORDS["open_ending"], *WORDS["hard_stop"], *WORDS["loop"]],
+         "that ending (a fade-out, a hard stop, a loop or an open end)")
 
 
 def norm(text: str) -> str:

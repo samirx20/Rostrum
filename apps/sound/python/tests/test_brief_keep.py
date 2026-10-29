@@ -51,6 +51,6 @@ def test_script_brief_is_on_the_song():
 def test_a_delivery_fade_is_kept_only_when_the_brief_asks_for_a_fade():
     from rostrum_sound.mcp.brief_keep import why_not
     decay = {"brief": "Then it settles and decays to a quiet ending at 50 s."}
-    assert why_not("faded_end", 'the brief says "settles and decays to a quiet ending"', decay) is not None
+    assert why_not("bad_ending", 'the brief says "settles and decays to a quiet ending"', decay) is not None
     fade = {"brief": "A 20 s bed that should fade out at the end."}
-    assert why_not("faded_end", 'the brief asks it to "fade out at the end"', fade) is None
+    assert why_not("bad_ending", 'the brief asks it to "fade out at the end"', fade) is None
