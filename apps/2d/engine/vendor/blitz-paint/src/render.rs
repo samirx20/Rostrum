@@ -753,6 +753,11 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
             Some(crate::runs::Run::Skip) => return,
             Some(crate::runs::Run::Cached(k)) if scene.draw_cached(k) => return,
             Some(crate::runs::Run::Moved(k, m)) if scene.draw_cached_moved(k, m) => return,
+            Some(crate::runs::Run::Streak(k, s)) if {
+                let streak = crate::runs::streak(s);
+                scene.draw_cached_streak(k, &streak.moves, streak.rect)
+            } => return,
+            Some(crate::runs::Run::Shift(m)) => return self.render_element(scene, node_id, Affine::new(m) * parent_style_transform, clip_rect),
             _ => {}
         }
         let node = &self.dom.as_ref().tree()[node_id];

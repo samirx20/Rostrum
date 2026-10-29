@@ -14,6 +14,12 @@ pub enum Run {
     /// Rostrum patch (motion-blur buckets): kept picture `k` moved by an affine in device px (CSS `matrix()` order),
     /// for a layer that only moved since it was kept (`PaintScene::draw_cached_moved`).
     Moved(usize, [f64; 6]),
+    /// Rostrum patch (streak blur): kept picture `k` averaged over streak `s`'s moves (`set_streaks`), one draw for a
+    /// layer that only moved through the shutter (`PaintScene::draw_cached_streak`).
+    Streak(usize, usize),
+    /// Rostrum patch (streak blur): the node painted as it is laid out, moved by an affine in page px (CSS `matrix()`
+    /// order): a layer that only moved but blends with what is under it, drawn at each sub-frame without a new layout.
+    Shift([f64; 6]),
 }
 
 thread_local! {
@@ -30,6 +36,28 @@ pub(crate) fn planned(node: NodeId) -> Option<Run> {
         let p = p.borrow();
         if p.is_empty() { None } else { p.get(&node).copied() }
     })
+}
+
+/// Rostrum patch (streak blur): one streak `Run::Streak` names: 1..=128 moves as `Run::Moved`'s, drawn only over
+/// `rect` (x0, y0, x1, y1 in device px: the area the picture sweeps) when given, else over the whole canvas.
+#[derive(Clone, Debug, Default)]
+pub struct Streak {
+    pub moves: Vec<[f64; 6]>,
+    pub rect: Option<[f32; 4]>,
+}
+
+thread_local! {
+    static STREAKS: RefCell<Vec<Streak>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Rostrum patch (streak blur): the streaks `Run::Streak` names on this thread.
+pub fn set_streaks(streaks: Vec<Streak>) {
+    STREAKS.with(|s| *s.borrow_mut() = streaks);
+}
+
+/// Streak `s` (no moves when it is not set: the caller then draws as usual).
+pub(crate) fn streak(s: usize) -> Streak {
+    STREAKS.with(|v| v.borrow().get(s).cloned().unwrap_or_default())
 }
 
 thread_local! {

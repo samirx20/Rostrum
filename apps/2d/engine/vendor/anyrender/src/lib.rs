@@ -299,6 +299,13 @@ pub trait PaintScene: RenderContext {
         false
     }
 
+    /// Rostrum patch (streak blur): kept picture `k` averaged over `moves` (each as `draw_cached_moved`'s `m`, 1..=128
+    /// of them) in one draw, the streak a layer leaves moving through the shutter, only over `rect` (x0, y0, x1, y1 in
+    /// the canvas's device px) when given; false when it has none or can't.
+    fn draw_cached_streak(&mut self, _k: usize, _moves: &[[f64; 6]], _rect: Option<[f32; 4]>) -> bool {
+        false
+    }
+
     /// Rostrum patch (E3): a layer whose content is captured as one picture, then drawn as each glow (the picture
     /// with the glow's filter, at its strength, added: `plus-lighter`, under the glow's clip), then as itself: in a
     /// layer with `alpha`, `blend` (normal when None) and `filter` under `clip`, or as it is when `clip` is None (no

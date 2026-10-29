@@ -28,7 +28,7 @@ use blitz_dom::{BaseDocument, NodeId, util::Color};
 use render::BlitzDomPainter;
 /// Rostrum patch (round 12): an element's 3D transform as a base matrix, and a rect projected through one.
 pub use render::{element_3d, project_rect_bbox};
-pub use runs::{set_plan, set_viewport, Run};
+pub use runs::{set_plan, set_streaks, set_viewport, Run, Streak};
 
 const FONT_EMBOLDEN_ENABLED: bool = cfg!(any(
     feature = "font-embolden",
