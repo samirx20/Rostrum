@@ -18,7 +18,7 @@ from rostrum_core.mcp import faults as F
 from . import aim
 
 DEEP_M = 0.01            # sunk deeper than this: a pass-through (touching, ≤ 1 cm, is resting on it)
-CLEAR_M = 0.005          # the fix moves it this much past touching
+CLEAR_M = 0.005          # clearance past touching
 STEP_S = 0.25            # frames checked over a whole shot: one every this many seconds
 BIG_M = 3.0              # this long or more: a floor, wall or backdrop
 _BACK = re.compile(r"ground|floor|wall|sky|backdrop|cyc|room|stage", re.I)
@@ -152,9 +152,9 @@ def contact_faults(track, info: dict, check: list[int]) -> list[dict]:
     out = []
     for (a, b), (d, f) in worst.items():
         x, y = sorted((a, b))
-        mover, other, deep, fix = _fix(fr, info, a, b, forms[f], f)
-        out.append(F.fault(f"passes_through:{x}~{y}", f"{mover} passes through {other}: {max(d, deep) * 100:.1f} cm deep at "
-                           f"{(f - s0) / info['fps']:.1f} s", fix, when(info, f)))
+        mover, other, deep = _fix(fr, info, a, b, forms[f], f)
+        out.append(F.note(f"passes_through:{x}~{y}", f"{mover} passes through {other}: {max(d, deep) * 100:.1f} cm deep at "
+                          f"{(f - s0) / info['fps']:.1f} s", when(info, f)))
     return out
 
 
@@ -187,33 +187,15 @@ def clear(mover: Placed, other: Placed, n) -> float:
     return s
 
 
-def _fix(fr, info, a, b, forms, f) -> tuple[str, str, float, str]:
-    """(the one to move, the other, how far they have to part, the fix): the keyed one, else the smaller, moves the shortest
-    way out (a moving one: across its path, not along it)."""
+def _fix(fr, info, a, b, forms, f) -> tuple[str, str, float]:
+    """(the one that moves, the other, how far they overlap): the keyed one, else the smaller; `how far` is the
+    shortest way out of the other."""
     def keyed(i):
         return [k for k in fr.items[i].get("keys", []) if k.get("prop") in _AXES and isinstance(k.get("t"), (int, float))]
     size = lambda i: max(forms[i].hi[k] - forms[i].lo[k] for k in range(3))        # noqa: E731
     mover = max((a, b), key=lambda i: (bool(keyed(i)), -size(i)))
     other = b if mover == a else a
-    here, f1 = fr.world(mover, f)[1], min(f + 2, info["end"])
-    go = [x - y for x, y in zip(fr.world(mover, f1 if f1 != f else max(f - 2, info["start"]))[1], here)]
-    along = max(range(3), key=lambda i: abs(go[i])) if math.hypot(*go) > 1e-4 else None
     ways = [(clear(forms[mover], forms[other], w), w) for w in
             ([(1.0 if k == ax else 0.0) * sign for k in range(3)] for ax in range(3) for sign in (1, -1))]
-    least = min(m for m, _ in ways)                      # about as short across its path beats along it, then up beats down
-    m, n = min(((m, w) for m, w in ways if m <= least * 1.25 + 0.005), key=lambda x: (abs(x[1][along]) if along is not None
-                                                                                       else 0, x[1][1] < 0, x[0]))
-    k = max(range(3), key=lambda i: abs(n[i]))
-    t = (f - info["start"]) / info["fps"]
-    move = f"move {mover} {m + CLEAR_M:.2f} m along {'+' if n[k] > 0 else '-'}{_AXES[k]}"
-    ks = [x for x in keyed(mover) if x.get("prop") == _AXES[k]]
-    if ks:
-        near = min(ks, key=lambda x: abs(float(x["t"]) - t))
-        move += f" around {t:.1f} s (its {near['prop']} key at {float(near['t']):.2f} s, or add one there)"
-    elif keyed(mover):
-        move += f" around {t:.1f} s (add a {_AXES[k]} key there; its path goes through {other})"
-    else:
-        move += f" (it sinks into {other} at {t:.1f} s)"
-    tail = f", or {mover}.place_on(\"{other}\")" if _AXES[k] == "y" and n[k] > 0 else ""
-    return mover, other, least, (f"{move}{tail}; if they are one thing, group them (group(...)) or attach_to={other}; if passing "
-                             "through is meant, keep it")
+    least = min(m for m, _ in ways)
+    return mover, other, least

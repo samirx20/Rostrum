@@ -37,7 +37,7 @@ def _picture(path, info, data, sides):
 def test_a_flat_subject_is_a_fault_and_a_side_lit_one_is_not(tmp_path):
     doc, info = _scene()
     flat = light_faults.flat(doc.data, info, 0, _picture(tmp_path / "flat.png", info, doc.data, (150, 140)))
-    assert [f["id"] for f in flat] == ["flat_light:cube"] and "stops" in flat[0]["what"] and "rake" in flat[0]["fix"], flat
+    assert [f["id"] for f in flat] == ["flat_light:cube"] and "stops" in flat[0]["what"] and "fix" not in flat[0], flat
     assert light_faults.flat(doc.data, info, 0, _picture(tmp_path / "lit.png", info, doc.data, (200, 70))) == []
 
 

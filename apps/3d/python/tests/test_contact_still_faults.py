@@ -30,8 +30,7 @@ def test_a_ball_rolling_through_a_cone_and_a_box_and_a_sunk_ring_pass_through_an
     assert {"passes_through:ball~crate", "passes_through:ball~cone", "passes_through:plinth_top~ring"} <= set(found), found
     hit = found["passes_through:ball~cone"]
     assert hit["what"].startswith("ball passes through cone: ") and "cm deep at" in hit["what"], hit
-    assert hit["fix"].startswith("move ball") and "along +z around 1.8 s (add a z key" in hit["fix"], hit   # across its path
-    assert "ring" in found["passes_through:plinth_top~ring"]["fix"], found
+    assert "fix" not in hit and "ring" in found["passes_through:plinth_top~ring"]["what"], found
     # the ring standing on the plinth (touching), the ball rolling past in front of both: nothing passes through
     found = _faults(SET.replace("RING", "0.2").replace("Z", "0.25"))
     assert not [i for i in found if i.startswith("passes_through:")], found
@@ -41,7 +40,7 @@ def test_a_shot_whose_last_seconds_stand_still_is_a_frozen_end_and_a_short_settl
     found = _faults(SET.replace("RING", "0.2").replace("Z", "0.25").replace("2: 0.3", "1: 0.3"))
     end = found.get("frozen_end:hero")
     assert end and "nothing moves from 1.0 s to the end (3.0 s still" in end["what"] and "ball" in end["what"], found
-    assert "end the shot at 1.5 s" in end["fix"], end
+    assert "fix" not in end, end
     found = _faults(SET.replace("RING", "0.2").replace("Z", "0.25"))          # moves to 2 s of 4: 2 s still is a settle
     assert "frozen_end:hero" not in found, found
 
