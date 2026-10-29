@@ -44,3 +44,15 @@ def test_a_shot_whose_last_seconds_stand_still_is_a_frozen_end_and_a_short_settl
     assert "end the shot at 1.5 s" in end["fix"], end
     found = _faults(SET.replace("RING", "0.2").replace("Z", "0.25"))          # moves to 2 s of 4: 2 s still is a settle
     assert "frozen_end:hero" not in found, found
+
+
+def test_liquid_inside_a_glass_bottle_is_meant_and_inside_an_opaque_box_is_not():
+    src = '''
+camera("cam", z=2.2, y=0.5, rx=-10)
+material("glass", transmission=GLASS)
+mesh("bottle", shape="box", width=0.2, height=0.3, depth=0.2, y_world=0.15, material="glass")
+mesh("juice", shape="box", width=0.16, height=0.2, depth=0.16, y_world=0.12)
+shot("hero", camera="cam", fps=24, start=0, end=2)
+'''
+    assert "passes_through:bottle~juice" not in _faults(src.replace("GLASS", "1"))
+    assert "passes_through:bottle~juice" in _faults(src.replace("GLASS", "0"))

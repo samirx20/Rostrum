@@ -2,7 +2,9 @@
 two placed things not built as one (grouped, attached, stuck) whose real forms sink into each other deeper than DEEP_M on a
 checked frame; an entry of the shot's one fault list (faults.py). A sphere, box, cylinder, cone, capsule or torus is its exact
 form (surface points and a signed distance), not its box: the depth is how far the deepest surface point of either lies in the
-other, so a ball resting on a box or a ring standing on a plinth stays silent. Other shapes (an editable mesh, a clay, an
+other, so a ball resting on a box or a ring standing on a plinth stays silent. A thing wholly inside a see-through one
+(transmission over 0: liquid in a bottle, an ice cube in a glass) is meant to be there and is not judged (gaps7 Drop: both
+agents had to keep "bottle~juice"). Other shapes (an editable mesh, a clay, an
 import) are not checked; the ground, floor, walls and backdrop are framing (sinking into a floor is shot_faults' sinking).
 look_motion's passes_through finding measures with `depth` too (mcp/motion_found.py).
 """
@@ -143,7 +145,7 @@ def contact_faults(track, info: dict, check: list[int]) -> list[dict]:
             if _built_as_one(fr, a, b):
                 continue
             for f in fs:
-                if a in forms[f] and b in forms[f]:
+                if a in forms[f] and b in forms[f] and not _seen_inside(track.data, fr, forms[f], a, b):
                     d = depth(forms[f][a], forms[f][b])[0]
                     if d > DEEP_M and d > worst.get((a, b), (0.0,))[0]:
                         worst[(a, b)] = (d, f)
@@ -154,6 +156,15 @@ def contact_faults(track, info: dict, check: list[int]) -> list[dict]:
         out.append(F.fault(f"passes_through:{x}~{y}", f"{mover} passes through {other}: {max(d, deep) * 100:.1f} cm deep at "
                            f"{(f - s0) / info['fps']:.1f} s", fix, when(info, f)))
     return out
+
+
+def _seen_inside(data: dict, fr, forms: dict, a: str, b: str) -> bool:
+    """One of a, b wholly inside the other, and the outer one see-through (its material's transmission over 0)."""
+    clear = {m["id"] for m in data.get("materials", []) if float(m.get("transmission", 0) or 0) > 0}
+    for inner, outer in ((a, b), (b, a)):
+        if fr.items[outer].get("material") in clear and all(forms[outer].dist(p) <= 0 for p in forms[inner].pts):
+            return True
+    return False
 
 
 def _built_as_one(fr, a: str, b: str) -> bool:
