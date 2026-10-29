@@ -6,6 +6,7 @@
 #   3. Picture › Load picture… (a white ring on black, made here): it is the stamp's picture
 #   4. one click on the clay: exactly one stroke landed on the Relief layer, one undo step ................. "3-stamped"
 #   5. Ctrl+Z: the stroke is gone; Ctrl+Shift+Z: back; Shift+F (Final): the ring pressed in ................ "4-final"
+#   6. the clay's unfolded surface: no triangle left out of the paint picture (STAMP_WALK_DEBUG=1 keeps it)
 # Pictures to the out folder (1646 x 900). The lead runs it: heavy.ps1 run "hem: stamp walk" gpu <venv python>
 #   apps\3d\tools\stamp_walk.py <out folder>.  Exit 0 = every check passed.
 import os
@@ -93,6 +94,29 @@ def type_into(win, root, row_name, text):
 
 def relief_strokes(doc):
     return [s for p in doc.item("blob").get("paints", []) if p.get("channel") == "height" for s in p["strokes"]]
+
+
+def surface_check(v, b, keep: Path | None):
+    """The clay's unfolded surface as the window sent it: every triangle has a place in the paint picture (none
+    collapsed to one point, as xatlas left triangles under 1.2e-7 m^2 before: a stamp there showed as scattered
+    texels). With `keep`: the surface file, the Relief picture and the clay item copied there."""
+    import json
+    from rostrum3d import clay_faces, clay_paint, paint_scene
+    scene = clay_faces.at(v.sent()[0])
+    done = paint_scene.finish(paint_scene.engine_scene(scene), scene.get("paintLater") or [])
+    node = next(n for n in done["items"] if n["id"] == "blob")
+    s = clay_paint.read(node["paint"]["file"])
+    e1, e2 = s.uv[:, 1] - s.uv[:, 0], s.uv[:, 2] - s.uv[:, 0]
+    flat = np.abs(e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]) * s.size ** 2 < 1e-6
+    W.check(flat.sum() == 0, f"every triangle of the clay has a place in its paint picture ({flat.sum()} of "
+                             f"{len(flat)} left out)")
+    if keep is not None:
+        keep.mkdir(parents=True, exist_ok=True)
+        mat = next(m for m in done["materials"] if m["id"] == node["props"]["material"])
+        shutil.copy(node["paint"]["file"], keep / "surface.cls")
+        shutil.copy(mat["props"]["bumpTexture"], keep / "relief.png")
+        (keep / "doc.json").write_text(json.dumps(b.doc.item("blob"), indent=1), encoding="utf-8")
+        print("kept", keep)
 
 
 def main():
@@ -208,6 +232,7 @@ def main():
         pic.crop((cx - 260, cy - 200, cx + 260, cy + 200)).resize((1040, 800)).save(OUT / "4-final-closeup.png")
         print("picture", OUT / "4-final-closeup.png")
         W.check(not v.status.startswith("Error"), f"no viewport error ({v.status or '-'})")
+        surface_check(v, b, OUT / "debug" if os.environ.get("STAMP_WALK_DEBUG") else None)
     finally:
         screen.close()
         app.processEvents()
