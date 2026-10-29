@@ -10,7 +10,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from rostrum3d import aim, build, graph, ops_paint
+from rostrum3d import aim, build, graph, ops_paint, udim
 from rostrum3d.compile import describe
 from rostrum3d.material_ball import BALL_SHAPE, final_reasons
 
@@ -94,6 +94,7 @@ def look_material(ctx, args):
     scene, cams, angles = staged(doc, info, mat, shape, radius, count)
     engine = draw.engine_of(ctx)
     dest = look_path(f'{doc.item_id or "doc"}_material_{mat["id"]}_{shape}_{renderer}', project=doc.folder)
+    sets = {k: udim.as_set(mat[k]) for k in udim.PICTURES if udim.is_set(udim.as_set(mat.get(k, "")))}
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum3d_material_") as tmp:
@@ -108,9 +109,10 @@ def look_material(ctx, args):
         said = (f'Material {mat["id"]} ("{mat.get("name") or mat["id"]}") on a {shape} of {radius * 100:g} cm, {count} angles from the shot\'s view '
                 f'in {360 / count:g}° steps, {ELEVATION:g}° above level, under the scene\'s lights ({", ".join(lights)}), everything else hidden. '
                 f'Drawn with {"Cycles (Final)" if renderer == "cycles" else renderer.capitalize()}, {sw}×{sh}: {why}.'
-                + (f" {graph.text(mat)}" if graph.has_graph(mat) else ""))
+                + (f" {graph.text(mat)}" if graph.has_graph(mat) else "")
+                + "".join(f" {k}: {udim.describe(v)}." for k, v in sets.items()))
         return Reply(said, {"material": mat["id"], "shape": shape, "angles": angles, "renderer": renderer, "why": why, "needsFinal": reasons,
-                            "lights": lights, "width": sw, "height": sh,
+                            "lights": lights, "width": sw, "height": sh, **({"udimSets": sets} if sets else {}),
                             **({"blocks": graph.describe(mat, catalogue=False)} if graph.has_graph(mat) else {})}, [dest], [dest], engine.take_notices())
 
     return ctx.long(f'look_material {mat["id"]}', job_fn)

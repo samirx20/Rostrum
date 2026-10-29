@@ -19,6 +19,7 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes, project
 
+from . import udim
 from .material_fields import DOC_ONLY, MATERIAL
 
 _FRAME = re.compile(r"\.(\d+)\.png$", re.I)
@@ -90,6 +91,8 @@ def materials(data: dict, shot_frames: range, fps: float, folder, out_value) -> 
     out = []
     for m in data.get("materials", []):
         props = {p.name: out_value(p, m.get(p.name, p.default)) for p in MATERIAL if p.name not in DOC_ONLY}
+        for name in udim.PICTURES:                       # one tile of a UDIM set picked: the whole set is sent
+            props[name] = udim.as_set(props[name])
         node = {"id": m["id"], "props": props}
         blocks(m, props, folder)
         ref = m.get("emissionRender", "")

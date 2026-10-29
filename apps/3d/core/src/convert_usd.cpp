@@ -23,6 +23,7 @@
 #include <functional>
 
 #include "error.h"
+#include "udim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -146,7 +147,7 @@ UsdShadeMaterial write_material(const UsdStageRefPtr& stage, const MaterialDesc&
 
     UsdShadeShader tex = UsdShadeShader::Define(stage, path.AppendChild(TfToken("BaseColorTexture")));
     tex.CreateIdAttr(VtValue(TfToken("UsdUVTexture")));
-    tex.CreateInput(TfToken("file"), SdfValueTypeNames->Asset).Set(SdfAssetPath(asset_path(d.base_texture)));
+    tex.CreateInput(TfToken("file"), SdfValueTypeNames->Asset).Set(SdfAssetPath(asset_path(udim::as_set(d.base_texture))));
     tex.CreateInput(TfToken("st"), SdfValueTypeNames->Float2).ConnectToSource(st);
     tex.CreateInput(TfToken("wrapS"), SdfValueTypeNames->Token).Set(TfToken("repeat"));
     tex.CreateInput(TfToken("wrapT"), SdfValueTypeNames->Token).Set(TfToken("repeat"));

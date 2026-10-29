@@ -239,7 +239,7 @@ Block cycles_block(const UsdStageRefPtr& stage, const SdfPath& mat, const std::s
     k.outs["out"] = colour_out ? k.outs["colour"] : k.outs["value"];
   } else if (type == "image") {
     const std::string file = b.text("file", "");
-    check_file(file, where + "." + id + ".file", "an image");
+    check_picture(file, where + "." + id + ".file");
     if (file.empty()) fail(where + "." + id + ".file", "is empty", "the absolute path of an image");
     const bool colour = b.text("colourData", "colour") != "data";
     UsdShadeShader t = cycles_image(stage, mat, pre.c_str(), Picture{{file}, 0}, colour);

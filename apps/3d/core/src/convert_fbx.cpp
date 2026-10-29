@@ -16,6 +16,7 @@
 #include "convert_fbx_anim.h"
 #include "convert_usd.h"
 #include "error.h"
+#include "udim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -54,7 +55,7 @@ struct Reader {
     std::error_code ec;
     const std::string by_name = cv::folder_of(file) + fs::u8path(str(t->relative_filename)).filename().u8string();
     for (const std::string& p : {str(t->filename), str(t->absolute_filename), by_name})
-      if (!p.empty() && fs::exists(fs::u8path(p), ec)) return p;
+      if (!p.empty() && (fs::exists(fs::u8path(p), ec) || !udim::tiles(p).empty())) return p;
     return str(t->filename);  // missing: kept, so the texture shows as missing rather than vanishing
   }
 
