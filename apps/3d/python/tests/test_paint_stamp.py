@@ -191,3 +191,25 @@ def test_a_raised_area_on_a_clay_has_no_false_slopes_at_its_pieces_edges(tmp_pat
     assert raised.sum() > 100
     for shift in ((0, 1), (0, -1), (1, 0), (-1, 0)):
         assert not (raised & (np.roll(rel, shift, (0, 1)) == 128)).any()   # no flat texel right next to a raised one
+
+
+def test_a_clay_stamps_edge_is_an_even_slope_over_about_a_texel_and_its_middle_flat(tmp_path):
+    """The bug it guards: read hard at a clay's ~1 mm texels, a stamp's edge was a one-texel step each tiny piece cut
+    its own way (a speckled bevel in Final). The picture is read softened by ~SOFT texels: a slope, the plateau flat."""
+    from rostrum3d import stamp_decal
+    from rostrum3d.uv_raster import Geo, raster
+    surface = _scattered_plane(tmp_path, cells=80)
+    d = _doc(tmp_path)
+    Image.fromarray(np.full((64, 64), 255, np.uint8)).save(tmp_path / "white.png")
+    d.apply({"op": "paint.stamp", "target": ["head"], "args": {"picture": "white.png", "at": [0, 0, 0, 0, 0, 1],
+                                                               "size": 0.08, "depth": 1}}, SAM)
+    a = stamp_decal.layer_rgba(surface, d.item("head")["paints"][0]["strokes"], 512)[..., 3]
+    tri, bary = raster(Geo.of_surface(surface), 512)
+    on = tri >= 0
+    spot = np.einsum("aj,ajk->ak", bary[on], surface.points[surface.tris[tri[on]]])
+    out = np.abs(spot[:, :2]).max(1) - 0.04                                # how far outside the 8 cm square (m)
+    texel = float(np.median(surface.mpp))
+    v = a[on]
+    assert (v[out < -3 * texel] > 0.99).all()                              # the plateau: flat
+    assert (v[out > 3 * texel] < 0.01).all()
+    assert 0.05 < v[(out > 0.4 * texel) & (out < 0.8 * texel)].mean() < 0.5   # a slope reaching past the edge

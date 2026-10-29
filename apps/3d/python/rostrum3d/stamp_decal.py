@@ -5,7 +5,9 @@ stamp is laid on the surface instead: every texel near the spot is placed on the
 stamp_turn.surface_up, turned clockwise by `stampTurn`; its right) and reads the picture at that place, whatever piece
 it is in. The picture fills the stamp's square of side 2 × `reach` (its padded copy: paint_stamp_pictures), times the
 stroke's opacity, in the stroke's colour. Texels farther than `reach` from the spot along its direction (the clay's
-other side) stay unpainted. paint_scene lays these under the layer's own strokes (as a projected picture is).
+other side) stay unpainted. The picture is read softened by SOFT texels of the clay's paint there (`_soft`): a clay's
+texel is about a millimetre, so a hard picture edge would be a one-texel step that each tiny piece, turned its own
+way, cuts differently (a dotted, speckled bevel); softened, the edge is an even slope and the plateau stays flat. paint_scene lays these under the layer's own strokes (as a projected picture is).
 """
 from __future__ import annotations
 
@@ -17,6 +19,10 @@ import numpy as np
 from rostrum_paint import pictures
 
 from .stamp_turn import surface_up
+
+VERSION = "rostrum3d-decal@2"        # bump when how a decal is laid changes (2: its edge softened)
+SOFT = 0.75                         # the picture's softening, in the clay's texels there (a Gaussian's sigma)
+_SOFTENED: dict = {}                # (tip, sigma in its px) -> the softened tip, the last few
 from .uv_raster import Geo, raster
 
 
@@ -26,7 +32,7 @@ def is_stamp(stroke: dict) -> bool:
 
 def key(surface, strokes: list) -> str:
     """What a layer's decals depend on: the surface and the stamp strokes."""
-    return hashlib.sha1(json.dumps([surface.key, strokes], sort_keys=True, default=str).encode()).hexdigest()
+    return hashlib.sha1(json.dumps([VERSION, SOFT, surface.key, strokes], sort_keys=True, default=str).encode()).hexdigest()
 
 
 def frame(normal, turn: float, toward=None) -> tuple[np.ndarray, np.ndarray]:
@@ -56,6 +62,21 @@ def _sample(tip: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     return np.where(inside, v, 0.0)
 
 
+def _soft(texture: str, sigma: float) -> np.ndarray:
+    """The tip picture softened by a Gaussian of `sigma` of its own px (kept for the few last asked)."""
+    sigma = round(float(sigma), 2)
+    k = (texture, sigma)
+    if k not in _SOFTENED:
+        tip = pictures.tip(texture)
+        if sigma >= 0.3:
+            from scipy.ndimage import gaussian_filter
+            tip = gaussian_filter(tip.astype(np.float32), sigma, mode="constant")
+        while len(_SOFTENED) > 8:
+            _SOFTENED.pop(next(iter(_SOFTENED)))
+        _SOFTENED[k] = tip
+    return _SOFTENED[k]
+
+
 def layer_rgba(surface, strokes: list, size: int) -> np.ndarray:
     """size × size × 4 float32 straight RGBA: the layer's stamps on `surface`, in order, each over the last."""
     out = np.zeros((size, size, 4), np.float32)
@@ -80,7 +101,9 @@ def layer_rgba(surface, strokes: list, size: int) -> np.ndarray:
         d = np.einsum("aj,ajk->ak", bary[on], corners) - p
         up, right = frame(n, float(s["stampTurn"]), s.get("stampUp"))
         x, y = d @ right / reach, d @ up / reach
-        alpha = _sample(pictures.tip(s["texture"]), x, y) * float(s.get("opacity", 1.0))
+        n_tip = pictures.tip(s["texture"]).shape[0]
+        sigma = SOFT * float(surface.mpp[tri0[0]]) / (2 * reach) * n_tip   # SOFT clay texels, in the tip's px
+        alpha = _sample(_soft(s["texture"], sigma), x, y) * float(s.get("opacity", 1.0))
         alpha = np.where(np.abs(d @ n) < reach, alpha, 0.0)
         rgb = np.array([int(s["color"][i:i + 2], 16) / 255 for i in (1, 3, 5)], np.float32)
         ys, xs = np.nonzero(on)
