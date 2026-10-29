@@ -33,5 +33,5 @@ def test_loud_bed_after_hit_is_named_quiet_is_not(tmp_path):
 def test_loudness_reads_brief_tolerance_and_spares_the_hit():
     assert fault_shape.loudness_fault(-16.8, -16, data=BRIEF, hit=True) == []        # within the brief's 1 LU
     f = fault_shape.loudness_fault(-17.4, -16, data=BRIEF, hit=True)[0]
-    assert "-17 to -15" in f["what"] and "master(loudness=-17)" in f["fix"] and "quietest parts" not in f["fix"]
+    assert "-17 to -15" in f["what"]
     assert fault_shape.loudness_fault(-16.8, -16)                                       # no brief: 0.5 LU

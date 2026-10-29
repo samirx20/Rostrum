@@ -45,19 +45,6 @@ def words(got: dict) -> str:
     return f" {got['words']}{keep}"
 
 
-def fix_when_short(found: list[dict] | None, got: dict) -> None:
-    """The loudness fault after a push that stopped at AUTO_MOST_DB short of the target: the fixes that need less limiting."""
-    if not got or got.get("reaches"):
-        return
-    for f in found or []:
-        if f["id"] == "loudness":
-            f["fix"] = (f"reaching it needs more than the {got['max_limit_db']:g} dB of limiting limit_to_target adds (more "
-                        f"flattens the hits): tame the peaks "
-                        f"(edit_loudness {{\"apply\": \"tame_peaks\"}}), turn the most peaked track down (edit_loudness "
-                        f"{{\"apply\": \"trim_track\"}}), lower the master's loudness target to {got['lufs']:.0f}, or, for a "
-                        f"dense sound on purpose, set master(maxLimit=...) yourself")
-
-
 def master_as_rendered(master: dict, got: dict) -> dict:
     """The master the file was rendered with, for the loudness facts (fit_loudness.landing)."""
     return {**master, "maxLimit": got["max_limit_db"], "gentle": True} if got.get("ops") else master

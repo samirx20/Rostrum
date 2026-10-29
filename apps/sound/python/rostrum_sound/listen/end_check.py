@@ -174,5 +174,6 @@ def fault(doc, faded: dict | None, wav=None, end_s: float | None = None) -> list
     kind = line.split('"')[1]
     fixes = list(dict.fromkeys(_lead(line, kind) if f == RING else f"{line} {f}" if f in (CHORD, PARTS) else f
                                for _, f in found))
-    return [shared.fault("bad_ending", "the ending fails" + (f" ({why})" if why else "") + ": " + "; ".join(w for w, _ in found),
+    tool = f"; the tool for a landed ending: {line}" if any(f in (RING, CHORD, PARTS) for _, f in found) else ""
+    return [shared.fault("bad_ending", "the ending fails" + (f" ({why})" if why else "") + ": " + "; ".join(w for w, _ in found) + tool,
                          "; ".join(fixes), "the end")]
