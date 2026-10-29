@@ -16,6 +16,10 @@ working on one page; the topic guides at the end hold the detail.
 6. **Export once** with `render_export {"what": "video"}`: it waits for the file and always writes what you asked
    under the name you gave. `notes: true` adds what the checks measured; they are observations, never required.
 
+**Music:** RostrumSound (server `rostrum-sound`) makes it. Started together for one agent, the two servers open the
+same project folder, so the song you make there plays here and goes under the export; when you open another folder
+in one of them, open it in the other too (`run_open_project` on each).
+
 Every reply ends with a clock line. Use the time to look and refine in passes; `inspect_project` with
 `what: "session"` lists what you have not checked yet.
 
@@ -67,6 +71,26 @@ for t, row in stagger(rows, every=0.15, start=go):
 text("tag", body="v2", size=36, anchor="bottom-left", x=80, y=1000, start=after(rows[-1], gap=0.3))
 ```
 
+## A film in sections
+
+Build each shot as a section (a group the size of the frame), then link them with one call each:
+`transition(kind, at=, dur=, out_of=, into=)` (`"cut"`, `"fade"`, `"push"`, `"slide"`, `"wipe"`, `"iris"`, `"zoom"`,
+`"blur"`) and `carry(layer, into=, at=, dur=, to=dict(…))`, which takes a layer on past its section's end into the
+next one. They write plain keys you can change afterwards. The technique, not a piece to copy:
+
+```python
+comp("main", width=1920, height=1080, fps=30, duration=8, background="#101014")
+cut = marker("cut", 4.0)
+with group("intro", w=1920, h=1080):
+    logo = text("logo", body="North", size=160)
+with group("features", w=1920, h=1080):
+    text("line", body="Built for the long way", size=72)
+transition("push", at=cut, dur=0.6, out_of="intro", into="features", direction="up", ease="easeInOut")
+carry(logo, into="features", at=cut, dur=0.8, to=dict(x=160, y=120, scale=0.4))   # the logo stays as a corner mark
+```
+
+Every kind and parameter: `transitions-and-carry-overs`.
+
 ## The five core tools
 
 - `run_script`: build or change the whole film from your script; `look: true` checks it in the same reply.
@@ -86,7 +110,7 @@ that the layout, an anchor or a marker can give you.
   reading errors.
 - `the-film-as-one-script`: how to structure the whole film; every look tool; using your time.
 - `lay-out-a-screen`: rows, columns, grids, stacks, Tailwind words (`tw=`).
-- `timing-to-music`: markers, layers timed from a marker, beats, the song from RostrumSound.
+- `timing-to-music`: markers, layers timed from a marker, beats, the song from RostrumSound (same project folder).
 - `ui-and-product-animation`: devices, screen blocks, counters, pointers, glass and depth.
 - `styled-words`: one text, some words styled and keyed on their own (`body=[…]`, `text.run()`).
 - `tap-and-react`: `tap()` aims at the centre, follows a moving target, reacts (`then=`).
