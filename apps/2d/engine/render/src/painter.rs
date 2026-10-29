@@ -92,14 +92,17 @@ pub struct Painter {
     space: Option<ColorSpace>,
     /// The last frame's time recording the drawing and submitting it to the GPU, reading it back (waiting for
     /// the GPU to finish it) and converting the pixels (ms), for profiling.
-    /// The frame index of each readback in flight (`start_read`), oldest first.
-    in_flight: std::collections::VecDeque<u32>,
+    /// The frame index of each readback in flight (`start_read`), oldest first, and the output step it went through on
+    /// the GPU (spec, deep), if it did.
+    in_flight: std::collections::VecDeque<(u32, Option<(crate::color::Spec, bool)>)>,
     pub last_draw_ms: f64,
     pub last_flush_ms: f64,
     pub last_read_ms: f64,
     /// Of `last_read_ms`: the wait for the GPU to finish the frame (`read`; 0 when read in flight).
     pub last_gpu_ms: f64,
     pub last_convert_ms: f64,
+    /// Whether the last frame collected by `finish_read` came through the GPU's output step (the encoder's bytes).
+    pub last_read_ready: bool,
     /// The comp-cache buffers the last paint tapped (anyrender_skia `finish_taps`): how many, and the time reading them
     /// back (ms); `taps_written` the time it waited for them to be written.
     pub last_taps: usize,
@@ -350,12 +353,12 @@ impl Painter {
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     /// Paints from now on the page's part `v` (ENGINE_CONTRACT.md § 1 `scale`, `view`): the whole comp at 1, a smaller
@@ -652,37 +655,78 @@ impl Painter {
         }
     }
 
-    /// Starts reading the last picture (a frame, the motion-blur sum or a held paint) back without waiting for
-    /// it (readback.rs); `finish_read` collects it. False on the CPU or without pixel buffers: use `read`.
-    pub fn start_read(&mut self, index: u32) -> bool {
-        if self.gl.as_ref().map_or(true, |g| g.readback.is_none()) {
-            return false;
-        }
+    /// Starts reading the last picture (a frame, the motion-blur sum or a held paint) back for an encoder without
+    /// waiting for it; `finish_read` collects it. On the GPU's exact output step when it can (gpu_output_queue.rs: the
+    /// encoder's bytes, `spec` and `deep`, read back ready), else as stored (readback.rs). False on the CPU or without
+    /// pixel buffers: use `read`.
+    pub fn start_read(&mut self, index: u32, spec: &crate::color::Spec, deep: bool) -> Result<bool, String> {
         let (w, h) = (self.width, self.height);
+        if let Some(codes) = crate::color::gpu_codes(spec, deep).filter(|_| self.gl.as_ref().is_some_and(|g| g.exact.is_ok())) {
+            let tex = gpu::surfaces::get_backend_texture(self.last_surface(), skia_safe::surface::BackendHandleAccess::FlushRead)
+                .and_then(|t| t.gl_texture_info())
+                .filter(|i| i.target == 0x0DE1); // TEXTURE_2D
+            if let Some(tex) = tex {
+                let gl = self.gl.as_mut().unwrap();
+                gl.gr.flush_and_submit();
+                let started = gl.exact.as_mut().unwrap().queue_start(tex.id, (w, h), &codes, deep);
+                gl.gr.reset(None);
+                started?;
+                self.in_flight.push_back((index, Some((*spec, deep))));
+                return Ok(true);
+            }
+        }
+        if self.gl.as_ref().map_or(true, |g| g.readback.is_none()) {
+            return Ok(false);
+        }
         let surface = self.last_surface();
-        let Some(fbo) = gpu::surfaces::get_backend_render_target(surface, skia_safe::surface::BackendHandleAccess::FlushRead).and_then(|t| t.gl_framebuffer_info()).map(|i| i.fboid) else { return false };
+        let Some(fbo) = gpu::surfaces::get_backend_render_target(surface, skia_safe::surface::BackendHandleAccess::FlushRead).and_then(|t| t.gl_framebuffer_info()).map(|i| i.fboid) else { return Ok(false) };
         let gl = self.gl.as_mut().unwrap();
         gl.gr.flush_and_submit();
         gl.readback.as_mut().unwrap().start(fbo, w, h, true);
         // The readback bound GL state behind Skia's back.
         gl.gr.reset(None);
-        self.in_flight.push_back(index);
-        true
+        self.in_flight.push_back((index, None));
+        Ok(true)
     }
 
     /// Frames started by `start_read` and not collected yet.
     pub fn reads_in_flight(&self) -> usize {
-        self.gl.as_ref().and_then(|g| g.readback.as_ref()).map_or(0, |r| r.in_flight())
+        self.in_flight.len()
     }
 
-    /// The oldest started frame: its stored bytes (premultiplied half floats) and the frame index it was started with.
-    pub fn finish_read(&mut self) -> Result<(Vec<u8>, u32), String> {
+    /// The oldest started frame: its bytes, the frame index it was started with, and whether they are the encoder's
+    /// already (the GPU's output step) or as stored (premultiplied half floats, for `color::output`).
+    pub fn finish_read(&mut self) -> Result<(Vec<u8>, u32, bool), String> {
         let t0 = std::time::Instant::now();
-        let r = self.gl.as_mut().and_then(|g| g.readback.as_mut()).ok_or("no readback in flight")?.finish_oldest();
+        let (index, out) = self.in_flight.pop_front().ok_or("no readback in flight")?;
+        let gl = self.gl.as_mut().ok_or("no readback in flight")?;
+        let Some((spec, deep)) = out else {
+            let r = gl.readback.as_mut().ok_or("no readback in flight")?.finish_oldest();
+            self.last_read_ms = t0.elapsed().as_secs_f64() * 1000.0;
+            gpu_failed(self.gl.as_mut().unwrap())?;
+            self.last_read_ready = false;
+            return r.map(|(raw, _)| (raw, index, false));
+        };
+        let (w, bpp) = (self.width as usize, if deep { 8 } else { 4 });
+        let mut bytes = vec![0u8; w * self.height as usize * bpp];
+        let done = gl.exact.as_mut().map_err(|e| e.clone())?.queue_finish(&mut bytes);
+        gl.gr.reset(None);
         self.last_read_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let index = self.in_flight.pop_front().unwrap_or(0);
-        gpu_failed(self.gl.as_mut().unwrap())?;
-        r.map(|(raw, _)| (raw, index))
+        gpu_failed(gl)?;
+        // The pixels the table can't answer (a see-through edge), from the frame's halves there, as `output` would.
+        let t1 = std::time::Instant::now();
+        for ([x0, y0, x1, _], raw) in &done?.cpu {
+            let rw = (x1 - x0) as usize;
+            let mut px = vec![0u8; raw.len() / 8 * bpp];
+            crate::color::output_rect(&spec, raw, rw as u32, (*x0, *y0), deep, false, &mut px);
+            for (k, row) in px.chunks_exact(rw * bpp).enumerate() {
+                let at = ((*y0 as usize + k) * w + *x0 as usize) * bpp;
+                bytes[at..at + row.len()].copy_from_slice(row);
+            }
+        }
+        self.last_convert_ms = t1.elapsed().as_secs_f64() * 1000.0;
+        self.last_read_ready = true;
+        Ok((bytes, index, true))
     }
 
     /// A playing frame through the output step on the GPU: the last picture drawn through `lut` (color.rs `OutputLut`, the

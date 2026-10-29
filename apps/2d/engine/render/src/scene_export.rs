@@ -4,10 +4,12 @@
 //! `layoutS`, `paintS`, `gpuS`, `readS`, `encodeWaitS` …), so people and agents can see what a slow export spends its
 //! time on. With several drawing workers the steps add up over all of them (so they can sum to more than `totalS`).
 //! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
-//! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs).
+//! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs); `repeatedFrames`: how many
+//! frames had the stage of the frame before and went to the encoder as that picture again, not drawn (export_crew.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
 //! `warning` says in words when that was not the computer's main graphics card; `encoder` names the MP4 encoder
-//! used and whether it ran on the graphics card (sink.rs `encoder`); `workers` how many drew and `budgetMB` each
+//! used and whether it ran on the graphics card (sink.rs `encoder`, with where its time went); `read` how the frames
+//! came back from the graphics card (painter.rs `start_read`); `workers` how many drew and `budgetMB` each
 //! one's Skia budget.
 //!
 //! The frames are drawn by `workers` drawing workers side by side (export_crew.rs: request `workers`, else
@@ -57,7 +59,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         (e, _) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
             let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            s.sink = Some(Sink::start(program, &args)?);
+            s.sink = Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true))?);
         }
     }
     let warning = painting_warning(&s.painting);
@@ -67,7 +69,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
     let span = Span { start, fps, n };
-    let (rows, costs) = export_crew::draw_all(held, s, req, span, workers, progress)?;
+    let (rows, costs, worker_start_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
     let code = if images.is_none() { Some(serve::finish(s)?) } else { None };
     if let Some(sink) = &s.sink {
         // Every frame, once, in order (sink.rs `push` notes each frame's number as it is queued).
@@ -96,10 +98,14 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         timing.insert(k.replace("Ms", "S"), json!(rows.iter().map(|r| r.steps[j]).sum::<f64>() / 1000.0));
     }
     timing.insert("stillPieces".into(), json!(rows.iter().map(|r| r.still).sum::<u64>()));
+    timing.insert("workerStartS".into(), json!(worker_start_s));
+    timing.insert("repeatedFrames".into(), json!(rows.iter().filter(|r| r.repeat).count()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);
     let budget_mb = crate::export_workers::budget(s.width, s.height, workers) >> 20;
-    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "workers": workers, "budgetMB": budget_mb });
+    // How the frames came back from the graphics card: the encoder's bytes from its output step, or as stored.
+    let read = if images.is_some() { Value::Null } else if s.painter.last_read_ready { json!("output step on the GPU") } else { json!("as stored") };
+    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "read": read, "workers": workers, "budgetMB": budget_mb });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)
 }

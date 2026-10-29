@@ -1,7 +1,7 @@
 //! One encoder shared by an export's drawing workers (export_crew.rs): each worker's sink (sink.rs `Sink::turn`)
 //! hands its frames here, and a frame goes into the encoder only when every frame before it has, so the encoder
-//! still gets every frame once, in frame order. A frame that comes early is put through the output step on its
-//! worker's thread (sink.rs `Pixels::converted`) and held until its turn, so a worker drawing quick frames goes on
+//! still gets every frame once, in frame order. Every frame is put through the output step on its worker's thread (sink.rs
+//! `Pixels::converted`; a frame from the GPU's output step already is), and one that comes early is held until its turn, so a worker drawing quick frames goes on
 //! while another draws a slow one (a 128-sample motion-blurred frame held up every worker: Night Bloom's busy
 //! seconds and the export-speed bench spent more time waiting here than painting). A worker waits only when its frame
 //! is WINDOW or more frames after the next one due (memory stays bounded: at most WINDOW frames held, 8 MB each at
@@ -49,14 +49,10 @@ impl Turn {
             }
             p
         };
-        // Not due yet: converted here, off the lock, while other workers convert theirs.
-        let mut px = Some(px);
+        // Converted here, off the lock, while other workers convert theirs (due or not: the one writer thread
+        // converting each due frame was the export's narrowest step). Frames from the GPU's output step are ready.
+        let mut px = Some(px.converted());
         let mut st = self.state.lock().unwrap();
-        if p != st.next {
-            drop(st);
-            px = px.map(Pixels::converted);
-            st = self.state.lock().unwrap();
-        }
         loop {
             if let Some(why) = &st.stop {
                 return Err(format!("the export stopped: {why}"));
@@ -112,7 +108,7 @@ mod tests {
     /// A frame of 4 × 2 premultiplied half floats, its values made from its number.
     fn frame(index: u32) -> Pixels {
         let raw = (0..4 * 2 * 4).flat_map(|k| half::f16::from_f32(((index as usize * 7 + k) % 97) as f32 / 97.0).to_le_bytes()).collect();
-        Pixels { raw, spec: crate::color::Spec::default(), width: 4, deep: false, index, ready: false }
+        Pixels { raw, spec: crate::color::Spec::default(), width: 4, deep: false, index, ready: false, repeat: false }
     }
 
     /// Three workers push 40 frames in an order of their own (one held up on a slow frame): the encoder still gets every

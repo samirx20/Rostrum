@@ -66,10 +66,11 @@ GROUP = [
     _c("justify", ["start", "center", "end", "between", "around", "evenly"], "Spread", "start", ON,
        {"start": "From the start", "center": "Centred", "end": "To the end", "between": "Space between",
         "around": "Space around", "evenly": "Space evenly"},
-       help="Along the row or column (across a stack): where the layers sit and how the room left is shared"),
+       help="Along the line, as CSS justify-content: left to right in a row (and in a stack), top to bottom in a "
+            "column; where the layers sit and how the room left is shared"),
     _c("align", ALIGNS, "Align", "start", ON, ALIGN_WORDS,
-       help="Across the row (or column, or grid cell, or stack): top, middle, bottom, stretched to fill it, or on "
-            "the first line of text"),
+       help="Across the line, as CSS align-items: top to bottom in a row (and in a stack, a grid cell), left to "
+            "right in a column; start, middle, end, stretched to fill it, or on the first line of text"),
     _t("wrap", "Wrap", False, FLOW, help="Start a new line when the next layer doesn't fit"),
     _n("columns", "Columns", 3, GRID, lo=1, hi=100, unit="", integer=True),
     Param.text("columnsTemplate", label="Column sizes", group=G, default="", importance="deep", valid_when=GRID,

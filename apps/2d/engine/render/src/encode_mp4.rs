@@ -1,4 +1,4 @@
-//!   rostrum2d-render encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
+//!   rostrum2d-render encode-mp4 [--tagged] <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
 //!   rostrum2d-render encode-mp4 --check     exit 0 when this computer can write MP4, else the reason on stderr
 //! RGBA8 frames (straight alpha, the framing of encode_cmd.rs) → an H.264 MP4 through the operating system's own
 //! encoder, never libx264 (GPL). Windows: Media Foundation's sink writer, the GPU's encoder when there is one, else
@@ -8,6 +8,8 @@
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
+//! `--tagged`: each frame comes after a byte, 0 for a picture that follows, 1 for the picture before it again (sink.rs:
+//! a still stretch of an export costs no bytes in the pipe and no conversion; the encoder gets the same frame again).
 //! A thread reads the next frame while this one converts and writes the one before (three buffers going round); at the end
 //! stderr says how long each step took. Media Foundation's DLLs are delay-loaded (build.rs): nothing loads them until `available` has found each one in
 //! System32, so a Windows without them still runs the engine and gets a plain reason here instead of a crash.
@@ -42,6 +44,8 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if args.first().map(String::as_str) == Some("--check") {
         return Ok(0);
     }
+    let tagged = args.first().map(String::as_str) == Some("--tagged");
+    let args = &args[tagged as usize..];
     let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]")?;
     let (w, h) = (num(args, 1, "width")?, num(args, 2, "height")?);
     let (fps, kbps) = (num(args, 3, "fps")?, num(args, 4, "bitrate (kbps)")?);
@@ -55,7 +59,7 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if quality.is_some_and(|q| !(1..=100).contains(&q)) {
         return Err(format!("quality is 1 to 100; got {}", quality.unwrap()));
     }
-    let done = mf::write(out, w, h, fps, kbps, quality); // the writer is released here, so the file can be removed
+    let done = mf::write(out, w, h, fps, kbps, quality, tagged); // the writer is released here, so the file can be removed
     if done.is_err() {
         let _ = std::fs::remove_file(out);
     }
@@ -181,7 +185,7 @@ mod mf {
         }
     }
 
-    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>) -> Result<u32, String> {
+    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>, tagged: bool) -> Result<u32, String> {
         unsafe {
             step("starting COM (CoInitializeEx)", CoInitializeEx(None, COINIT_MULTITHREADED).ok())?;
             let mut session = Session { mf: false };
@@ -207,7 +211,8 @@ mod mf {
             let size = wu * hu * 3 / 2;
             // A thread reads the frames (three buffers going round) while this one converts and encodes the one before,
             // so the pipe's time and the encoder's overlap.
-            let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Vec<u8>, String>>(3);
+            // None: the picture before again (`--tagged`).
+            let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Option<Vec<u8>>, String>>(3);
             let (free, free_rx) = std::sync::mpsc::channel::<Vec<u8>>();
             for _ in 0..3 {
                 let _ = free.send(vec![0u8; wu * hu * 4]);
@@ -215,9 +220,36 @@ mod mf {
             std::thread::spawn(move || {
                 let mut stdin = std::io::stdin().lock();
                 let mut i = 0u32;
-                while let Ok(mut buf) = free_rx.recv() {
+                loop {
+                    if tagged {
+                        let mut tag = [0u8];
+                        match frame(&mut stdin, &mut tag, i) {
+                            Ok(true) if tag[0] == 1 => {
+                                if full_tx.send(Ok(None)).is_err() {
+                                    break;
+                                }
+                                i += 1;
+                                continue;
+                            }
+                            Ok(true) if tag[0] == 0 => {}
+                            Ok(true) => {
+                                let _ = full_tx.send(Err(format!("frame {i}: its mark is {} (0: a picture, 1: the one before again)", tag[0])));
+                                break;
+                            }
+                            Ok(false) => break,
+                            Err(e) => {
+                                let _ = full_tx.send(Err(e));
+                                break;
+                            }
+                        }
+                    }
+                    let Ok(mut buf) = free_rx.recv() else { break };
                     match frame(&mut stdin, &mut buf, i) {
-                        Ok(true) => drop(full_tx.send(Ok(buf))),
+                        Ok(true) => drop(full_tx.send(Ok(Some(buf)))),
+                        Ok(false) if tagged => {
+                            let _ = full_tx.send(Err(format!("frame {i} ended after its mark, before its picture")));
+                            break;
+                        }
                         Ok(false) => break,
                         Err(e) => {
                             let _ = full_tx.send(Err(e));
@@ -228,6 +260,7 @@ mod mf {
                 }
             });
             let mut n = 0u32;
+            let mut nv12 = vec![0u8; size];
             let (mut waited, mut converted, mut encoded) = (0f64, 0f64, 0f64); // seconds, for the log
             let mut lap = std::time::Instant::now();
             let mut took = |into: &mut f64| {
@@ -236,11 +269,17 @@ mod mf {
             };
             while let Ok(read) = full.recv() {
                 took(&mut waited);
-                let rgba = read?;
+                // A new picture into NV12 (kept: a repeat is the same NV12 again).
+                if let Some(rgba) = read? {
+                    crate::nv12::from_rgba(&rgba, wu, hu, &mut nv12);
+                    let _ = free.send(rgba);
+                } else if n == 0 {
+                    return Err("frame 0 is marked as the picture before it again; there is none".into());
+                }
                 let buf = step(format!("frame {n}: MFCreateMemoryBuffer"), MFCreateMemoryBuffer(size as u32))?;
                 let mut p = std::ptr::null_mut();
                 step(format!("frame {n}: locking its buffer"), buf.Lock(&mut p, None, None))?;
-                crate::nv12::from_rgba(&rgba, wu, hu, std::slice::from_raw_parts_mut(p, size));
+                std::slice::from_raw_parts_mut(p, size).copy_from_slice(&nv12);
                 step(format!("frame {n}: unlocking its buffer"), buf.Unlock())?;
                 took(&mut converted);
                 step(format!("frame {n}: SetCurrentLength"), buf.SetCurrentLength(size as u32))?;
@@ -252,7 +291,6 @@ mod mf {
                 step(format!("frame {n}: SetSampleDuration"), sample.SetSampleDuration(at(n + 1) - at(n)))?;
                 step(format!("frame {n}: encoding (WriteSample)"), writer.WriteSample(stream, &sample))?;
                 took(&mut encoded);
-                let _ = free.send(rgba);
                 n += 1;
             }
             if n == 0 {

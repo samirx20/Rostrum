@@ -83,7 +83,9 @@ def _mp4(out, w, h, fps, depth, first, rate):
     exe = str(find_exe())
     _can_write_mp4(exe)
     q = [] if rate.quality is None else [str(rate.quality)]
-    return {"program": exe, "args": ["encode-mp4", out, str(w), str(h), str(fps), str(rate.kbps), *q]}
+    # --tagged / repeat: a frame the same as the one before reaches the encoder as a one-byte mark (a still stretch costs
+    # no drawing, read-back or pipe; engine export_crew.rs).
+    return {"program": exe, "args": ["encode-mp4", "--tagged", out, str(w), str(h), str(fps), str(rate.kbps), *q], "repeat": True}
 
 
 def _can_write_mp4(exe: str):

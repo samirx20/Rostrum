@@ -149,7 +149,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
         Some(e) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
             let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            Some(Sink::start(program, &args)?)
+            Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true))?)
         }
         None => None,
     };
@@ -638,10 +638,11 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     let (w, h) = (s.width, s.height);
     if req["encode"].as_bool() == Some(true) {
         // To the encoder: the frame's readback is started and collected while the next frame is made (one
-        // frame in flight; readback.rs), or read now where the GPU cannot.
+        // frame in flight): the encoder's bytes from the GPU's output step (gpu_output_queue.rs), else as stored
+        // (readback.rs); or read now where the GPU cannot.
         s.sink.as_ref().ok_or("encode frames need an encoder (open.encode)")?;
         let mut wait_ms = 0.0;
-        if s.painter.start_read(index) {
+        if s.painter.start_read(index, &s.color, s.deep)? {
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             while s.painter.reads_in_flight() > 1 {
                 wait_ms += collect(s)?;
@@ -650,7 +651,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
             let raw = s.painter.read()?;
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             let t3 = Instant::now();
-            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false };
+            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false, repeat: false };
             s.sink.as_mut().unwrap().push(px)?;
             wait_ms += t3.elapsed().as_secs_f64() * 1000.0;
         }
@@ -780,14 +781,22 @@ fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut
     Ok(())
 }
 
-/// The oldest frame in flight, read back and queued for the encoder (its stored bytes are converted on the
-/// writer thread). Returns the ms spent (waiting for the GPU or the encoder).
+/// The oldest frame in flight, read back and queued for the encoder (bytes read back as stored are converted on a
+/// drawing worker or the writer thread). Returns the ms spent (waiting for the GPU or the encoder).
 fn collect(s: &mut Session) -> Result<f64, String> {
     let t = Instant::now();
-    let (raw, index) = s.painter.finish_read()?;
-    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready: false };
+    let (raw, index, ready) = s.painter.finish_read()?;
+    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready, repeat: false };
     s.sink.as_mut().ok_or("no encoder")?.push(px)?;
     Ok(t.elapsed().as_secs_f64() * 1000.0)
+}
+
+/// Frame `index` is the same picture as the export's frame before it (export_crew.rs: the same stage): the encoder gets
+/// that frame again, nothing drawn or read back. This worker's frames in flight go first, so it never waits on its own.
+pub(crate) fn repeat(s: &mut Session, index: u32) -> Result<(), String> {
+    drain(s)?;
+    let px = Pixels { raw: vec![], spec: s.color, width: s.width, deep: s.deep, index, ready: true, repeat: true };
+    s.sink.as_mut().ok_or("no encoder")?.push(px)
 }
 
 /// Every frame in flight to the encoder, then the encoder closed and waited for.
