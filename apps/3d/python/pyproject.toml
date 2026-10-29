@@ -3,7 +3,7 @@ name = "rostrum3d"
 version = "0.1.0"
 description = "Rostrum3D's Python layer: document, operations, script layer, scene compiler, engine client, MCP server"
 requires-python = ">=3.11"
-dependencies = ["rostrum_core", "Pillow>=10.1"]
+dependencies = ["rostrum_core", "Pillow>=10.1", "pyinstantmeshes>=1.0"]   # pyinstantmeshes: Make a clean mesh (remesh.py; BSD-3)
 
 [project.scripts]
 rostrum-3d = "rostrum3d.mcp.server:main"
