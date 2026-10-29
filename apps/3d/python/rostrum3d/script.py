@@ -268,17 +268,18 @@ class Item:
         pts, node = [list(p) for p in profile], self.node
         return self._step(clay_steps.spin_values(node, _vec(values), pts, clay_detail.detail(self._b.root, node)))
 
-    def pose(self, at, keys=None, holds=None, ease: str = "smooth", **parts) -> "Item":
+    def pose(self, at, keys=None, holds=None, ease: str = "smooth", clear=None, **parts) -> "Item":
         """Pose a clay figure at one time: .pose(seconds, **{"hand.R": target, "head": target, …}); chain calls for a
         motion. A target is a world point (x, y, z) or {"up": m, "out": m, "forward": m} from where the part is at rest
         (the figure's own up / away from its middle / the way it faces). Names: "hand.R", "right hand", "picture-left
         hand" (as the shot's camera sees it). holds= joints that stay put. The older .pose("hand.R", {seconds: target})
-        still works. Out of reach / far side of the body: a note in the reply. Pose after the last lump."""
+        still works. Out of reach / far side of the body: a note in the reply. clear=m (asked for, never by
+        default): turn the limb out just enough to keep m metres from the head, with a note saying how far it turned. Pose after the last lump."""
         node = self._clay_node("pose")
         if isinstance(at, str):
-            script_pose.pose(self._b, node, at, keys, holds, ease)
+            script_pose.pose(self._b, node, at, keys, holds, ease, clear)
         else:
-            script_pose.pose_at(self._b, node, at, parts, holds, ease)
+            script_pose.pose_at(self._b, node, at, parts, holds, ease, clear)
         return self
 
     def bend(self, joint: str, keys, ease: str = "smooth") -> "Item":

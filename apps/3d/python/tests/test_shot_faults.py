@@ -1,9 +1,7 @@
 """Faults first for a 3D shot (mcp/shot_faults.py): a near-black picture, a subject cut by the frame and a floating ball come back as
-faults with stable ids, and a render is refused while they are open and let through when `keep` explains them. Synthetic: no engine."""
-import pytest
+faults with stable ids, and a render with open faults is written and lists them as notes (keep marks the ones on purpose). Synthetic: no engine."""
 from PIL import Image
 from rostrum_core import Document
-from rostrum_core.errors import RostrumError
 
 from rostrum3d import KIND, run_source
 from rostrum3d.compile import shot_info
@@ -35,14 +33,12 @@ def test_a_dark_picture_a_cut_subject_and_a_floating_ball_are_faults_with_stable
     assert all(f["fix"] and f["what"] for f in found) and "top" in next(f for f in found if f["id"] == "cut_edge:ball")["what"]
 
 
-def test_a_render_is_refused_without_keep_and_passes_when_each_fault_is_explained(tmp_path):
+def test_a_render_with_open_faults_is_written_and_lists_them_as_notes(tmp_path):
+    """Faults are notes, never a refusal (Sam, 2026-10-29): the file stays under its name; keep marks the ones on purpose."""
     found = _found(tmp_path)
     png = tmp_path / "shot.png"
     png.write_bytes(b"png")
-    with pytest.raises(RostrumError) as e:
-        shot_faults.deliver(found, None, "render_still", [png])
-    assert "NOT DONE" in e.value.line() and not png.exists() and (tmp_path / "shot.NOT-DONE.png").exists()
-    png.write_bytes(b"png")
+    notes = shot_faults.deliver(found, None, "render_still", [png])
+    assert png.exists() and not (tmp_path / "shot.NOT-DONE.png").exists() and "open fault" in notes[-1], notes
     keep = {f["id"]: "the ball is meant to hover, cropped and dim" for f in found}
-    shot_faults.deliver(found, keep, "render_still", [png])
-    assert png.exists()
+    assert not [n for n in shot_faults.deliver(found, keep, "render_still", [png]) if "open fault" in n]

@@ -137,8 +137,9 @@ stroke, and every render, show the full detail.
 
 **A character is one clay.** Start it as a ball and join its head, arms and feet as pieces of it, in a script:
 `c = clay("buddy", radius=0.07)` (no `at` / `y`: the ball stands on the ground, the clay's origin on the ground
-under it, so positions are heights above the ground), then `c.lump((0, 0.195, 0), 0.055, name="head")` and
-`c.lump(at, 0.02, to=…, name="arm")` from inside the body outwards.
+under it, so positions are heights above the ground), then `c.lump((0, 0.175, 0), 0.055, name="head", blend=0.012)`,
+`c.lump(at, 0.02, to=…, name="arm")` from inside the body outwards (its shoulder clear of the head), and short `leg` and
+`foot` capsules reaching below the ball (the figure is lifted to stand on them; guide `script` has the whole figure).
 Every piece blends into one surface, so nothing floats or drifts apart, and the joints (`body`, `chest`, `head`,
 `arm.R` …) are found from that one shape for `c.bend` / `c.pose` (guides `posing`, `script`). Separate clays or
 meshes for limbs only touch, with a hard line, and don't bend together.

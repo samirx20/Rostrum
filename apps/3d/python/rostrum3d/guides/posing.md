@@ -76,22 +76,27 @@ leaves the part where it was put.
 **From the script (the usual way)**, after the clay's last piece (guide `script`):
 
 ```python
-# a wave that reads on camera: the hand goes up ABOVE the head and swings side to side by about half the figure's
-# height (here 15 cm), three swings and more, until the shot ends; the other arm hangs relaxed. A 2 cm move reads as still.
-c.pose(0, **{"picture-right hand": {"up": 0.06, "out": -0.02}, "picture-left hand": {"up": -0.03, "out": -0.06}})  # a real move: 0 m keys nothing
-c.pose(0.4, **{"picture-right hand": {"up": 0.19, "out": -0.02, "forward": 0.03}})       # the lift
-for i, t in enumerate([0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2]):                             # one swing every 0.4 s to the end
-    c.pose(t, **{"picture-right hand": {"up": 0.22, "out": -0.15, "forward": 0.03} if i % 2 == 0   # over the head
-                 else {"up": 0.17, "out": 0, "forward": 0.03}})                                    # out to the side
+# a wave that reads on camera: the hand goes up BESIDE the head, a little in front of it (never over its middle), and
+# swings side to side by a good share of the figure's height (here ~12 cm), three swings and more, until the shot ends;
+# the other arm hangs relaxed. A 2 cm move reads as still. Turning points every 0.35 s, not 0.5 or 1 s: stills one
+# second apart would catch the same pose.
+c.pose(0, **{"picture-right hand": {"up": 0.06, "out": 0.02}, "picture-left hand": {"up": -0.03, "out": 0.01}})  # a real move: 0 m keys nothing
+c.pose(0.4, **{"picture-right hand": {"up": 0.14, "out": -0.03, "forward": 0.05}})       # the lift
+for i in range(8):                                                                      # a swing every 0.35 s to the end
+    c.pose(0.8 + 0.35 * i, **{"picture-right hand": {"up": 0.17, "out": -0.11, "forward": 0.06} if i % 2 == 0  # in, by the head
+                              else {"up": 0.12, "out": 0, "forward": 0.06}})                             # out to the side
 # c.bend("arm.R", {0: (0, 0, 0), 0.8: (0, 0, -100)})        # instead of pose: turn one joint by degrees, at each time
 ```
 
 - **What makes it read** (a technique, not numbers to copy): the moving part travels a good share of the figure's own
-  height (here the hand goes from beside the shoulder to over the head and swings 15 cm on a 30 cm figure), it swings
-  three times or more, and the motion runs to the shot's last frame (a wave that stops early reads as a pose). The
-  numbers above fit `guide script`'s figure (its arm reaches 0.20 m from the shoulder); on another figure, scale them
-  to its size and read the reply's "stops short" notes. Over the head, keep the hand a little forward (`"forward"`) so
-  it passes in front of the head, not through it, and look at a sheet (`run_script` `look: true`) to see the swing.
+  height (here the hand goes from beside the shoulder to beside the head and swings ~12 cm on a 25 cm figure), it swings
+  three times or more, its turning points are not on the whole or half second (stills one second apart catch the same
+  pose: the checks say `wave_in_step`), and the motion runs to the shot's last frame (a wave that stops early reads as a
+  pose). The numbers above fit `guide script`'s figure (its arm reaches 0.15 m from the shoulder); on another figure,
+  scale them to its size and read the reply's notes ("stops short"). Keep the hand beside the head and a little forward
+  (`"forward"`), not over its middle: an arm against the head reads as melted into it. The pose is exactly what you
+  ask; `clear=0.015` (optional) turns the arm out just enough to stay that far from the head and says how far it turned. Look at a sheet (`run_script`
+  `look: true`) to see the swing; `wave_small` names a swing too small to read.
 
 - `pose(seconds, **{part: target, …}, holds=, ease=)` moves each named part's end to its target at that time (the
   drag solve, `pose.drag`) and keys the joints that moved. Several parts in one call make one pose; a part not named

@@ -12,7 +12,10 @@ as NOT DONE and hold back a final render the same way (round 4 of the 3D gaps: j
   backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py);
   through_body:<clay>.<joint> / off_body:<item> / reads_still:<clay>.<joint>  a posed figure's part through another, a feature
                         sliding off it, a keyed swing too small to see (pose_faults.py); on_rim:<item> a feature seen on the
-                        outline of the part it sits on, reading as beside it (pose_rim.py);
+                        outline of the part it sits on, reading as beside it (pose_rim.py); touches_body:<clay>.<joint> a part
+                        meeting another on the picture (pose_touch.py); face_unmatched:<a>~<b> a pair of eyes unlike in size, height or as
+                        seen (pose_face.py); wave_small / wave_in_step:<clay>.<joint> a swing too small on screen or in step
+                        with stills one second apart (pose_wave.py);
   passes_through:<a>~<b>  two things not built as one sunk into each other deeper than 1 cm, by their real forms (contact_faults.py);
   frozen_end:<shot>     the shot's last 2 s or more with nothing moving at all (still_faults.py; whole-shot checks only, never
                         one frame's look or a still render).
