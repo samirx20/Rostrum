@@ -100,6 +100,11 @@ class Materials3D(QObject):
         return [i for i in self.b.selection if self.b.doc.item(i).get("type") in USERS]
 
     @Slot(str)
+    def rowAction(self, action_id):
+        """A material row's button (the inspector calls its bridge's rowAction): Use all shots, as on an item's rows."""
+        self.b.rowAction(action_id)
+
+    @Slot(str)
     def assign(self, material_id):
         if self.b.shotOnly:                     # Only in this shot: the shown shot's own material (bridge_shot_only.py)
             return self.b._guard(lambda: self.b._apply([self.b.edit_call(i, "material", material_id) for i in self._sel()], "Material"))
