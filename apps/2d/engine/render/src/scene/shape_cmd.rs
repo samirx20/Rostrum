@@ -33,7 +33,7 @@ pub fn shapes(req: &Value) -> Result<Value, String> {
         }
         let p = shape_geom::as_path(it)?;
         // What the path sets that the shape doesn't have, or has otherwise; its place and the rest of its look stay the layer's.
-        let look: Map<String, Value> = p.props.into_iter().filter(|(k, v)| path_fields.contains(&k.as_str()) && it.props.get(k) != Some(v)).collect();
+        let look: Map<String, Value> = p.props.into_owned().into_iter().filter(|(k, v)| path_fields.contains(&k.as_str()) && it.props.get(k) != Some(v)).collect();
         paths.insert(id.clone(), Value::Object(look));
     }
     Ok(json!({ "ok": true, "paths": paths }))

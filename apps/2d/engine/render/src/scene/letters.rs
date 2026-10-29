@@ -95,7 +95,7 @@ fn weighted(it: &Item, lines: &[&str], starts: &[usize], measures: &mut [type_fo
     for run in runs.iter().filter(|r| r.weight > 0.0 || r.scale != 1.0) {
         let mut own = it.clone();
         if run.weight > 0.0 {
-            own.props.insert("weight".into(), run.weight.into());
+            own.props.to_mut().insert("weight".into(), run.weight.into());
         }
         for (i, line) in lines.iter().enumerate() {
             let m = if run.weight > 0.0 { type_font::measure(&own, line)? } else { type_font::measure(it, line)? };

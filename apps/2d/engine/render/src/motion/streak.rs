@@ -183,7 +183,8 @@ fn same_own(a: &Item, b: &Item, top: bool) -> bool {
         return false;
     }
     let warped = top && ["tiltX", "tiltY"].iter().any(|f| a.props.get(*f).and_then(serde_json::Value::as_f64).unwrap_or(0.0) != 0.0);
-    let props = a.props.iter().all(|(k, v)| {
+    // The scene's own fields, borrowed by both (eval.rs `props_at`: nothing keyed): the same, without a look at each.
+    let props = std::ptr::eq(&*a.props, &*b.props) || a.props.iter().all(|(k, v)| {
         let Some(w) = b.props.get(k) else { return false };
         if top && PLACE.contains(&k.as_str()) && !(warped && k != "x" && k != "y") {
             return true;

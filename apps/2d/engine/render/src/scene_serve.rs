@@ -245,14 +245,14 @@ fn comp_focused<'a>(scene: &'a Scene, plan: &'a crate::motion::Plan, t: f64, alp
     if let Some(cam) = comp.layers.iter_mut().find(|l| l.kind == "camera") {
         for (f, v) in focus {
             match v {
-                Some(v) => cam.props.insert((*f).into(), v.clone()),
-                None => cam.props.remove(*f),
+                Some(v) => cam.props.to_mut().insert((*f).into(), v.clone()),
+                None => cam.props.to_mut().remove(*f),
             };
         }
     }
     plan.apply(&scene.comp, &mut comp);
     if alpha {
-        comp.props.insert("background".into(), Value::String("transparent".into()));
+        comp.props.to_mut().insert("background".into(), Value::String("transparent".into()));
     }
     comp
 }
@@ -320,6 +320,12 @@ impl Staged {
         &self.samples
     }
 
+    /// Tests: where the eval time went, ms by step (eval_bench_tests.rs).
+    #[cfg(test)]
+    pub(crate) fn split(&self) -> &[(&'static str, f64)] {
+        &self.split
+    }
+
     /// Tests: each piece's streak moves.
     #[cfg(test)]
     pub(crate) fn streaks(&self) -> &[Option<crate::motion::streak::Streak>] {
@@ -379,7 +385,8 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         // Where each layer is, at a few times spread over the open shutter (motion/streak.rs `probe_times`; the middle
         // one is the frame's own, `centre`): the frame's step count and its streaks' moves are read off them.
         // Without trails or smears, a probe re-reads only the own fields of the layers whose insides are the same all
-        // through the frame (eval.rs `own_only`, `at_reusing`): the same comp as `eval_at`, field for field.
+        // through the frame (eval.rs `own_only`, `at_reusing`): the same comp as `eval_at`, field for field. The staged
+        // sub-frames below are read the same way.
         let own_only = if plan.adds_nothing() { crate::scene::eval::own_only(&scene.comp) } else { vec![] };
         let reused: std::collections::HashSet<&str> = scene.comp.layers.iter().zip(&own_only).filter(|(_, o)| **o).map(|(n, _)| n.id.as_str()).collect();
         let probe_at = |ts: f64| {
@@ -391,13 +398,13 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
                 if let Some(cam) = comp.layers.iter_mut().find(|l| l.kind == "camera") {
                     for (f, v) in &focus {
                         match v {
-                            Some(v) => cam.props.insert((*f).into(), v.clone()),
-                            None => cam.props.remove(*f),
+                            Some(v) => cam.props.to_mut().insert((*f).into(), v.clone()),
+                            None => cam.props.to_mut().remove(*f),
                         };
                     }
                 }
                 if alpha {
-                    comp.props.insert("background".into(), Value::String("transparent".into()));
+                    comp.props.to_mut().insert("background".into(), Value::String("transparent".into()));
                 }
                 Ok::<_, String>(comp)
             })
@@ -417,13 +424,13 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         mark("moves", &mut split);
         let whole = moves.len() != centre_pieces.len();
         if whole || staged.iter().any(|&s| s) {
-            let ids: Vec<&str> = centre.layers.iter().filter(|l| l.kind != "camera" && !crate::scene::matte::used(l, &centre)).map(|l| l.id).collect();
+            let ids: Vec<&str> = crate::scene::matte::drawn(&centre).map(|l| l.id).collect();
             staged_ids = if whole { vec!["(all)".to_string()] } else { (1..staged.len()).filter(|&p| staged[p]).filter_map(|p| ids.get(p - 1).map(|s| s.to_string())).collect() };
             // As many sub-frames as the staged layers' own moves need (the streaks keep all of theirs).
             let least = crate::motion::shutter(&scene.comp, req)?.1;
             let m = if whole { n } else { crate::motion::streak::own_steps(&at_probes, &staged_ids, least, n) };
             let times: Vec<f64> = crate::motion::streak::pick(m, n).into_iter().map(|j| times[j]).collect();
-            let items = times.iter().map(|&ts| eval_at(ts)).collect::<Result<Vec<_>, _>>()?;
+            let items = times.iter().map(|&ts| probe_at(ts)).collect::<Result<Vec<_>, _>>()?;
             mark("stagedEval", &mut split);
             // Staged per sub-frame: every piece when the sub-frames draw different layers, else only those that change.
             // Only the staged pieces are written; the others are the frame's own.

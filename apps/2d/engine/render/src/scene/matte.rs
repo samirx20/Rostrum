@@ -48,10 +48,12 @@ pub fn check(n: &Node) -> R<()> {
     n.layers.iter().try_for_each(check)
 }
 
-/// Whether this layer is some sibling's matte (then it isn't drawn on its own). Asked of the scene, not the frame:
-/// a matte stays hidden while the layer it shapes is outside its own times.
-pub fn used(l: &Item, parent: &Item) -> bool {
-    parent.node.layers.iter().any(|s| matte_of(s) == l.id)
+/// The parent's layers drawn on their own, in order: not the frame, and not some sibling's matte. Which layers are
+/// mattes is asked of the scene, not the frame (a matte stays hidden while the layer it shapes is outside its own
+/// times), and read once for all of them: a comp of hundreds of layers asked it per layer of every layer.
+pub fn drawn<'p, 'a>(parent: &'p Item<'a>) -> impl Iterator<Item = &'p Item<'a>> {
+    let mattes: Vec<&str> = parent.node.layers.iter().map(matte_of).filter(|m| !m.is_empty()).collect();
+    parent.layers.iter().filter(move |l| l.kind != "camera" && !mattes.contains(&l.id))
 }
 
 /// The matte layer `l` names among its parent's layers now (None: outside its times), or no matte at all.
