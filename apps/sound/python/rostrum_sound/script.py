@@ -22,6 +22,7 @@
     marker("logo lands", at=bar(21), shared=True)     # a project marker 2D follows (published by run_script)
     build_to("#hit", over=beats(8), parts=[cymbal_roll(d), crescendo(s, ["D3", "A3"])])   # script_build.py
     m = moment("hit", at=31.5); m.rest(s, before=0.4); m.stop(d, until=37.5); m.strike(p, ["C2", "G2"], vel=1, ring=4)   # script_moment.py
+    ending("ring", at="#end")    # every part lands on the home chord there and rings out; "button" / "fade": script_ending.py
 
 A script error is a loud BAD_ARGUMENT naming the script and line; nothing is merged.
 """
@@ -37,7 +38,7 @@ from rostrum_core.merge import check_output
 from . import expression as EX
 from .builder import Song, Track
 from .doc import KIND, meter
-from . import script_build, script_moment, script_ops, script_scope, script_seconds, script_sync, writing
+from . import script_build, script_ending, script_moment, script_ops, script_scope, script_seconds, script_sync, writing
 from .script_time import Beat, Beats, plain, until
 
 _asked = threading.local()
@@ -45,7 +46,7 @@ API = ["brief(text)", "tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_un
        "marker(name, at, shared=False)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)",
        "t.shape(what, from_, to, over, curve)",
-       *script_sync.API, *script_moment.API, *script_build.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
+       *script_sync.API, *script_moment.API, *script_build.API, *script_ending.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
 
 
 def scope(song: Song) -> dict:
@@ -56,7 +57,7 @@ def scope(song: Song) -> dict:
         return Beat(meter.bar_start(song.root, n))
 
     def ring_out(on=True, soft_end=True):
-        """Off: the song stops hard at its length, no ring-out fade (listen/clean_end.py). Needs the length first."""
+        """Off: the song stops hard at its length, no ring-out fade (listen/end_check.py reads the ending). Needs the length first."""
         if song.root.get("length") is None:
             raise ValueError("ring_out() needs the song's length first: write length(...) before ring_out(False)")
         song.set(ringOut=bool(on), endFade=bool(soft_end))
@@ -77,7 +78,7 @@ def scope(song: Song) -> dict:
         "track": song.track, "bus": song.bus, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
         "beat": Beat, "beats": Beats, "bar": bar, "until": until, "vel_curve": vel_curve,
-        **script_sync.scope(song), **script_moment.scope(song), **script_build.scope(song), **writing.scope(song),
+        **script_sync.scope(song), **script_moment.scope(song), **script_build.scope(song), **script_ending.scope(song), **writing.scope(song),
     }
 
 
@@ -129,6 +130,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
     try:
         exec(compile(source, name, "exec"), {**script_scope.scope(), **scope(song)})
         script_sync.check(song)            # every downbeat / land still lands on the finished tempo map
+        script_ending.apply(song)          # ending(...): the parts land, what runs past is trimmed, the length set
         script_moment.apply(song)          # each moment's rest / stop / choke / swell / strike, on every note written
         script_seconds.check(song)         # a script written in seconds is told a tempo change won't move it
         _asked.markers = song.shared_asked()   # marker(..., shared=True): run_script publishes these (mcp/script_shared.py)

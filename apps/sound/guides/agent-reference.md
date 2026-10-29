@@ -187,10 +187,11 @@ t.note('D4', at=bar(1), dur=beats(4))"}}
    of each section (`data.sections`) and an `ending` line (see 7); `start` / `end` (seconds, `{"beat": n}` or `"#marker"`) measure
    one stretch only. Which tool answers which question: `listening`, `checking-a-mix-by-ear`. Whether it is musical is for a person to hear; say so in your report.
 6. **Fix in the script, run again under the same name.** Change one thing at a time; use `edit_document` only for a single value.
-7. **End it cleanly** (`script`, "Ending a song") and render the last version. `look_sound` (`what: "loudness"`): the `ending` line gives
+7. **End it cleanly** with one call, `ending("ring" | "button" | "fade", at="#end")` (`script`, "Ending a song"): the parts
+   land together, the length is set past the tail. Render the last version. `look_sound` (`what: "loudness"`): the `ending` line gives
    the level of the last 0.5 s, whether the file still sounds above -50 dBFS at its end, whether the last 50 ms drop faster than the
    fade, and the **audible end** (`audible_end_s`: where the sound falls under -60 dBFS for good). Still above -50 dBFS with a fast
-   last-50-ms drop is a cut: lengthen the song or add `master(fadeOut=...)`. Below -50 dBFS is a clean end.
+   last-50-ms drop is a cut: use `ending(...)`, or lengthen the song. Below -50 dBFS is a clean end.
 
 ## Rules that save a render
 
