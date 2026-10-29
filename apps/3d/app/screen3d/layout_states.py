@@ -20,7 +20,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-picker-low", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-curves", "animate-curves-picked", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-layers", "clay-turn-into", "pose-tool",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-curves", "animate-curves-picked", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "paint-stamp", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-layers", "clay-clean-running", "clay-clean-failed", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "shot-only-light", "collections-row", "anim-layers-two", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
          "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-stylize", "sim-render-sheet", "sim-context", "sim-body-selected")
@@ -270,6 +270,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # brief 21: From the view (a drag kept as drawn, laid on what it crosses) with the coverage tint on and its line
         ("paint-view-coverage", s, ["select block", "paint-b", "wait 1500", "paint-where view", "paint-tint",
                                     "paint-drag 0.35 0.5 0.65 0.5", "wait 2500"]),
+        # Stamp on a Relief layer: Brush | Stamp, the rows Picture (Load picture…), Size, Depth, Turn; one stamp laid
+        ("paint-stamp", s, ["select block", "paint-b", "wait 1500", "paint-layer", "paint-channel height",
+                            "paint-how stamp", "paint-brush size 300", "paint-click 0.5 0.5", "wait 2000"]),
         # Clay (Q, clay_tool_qt.py): Make only, nothing to sculpt yet; then a real Lump click on the ground makes a clay
         # (clay.add: the core's clay must be built), its Brush tiles and rows; then Carve picked by a real click
         # (`settled` before and after Q: Q's action runs a frame later, and a click in the same instant met Select; after the click: the picture
@@ -289,6 +292,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # PR4: the drawn clay with a sculpt layer made by a real click on the Steps head's "+ Layer": the Layers list
         # (Base, Layer 1 chosen, its Amount row and Layer ▾ under it) above Steps
         ("clay-layers", drawn_clay(), ["select buddy", "settled", "press Q", "settled", "clickon clayLayerAdd", "settled"]),
+        # PR4: the Clay panel's Clean mesh group (Faces, Make clean mesh), its running bar with Cancel, its failure line
+        ("clay-clean-running", drawn_clay(), ["select buddy", "settled", "press Q", "settled", "clean-demo running"]),
+        ("clay-clean-failed", drawn_clay(), ["select buddy", "settled", "press Q", "settled", "clean-demo failed"]),
         # Pose (Shift+P, pose_qt.py): its joints found on the drawn clay, the bones, the panel's three rows; the right-click menu
         ("pose-tool", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled"]),
         ("pose-context", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled", "context buddy"]),

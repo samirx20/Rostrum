@@ -160,7 +160,9 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   where you drag; From the view keeps the drag as drawn on the picture and paints every item it crosses (a stroke across
   a case and its lid lands on both, still one undo step). The trail stays drawn in the brush's colour until the paint
   is in the picture. Beside Paint layers' +, **▨** tints what the shot camera sees and isn't painted yet (a faint
-  orange hatch, on the screen only) and the line under it says "Seen by Hero 01: 62 % painted".
+  orange hatch, on the screen only) and the line under it says "Seen by Hero 01: 62 % painted". On a Relief layer,
+  **Brush | Stamp**: Stamp turns the rows into Picture (with Load picture…), Size, Depth and Turn, and a click lays the
+  whole picture once (one undo step).
 - **Project a picture from <shot>…** (right-click, with several shapes selected or while painting): a rendered 2D item
   of the project (it follows the 2D item: render it again in 2D and the 3D view updates) or a picture file, laid on the
   selected shapes from the shot's camera like a projector; what the camera doesn't see stays unpainted, so turning the

@@ -26,7 +26,8 @@ class PaintMode(PaintStroke, QObject):
     def __init__(self, bridge, viewport):
         super().__init__(viewport)
         self.b, self.v = bridge, viewport
-        self.brush = PaintBrush(self)
+        self.brush = PaintBrush(self, folder=lambda: getattr(bridge.doc, "folder", None),
+                                fail=lambda line: bridge.fail_line(f"Error: {line.removeprefix('Error: ')}"))
         self.coverage = Coverage(self, viewport)
         self._on, self._id, self._active = False, "", ""
         self._drag, self._pts, self._trail, self._busy, self._next, self._up = 0, [], [], False, None, True
@@ -34,6 +35,7 @@ class PaintMode(PaintStroke, QObject):
         self._ratio = 1.0                # screen px per canvas px, from the last two picks (the cursor's size)
         self._anchors, self._moved, self._mpp, self._mpp_screen = [], [0.0, 0.0], None, None   # a clay's (paint_stroke)
         self._where, self._pose, self._holding = "surface", None, False     # From the view: its pose; trail held
+        self._how = "stroke"                                                # Brush | Stamp (on a Relief layer)
         self.answered.connect(self._on_answer)
         bridge.docChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._on_selection)
@@ -53,6 +55,19 @@ class PaintMode(PaintStroke, QObject):
                             notify=trailChanged)
     where = Property(str, lambda s: s._where, notify=changed)          # "surface" | "view" (the Brush group's switch)
     wheres = Property("QVariantList", lambda s: P.WHERE, constant=True)
+    canStamp = Property(bool, lambda s: s._can_stamp(), notify=changed)    # Brush | Stamp shows (a Relief layer)
+    how = Property(str, lambda s: s._how, notify=changed)
+    hows = Property("QVariantList", lambda s: P.HOWS, constant=True)
+
+    def _can_stamp(self) -> bool:
+        return (self._layer() or {}).get("channel", "colour") == P.STAMP_CHANNEL
+
+    def _stamping(self) -> bool:
+        """A click lays one whole picture (paint.stamp) instead of a brush stroke."""
+        return self._how == "stamp" and self._can_stamp()
+
+    def _sync_stamp(self):
+        self.brush.set_stamping(self._stamping())
 
     # --- the mesh painted and its layers
     def _item(self):
@@ -75,6 +90,7 @@ class PaintMode(PaintStroke, QObject):
             return self.leave()
         if it is not None and self._layer() is None:     # the active layer went (undo, delete): the top one
             self._active = it["paints"][-1]["id"] if it.get("paints") else ""
+        self._sync_stamp()
         self.changed.emit()
 
     def _on_selection(self, *_):
@@ -139,8 +155,16 @@ class PaintMode(PaintStroke, QObject):
             self.trailChanged.emit()                  # the brush disc's size follows (screen px From the view)
 
     @Slot(str)
+    def setHow(self, how):
+        if how in ("stroke", "stamp") and how != self._how:
+            self._how = how
+            self._sync_stamp()
+            self.changed.emit()
+
+    @Slot(str)
     def setActive(self, layer_id):
         self._active = layer_id
+        self._sync_stamp()
         self.changed.emit()
 
     @Slot(str)

@@ -9,6 +9,10 @@ From the view (`_where == "view"`, brief 21b): a move only adds the point to the
 moves); the release asks the engine once which items the path crosses (its `texels` picture of this view, kept in the
 shared cache, so making the canvas reads the same one) and stores the stroke as drawn on each (paint_mode.view_calls).
 The trail stays drawn, in the brush's colour and width, until the painted picture is on screen.
+
+Stamp (on a Relief layer, `_stamping`): the press is the whole gesture: its one point (picked, or kept as drawn From
+the view) becomes one paint.stamp at the release (paint_mode.stamp_calls / view_stamp_calls), one undo step; moves
+change nothing.
 """
 from __future__ import annotations
 
@@ -33,7 +37,7 @@ class PaintStroke:
 
     @Slot(float, float)
     def move(self, x, y):
-        if self._up or self._scene is None:
+        if self._up or self._scene is None or self._stamping():     # a stamp is where the press was
             return
         self._add(x, y)
 
@@ -92,6 +96,13 @@ class PaintStroke:
         if it is None or not items:
             self._clear_trail()
             return self.b.say("From the view: the stroke crossed nothing paintable.")
+        if self._stamping():
+            calls = P.view_stamp_calls(items[:1], self._id, self._active, self.brush.stamp, self.brush.values["size"],
+                                       {**r["pose"], "points": r["points"]})
+            self._holding = True
+            if not self.b._guard(lambda: self.b._apply(calls, f"Stamp {self.b.label_of(self.b.doc.item(items[0]))}")):
+                self._clear_trail()
+            return self.changed.emit()
         brush = dict(self.brush.values)
         channel = (self._layer() or {}).get("channel", "colour")
         calls = P.view_calls(self.b.doc, items, self._id, self._active if self._layer() else "", channel, brush,
@@ -200,6 +211,13 @@ class PaintStroke:
         if it is None or not (anchors if clay else pts):
             self._clear_trail()
             return self.b.say(f"Paint lands on {self._name()} only: start the stroke on it." if it else "")
+        if self._stamping():                      # one whole picture where the press was
+            reach = P.clay_reach(self.brush.values["size"], self._mpp, self._mpp_screen) if clay else 0.0
+            calls = P.stamp_calls(it, self._active, self.brush.stamp, self.brush.values["size"], anchors, pts, reach)
+            self._holding = True
+            if not self.b._guard(lambda: self.b._apply(calls, f"Stamp on {self._name()}")):
+                self._clear_trail()
+            return self.changed.emit()
         layer, new = self._active, None
         if self._layer() is None:                 # no layer yet: the stroke makes one (same undo step)
             new = {**P.new_layer_args(it, "colour"), "id": next(f"paint_{n}" for n in range(1, 10**6)

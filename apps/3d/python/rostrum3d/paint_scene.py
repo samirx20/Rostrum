@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 from rostrum_core.cache import CACHE, cache_key
-from rostrum_paint import canvas
+from rostrum_paint import canvas, library
 
 from . import clay_paint, paint_bleed, paint_view
 from .material_fields import DOC_ONLY, MATERIAL
@@ -204,6 +204,8 @@ def paint(scene: dict, data: dict, out_value, folder=None, texels=None) -> None:
     in place; one still waiting for the engine (a clay's surface, a texel picture): its recipe in scene["paintLater"].
     `out_value(param, value)`: the compiler's one way a value is sent. `folder`: the project folder (projected
     pictures). `texels`: an engine's ask (req -> reply), to draw a missing texel picture now instead of waiting."""
+    if folder:
+        library.use_project(folder)                      # the project's own tip pictures (a stamp's) are choices
     nodes = _nodes(scene["items"], {})
     sent = {m["id"]: m for m in scene["materials"]}
     own = {m["id"]: m for m in data.get("materials", [])}
@@ -289,6 +291,8 @@ def laid_canvas(item: dict, surface_file=None, texels_fn=None, folder=None, scen
     clay's strokes on its unfolded surface (`surface_file`, surface_of), strokes from the view and projected pictures
     through their texel pictures (texels.cached on `scene`'s geometry, drawn by `texels_fn` when missing). `canvas_rgba`
     composes it."""
+    if folder:
+        library.use_project(folder)
     sources = {layer["id"]: _source(f'{item["id"]}.{layer["id"]}.projectSource', p["source"], folder)
                for layer in item.get("paints", []) if (p := paint_view.projected_of(layer)) is not None}
     job = {"item": item, "texels": paint_view.requests(item), **({"sources": sources} if sources else {})}

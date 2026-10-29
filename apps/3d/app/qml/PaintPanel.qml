@@ -6,7 +6,8 @@ import RostrumKit
 // item it crosses), the kit's bar settings (tip, size, colour, opacity) as the kit's own rows, and Paints (what the active layer paints:
 // Colour, Roughness, Relief, Metal, Glow); then Paint layers, top first, + for a new one; each row: its eye, its name
 // (click: paint on it), what it paints. A drag on the viewport paints on the active layer, one undo step per stroke.
-// Only what applies now is shown: Paints only with a layer to set it on. B or Esc leaves.
+// Only what applies now is shown: Paints only with a layer to set it on; Brush | Stamp only on a Relief layer (Stamp:
+// the rows become Picture (+ Load picture…), Size, Depth, Turn, and a click lays the whole picture once). B or Esc leaves.
 Item {
     Flickable {
         id: flick
@@ -31,6 +32,12 @@ Item {
                 objectName: "paintWhere"; width: parent.width
                 options: paintMode.wheres; current: paintMode.where
                 onPicked: (v) => paintMode.setWhere(v)
+            }
+            Segmented {   // on a Relief layer: brush strokes, or Stamp (one click lays one whole picture)
+                objectName: "paintHow"; width: parent.width
+                visible: paintMode.canStamp
+                options: paintMode.hows; current: paintMode.how
+                onPicked: (v) => paintMode.setHow(v)
             }
             Repeater {   // Brush: the kit's rows (InspectorRow talks to paintMode.brushObj as its bridge)
                 model: paintMode.brushObj.rows

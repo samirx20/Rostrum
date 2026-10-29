@@ -18,6 +18,8 @@ sculpt the clay again afterwards (see "Painting on clay").
      stays editable: it is laid on the surfaces each time the paint is made, from the view it was drawn in.
    - **Brush**: the tip (round, bristle, chalk, flat, block, line), **Size** (in pixels of the paint picture, which is
      2048 px across unless you change it), **Colour** and **Opacity**.
+   - **Brush | Stamp** (only while the active layer paints Relief): Stamp lays a whole picture with one click (see
+     "Stamping a picture" below). The rows become **Picture**, **Size**, **Depth** and **Turn**.
    - **Paints**: what the active layer paints. **Colour**; **Roughness** (white = rough and dull, black = mirror);
      **Relief** (middle grey = flat, white = raised, black = sunk: fine detail such as wrinkles, pores and scratches); **Metal** (white =
      metal); **Glow** (its colours give off light).
@@ -60,6 +62,29 @@ runs over a cut of the laid-flat surface carries on across it by itself.
 Final and in the render without making the clay finer (and heavier). Sculpt the big and middle shapes with the Clay
 tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
 
+## Stamping a picture
+
+A stamp (an "alpha") lays one whole picture as relief in one click: a logo pressed into leather, a row of rivets, a
+scale pattern, a stitched seam, a coin's face.
+
+1. Select the model, press **B**. Click **+** next to Paint layers and set **Paints** to **Relief** (or click an
+   existing Relief layer).
+2. Click **Stamp** (next to Brush, above the rows). The rows are now the stamp's:
+   - **Picture**: the built-in pictures (sponge, speckle, streaks, ragged, charcoal) and the pictures you loaded.
+     **Load picture…** at the end of its list brings in your own picture file: it is kept in the project and picked.
+     A loaded picture raises where it is **bright** and stays flat where it is black (a picture with see-through parts
+     raises where it is opaque). Grey raises part of the way.
+   - **Size**: how wide the picture lands, in pixels of the paint picture (of the screen, From the view). The disc
+     at the pointer shows it.
+   - **Depth**: how far it raises the surface; below 0 % it sinks it instead (pressed in).
+   - **Turn**: the picture's turn, in degrees.
+3. Click on the model: the whole picture lands there once. **Each stamp is one undo step**; clicking again stamps
+   again (drag does nothing more while stamping). On a clay the stamp stays on its spot when you sculpt the clay again.
+4. Shift+F (Final): Relief shows in Final and in the render. Too strong: undo, lower Depth, click again.
+
+The Turn is measured on the model's laid-flat paint picture, which can lie at any angle on the surface: if the picture
+lands turned, undo and change Turn.
+
 ## How to: a roughness scuff on a glossy lid
 
 1. Select the lid, press **B**.
@@ -95,6 +120,13 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
   layer yet gives no `uv`, only `local`. On a **posed** clay `look_at` also gives `rest`, the same spot on the clay's
   rest shape: anchor there (`[*rest, *normal, 1]`, the normal from the rest shape; `localNormal` is close enough on
   parts the pose hardly turns). Paint is kept on the rest shape, so it rides with every pose, as the screen does.
+- **Stamp a picture** (`paint.stamp`, one call, one undo step): `target: [mesh or clay]`, `args: {picture, size,
+  depth, turn}` plus where: `at: [x, y, z, nx, ny, nz]` on a clay (look_at's `local` + `localNormal`; `size` in
+  metres), `point: [x, y]` in paint picture px (`size` in px), or `viewPoint: [x, y]` in px of a view with `shot` (or
+  `eye`, `target`, `fov`, `width`, `height`; `size` in screen px). `picture` is a picture file (kept in the project:
+  bright = raised) or a tip picture's name. `depth` -1..1 (below 0 sinks). It goes on the item's top Relief layer
+  (`layer` to choose one), made when there is none. It is one stroke of one dab, so `inspect_paint_strokes` and
+  `look_frame what "paint"` see it like any stroke.
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.
 

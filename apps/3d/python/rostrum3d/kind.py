@@ -181,8 +181,13 @@ def check(data: dict) -> list[str]:
     return problems
 
 
-KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
-               tidy=lambda calls, folder=None: paint_view.tidy(clay_dabs.tidy(calls, folder)),   # view strokes: flat
+def _tidy(calls, folder=None):
+    """Calls made ready to run: a clay's dabs into files, a stamp's picture file into the project, view strokes flat."""
+    from .ops_paint_stamp import tidy as stamp_tidy
+    return paint_view.tidy(stamp_tidy(clay_dabs.tidy(calls, folder), folder))
+
+
+KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts, tidy=_tidy,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})   # collections: made with the first
 
 # painting on meshes and clays (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one
