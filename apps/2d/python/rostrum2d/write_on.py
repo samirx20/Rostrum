@@ -24,7 +24,7 @@ from collections import OrderedDict
 import numpy as np
 from rostrum_core import filestamps
 from rostrum_core.cache import CACHE, cache_key
-from rostrum_paint import canvas, ink, shape
+from rostrum_paint import canvas, ink, kept_disk, shape
 
 from .paint_fields import DRAWN
 
@@ -141,6 +141,25 @@ def _order(s: dict, box: tuple, changed: np.ndarray) -> tuple[np.ndarray, np.nda
         if key in _ORDERS:
             _ORDERS.move_to_end(key)
             return _ORDERS[key]
+    got = kept_disk.arrays("drawn.order", [VERSION, canvas.ENGINE_VERSION, key[0], repr(box),
+                                           hashlib.sha1(np.packbits(changed).tobytes()).hexdigest()],
+                           lambda: _pack(_make_order(s, box, changed)))       # kept on disk: ~0.6 s a wash stroke
+    out = (got["order"], got["whole"], list(zip(got["at"].tolist(), got["covers"])), float(got["step"]), float(got["length"]))
+    with _LOCK:
+        _ORDERS[key] = out
+        while len(_ORDERS) > 8:
+            _ORDERS.popitem(last=False)
+    return out
+
+
+def _pack(made: tuple) -> dict:
+    order, whole, kept, step, length = made
+    return {"order": order, "whole": whole, "at": np.array([i for i, _ in kept], np.int64),
+            "covers": np.stack([c for _, c in kept]) if kept else np.zeros((0, *order.shape), np.uint8),
+            "step": np.float64(step), "length": np.float64(length)}
+
+
+def _make_order(s: dict, box: tuple, changed: np.ndarray) -> tuple:
     x0, y0, x1, y1 = box
     X, Y, R, ts, step, length = _path(s)
     size = float(s["size"])
@@ -160,12 +179,7 @@ def _order(s: dict, box: tuple, changed: np.ndarray) -> tuple[np.ndarray, np.nda
         pad *= 2
     order[np.isinf(order)] = length
     whole, kept = _cover(s, box, math.inf, snaps=int(np.clip(SNAPS // max(1, order.size), 2, 32)))
-    out = (order, whole, kept, step, length)
-    with _LOCK:
-        _ORDERS[key] = out
-        while len(_ORDERS) > 8:
-            _ORDERS.popitem(last=False)
-    return out
+    return order, whole, kept, step, length
 
 
 def _premul(u8: np.ndarray) -> np.ndarray:

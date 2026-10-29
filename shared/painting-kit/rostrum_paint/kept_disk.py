@@ -9,6 +9,10 @@ and at each layer's end, written on a thread of its own; `_layer` reads the near
 A state is its exact float pixels (the bytes the replay had: going on from it stamps the same pixels as going on in
 memory), only the box where anything is set (`_box`; outside it the layer is 0, `top` -1), squeezed with zlib (a
 layer of a few washes over a big canvas is mostly nothing; a dense one is kept as it is, `PACK`).
+
+`arrays` keeps any other slow, exact result the same way (content-keyed, written on the same thread, inside the cache's
+cap): the paper's grain (marks.Paper, ~0.4-1.3 s a canvas size in a fresh process) and Drawn so far's pen order
+(rostrum2d.write_on, ~0.6 s a wash stroke).
 """
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ import atexit
 import json
 import queue
 import threading
+import time
 import zlib
 
 import numpy as np
@@ -25,6 +30,8 @@ from rostrum_core.cache import CACHE, ENTRY, cache_key
 EVERY = 0.4                     # s of stamping between two states kept on disk (a wash stroke is ~0.2-0.5 s)
 PACK = 0.4                      # squeezed only when that makes it this much of its size or less
 VERSION = "rostrum-paint-state@1"
+ARRAYS = "rostrum-paint-arrays@1"
+SLOW = 0.1                      # s: an `arrays` result made faster than this is not worth a disk entry
 _Q: queue.Queue = queue.Queue()
 _LOCK = threading.Lock()
 _thread: threading.Thread | None = None
@@ -91,7 +98,7 @@ def save(chain: str, px: np.ndarray, top: np.ndarray) -> None:
     parts = {"px": (pbox, px[pbox[0]:pbox[1], pbox[2]:pbox[3]].copy() if pbox else None),
              "top": (tbox, top[tbox[0]:tbox[1], tbox[2]:tbox[3]].copy() if tbox else None)}
     _start()
-    _Q.put((chain, w, h, parts))
+    _Q.put(lambda: _write(chain, w, h, parts))
 
 
 def _write(chain: str, w: int, h: int, parts: dict) -> None:
@@ -113,11 +120,62 @@ def _write(chain: str, w: int, h: int, parts: dict) -> None:
             _MISSING.discard(chain)
 
 
+def _pack(tmp, name: str, arr: np.ndarray) -> bool:
+    """Write one array's bytes to tmp/<name>.bin, squeezed when that makes it `PACK` of its size or less."""
+    raw = np.ascontiguousarray(arr).tobytes()
+    small = zlib.compress(raw, 1)
+    packed = len(small) < PACK * len(raw)
+    (tmp / f"{name}.bin").write_bytes(small if packed else raw)
+    return packed
+
+
+def arrays(name: str, parts: list, make) -> dict:
+    """`make()`'s {name: ndarray}, read back from disk when a process made it before (the exact bytes, dtype and
+    shape), else made now and kept on disk on the writer thread when it took `SLOW` s or more. `name` + `parts` (str)
+    key it: they must name everything the result depends on, its code's version too. The arrays are shared: never
+    change them in place."""
+    key = cache_key("paint.arrays", ARRAYS, [name, *parts])
+    if key not in _MISSING and (folder := CACHE.get("paint", key)) is not None:
+        try:
+            meta = json.loads((folder / "arrays.json").read_text(encoding="utf-8"))
+            out = {}
+            for n, (dtype, shape, packed) in meta.items():
+                raw = (folder / f"{n}.bin").read_bytes()
+                out[n] = np.frombuffer(zlib.decompress(raw) if packed else raw, dtype).reshape(shape)
+            return out
+        except (OSError, ValueError, KeyError, zlib.error) as e:     # a damaged entry is made again, said once
+            print(f"rostrum_paint: kept arrays {name} unreadable, made again: {e}", flush=True)
+    t0 = time.perf_counter()
+    out = make()
+    if time.perf_counter() - t0 >= SLOW:
+        with _LOCK:
+            if key in _PENDING:
+                return out
+            _PENDING.add(key)
+
+        def write():
+            def fill(tmp):
+                meta = {n: (a.dtype.str, list(a.shape), _pack(tmp, n, a)) for n, a in out.items()}
+                (tmp / "arrays.json").write_text(json.dumps(meta), encoding="utf-8")
+            try:
+                CACHE.put("paint", key, fill, {"arrays": name})
+            finally:
+                with _LOCK:
+                    _PENDING.discard(key)
+                    _MISSING.discard(key)
+        _start()
+        _Q.put(write)
+    else:
+        with _LOCK:
+            _MISSING.add(key)               # quick to make: not looked for on disk again in this process
+    return out
+
+
 def _run() -> None:
     while True:
         job = _Q.get()
         try:
-            _write(*job)
+            job()
         except Exception as e:   # noqa: BLE001  (a state not kept only costs a replay later; said, never fatal)
             print(f"rostrum_paint: a paint state was not kept on disk: {e}", flush=True)
         finally:

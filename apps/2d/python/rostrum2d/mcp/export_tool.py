@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import nullcontext
 from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
@@ -9,7 +10,7 @@ from rostrum_core.mcp import Reply, Tools, faults
 
 from rostrum2d import project_sound
 
-from . import export_area, export_name, exporting, film_faults, video
+from . import export_area, export_engine, export_name, exporting, film_faults, video
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -79,7 +80,8 @@ def render_export(ctx, args):
             out = Path(doc.folder or ".") / out
     if "layers" in args and fmt != "motion":
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"layers"', "is for format motion only")
-    scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
+    with export_engine.ready() if fmt != "motion" else nullcontext():    # the engine boots while the scene is described
+        scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
     folder, item, seq = ctx.app.folder, doc.item_id, doc.seq
     name, overwrite = (export_name.clean(args.get("name") or "") or export_name.stem_of(doc, comp["id"])), bool(args.get("overwrite"))
     noting = faults.asked(args) and fmt in film_faults.FILMS

@@ -167,3 +167,28 @@ def test_a_fresh_process_goes_on_from_the_state_kept_on_disk(doc, tmp_path, monk
     monkeypatch.setattr(kept_disk, "CACHE", Cache(tmp_path / "empty"))
     monkeypatch.setattr(kept_disk, "_MISSING", set())
     assert np.array_equal(C.render(doc.item("c"), *WH).rgba, resumed)
+
+
+def test_arrays_kept_on_disk_come_back_byte_for_byte(tmp_path, monkeypatch):
+    """kept_disk.arrays (Drawn so far's pen order, the paper's tooth) reads back the exact bytes, dtypes and shapes a
+    fresh process would make, so a picture made from them is the same picture."""
+    from rostrum_core.cache import Cache
+    from rostrum_paint import kept_disk, marks
+    monkeypatch.setattr(kept_disk, "CACHE", Cache(tmp_path / "cache"))
+    monkeypatch.setattr(kept_disk, "_MISSING", set())
+    monkeypatch.setattr(kept_disk, "SLOW", 0.0)
+    rng = np.random.default_rng(3)
+    covers = np.zeros((3, 40, 50), np.uint8)
+    covers[:, 10:20, 5:30] = rng.integers(0, 255, (3, 10, 25))           # mostly empty: kept squeezed
+    made = {"order": rng.random((40, 50), np.float32) * 300, "covers": covers, "at": np.array([0, 7, 19], np.int64),
+            "neg": np.array([-0.0, np.inf], np.float32), "step": np.float64(1.0 / 3)}
+    assert kept_disk.arrays("t", ["a"], lambda: made) is made
+    kept_disk.flush()
+    got = kept_disk.arrays("t", ["a"], lambda: pytest.fail("made again, not read from disk"))
+    assert set(got) == set(made)
+    for k, a in made.items():
+        assert got[k].dtype == a.dtype and got[k].shape == a.shape and got[k].tobytes() == a.tobytes()
+    tooth = marks.Paper(60, 90, origin=(7, 3)).fields()                 # made (and kept on disk)
+    kept_disk.flush()
+    again = marks.Paper(60, 90, origin=(7, 3)).fields()                 # a fresh paper: read back
+    assert all(a.dtype == b.dtype and a.tobytes() == b.tobytes() for a, b in zip(tooth, again))
