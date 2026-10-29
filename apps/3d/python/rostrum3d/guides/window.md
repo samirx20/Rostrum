@@ -264,11 +264,16 @@ One thing, many times, without making a thousand items (the guide *copies* has t
 - **One copy:** click a copy; the copies item is selected and the line at the top says "Copy 7 of Buds". The arrows move,
   turn and size just that copy; the drop keeps it there (it never moves again when you change the count or the layout; **Release held
   copies** in the right-click menu lets them go back). One undo step.
-- **Change near ›** (right-click a copies item): **Scale**, **Turn**, **Push** or **Colour** the copies close to something.
+- **Change near ›** (right-click a copies item): **Scale**, **Turn**, **Push**, **Move**, **Hide** or **Colour** the copies close to something.
   With another item selected too (Ctrl+click), the change follows that item; alone, a small sphere is added just above the middle
   of the copies, so the ones under it change at once, and selected: move it and the copies near it change. The sphere is a
   handle (Display › Only in the view): the view draws it, a render and the shot's pictures never do. Its settings (Radius, Amount, Falloff) are the effector's row under
-  the copies in the scene list; key Amount or Radius for change over time.
+  the copies in the scene list; key Amount or Radius for change over time. **Move** moves them one way (along Axis),
+  **Hide** takes away the ones the change reaches. **Shape** turns the sphere into a **Plane** (a wall through the handle, facing the handle's
+  up: turn or move the handle to sweep it over the copies) or **Noise** (soft patches about Radius big; Seed shuffles them).
+- **Along a word or a drawing:** in the copies item's settings set **Layout** to **Path** and pick a text, SVG or drawing
+  shape as **Path**: the copies run evenly round all its outlines (every letter), **Face along it** turns each along the
+  line, **Slide** moves them all along it.
 
 ## Simulate
 

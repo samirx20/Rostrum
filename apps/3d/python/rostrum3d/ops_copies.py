@@ -78,6 +78,11 @@ def _make(ctx, targets, args, layout: str | None = None):
             ctx.fail(codes.BAD_ARGUMENT, f'surface "{surface}"', "is not an item in the scene")
         if any(surface in subtree_ids(locs[t].item, ctx.kind.lists) for t in targets):
             ctx.fail(codes.BAD_ARGUMENT, f'surface "{surface}"', "is one of the items being copied (or inside one)")
+    if given.get("layout") == "path" or "path" in given:
+        probe = {"id": args.get("id") or "", "path": given.get("path") or "",
+                 "children": [locs[t].item for t in targets]}
+        if why := CF.path_problem(probe, {i: loc.item for i, loc in locs.items()}):
+            ctx.fail(codes.BAD_ARGUMENT, f'path "{given.get("path") or ""}"', why)
     given.setdefault("layout", "line")
     if given["layout"] == "surface" and "minSpacing" not in given:     # side by side, never piled into each other
         given["minSpacing"] = _footprint(ctx.doc, targets)
@@ -100,7 +105,9 @@ def _make(ctx, targets, args, layout: str | None = None):
              "the seed). layout line (step spacingX/Y/Z), grid (columns, spacingX/Z; count is the total), circle (radius, "
              "faceOut), surface (surface = item id; amountBy count|density, density, minSpacing, alongSurface, onlySeen) or pour "
              "(a stream from a mouth at the copies item's origin: radius = the mouth's, pourTime = seconds they leave over, "
-             "evenly, pourSpeed m/s along the copies item's own down (turn it to aim), pourSpread degrees; then simulate=\"falls\"). "
+             "evenly, pourSpeed m/s along the copies item's own down (turn it to aim), pourSpread degrees; then simulate=\"falls\") "
+             "or path (path = the id of a text, svg or path2d mesh: count copies evenly along all its outlines by length, each "
+             "outline its own loop; alongPath turns each copy's +X along it, pathShift 0–1 slides them along). "
              "Vary with seed, varyMove, varyTurn, varyScale; varyStart (a falling copies item: each copy starts to fall up to that "
              "many seconds after fallStart, from the seed, so they land one after another). In a stream (varyStart or a pour) "
              "each copy is not there until it starts to fall: nothing hangs in the air waiting. Colour variety: give several "
@@ -129,7 +136,10 @@ EFFECTOR = [ID, NAME,
 @R.operation("effector.add", "Change the copies near an item: an effector inside the copies item whose centre follows "
              "`near` (move or key that item and the change moves with it; none: the copies item's own origin). kind scale "
              "(amount = extra size at the centre, 0.5 = half again bigger, −1 = gone), turn (degrees round `axis`), push "
-             "(metres away from the centre) or colour (`colour`, amount = 0–1 mix); radius says how far it reaches, falloff "
+             "(metres away from the centre), move (metres along the world's `axis`), hide (gone where the change is half or more; "
+             "no amount) or colour (`colour`, amount = 0–1 mix). field: sphere (round `near`, radius = how far it reaches), "
+             "plane (a wall through `near` facing its up: behind it the full change, in front it fades over radius; turn or "
+             "move `near` to sweep it) or noise (soft patches about radius big, `seed`; moving `near` drifts them); falloff "
              "smooth or linear. Key amount, radius or colour on the effector for change over time. An existing effector id "
              "is changed instead.", target="copies", label="Change near", params=EFFECTOR)
 def effector_add(ctx, targets, args):
@@ -148,7 +158,7 @@ def effector_add(ctx, targets, args):
         kind = given.get("kind", "scale")
         item = new_item(ctx, "effector", {"id": args.get("id") if len(targets) == 1 else None,
                                           "name": args.get("name") or f"{kind.capitalize()} near {near or t}"},
-                        {"amount": CF.STARTING_AMOUNT[kind], **given})
+                        {**({"amount": CF.STARTING_AMOUNT[kind]} if kind in CF.STARTING_AMOUNT else {}), **given})
         ctx.insert(t, "children", item)
         out.append(item)
     return out[0] if len(out) == 1 else out

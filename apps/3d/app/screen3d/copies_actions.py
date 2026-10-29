@@ -21,7 +21,7 @@ MAKE, SCATTER, NEAR, HOLD, RELEASE = "copies.make", "copies.scatter", "effector.
 SOURCES = CF.SOURCES                                   # what a copies item can repeat
 SURFACES = ("mesh", "combine", "import", "clay", "group")      # what copies can be scattered over
 LAYOUT_WORDS = {"line": "Line", "grid": "Grid", "circle": "Circle", "surface": "On a surface…"}
-NEAR_WORDS = {"scale": "Scale", "turn": "Turn", "push": "Push", "colour": "Colour"}
+NEAR_WORDS = {"scale": "Scale", "turn": "Turn", "push": "Push", "move": "Move", "hide": "Hide", "colour": "Colour"}
 BALL = 0.05                                            # a new "near" sphere's radius, metres (small: it is a handle, not a thing)
 
 
