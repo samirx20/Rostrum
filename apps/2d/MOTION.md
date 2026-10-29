@@ -99,11 +99,16 @@ each move is its average picture laid on once (`still_runs.rs` `keeps`; blends i
 an isolated group). A layer that only moves but blends otherwise (another blend mode, a glow drawn from its own picture,
 frosted glass) is painted as laid out, moved to each sub-frame (one per px of its path), over the layers under it and
 averaged: no layout per step. A group the same in every sub-frame but for its own place and its children's, each child
-only moving its own way (bubbles rising in a group the frame pans past: `streak.rs` `split`), is drawn the same way with
-each child moved instead (`Streak.parts`, blurred.rs), as many taps as its longest child's path. In an export or a still
+only moving its own way (bubbles rising in a group the frame pans past: `streak.rs` `split`), is painted once as one
+kept picture and laid on as one streak per child over that child's part of it (`Streak.subs`, blurred.rs `measured`),
+when no child's streak reads another child's picture; else it is drawn the same way as a blending layer with each child
+moved instead (`Streak.parts`), as many taps as its longest child's path. A layer whose size the scene doesn't give (a
+text, a path) takes it from the frame's one layout: where the painter's layers say it paints, its blurs, shadows, glows
+and an svg's strokes included (blitz-paint `page_ink`), so it is culled, shares pictures and streaks past the edge like
+any other. In an export or a still
 (the page at its own size) the pictures reach up to 128 px past each edge of the frame (`blurred.rs` `MARGIN`), so a
 layer that runs past the edge streaks what lies there in; a moving layer whose streak reads further past the edge than
-that, or whose size isn't known before layout (a text, a path), or any in a zoomed or cropped view, is built like a
+that, or whose painted size can't be bounded, or any in a zoomed or cropped view, is built like a
 blending one, alone; one that covers the whole frame (a backdrop) takes its picture's edge px for the px a move pulls in
 past that; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 times spread over
 the open shutter (`streak.rs` `probe_times`, shared with the step count) and the moves at each sub-frame read off them,
@@ -134,8 +139,9 @@ a fast preview while playing; or a timing test at 8 vs 16). The screen's playbac
 **Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
 
 **Cost:** one layout of the page, two paints (the streak pictures, then the frame), and one streak pass per moving
-layer (its cost grows with its steps); a layer that blends other than add, screen or multiply, a group whose children
-move apart, or a layer reading too far past the frame's edge costs a paint per step; a layer that changes while the shutter is open costs a stage and paint per step.
+layer (its cost grows with its steps); a layer that blends other than add, screen or multiply (a glow drawn from its own
+picture among them), a group whose children's streaks would read each other's pictures, or a layer reading too far past
+the frame's edge costs a paint per step; a layer that changes while the shutter is open costs a stage and paint per step.
 
 ## Trails
 
