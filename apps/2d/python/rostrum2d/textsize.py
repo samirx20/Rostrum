@@ -80,16 +80,46 @@ def warm() -> None:
 
 def key(p: dict) -> tuple:
     """The fields of a text that decide its box (`p`: its evaluated fields, evaluate.resolve). A font this computer lacks
-    is measured in the stand-in font (the box the canvas draws in its place, missing_font.py), never refused."""
-    return tuple(_measured_font(p) if f == "font" else p[f] for f in FIELDS)
+    is measured in the stand-in font (the box the canvas draws in its place, missing_font.py), never refused.
+    Inside `kept_keys` the same dict's key is worked out once."""
+    memo = getattr(_local, "keys", None)
+    if memo is not None and (got := memo.get(id(p))) is not None and got[0] is p:
+        return got[1]
+    k = tuple(_measured_font(p) if f == "font" else p[f] for f in FIELDS)
+    if memo is not None:
+        memo[id(p)] = (p, k)                    # the dict is held, so its id is never another dict's meanwhile
+    return k
+
+
+@contextmanager
+def kept_keys():
+    """While the block runs, on this thread, `key` of the very same dict is worked out once (a layout bake asks for each
+    text's key many times a frame). Only for callers that never change a text's dict after asking for its key."""
+    outer = getattr(_local, "keys", None)
+    _local.keys = {} if outer is None else outer
+    try:
+        yield
+    finally:
+        _local.keys = outer
+
+
+_fonts: tuple = (None, {})  # (the font list it was read from, {font asked: font measured})
 
 
 def _measured_font(p: dict) -> str:
+    global _fonts
     from . import fields as F, fontlist
     try:
-        return p["font"] if p["font"] in fontlist.names() else F.defaults("text")["font"]
+        names = fontlist.names()
     except EngineError:         # no engine built: the measure says so
         return p["font"]
+    if _fonts[0] is not names:  # a new font list (fonts installed): read again
+        _fonts = (names, {})
+    font = p["font"]
+    got = _fonts[1].get(font)
+    if got is None:
+        got = _fonts[1][font] = font if font in names else F.defaults("text")["font"]
+    return got
 
 
 def sizes(texts: list[dict]) -> list[tuple[float, float]]:

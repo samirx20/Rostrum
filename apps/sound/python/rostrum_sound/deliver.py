@@ -18,6 +18,8 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from .listen import ending
+
 # id, words on screen, what it is for, file ending, libsndfile format + subtype. 24-bit WAV is the default: it is what
 # video editors take, with room for later gain changes.
 FORMATS = [
@@ -153,6 +155,19 @@ def last_audible(path: Path, sf) -> tuple[int, int, int]:
         return f.frames, last, f.samplerate
 
 
+def ringing_at(path: Path, at: int, sf) -> tuple[float, float] | None:
+    """Is the mix still sounding where a file cut at frame `at` ends? Read with look_sound's own measure (listen.ending:
+    the last 0.5 s over -50 dBFS): (that level, seconds heard past the cut until under -60 dBFS for good), else None."""
+    with sf.SoundFile(str(path)) as f:
+        rate = f.samplerate
+        f.seek(max(0, at - int(ending.TAIL_S * rate)))
+        y = f.read(dtype="float32", always_2d=True)
+    before, after = y[:at - max(0, at - int(ending.TAIL_S * rate))], y[at - max(0, at - int(ending.TAIL_S * rate)):]
+    if not ending.still_sounding(before, rate):
+        return None
+    return ending.sounding_db(before), ending.audible_end(after, rate)
+
+
 def _tpdf(shape, rng):
     """Triangular noise of ±1 least-significant bit of 16 bits (two uniform ones added): it makes the rounding noise
     steady and independent of the music, so quiet tails fade out smoothly rather than into crackle."""
@@ -241,7 +256,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
-    keep, first, declick = frames, 0, 0
+    keep, first, declick, ringing = frames, 0, 0, None
     ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
     if ranged:
         first = 0
@@ -258,8 +273,9 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
         keep = round(opts.length * rate)
         if opts.ring:                  # the ring may run on up to `ring` past it (its silent end trimmed)
             keep = min(frames, max(keep, min(heard + int(TAIL * rate), keep + round(opts.ring * rate))))
-        if frames > keep and heard > keep:   # still sounding where it ends: cut there as asked, only a de-click, never a
+        if frames > keep and heard > keep:   # anything left where it ends: cut there as asked, only a de-click, never a
             declick = min(int(DECLICK_S * rate), keep)   # fade (Sam, 2026-10-29: the delivery never reshapes the music)
+            ringing = ringing_at(Path(r["file"]), keep, sf)
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     def one(job):
@@ -281,11 +297,12 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     song = (r.get("seconds") or frames / rate) if ranged else frames / rate
     cut = bool(declick) and opts.length is not None
     warnings = [w for w in r.get("warnings") or [] if not (cut and w.startswith(RING_WARNINGS))]
-    if cut and not opts.loop:
+    if cut and ringing and not opts.loop:    # said only when look_sound would call the file's end still sounding (one measure)
         is_ = (f"{opts.length:.2f} s; the file is {keep / rate:.2f} s with the {opts.ring:g} s of ring allowed" if opts.ring and opts.length is not None
                else f"{keep / rate:.2f} s and so is the file")
-        warnings.append(f"The song's length is {is_}: it still sounds there, so the file stops while ringing "
-                        f"({(frames - keep) / rate:.1f} s more rang past it; not faded). To let it ring: end the last notes earlier, "
+        warnings.append(f"The song's length is {is_}: it still sounds there (last 0.5 s at {ringing[0]:.0f} dBFS, over "
+                        f"{ending.SILENT_DBFS:g}), so the file stops while ringing ({ringing[1]:.1f} s more was heard past it, "
+                        f"to under {ending.HEARD_DBFS:g} dBFS; not faded). To let it ring: end the last notes earlier, "
                         f"set a longer length, or `ring_past_length: true` (up to {RING_S:g} s past the length); a fade: ending(\"fade\").")
     return {**{k: v for k, v in r.items() if k not in ("range", "warnings")}, "warnings": warnings, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},

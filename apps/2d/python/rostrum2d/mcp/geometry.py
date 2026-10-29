@@ -9,6 +9,7 @@ are where the layer shows on screen. The frame itself is not listed (it is not d
 from __future__ import annotations
 
 import contextlib
+import threading
 
 
 from rostrum2d import boxes, fields as F, follow, swap
@@ -41,26 +42,29 @@ def _invert(m):
     return (d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det)
 
 
-_MEMO: list[dict] = []          # while a review runs (memo()): flatten results by (comp, t, world), shared by its checks
+_MEMO = threading.local()        # while a review or a look's facts run (memo()), per thread: flatten results by (comp, t, world)
 
 
 @contextlib.contextmanager
 def memo():
-    """One review pass: every check asking for the same comp at the same time gets the same flattened layers (they
-    read them, never change them). The Argon look flattened each moment 4 times: 576 walks of a 72 s film."""
-    _MEMO.append({})
+    """One review pass (or one look's reply facts): every check asking for the same comp at the same time gets the same
+    flattened layers (they read them, never change them). The Argon look flattened each moment 4 times: 576 walks of a
+    72 s film. Per thread: a look's job and a review on another thread never share or pop each other's."""
+    stack = _MEMO.__dict__.setdefault("stack", [])
+    stack.append({})
     try:
         yield
     finally:
-        _MEMO.pop()
+        stack.pop()
 
 
 def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
-    if _MEMO and only is None:
+    stack = getattr(_MEMO, "stack", None)
+    if stack and only is None:
         key = (id(comp), round(float(t), 6), world)
-        got = _MEMO[-1].get(key)
+        got = stack[-1].get(key)
         if got is None:
-            got = _MEMO[-1][key] = _flatten(comp, t, world, None)
+            got = stack[-1][key] = _flatten(comp, t, world, None)
         return got
     return _flatten(comp, t, world, only)
 

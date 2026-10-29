@@ -147,3 +147,26 @@ fn a_slow_attack_note_is_heard_on_its_time() {
     assert!((heard - 1.0).abs() <= 0.010, "heard at {heard:.3} s");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn a_note_outside_the_samples_plays_from_the_nearest_one_at_its_written_pitch() {
+    // Vault r2: a viola A2 (the samples start at C3) stopped the whole mix; it plays as written now, stretched.
+    let dir = std::env::temp_dir().join(format!("rostrum-sfz-range-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let sr = 44100.0;
+    let pcm: Vec<u8> = (0..44100).flat_map(|i| (((2.0 * std::f64::consts::PI * 440.0 * i as f64 / sr).sin() * 16000.0) as i16).to_le_bytes()).collect();
+    let mut w = b"RIFF".to_vec();
+    w.extend((36 + pcm.len() as u32).to_le_bytes()); w.extend(b"WAVEfmt "); w.extend(16u32.to_le_bytes());
+    w.extend([1u8, 0, 1, 0]); w.extend(44100u32.to_le_bytes()); w.extend(88200u32.to_le_bytes()); w.extend([2u8, 0, 16, 0]);
+    w.extend(b"data"); w.extend((pcm.len() as u32).to_le_bytes()); w.extend(&pcm);
+    std::fs::write(dir.join("a.wav"), w).unwrap();
+    std::fs::write(dir.join("r.sfz"), "<region> sample=a.wav lokey=69 hikey=81 pitch_keycenter=69").unwrap();
+    let (mut l, mut r) = (vec![0.0f32; 44100], vec![0.0f32; 44100]);
+    let low = [220.0];                                   // A3: an octave under the lowest sample
+    render(&SfzSpec { file: dir.join("r.sfz").to_string_lossy().into_owned(), legato: false, swell: false, even: false, gains: vec![], key_offset: 0, velocity_tone: 0.0 },
+           &[Note { start: 0, len: 22050, freqs: &low, velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr, None).unwrap();
+    let crossings = l[4410..13230].windows(2).filter(|w| w[0] <= 0.0 && w[1] > 0.0).count();
+    assert!((43..=45).contains(&crossings), "{crossings}");   // 0.2 s at 220 Hz
+    assert_eq!(nearest_key(&instrument(&dir.join("r.sfz").to_string_lossy()).unwrap(), 57), Some(69));
+    std::fs::remove_dir_all(&dir).ok();
+}

@@ -8,6 +8,7 @@ premultiplied, the beauty as part `rgba`.
 """
 from __future__ import annotations
 
+import functools
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -85,12 +86,21 @@ def _mp4(out, w, h, fps, depth, first, rate):
     q = [] if rate.quality is None else [str(rate.quality)]
     # --tagged / repeat: a frame the same as the one before reaches the encoder as a one-byte mark (a still stretch costs
     # no drawing, read-back or pipe; engine export_crew.rs).
-    return {"program": exe, "args": ["encode-mp4", "--tagged", out, str(w), str(h), str(fps), str(rate.kbps), *q], "repeat": True}
+    # --nv12 / nv12: the engine's drawing workers turn each frame into the encoder's NV12 side by side, and the pipe
+    # carries 1.5 bytes a pixel instead of 4 (the encoder's one thread converting every frame was the export's narrowest step).
+    # --keep= / keep: the engine keeps this encoder for its next export with the same settings (an export's 10 s parts,
+    # the next export): starting one costs 2-4 s (the graphics card's encoder), now paid once per engine; each export's
+    # file is saved whole as it ends. Files being written wait in Rostrum's cache, never in the person's folder.
+    keep = str(settings.cache_dir("2d-encoding"))
+    return {"program": exe, "args": ["encode-mp4", "--tagged", "--nv12", f"--keep={keep}", out, str(w), str(h), str(fps), str(rate.kbps), *q],
+            "repeat": True, "nv12": True, "keep": True}
 
 
+@functools.cache
 def _can_write_mp4(exe: str):
     """The engine's own check, before any frame is rendered: on a Windows without Media Foundation (N editions) its
-    plain reason is raised as it is."""
+    plain reason is raised as it is. Once per engine per process (~100 ms each): a pass stays a pass, a failure is
+    not kept (an exception is never cached) and is asked again next export."""
     r = subprocess.run([exe, "encode-mp4", "--check"], capture_output=True, text=True, timeout=60,
                        creationflags=settings.NO_WINDOW)
     if r.returncode:

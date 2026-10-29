@@ -48,6 +48,7 @@ mod sink;
 mod sink_turn;
 mod export_crew;
 mod export_workers;
+mod export_pool;
 mod sksl;
 mod stage_profile;
 mod still_runs;

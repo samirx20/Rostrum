@@ -89,7 +89,7 @@ bool WindowCore::is_stroke_dab(const std::string& line) {
          (line.find("\"phase\": \"dab\"") != std::string::npos || line.find("\"phase\":\"dab\"") != std::string::npos);
 }
 
-bool WindowCore::ahead(const std::string& line) {
+bool WindowCore::ahead(const std::string& line, bool duringDraw) {
   if (!is_stroke_dab(line)) return false;
   PXR_NS::JsParseError err;
   const PXR_NS::JsValue v = PXR_NS::JsParseString(line, &err);
@@ -97,7 +97,7 @@ bool WindowCore::ahead(const std::string& line) {
   const PXR_NS::JsObject& o = v.GetJsObject();
   auto it = o.find("sculpt");
   if (it == o.end() || !it->second.IsObject()) return false;
-  return core_->sculpt_ahead(it->second.GetJsObject());
+  return core_->sculpt_ahead(it->second.GetJsObject(), duringDraw);
 }
 
 bool WindowCore::is_stroke_end(const std::string& line) {

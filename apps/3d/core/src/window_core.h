@@ -36,7 +36,9 @@ class WindowCore {
   // Any one thread (the GUI's), only while no request of this core is waiting for its answer: a `sculpt` dab line's
   // clay work started now on a worker (Core::sculpt_ahead), so that when answer() gets the same line only its blocks
   // are written and the picture drawn. False when it can't start (no live stroke, another camera): answer() does all.
-  bool ahead(const std::string& line);
+  // `duringDraw` (the dab overlap): also while the render thread answers, but only while it draws the dab before's
+  // picture (Core::sculpt_ahead), so the next dab's clay work runs beside that draw.
+  bool ahead(const std::string& line, bool duringDraw = false);
   static bool is_stroke_dab(const std::string& line);
   // clear the texture (no scene drawn yet)
   void clear();

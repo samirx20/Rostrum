@@ -30,3 +30,13 @@ def test_a_bad_times_list_is_refused_naming_the_problem(tmp_path):
 def test_times_gives_one_sheet_of_those_moments(tmp_path):
     reply, _ = start(tmp_path).call("look_frame", {"times": [1.0, 0.2, 0.5]}, AGENT)
     assert reply["ok"] and reply["data"]["result"]["times"] == [0.2, 0.5, 1.0] and len(reply["files"]) == 1
+
+
+@needs_engine
+def test_a_sheet_with_times_is_a_sheet_of_those_moments(tmp_path):
+    # Acts as written: Haiku asked for what "sheet" with times twice (2026-10-29) and was refused both times.
+    rt = start(tmp_path)
+    reply, _ = rt.call("look_frame", {"what": "sheet", "times": [1.0, 0.2, 0.5], "cols": 3}, AGENT)
+    assert reply["ok"] and reply["data"]["result"]["times"] == [0.2, 0.5, 1.0]
+    reply, _ = rt.call("look_frame", {"what": "sheet", "times": [0.2, 0.5], "count": 4}, AGENT)
+    assert not reply["ok"] and '"times" with "count"' in reply["summary"]

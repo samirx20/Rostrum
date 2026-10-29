@@ -1,7 +1,8 @@
 """Notes a track's recorded sound can't play, found from the written song before any render. The ranges are the
 engine's own (`range`: the keys its samples cover), asked once per sound and kept. One check for every reader:
 look_music's harmony checks, inspect_diagnose / run_script, and the screen's Problems chip, so an agent and a person
-hear of an out-of-range note before the render refuses it (critic r7: "0 problems", then only the render failed)."""
+hear of an out-of-range note before the render (critic r7: "0 problems", then only the render said so). The render plays
+such a note as written, from the sound's nearest sample stretched to its pitch, and its reply names them too (no gates)."""
 from __future__ import annotations
 
 import json
@@ -80,5 +81,5 @@ def problems(root: dict, engine) -> list[dict]:
             said = ", ".join(V._name(m) for m in bad[:6]) + (f" and {len(bad) - 6} more" if len(bad) > 6 else "")
             out.append({"kind": "out-of-range", "item": t,
                         "message": f'Track "{names.get(t, t)}" has notes its sound can\'t play ({said}): it plays '
-                                   f"{V._name(lo)}–{V._name(hi)}, so the song can't be rendered"})
+                                   f"{V._name(lo)}–{V._name(hi)}, so the render plays them from its nearest sample, stretched to the written pitch"})
     return out

@@ -112,8 +112,6 @@ class Clock:
             parts.append(f"last look at the picture {self.edits_since_look} edit{'s' * (self.edits_since_look != 1)} ago")
         else:
             parts.append("the picture was looked at since your last edit")
-        if self.exported and not self.export_looked:
-            parts.append("the export has not been looked at")
         missing = [KINDS[k] for k in KINDS if k not in self.seen]
         if self.exported and missing and (self.budget_min is None or self.budget_min * 60 - self.elapsed() > 120):
             parts.append("not looked at yet: " + ", ".join(missing))
@@ -132,8 +130,6 @@ class Clock:
             todo.append(f"no look at the picture since your last {self.edits_since_look} edit{'s' * (self.edits_since_look != 1)}")
         if gaps:
             todo.append("times never looked at: " + ", ".join(f"{a:g}–{b:g} s" for a, b in gaps[:6]))
-        if self.exported and not self.export_looked:
-            todo.append('the export has not been looked at (look_frame what "sheet" with video = its path)')
         todo += [f"stretch named by the last empty check: {q}" for q in self.quiet[:4]]
         text = ("Still unchecked: " + "; ".join(todo) + ".") if todo else "Nothing is unchecked."     # the clock line follows (with_clock)
         return Reply(text, {"elapsed_s": round(self.elapsed(), 1), "calls": self.calls, "edits": self.edits, "edits_since_look": self.edits_since_look,

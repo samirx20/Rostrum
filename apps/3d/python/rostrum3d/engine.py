@@ -66,6 +66,7 @@ class Engine:
         self.proc, self.pid, self.log_path = None, None, None
         self._lines: queue.Queue = queue.Queue()
         self._hash, self._lock, self._notices = None, threading.RLock(), []
+        self._held = None                               # the scene object last sent (ensure_scene: no hash for the same one)
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
         self.copies: dict = {}                          # the last scene's copies info: {id: {count, seen, camera}} (contract 2, copies)
@@ -147,6 +148,7 @@ class Engine:
 
     # --- the requests
     def load(self, scene: dict) -> dict:
+        self._held = None                               # ensure_scene names it once the load is through
         out = self._request({"scene": scene})
         self.copies = out.get("copies") or {}
         self._hash = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
@@ -158,8 +160,11 @@ class Engine:
         them (paint_scene.send)."""
         with self._lock:
             self._ensure_running()
+            if self._hash and scene is self._held:      # the very scene sent last (draw.scene_of keeps one per document state)
+                return False
             h = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
             if h == self._hash:
+                self._held = scene
                 return False
             if scene.get("paintLater"):
                 from . import paint_scene
@@ -167,6 +172,7 @@ class Engine:
                 self._hash = h                          # this scene, as asked, is what the engine holds
             else:
                 self.load(scene)
+            self._held = scene
             return True
 
     def render(self, progress=None, timeout_s: float | None = None, step=None, **req) -> dict:

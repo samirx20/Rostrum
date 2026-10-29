@@ -33,11 +33,13 @@ def test_the_line_counts_time_calls_and_edits_since_the_last_look():
     assert clock.unlooked(10.0) == [[3.0, 10.0]] and clock.edits_since_look == 1
 
 
-def test_a_render_is_unlooked_until_its_film_is_looked_at():
+def test_an_export_is_never_named_as_unchecked():
+    # A look at the composition is the export's picture (look_quality.py): the file needs no look of its own (rebench
+    # 2026-10-29: "the export has not been looked at" in every reply sent agents to export, then look at the file).
     clock = Clock(Time())
     clock.begin()
     clock.noted("render_video", {}, Reply("x", {"job_id": "j1", "label": "render_video main 0-4s"}))
-    assert "the export has not been looked at" in clock.line()
+    assert "export" not in clock.line() and "export" not in clock.facts(None).summary
     clock.noted("look_frame", {}, Reply("x", {"result": {"video": "a.mp4", "times": [0.0, 1.0]}}))
     assert "export" not in clock.line() and clock.covered == []       # a film's times are not the composition's
 
@@ -70,7 +72,7 @@ def test_after_an_export_the_line_names_the_looks_not_done_yet():
     assert "not looked at yet: a full-size single frame (look_frame time), the motion (look_motion)" in clock.line()
     clock.noted("look_frame", {}, Reply("x", {"time": 1.0}))
     clock.noted("look_motion", {}, Reply("x", {}))
-    assert "not looked at yet" not in clock.line() and "the export has not been looked at" in clock.line()
+    assert "not looked at yet" not in clock.line()
 
 
 def test_after_an_export_the_clock_says_the_time_left_never_a_push():

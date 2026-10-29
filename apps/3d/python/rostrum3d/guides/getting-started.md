@@ -19,7 +19,7 @@ delete.
 ## As an agent
 
 You work through the MCP tools on one document. Every call below is one change in the history, the same a person
-makes. Look after each step: `look_frame` with `quality: "fast"` takes about a second.
+makes. Look after each step: `look_frame` with `quality: "fast"` (the live preview) takes under a second.
 
 **The usual way: the whole scene as one Python script, look, edit, re-run.** Keep the script in a .py file and run it with
 `run_script` `path`; after each look, edit that file and run it again (same name): it replaces what it made and keeps what a

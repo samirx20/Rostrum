@@ -4,11 +4,30 @@ from __future__ import annotations
 
 from rostrum_core.errors import RostrumError, codes
 
+from rostrum_core.cache import CACHE
 from rostrum3d.compile import describe
 
 
 def scene_of(doc, shot_id: str) -> dict:
-    return describe(doc.data, shot_id, getattr(doc, "folder", None))
+    """The shot's compiled scene, built once per state of the document: a second look at the same scene (another frame, a
+    sheet after run_script's look) reuses it. Built again when the document changes (every change is a new tree and a new
+    seq) or this program stores something in the cache (a simulation's result, laid over the scene). Callers never change
+    it in place (a look from a view or a light copies the items list first)."""
+    folder = getattr(doc, "folder", None)
+    seen = getattr(doc, "_scenes", None)
+    if seen is None:
+        try:
+            seen = doc._scenes = {}
+        except AttributeError:                                   # a stand-in without attributes: built every time
+            return describe(doc.data, shot_id, folder)
+    stamp = (doc.data, getattr(doc, "seq", None), CACHE.puts)
+    hit = seen.get((shot_id, str(folder)))
+    if hit and hit[0][0] is stamp[0] and hit[0][1:] == stamp[1:]:
+        return hit[1]
+    scene = describe(doc.data, shot_id, folder)
+    seen.clear()                                                 # one state kept: the newest
+    seen[(shot_id, str(folder))] = (stamp, scene)
+    return scene
 
 
 def engine_of(ctx):

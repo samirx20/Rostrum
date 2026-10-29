@@ -87,15 +87,16 @@ It lists, in one place:
 - **Held past the end**: notes or clips still held at the song's Length. They are let go there (cut off, or ringing out
   with Ring out on); shorten them or make the song longer if they should be heard whole.
 - **No longer made**: a designed sound an older song still holds (see *scoring-motion*).
-- **Notes it can't play** (red): the newest render was refused because a track has a note outside its sound's range
-  (Violins play G3–D6, so an octave too many up stops the mix). The line names the track, the note and the range; click
-  it to select the track, then move those notes back (Down an octave) or pick another sound. Any other refusal of the
-  render is listed the same way as **Can't make the sound**. Until it is fixed the last good sound plays. A refusal is
+- **Notes it can't play** (red): a track has a note outside its recorded sound's range (Violins play G3–D6, and an
+  octave too many up is above it). The render still plays it, from the sound's nearest sample stretched to the written
+  pitch, which can sound thin or odd. The line names the track, the note and the range; click it to select the track,
+  then move those notes back (Down an octave) or pick another sound, or keep them if the stretched sound is what you
+  want. A refusal of the render is listed the same way as **Can't make the sound**. Until it is fixed the last good sound plays. A refusal is
   said in one place: the status line says it once, when it first happens, and from then on it is this chip's red line
   (the loudness chip stays empty meanwhile, since the old mix's loudness is not the song's).
 - **Clipping** (red): the newest mix goes over full scale.
 
-Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix), plus **out-of-range**: a track with notes its recorded sound can't play, named with the sound's range (the render would refuse the whole song). `run_script` says the same in its reply.
+Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix), plus **out-of-range**: a track with notes its recorded sound can't play, named with the sound's range (the render plays them from the nearest sample, stretched to the written pitch). `run_script` and `render_mix` say the same in their replies.
 
 ## 9. Duplicate a section, then vary it
 

@@ -29,11 +29,15 @@ def _run(args: list[str]) -> bytes:
     return r.stdout
 
 
-def _probe(path: Path) -> dict:
-    out = _run([settings.ffmpeg("ffprobe"), "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
-                "stream=width,height,pix_fmt,nb_read_frames", "-of", "json", str(path)])
+def _probe(path: Path, decode: bool = True) -> dict:
+    """Frames, size and pixel format. `decode` False counts the packets (one a picture) instead of decoding every frame:
+    for a file whose encoder already took every frame (the engine's MP4), the same count in ~50 ms instead of ~5 s for
+    a 66 s 1080p film."""
+    count, n = ("-count_frames", "nb_read_frames") if decode else ("-count_packets", "nb_read_packets")
+    out = _run([settings.ffmpeg("ffprobe"), "-v", "error", count, "-select_streams", "v:0", "-show_entries",
+                f"stream=width,height,pix_fmt,{n}", "-of", "json", str(path)])
     s = json.loads(out)["streams"][0]
-    return {"frames": int(s["nb_read_frames"]), "size": (s["width"], s["height"]), "pix_fmt": s["pix_fmt"]}
+    return {"frames": int(s[n]), "size": (s["width"], s["height"]), "pix_fmt": s["pix_fmt"]}
 
 
 def _video_frame_alpha(path: Path, index: int, w: int, h: int) -> int:
@@ -124,7 +128,9 @@ def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, d
     elif fmt == "gif":
         facts = _gif_facts(out)
     else:
-        facts = _probe(out)
+        # MP4: the engine's own encoder wrote every frame it was sent (its reply counts them); ProRes / WebM: FFmpeg's,
+        # decoded back whole.
+        facts = _probe(out, decode=fmt != "mp4")
         facts["min_alpha"] = 255
         pf = facts["pix_fmt"]
         # webm: ffprobe names the colour stream's format (yuv420p); vp9 keeps alpha in a side stream, read by decoding

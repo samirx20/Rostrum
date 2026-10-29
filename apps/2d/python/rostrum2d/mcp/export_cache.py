@@ -42,7 +42,7 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
     todo = [i for i, f in enumerate(files) if not f.is_file()]
     total = max(1, round((end - start) * fps))
     to_draw = sum(cuts[i][1] - cuts[i][0] for i in todo)
-    facts, drawn = {}, 0
+    facts, drawn, whole = {}, 0, None
     if todo:
         with engine_factory() as eng:
             if on_stop:                              # run_stop ends the engine at once, even mid-frame
@@ -60,14 +60,22 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
                         for i in run:                # the encoder did not start a picture group at each cut: one request each
                             one = _draw(io_export, eng, s, start, fps, *cuts[i], home / f"one{cuts[i][0]}.{os.getpid()}.partial.mp4", None)
                             Path(one["file"]).replace(files[i])
+                    elif len(run) == len(files):     # the whole export in one request: the film is that file, not its pieces joined again
+                        whole = Path(got["file"])
                 finally:
-                    Path(got["file"]).unlink(missing_ok=True)
+                    if whole is None:
+                        Path(got["file"]).unlink(missing_ok=True)
                 drawn += b - a
     for f in files:                                  # used now: the last removed when the cache is over its cap
         os.utime(f)
-    _join(files, target)
-    if len(files) > 1 or not todo:                   # the joined file read back whole (one drawn segment was read already)
-        facts = {**facts, **_readback(readback, target, total, w, h, fps)}
+    try:
+        _join([whole] if whole else files, target)
+    finally:
+        if whole:
+            whole.unlink(missing_ok=True)
+    # Read back without decoding: every segment was checked when it was drawn (io/export.py) and the join only copies
+    # their packets, so counting the packets (one a frame) and reading the size proves the film whole.
+    facts = {**facts, "checked": readback.check("mp4", target, total, w, h, False), "alpha": False, "depth": 8}
     facts.update(file=str(target), frames=total, fps=fps)
     took = time.perf_counter() - t0
     facts["segments"] = {"count": len(cuts), "drawn": len(todo), "drawn_s": round(to_draw / fps, 2),
@@ -134,24 +142,6 @@ def _split(run: Path, cuts: list[int], into: list[Path]) -> bool:
     return True
 
 
-def _readback(readback, target: Path, total: int, w: int, h: int, fps) -> dict:
-    """The joined file read back without decoding it again: every segment was decoded and checked when it was drawn
-    (io/export.py) and the join only copies their packets, so counting the packets (one a frame) and reading the size
-    proves it whole. A full decode here cost ~10 s on a 68 s film."""
-    import json
-    out = subprocess.run([settings.ffmpeg("ffprobe"), "-v", "error", "-count_packets", "-select_streams", "v:0", "-show_entries",
-                          "stream=width,height,pix_fmt,nb_read_packets", "-of", "json", str(target)],
-                         capture_output=True, text=True, creationflags=settings.NO_WINDOW)
-    if out.returncode:
-        raise readback.ExportError(f"ffprobe failed on the joined file: {out.stderr.strip()[-300:]}", {"file": str(target)})
-    st = json.loads(out.stdout)["streams"][0]
-    facts = {"frames": int(st["nb_read_packets"]), "size": (st["width"], st["height"]), "pix_fmt": st["pix_fmt"], "min_alpha": 255}
-    if facts["frames"] != total or tuple(facts["size"]) != (w, h):
-        raise readback.ExportError(f'the joined file has {facts["frames"]} frames at {facts["size"][0]}×{facts["size"][1]}, '
-                                   f"expected {total} at {w}×{h}", facts)
-    return {"file": str(target), "frames": total, "fps": fps, "alpha": False, "depth": 8, "checked": facts}
-
-
 def _part_progress(progress, before: int, of: int):
     """A segment's progress as the export's: frames drawn over all the frames to draw."""
     if progress is None:
@@ -166,11 +156,8 @@ def _part_progress(progress, before: int, of: int):
 
 
 def _join(files: list[Path], target: Path) -> None:
-    """The segments, in order, into `target` (a copy for one), without re-encoding."""
-    import shutil
-    if len(files) == 1:
-        shutil.copyfile(files[0], target)
-        return
+    """The segments, in order, into `target` without re-encoding, the index moved to the front (+faststart: a web player
+    starts before the whole file is in; ~5-30 ms on a 30 MB film). One file too, so every MP4 has it."""
     listing = target.with_name(target.stem + ".segments.txt")
     listing.write_text("".join(f"file '{f.as_posix()}'\n" for f in files), encoding="utf-8")
     try:

@@ -16,6 +16,16 @@
 
 namespace {
 
+// ROSTRUM3D_DAB_OVERLAP=0: the dab overlap off (to measure it), as before: a dab starts early only while the render
+// thread is idle and the GUI thread has every answer
+bool overlap_on() {
+  static const bool on = [] {
+    const char* e = std::getenv("ROSTRUM3D_DAB_OVERLAP");
+    return !(e && e[0] == '0');
+  }();
+  return on;
+}
+
 double now_ms() {
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
@@ -121,12 +131,15 @@ class Renderer : public QQuickRhiItemRenderer {
       blank_ = false;
     }
     cb->endExternal();
-    if (busy.owns_lock()) busy.unlock();  // done with the core: a dab posted from here on may start at once
+    // done with the core: a dab posted from here on may start at once. Its answers are counted here, not when the
+    // GUI thread gets them (that hand-back took 5-50 ms, while the render thread sat idle)
+    if (Rostrum3DView* v = item_.data(); v && !answers.empty() && overlap_on()) v->answeredSome(int(answers.size()));
+    if (busy.owns_lock()) busy.unlock();
     QPointer<Rostrum3DView> i = item_;
     if (!answers.empty() || !drawn.isEmpty())
       QMetaObject::invokeMethod(item_, [i, answers = std::move(answers), drawn] {
         if (!i) return;
-        i->answeredSome(int(answers.size()));  // before the replies: one may post the next dab, started early
+        if (!overlap_on()) i->answeredSome(int(answers.size()));  // before the replies: one may post the next dab
         for (const auto& [id, r] : answers) Q_EMIT i->answered(id, r);
         if (!drawn.isEmpty()) Q_EMIT i->drawn(drawn);
       }, Qt::QueuedConnection);
@@ -169,11 +182,15 @@ QQuickRhiItemRenderer* Rostrum3DView::createRenderer() { return new Renderer; }
 
 void Rostrum3DView::post(int id, const QString& line) {
   std::string text = line.toStdString();
-  if (unanswered_.load() == 0 && r3d::WindowCore::is_stroke_dab(text) && !std::getenv("ROSTRUM3D_NO_AHEAD")) {
-    // only while the render thread is out of the core: else it is answered in order there, as any request
+  const int waiting = unanswered_.load();
+  if (waiting <= 1 && r3d::WindowCore::is_stroke_dab(text) && !std::getenv("ROSTRUM3D_NO_AHEAD")) {
+    // while the render thread is out of the core and nothing waits; or (the dab overlap) while the one request
+    // waiting is the dab whose picture the render thread is drawing now: its clay work is done, this one's starts
+    // beside the draw. Else it is answered in order there, as any request
     std::unique_lock<std::mutex> idle(busyM_, std::try_to_lock);
     std::lock_guard<std::mutex> l(coreM_);
-    if (idle.owns_lock() && core_) core_->ahead(text);
+    if (core_ && waiting == 0 && idle.owns_lock()) core_->ahead(text);
+    else if (core_ && !idle.owns_lock() && overlap_on()) core_->ahead(text, true);
   }
   ++unanswered_;
   {

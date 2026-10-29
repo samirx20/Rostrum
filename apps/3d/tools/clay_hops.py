@@ -12,6 +12,9 @@
 #   fixed grain in metres (0.002 = 2 mm). Default "auto,0.002".
 #   heavy.ps1 run "sam: clay hops" gpu <venv python> apps\3d\tools\clay_hops.py <out folder> [--grains auto,0.002]
 #       [--moves 200] [--short 5] [--short-moves 40] [--brush 0.012]
+# Same clay, bit for bit: after every brush's strokes, the clay's shape hash in the window (what was seen) is checked
+# against a fresh engine program that loads the saved document (the strokes replayed from their dabs files): "same" in
+# summary.json, "same clay" in summary.md.
 # Output per grain: <out>\grain-<label>\clay_hops.json (everything), summary.json and summary.md (the table
 # "brush | typical | slowest 10 % | first dab (max)", ms, move -> on screen); <out>\summary.md has all grains.
 # Typical and slowest 10 % are over every dab request of the brush; "first dab" is the slower of each stroke's first two requests (the press's begin and the dab after it).
@@ -135,6 +138,19 @@ def markdown(title, summary):
     return "\n".join(lines) + "\n"
 
 
+def replay_same(screen, clay):
+    """The live clay (the window's) and the same document's clay in a fresh engine program: their shape hashes."""
+    from rostrum3d.engine import Engine
+    W.pump(10, lambda: not screen.bridge.viewport.clay._ending)      # the last stroke's step kept
+    W.pump(3)
+    live = W.clay_info(screen.bridge.viewport, clay).get("hash")
+    with Engine() as eng:
+        eng.ensure_scene(screen.bridge.viewport._compiled())
+        fresh = eng.clay_info(clay).get("hash")
+    print(f"same clay: live {live} / replayed {fresh} -> {'SAME' if live == fresh else 'DIFFERENT'}")
+    return {"live": live, "replayed": fresh, "same": live == fresh}
+
+
 def run_grain(label, grain):
     """One fresh window and clay at `grain` (None: the camera's own); every brush; numbers in OUT/grain-<label>."""
     out = OUT / f"grain-{label}"
@@ -201,6 +217,7 @@ def run_grain(label, grain):
             report["brushes"][brush] = {"requests": len(recs_all), "hops": table(recs_all), "strokes": strokes,
                                         "gc": gcs, "slowest": slow[:6], "summary": summary[brush]}
         win.grabWindow().save(str(out / "clay-hops-after.png"))
+        report["same"] = replay_same(screen, clay)
     finally:
         (out / "clay_hops.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
         screen.close()
@@ -208,8 +225,10 @@ def run_grain(label, grain):
         shutil.rmtree(project, ignore_errors=True)
     mm = f" ({report['detail'] * 1000:.2f} mm)" if report.get("detail") else ""
     title = f"Grain {label}{mm}"
-    (out / "summary.json").write_text(json.dumps({"grain": label, "detail": report.get("detail"), "brushes": summary},
-                                                 indent=1), encoding="utf-8")
+    same = report.get("same", {})
+    (out / "summary.json").write_text(json.dumps({"grain": label, "detail": report.get("detail"), "brushes": summary,
+                                                  "same": same}, indent=1), encoding="utf-8")
+    title += f" · same clay live vs replayed: {'yes' if same.get('same') else 'NO'}"
     (out / "summary.md").write_text(markdown(title, summary), encoding="utf-8")
     for brush, b in report["brushes"].items():
         print(f"== [{label}] {brush}: {b['requests']} requests; GCs {len(b['gc'])} "

@@ -8,6 +8,7 @@ import pytest
 
 from rostrum2d import engine_export
 from rostrum2d.io import export as io_export
+from rostrum2d.io import readback
 from rostrum2d.mcp import export_cache
 
 SCENE = {"comp": {"type": "comp", "id": "c", "props": {"width": 64, "height": 36, "fps": 10, "duration": 8.0}, "layers": []}}
@@ -38,7 +39,7 @@ def _fakes(monkeypatch, tmp_path, drawn: list, stop_at: float | None):
     monkeypatch.setattr(io_export, "export", export)
     monkeypatch.setattr(export_cache, "_split", split)
     monkeypatch.setattr(export_cache, "_join", lambda files, target: target.write_text("joined"))
-    monkeypatch.setattr(export_cache, "_readback", lambda *a, **k: {})
+    monkeypatch.setattr(readback, "check", lambda *a, **k: {})            # the joined file's read-back (no FFmpeg here)
 
 
 @contextlib.contextmanager

@@ -125,10 +125,10 @@ class Rig:
         self.length = [float(b.get("length", 0.0)) for b in self.bones]
         self.head = [[float(b.get(k, 0.0)) for k in skin.HEAD] for b in self.bones]
         self.rest_turn = [tuple(float(b.get(k, 0.0)) for k in TURN) for b in self.bones]
-        self.turn = [tuple(float(track_value(keys_of(b, k), t)) if keys_of(b, k) else r for k, r in zip(TURN, rt))
+        self.turn = [tuple(float(track_value(ks, t)) if ks else r for ks, r in zip((keys_of(b, k) for k in TURN), rt))
                      for b, rt in zip(self.bones, self.rest_turn)]
         self.trunk = [j in BODY for j in self.joint]
-        self.rest = skin.transforms(chain)
+        self.rest = _rest(chain, self.head, self.rest_turn)
 
     # --- names
     def find(self, name: str) -> int:
@@ -198,6 +198,19 @@ class Rig:
         for id_, v in (turns or {}).items():
             tr[self.index[id_]] = _as_turn(v)
         return [skin._deform(n, r) for n, r in zip(self.frames(tr), self.rest)]
+
+
+_RESTS: dict = {}                       # rest transforms by the bones' written values (a script poses one clay ~100×)
+
+
+def _rest(chain, head, rest_turn) -> list:
+    """skin.transforms(chain) at rest (it reads only the written heads and turns), remembered by their exact values."""
+    key = tuple((p, *(float(v).hex() for v in (*h, *r))) for (_, p), h, r in zip(chain, head, rest_turn))
+    if key not in _RESTS:
+        if len(_RESTS) > 64:
+            _RESTS.clear()
+        _RESTS[key] = skin.transforms(chain)
+    return [([row[:] for row in m], t[:]) for m, t in _RESTS[key]]
 
 
 def _as_turn(v) -> tuple:

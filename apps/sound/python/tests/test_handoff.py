@@ -112,3 +112,15 @@ def test_a_notes_dynamics_given_in_song_seconds_says_it_is_a_fraction_of_the_not
     with pytest.raises(RostrumError) as e:
         dyn.check([[0, 0.5], [31, 1.0]], "note")
     assert "fraction of its length" in e.value.hint and "track.dynamics" in e.value.hint
+
+
+def test_an_out_of_range_note_is_played_and_the_render_reply_names_it(tmp_path, monkeypatch):
+    """Vault r2: a viola A2 stopped the whole mix. The engine plays it from the nearest sample now; the reply names it."""
+    from rostrum_sound import note_ranges
+    monkeypatch.setattr(note_ranges, "problems", lambda data, engine: [
+        {"kind": "out-of-range", "item": "viola", "message": 'Track "viola" has notes its sound can\'t play (A2): it plays C3–D6, '
+                                                              "so the render plays them from its nearest sample, stretched to the written pitch"}])
+    doc = Document.new(KIND, folder=tmp_path, item="song")
+    doc.save()
+    r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test")
+    assert any('Track "viola"' in w and "A2" in w and "nearest sample" in w for w in r["warnings"])

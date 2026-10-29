@@ -38,7 +38,7 @@ You can't judge motion from the script. Look.
 | Tool | Use it to |
 |---|---|
 | `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
-| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. With `video: "<mp4 path>"` (with `sheet`, or `times`) the sheet is made of a **finished mp4's own frames**: the export itself, no item needed. |
+| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `times: [0.5, 1.2, 3.0]` (to `look_frame`, with or without `what: "sheet"`): the same sheet. For detail, one `look_frame`. With `video: "<mp4 path>"` (with `sheet`, or `times`) the sheet is made of a **finished mp4's own frames**: the export itself, no item needed. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. `area: [x, y, w, h]` (comp px) draws only that part, sharp at `width` (a zoom on a mouth or an edge); `times` + `cols` for a sheet of chosen moments. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
@@ -49,9 +49,10 @@ You can't judge motion from the script. Look.
 
 **The loop: write → run → look → change → export once.** Export replies end with the time left; add `notes: true` to
 list what the checks measured. Give the brief's timed moments as `beats` ("the lamp is
-revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`) if you want them measured. Also look at a sheet of the finished piece (`look_frame` `what: "sheet"` with `video` = the
-mp4's path, after your last edit): the review names what can be measured, your eyes judge the rest. A sheet from
-before your last edit doesn't count.
+revealed at the end": `{"at": 24, "to": 28, "expect": "lamp reveals"}`) if you want them measured. Look at the
+composition after your last edit (`look_frame` `times: [..]`, or `what: "sheet"`): it is the export's picture without
+an export, back in well under a second (only motion blur is left out; `quality: "final"` adds it). The review names
+what can be measured, your eyes judge the rest. A sheet with `video` shows a file you already delivered.
 
 ## Using your time
 

@@ -13,6 +13,8 @@ fine spread inside one block (%; what reads as grain up close). Flat: spread und
 """
 from __future__ import annotations
 
+import json
+
 import numpy as np
 
 from .. import drawing as D, write_on
@@ -39,26 +41,73 @@ def _blocks(a: np.ndarray, b: int) -> np.ndarray:
     return a[:H, :W].reshape(H // b, b, W // b, b, *a.shape[2:]).swapaxes(1, 2)
 
 
-def measure(rgba: np.ndarray, own: np.ndarray, b: int) -> dict | None:
-    """One area's numbers: `rgba` premultiplied HxWx4, `own` HxW bool (its pixels), `b` block px."""
-    lum = (rgba[..., :3] + (1 - rgba[..., 3:4]) * PAPER) @ LUMA
-    blk, ob = _blocks(lum, b), _blocks(own, b).all(axis=(2, 3))
+def lightness(rgba: np.ndarray, b: int) -> tuple[np.ndarray, np.ndarray]:
+    """Each block's mean lightness and its fine spread (std) of a premultiplied HxWx4 picture over the paper: the same
+    for every area of one drawing, so worked out once per drawing, not once per area."""
+    blk = _blocks((rgba[..., :3] + (1 - rgba[..., 3:4]) * PAPER) @ LUMA, b)
+    return blk.mean(axis=(2, 3)), blk.std(axis=(2, 3))
+
+
+def measure(rgba: np.ndarray, own: np.ndarray, b: int, blocks: tuple[np.ndarray, np.ndarray] | None = None) -> dict | None:
+    """One area's numbers: `rgba` premultiplied HxWx4, `own` HxW bool (its pixels), `b` block px; `blocks` = lightness(rgba, b)
+    when already worked out."""
+    mean, fine = blocks or lightness(rgba, b)
+    ob = _blocks(own, b).all(axis=(2, 3))
     inner = ob.copy()
     inner[1:] &= ob[:-1]; inner[:-1] &= ob[1:]; inner[:, 1:] &= ob[:, :-1]; inner[:, :-1] &= ob[:, 1:]
     inner[0] = inner[-1] = False; inner[:, 0] = inner[:, -1] = False
     if inner.sum() < 12:
         return None
     rim = ob & ~inner
-    mean = blk.mean(axis=(2, 3))
     spread = float(mean[inner].std()) * 100
     edge = float(mean[inner].mean() - mean[rim].mean()) * 100 if rim.any() else 0.0
-    grain = float(blk.std(axis=(2, 3))[inner].mean()) * 100
+    grain = float(fine[inner].mean()) * 100
     return {"spread": round(spread, 2), "edge": round(edge, 2), "grain": round(grain, 2),
             "flat": spread < FLAT}
 
 
+_KEPT: dict = {}        # (drawing content, canvas w, h, comp w, h) -> its rows: the same picture measures the same
+KEEP = 64
+
+
+def _picture(frame: dict, w: int, h: int) -> np.ndarray:
+    """The drawing's own picture, HxWx4 uint8 straight alpha: read from its ink PNG (the picture the engine draws: the
+    same pixels, only its painted rectangle; made when the scene was described) when there is one, else made."""
+    from PIL import Image
+    from rostrum_paint import canvas, ink
+    made = ink.made(frame, w, h)
+    if made is None:
+        return canvas.rgba8(frame, w, h)
+    path, crop = made
+    u8 = np.zeros((h, w, 4), np.uint8)
+    if crop:
+        x, y, cw, ch = crop
+        with Image.open(path) as im:
+            u8[y:y + ch, x:x + cw] = np.asarray(im.convert("RGBA"))
+    return u8
+
+
+def _rows(layer: dict, frame: dict, washes: list, cw: float, ch: float) -> list[dict]:
+    """The areas of one drawing's picture, top first (facts' rows for it)."""
+    from rostrum_paint import compose
+    w, h = D.canvas_size(layer)
+    rgba = _picture(frame, w, h).astype(np.float32) / 255
+    rgba[..., :3] *= rgba[..., 3:4]
+    b, later, blocks, rows = max(1, round(w / SEE)), np.zeros((h, w), bool), None, []
+    for paint, s, mask in reversed(washes):            # top first: a later wash hides the one under it
+        inside = compose.mask_array(mask, w, h) > 0.5
+        own = inside & ~later
+        later |= inside
+        share = float(own.sum()) / (cw * ch)
+        if share >= MIN_SHARE:
+            blocks = blocks or lightness(rgba, b)
+            if m := measure(rgba, own, b, blocks):
+                rows.append({"drawing": layer["id"], "paint": paint, "stroke": s["id"], "area": round(share, 3), **m})
+    return rows
+
+
 def facts(comp: dict, t: float) -> list[dict]:
-    from rostrum_paint import canvas, compose
+    from rostrum_paint import canvas
     rows, (cw, ch) = [], comp_size(comp)
     for node in flatten(comp, t):
         layer = node.get("layer") or {}
@@ -69,18 +118,12 @@ def facts(comp: dict, t: float) -> list[dict]:
         if not washes or write_on.amount_at(layer, t) < 1:
             continue
         w, h = D.canvas_size(layer)
-        u8 = canvas.rgba8(frame, w, h)                      # the drawing's own picture (kept on disk once made)
-        rgba = u8.astype(np.float32) / 255
-        rgba[..., :3] *= rgba[..., 3:4]
-        b, later = max(1, round(w / SEE)), np.zeros((h, w), bool)
-        for paint, s, mask in reversed(washes):            # top first: a later wash hides the one under it
-            inside = compose.mask_array(mask, w, h) > 0.5
-            own = inside & ~later
-            later |= inside
-            share = float(own.sum()) / (cw * ch)
-            m = measure(rgba, own, b) if share >= MIN_SHARE else None
-            if m:
-                rows.append({"drawing": layer["id"], "paint": paint, "stroke": s["id"], "area": round(share, 3), **m})
+        key = (layer["id"], canvas.content_key(frame, w, h), json.dumps(washes, sort_keys=True), w, h, cw, ch)
+        if key not in _KEPT:
+            if len(_KEPT) >= KEEP:
+                _KEPT.clear()
+            _KEPT[key] = _rows(layer, frame, washes, cw, ch)
+        rows += [dict(r) for r in _KEPT[key]]
     return rows[::-1]
 
 

@@ -41,6 +41,10 @@ seconds, 0 or more.
 
 `direction` is the way the motion goes: `"left"`, `"right"`, `"up"`, `"down"`.
 
+A wipe or an iris reveals `into` over `out_of`; it does not remove `out_of`, which stays under it until its own end.
+Where `into` draws nothing (no full-frame background of its own, or its layers not showing yet), the old section
+shows through the opening, and it disappears only at `at` + `dur`, in one frame.
+
 A wrong kind, a parameter the kind doesn't take, or a wrong direction fails with a plain error naming what is
 accepted. Two transitions that make the same mask or effect id (`<into>_wipe` twice) fail as a doubled id; a section
 takes one wipe-in and one iris-in.
