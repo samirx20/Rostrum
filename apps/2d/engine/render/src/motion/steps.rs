@@ -78,7 +78,7 @@ fn on_screen<'a>(comp: &Item<'a>, view: Option<&View>) -> HashMap<(&'a str, usiz
     out
 }
 
-fn corners<'a>(it: &Item<'a>, parent: Aff, out: &mut HashMap<(&'a str, usize), Pt>) {
+pub(super) fn corners<'a>(it: &Item<'a>, parent: Aff, out: &mut HashMap<(&'a str, usize), Pt>) {
     let n = |f: &str, d: f64| it.props.get(f).and_then(serde_json::Value::as_f64).unwrap_or(d);
     let (w, h) = super::smear::size(it).unwrap_or((0.0, 0.0));
     let (ax, ay) = (n("anchorX", 0.5) * w, n("anchorY", 0.5) * h);

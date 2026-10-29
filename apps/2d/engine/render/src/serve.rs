@@ -627,7 +627,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
             let raw = s.painter.read()?;
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             let t3 = Instant::now();
-            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index };
+            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false };
             s.sink.as_mut().unwrap().push(px)?;
             wait_ms += t3.elapsed().as_secs_f64() * 1000.0;
         }
@@ -762,7 +762,7 @@ fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut
 fn collect(s: &mut Session) -> Result<f64, String> {
     let t = Instant::now();
     let (raw, index) = s.painter.finish_read()?;
-    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index };
+    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready: false };
     s.sink.as_mut().ok_or("no encoder")?.push(px)?;
     Ok(t.elapsed().as_secs_f64() * 1000.0)
 }

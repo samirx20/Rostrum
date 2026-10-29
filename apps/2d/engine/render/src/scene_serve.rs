@@ -310,6 +310,12 @@ impl Staged {
     pub(crate) fn of(t: f64, pieces: Vec<String>) -> Staged {
         Staged { t, pieces, samples: vec![], bases: vec![], eval_ms: 0.0 }
     }
+
+    /// Tests: each motion-blur sub-frame's stage pieces.
+    #[cfg(test)]
+    pub(crate) fn sample_pieces(&self) -> &[Vec<String>] {
+        &self.samples
+    }
 }
 
 /// `place` in world px (`place {…, world: {x, y, w, h}}` or a world picture's `place`): the layers as the world view
@@ -369,12 +375,20 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
                 samples.push(mk);
             }
         }
-    } else {
-        for ts in times {
-            let (mk, ms) = crate::scene::eval::shutter_at(t, ts, || markup(scene, ts, alpha))?;
-            eval_ms += ms;
+    } else if !times.is_empty() {
+        // Each sub-frame's stage and comp; then the layers that barely move while the shutter is open are drawn as at the
+        // frame's own time in every one (motion/hold.rs), so still_runs.rs paints them once.
+        let t0 = Instant::now();
+        let plan = crate::motion::Plan::of(&scene.comp)?;
+        let (centre, centre_pieces) = crate::scene::eval::shutter_at(t, t, || content(scene, &plan, t, alpha))?;
+        let mut items = Vec::with_capacity(n);
+        for &ts in &times {
+            let (comp, mk) = crate::scene::eval::shutter_at(t, ts, || content(scene, &plan, ts, alpha))?;
+            items.push(comp);
             samples.push(mk);
         }
+        crate::motion::hold_still(&centre, &centre_pieces, &items, &mut samples);
+        eval_ms += ms(t0);
     }
     // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
     // picture, drawn once (the same pixels, within the sum's rounding).

@@ -25,10 +25,22 @@ pub struct Pixels {
     pub deep: bool,
     /// The document frame number (the dither's seed).
     pub index: u32,
+    /// `raw` already went through the output step (`converted`): the encoder's bytes as they are.
+    pub ready: bool,
 }
 
 impl Pixels {
+    /// The frame put through the output step now, on this thread (an export's drawing workers do it side by side,
+    /// sink_turn.rs, instead of the one writer thread): the same bytes the writer would make.
+    pub fn converted(self) -> Pixels {
+        let (spec, width, deep, index) = (self.spec, self.width, self.deep, self.index);
+        Pixels { raw: self.bytes(), spec, width, deep, index, ready: true }
+    }
+
     fn bytes(self) -> Vec<u8> {
+        if self.ready {
+            return self.raw;
+        }
         let mut out = vec![];
         crate::color::output(&self.spec, &self.raw, self.width, self.deep, false, self.index, &mut out);
         out
@@ -47,6 +59,9 @@ enum To {
     Encoder(Encoder),
     /// A drawing worker's frames, through the export's one encoder in frame order.
     Turn(Arc<Turn>),
+    /// Tests: every frame's encoder bytes, kept in the order they came (sink_turn.rs tests).
+    #[cfg(test)]
+    Kept(Arc<Mutex<Vec<(u32, Vec<u8>)>>>),
 }
 
 struct Encoder {
@@ -68,6 +83,12 @@ impl Sink {
         Sink::of(To::Turn(turn))
     }
 
+    /// Tests: a sink keeping each frame's encoder bytes, in order, in `into`.
+    #[cfg(test)]
+    pub fn kept(into: Arc<Mutex<Vec<(u32, Vec<u8>)>>>) -> Sink {
+        Sink::of(To::Kept(into))
+    }
+
     fn of(to: To) -> Sink {
         Sink { to, pushed: 0, last: None, in_order: true }
     }
@@ -79,6 +100,12 @@ impl Sink {
         match &mut self.to {
             To::Encoder(e) => e.push(pixels),
             To::Turn(t) => t.push(pixels),
+            #[cfg(test)]
+            To::Kept(k) => {
+                let index = pixels.index;
+                k.lock().unwrap().push((index, pixels.bytes()));
+                Ok(())
+            }
         }
     }
 
@@ -108,6 +135,8 @@ impl Sink {
         match &mut self.to {
             To::Encoder(e) => e.finish(),
             To::Turn(_) => Err("a drawing worker's frames are finished by the export, not the worker".into()),
+            #[cfg(test)]
+            To::Kept(_) => Ok(0),
         }
     }
 }

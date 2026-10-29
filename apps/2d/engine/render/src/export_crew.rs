@@ -1,17 +1,19 @@
-//! An export's drawing workers (scene_export.rs): `workers` threads each draw every `workers`-th frame through a
+//! An export's drawing workers (scene_export.rs): `workers` threads each draw the next frame no worker has taken yet
+//! (claimed in order from one counter, so a worker held up by a slow frame never leaves the others idle) through a
 //! session of their own (serve.rs `twin`: its own page, and on the GPU its own GL context made and used on that
 //! thread), so a frame's layout and paint on the processor overlap other frames' and the graphics card stays fed.
 //! This thread is worker 0, on the export's own session. Each worker has a markup thread building its next frames'
-//! stage ahead (`AHEAD` at most, in order, each checked to be the frame expected). A frame is a function of its time
+//! stage ahead (`AHEAD` at most: it claims the frames, in order). A frame is a function of its time
 //! alone (cold_warm_tests.rs), so which worker drew it never shows in its pixels.
 //!
 //! Frames to the encoder go through one turn (sink_turn.rs): every frame once, in order, each worker keeping one
-//! frame in flight. The card's memory is shared: each session's Skia budget is `budget` (only what is kept between
+//! frame in flight; a frame drawn early is held there, up to sink_turn.rs `WINDOW`. The card's memory is shared: each session's Skia budget is `budget` (only what is kept between
 //! draws depends on it, never the pixels). A failure on any worker stops every worker at its next frame and fails
 //! the export with the first failure, naming the frame; nothing is left running.
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::mpsc::{channel, sync_channel, Receiver};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -76,6 +78,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     let per = budget(s.width, s.height, workers);
     s.painter.set_budget(per);
     let failed = Mutex::new(None::<String>);
+    let claim = AtomicU64::new(0);
     let fail = |e: &str| {
         failed.lock().unwrap().get_or_insert_with(|| e.to_string());
         if let Some(t) = &turn {
@@ -94,13 +97,13 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
         let (tx, rx) = channel::<Row>();
         let crew: Vec<_> = (1..workers)
             .map(|w| {
-                let (tx, turn, html, like, fail, failed) = (tx.clone(), turn.clone(), &html, &like, &fail, &failed);
+                let (tx, turn, html, like, fail, failed, claim) = (tx.clone(), turn.clone(), &html, &like, &fail, &failed, &claim);
                 sc.spawn(move || {
                     let r = catch_unwind(AssertUnwindSafe(|| {
                         let mut ws = serve::twin(like, html).map_err(|e| format!("export: starting drawing worker {w}: {e}"))?;
                         ws.painter.set_budget(per);
                         ws.sink = turn.map(Sink::turn);
-                        let r = share(held, &mut ws, req, span, (w, workers), failed, &mut |row| drop(tx.send(row)));
+                        let r = share(held, &mut ws, req, span, claim, failed, &mut |row| drop(tx.send(row)));
                         settle(&mut ws, r)
                     }))
                     .unwrap_or_else(|_| Err(format!("export: drawing worker {w} panicked")));
@@ -112,7 +115,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
             })
             .collect();
         drop(tx);
-        let mine = share(held, s, req, span, (0, workers), &failed, &mut |row| {
+        let mine = share(held, s, req, span, &claim, &failed, &mut |row| {
             note(row, &mut rows);
             while let Ok(r) = rx.try_recv() {
                 note(r, &mut rows);
@@ -160,15 +163,17 @@ fn settle(s: &mut Session, r: Result<Costs, String>) -> Result<Costs, String> {
     r
 }
 
-/// Worker `w` of `of`: frames w, w + of, … drawn on `s`, their markup built on a thread of its own.
-fn share(held: &Held, s: &mut Session, req: &Value, span: Span, (w, of): (usize, usize), failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+/// One worker: the frames its markup thread claims from `claim` (each the next no worker has), drawn on `s` in that order.
+fn share(held: &Held, s: &mut Session, req: &Value, span: Span, claim: &AtomicU64, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let scene = held.scene()?;
-    let frames = (w as u64..span.n).step_by(of);
     std::thread::scope(|sc| {
         let (tx, rx) = sync_channel::<(u64, Result<Staged, String>)>(AHEAD);
-        let ahead = frames.clone();
         let builder = sc.spawn(move || {
-            for i in ahead {
+            loop {
+                let i = claim.fetch_add(1, Ordering::Relaxed);
+                if i >= span.n {
+                    break;
+                }
                 let staged = stage_at(scene, span.time(i), req);
                 let bad = staged.is_err();
                 if tx.send((i, staged)).is_err() || bad {
@@ -176,7 +181,7 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, (w, of): (usize,
                 }
             }
         });
-        let drawn = draw_frames(held, s, req, span, frames, rx, failed, on_row);
+        let drawn = draw_frames(held, s, req, span, rx, failed, on_row);
         // `rx` is gone with draw_frames: a builder still working stops at its next frame.
         match builder.join() {
             Ok(()) => drawn,
@@ -185,23 +190,22 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, (w, of): (usize,
     })
 }
 
-/// Draws `frames` on `s`, laid out incrementally as the canvas lays out its frames (one path: preview = export). An
+/// Draws the frames `rx` brings on `s`, laid out incrementally as the canvas lays out its frames (one path: preview = export). An
 /// exported frame is still a function of its time alone, whichever frames this worker (or the canvas before the export)
 /// drew first: incremental layout gives a fresh layout's boxes (vendor/PATCHES.md J1; incremental_tests.rs). Laying every
 /// export frame out whole cost Night Bloom ~40 % more layout (calm 4-5 s: 256 vs 147 ms a frame per worker).
 #[allow(clippy::too_many_arguments)]
-fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: impl Iterator<Item = u64>, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let mut costs = Costs::default();
-    for i in frames {
+    loop {
         if let Some(e) = failed.lock().unwrap().as_ref() {
             return Err(format!("export stopped: {e}"));
         }
-        let (t, tf) = (span.time(i), Instant::now());
-        let staged = match rx.recv() {
-            Ok((got, _)) if got != i => return Err(format!("export: frame {got}'s markup came when frame {i}'s was due")),
-            Ok((_, staged)) => staged.map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?,
-            Err(_) => return Err(format!("export: the markup thread stopped before frame {i} (t={t:.3} s)")),
-        };
+        let tf = Instant::now();
+        // No more: every frame is claimed (draw_all checks every one was drawn).
+        let Ok((i, staged)) = rx.recv() else { break };
+        let t = span.time(i);
+        let staged = staged.map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
         let mut f = json!({ "t": t, "index": span.index(i), "alpha": req["alpha"].as_bool() == Some(true) });
         match req["images"].as_str() {
             Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", span.index(i)))),
