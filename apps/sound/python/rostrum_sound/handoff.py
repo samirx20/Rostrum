@@ -172,10 +172,19 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
         raise
 
 
+def out_of_range(doc, engine) -> list[str]:
+    """The render reply's lines for notes a track's recorded sound can't reach: the engine plays each as written, from
+    the sound's nearest sample stretched to its pitch (no gate), and the reply names every such note, by track."""
+    from . import note_ranges
+    try:
+        return [p["message"] for p in note_ranges.problems(doc.data, engine)]
+    except Exception:  # noqa: BLE001  a range the engine cannot give is said by inspect_diagnose
+        return []
+
+
 def _range_fix(doc, engine, e) -> str:
-    """For a render the engine refused over a note its recorded sound can't play: every such note, by track, and the
-    fix, so one reply mends them all (the engine names only the first note it met, by its sample file). Refusing is
-    right (fail loudly: a file with notes silently dropped or moved is a broken file); being left to guess is not."""
+    """For a render an older engine refused over a note its recorded sound can't play: every such note, by track, and
+    the fix, so one reply mends them all (the engine named only the first note it met, by its sample file)."""
     if "no sample for" not in str(e):
         return ""
     from . import diagnose, note_ranges               # only on this failure: they ask the engine for ranges
@@ -218,6 +227,6 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
     version = int(part.name[1:-len(".partial")])
     done = finish_render(part, {**manifest(item, version, r, doc, who, master, names), **({"export_sheet": sheet} if sheet else {})})
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
-    return {**r, "silentStems": silent_stems(r, names), "warnings": warnings(r), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
+    return {**r, "silentStems": silent_stems(r, names), "warnings": warnings(r) + out_of_range(doc, engine), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
             "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},
             "version": version, "folder": str(done)}

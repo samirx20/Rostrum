@@ -15,14 +15,14 @@ import numpy as np
 from rostrum_core.mcp import faults as shared
 
 from .. import brief, dialogue
-from . import arc, end_check, hit_room, stall
+from . import arc, end_check, ending, hit_room, stall
 from .core import db, load
 
 LOUD_LU = 0.5          # the mix this far off the master's loudness target is a fault
 DUCK_MIN_DB = 3.0      # a duck under a voice dipping less than this cannot be heard
 END_AFTER_S = 0.1      # sound is read from this long after the declared end ...
 END_WINDOW_S = 0.5     # ... for this long
-END_DBFS = -50.0       # ... above this is still sounding
+END_DBFS = ending.SILENT_DBFS   # ... at or above this is still sounding (one threshold with look_sound and render_mix)
 
 
 def _name_at(doc, t: float) -> str | None:
@@ -169,9 +169,8 @@ def rings_past_end(wav, end_s) -> list[dict]:
     a, b = int((end_s + END_AFTER_S) * sr), int((end_s + END_AFTER_S + END_WINDOW_S) * sr)
     if a >= len(y):
         return []
-    seg = np.asarray(y[a:b], dtype=np.float64).reshape(len(y[a:b]), -1)
-    level = db(float(np.mean(seg ** 2, axis=0).max()))
-    if level <= END_DBFS:
+    level = ending.sounding_db(y[a:b])
+    if level < END_DBFS:
         return []
     return [shared.fault("rings_past_end", f"still sounding {level:.0f} dBFS (above {END_DBFS:g}) after the end at {end_s:.2f} s",
                          "end the notes and tails before the end (shorter last notes, a fade on the master, "

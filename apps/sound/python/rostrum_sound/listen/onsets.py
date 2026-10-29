@@ -6,6 +6,14 @@ from .dsp_events import onset_times
 from .memo import remembered
 
 HOP = 256
+STRIKE_S = 0.05         # a sound's strength: the highest sample in the 50 ms from its start (dBFS), any part alike
+
+
+def strength_db(y, sr, t):
+    """How strong the sound starting at `t` is: its highest sample in the STRIKE_S from it, dBFS (-120 for silence).
+    Read in a part's own stem it is that part's own hit, comparable across parts and with the mix's."""
+    seg = np.abs(np.asarray(y[max(0, int(t * sr)):int((t + STRIKE_S) * sr)], dtype=np.float64))
+    return num(20 * np.log10(float(seg.max()) + 1e-6) if seg.size else -120.0, 1)
 
 
 def _refine(m, sr, t, span=0.04):
@@ -88,6 +96,10 @@ def which_stem(mix, stems, expect, tolerance=0.04):
         y, sr = load(p)
         return with_soft(mono(y), sr, file_onsets(p), expect)
     found = {k: of(p) for k, p in stems.items()}
+
+    def strong(k, t):                    # the stem's own sound at its onset: its strength there, not the mix's
+        y, sr = load(stems[k])
+        return strength_db(y, sr, t)
     mix_ons = file_onsets(mix)
     rows = []
     for e in expect:
@@ -97,13 +109,15 @@ def which_stem(mix, stems, expect, tolerance=0.04):
         best = ranked[0] if ranked else None
         rows.append({"expected_s": e, "stem": best, "stem_onset_s": num(near[best][0], 4) if best else None,
                      "offset_ms": near[best][1] if best else None,
+                     "stem_peak_dbfs": strong(best, near[best][0]) if best else None,
                      "pass": best is not None and abs(near[best][1]) <= tolerance * 1000,
-                     "next_stems": [{"stem": k, "offset_ms": near[k][1]} for k in ranked[1:3]],
+                     "next_stems": [{"stem": k, "offset_ms": near[k][1], "peak_dbfs": strong(k, near[k][0])} for k in ranked[1:3]],
                      "mix_onset_s": None if mt is None else num(mt, 4), "mix_offset_ms": mo})
     return {"expected": rows, "tolerance_ms": num(tolerance * 1000, 1), "all_pass": all(r["pass"] for r in rows),
             "note": "stem = the track whose onset is nearest the time, within 250 ms (a stem with none that close is not listed: "
                     "another sound's start is never quoted as its own); a soft or masked start (a swell, a bow, an entry over a held "
-                    "chord) is found as the level rising 6 dB over its quietest just before; mix_* = the mix's nearest onset (a louder "
+                    "chord) is found as the level rising 6 dB over its quietest just before; stem_peak_dbfs / peak_dbfs = that stem's own "
+                    "strength there (its highest sample in the 50 ms from its start); mix_* = the mix's nearest onset (a louder "
                     "sound nearby can win there). Stems are the last render's."}
 
 
@@ -116,7 +130,7 @@ def onsets(wav, expect=None, tolerance=0.04):
     if expect:
         ons = with_soft(mono(y), sr, ons, expect)
     out = {"file": name_of(wav), "duration_s": num(duration(y, sr), 3),
-           "onsets_s": [num(t, 4) for t in ons]}
+           "onsets_s": [num(t, 4) for t in ons], "peaks_dbfs": [strength_db(y, sr, t) for t in ons]}
     if expect is not None:
         rows = []
         for e in expect:

@@ -3,7 +3,7 @@
 import numpy as np
 import soundfile as sf
 
-from rostrum_sound.listen.faults import check
+from rostrum_sound.listen.faults import check, held_spans
 from rostrum_sound.listen.weakest import from_markers, lines
 
 SR = 48000
@@ -62,6 +62,36 @@ def test_flat_held_tone(tmp_path):
     assert "held_tone" in kinds(r) and "one flat tone" in r["words"]
     assert "near_mono" in kinds(r)
 
+
+
+def _ringing(midi, dur, decay):
+    t = np.arange(int(dur * SR)) / SR
+    f = 440.0 * 2 ** ((midi - 69) / 12)
+    return sum(np.sin(2 * np.pi * f * h * t) / h ** 1.5 for h in range(1, 6)) * np.exp(-decay * t)
+
+
+def test_chords_every_two_beats_are_not_held():
+    """Late Set (sound-rebench, 2026-10-29): a ii-V every bar at 132 BPM read as "one harmony held 22.5–45 s". Rootless
+    voicings share tones and ring into each other over a walking bass, so every class carries a floor; the shape of
+    what stands out still changes every two beats."""
+    voicings = [[58, 62, 65, 69], [58, 64, 67, 69], [57, 60, 64, 65], [57, 60, 62, 66]]   # Gm7 C9 Fmaj7 D7, rootless
+    roots, beat = [43, 36, 41, 38], 60 / 132
+    y = np.zeros(32 * SR)
+    for i in range(int(30 / (2 * beat))):
+        a = int(i * 2 * beat * SR)
+        for m in voicings[i % 4]:
+            n = 0.08 * _ringing(m, 3.0, 0.8)
+            y[a:a + n.size] += n[:y.size - a]
+        for k in range(2):
+            n, b = 0.15 * _ringing(roots[i % 4] + 7 * k, beat, 2.0), a + int(k * beat * SR)
+            y[b:b + n.size] += n[:y.size - b]
+    assert held_spans(y[:30 * SR, None], SR) == []
+
+
+def test_one_chord_for_14_s_is_held():
+    y = 0.04 * sum(_ringing(m, 14.0, 0.0) for m in (41, 53, 57, 60, 64))
+    spans = held_spans(y[:, None], SR)
+    assert spans and spans[0]["seconds"] >= 12.0
 
 def test_low_boom_hit_is_weak_and_the_render_lines_say_why(tmp_path):
     """Sound-gaps brief 2: a loud low hit with no bright attack, after a breath of silence, passed the old mel check

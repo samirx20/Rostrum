@@ -152,7 +152,7 @@ def register(tools: Tools):
         "by_stem": {"type": "boolean", "default": False, "description": "With expect: for each time, which track's stem starts nearest it (and the next two), how far off, and the mix's nearest onset: one call for every marker."},
         "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
-        """Where sounds start (onsets). With expect, each expected time's nearest onset (within 250 ms: a sound starting farther off is not quoted as that time's), how early or late, pass or fail; a soft or masked start (a swell, an entry over a held chord) is found as the level rising 6 dB over its quietest just before. Passing the time is not enough: give a moment's kind ({"at": 31.5, "kind": "hit"}, also stop, drop, climax, lift, entry, voice) and the faults (data.faults, in the summary) say whether it comes across, with the time, the measured number and what to change (a weak hit: "1.0x a normal note, bright attack 1.0x, silence before it", with the fix those numbers point to; a blurred stop; drums dropping 0.7 s early; drums still heard in a drop's gap; a climax that holds only 2 s; the build at the ceiling before a hit). With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset); a stem with no start within 250 ms of a time is not listed for it."""
+        """Where sounds start (onsets) and how strong each one is (data.peaks_dbfs, beside data.onsets_s: the highest sample in the 50 ms from each start; with `track`, read in that part's own stem, so it is the part's own hit, comparable across parts). With expect, each expected time's nearest onset (within 250 ms: a sound starting farther off is not quoted as that time's), how early or late, pass or fail; a soft or masked start (a swell, an entry over a held chord) is found as the level rising 6 dB over its quietest just before. Passing the time is not enough: give a moment's kind ({"at": 31.5, "kind": "hit"}, also stop, drop, climax, lift, entry, voice) and the faults (data.faults, in the summary) say whether it comes across, with the time, the measured number and what to change (a weak hit: "1.0x a normal note, bright attack 1.0x, silence before it", with the fix those numbers point to; a blurred stop; drums dropping 0.7 s early; drums still heard in a drop's gap; a climax that holds only 2 s; the build at the ceiling before a hit). With expect and by_stem, which track hits each time and how strong its own sound is there (stem_peak_dbfs; all stems of the last render, plus the mix's nearest onset); a stem with no start within 250 ms of a time is not listed for it."""
         doc, wav, stems = _source(ctx, args, "look_music (what: events)")
         if args.get("by_stem"):
             if not args.get("expect"):
@@ -166,7 +166,7 @@ def register(tools: Tools):
                 row["at"] = name
             ok = sum(row["pass"] for row in r["expected"])
             return Reply(f"{ok} of {len(expect)} expected times have a stem starting within {tol * 1000:.0f} ms: "
-                         + "; ".join(f"{row['at']} → {row['stem']} ({row['offset_ms']:+.0f} ms)" for row in r["expected"] if row["stem"]) + ".", r)
+                         + "; ".join(f"{row['at']} → {row['stem']} ({row['offset_ms']:+.0f} ms, {row['stem_peak_dbfs']:g} dBFS)" for row in r["expected"] if row["stem"]) + ".", r)
         if args.get("track"):
             if args["track"] not in stems:
                 raise RostrumError.not_found("look_events", "stem", args["track"], stems, "the last render's stems")
@@ -174,7 +174,7 @@ def register(tools: Tools):
         expect, _, moments = parse_expect(doc, args.get("expect"), "look_music (what: events)")
         r = listen.onsets(wav, expect=expect or None, tolerance=args.get("tolerance", 0.04))
         if args.get("detail", "short") == "short" and len(r["onsets_s"]) > 40:
-            r = {**r, "onsets_s": r["onsets_s"][:40], "onsets_total": len(r["onsets_s"])}
+            r = {**r, "onsets_s": r["onsets_s"][:40], "peaks_dbfs": r["peaks_dbfs"][:40], "onsets_total": len(r["onsets_s"])}
         if expect:
             bad = [e for e in r["expected"] if not e["pass"]]
             line = f"{len(expect) - len(bad)} of {len(expect)} expected sounds within {args.get('tolerance', 0.04) * 1000:.0f} ms."

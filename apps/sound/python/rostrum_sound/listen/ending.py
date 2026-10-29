@@ -18,6 +18,18 @@ NO_FADE_DB = 3.0        # a tail that fell less than this over its 0.5 s was not
 HEARD_DBFS = -60.0      # under this a tail is gone for a listener at a normal level (the audible end)
 
 
+def sounding_db(y) -> float:
+    """The level of a stretch in dBFS: the mean power of its louder channel. The one measure behind "still sounding"
+    (over SILENT_DBFS): look_sound's ending, render_mix's "stops while ringing" and the rings_past_end note all read it."""
+    a = np.asarray(y, dtype=np.float64)
+    return db(float((a.reshape(len(a), -1) ** 2).mean(axis=0).max())) if len(a) else db(0.0)
+
+
+def still_sounding(y, sr) -> bool:
+    """Is the last TAIL_S of `y` still above SILENT_DBFS (not finished)?"""
+    return sounding_db(y[-min(len(y), int(TAIL_S * sr)):]) >= SILENT_DBFS
+
+
 def audible_end(y, sr) -> float:
     """Seconds into `y` where the sound falls under HEARD_DBFS for good: the end of the last 50 ms block (RMS of the
     louder channel) above it; 0 for a file that never reaches it."""
@@ -37,7 +49,7 @@ def ending(y, sr):
     m = np.asarray(y, dtype=np.float64).mean(axis=1) if y.ndim > 1 else np.asarray(y, dtype=np.float64)
     n = max(1, int(BLOCK_S * sr))
     tail = m[-min(len(m), int(TAIL_S * sr)):]
-    level = db(np.mean(tail ** 2))
+    level = sounding_db(y[-min(len(y), int(TAIL_S * sr)):])
     k = min(len(m) // n, 1 + FADE_BLOCKS)
     blocks = [db(np.mean(m[len(m) - (i + 1) * n:len(m) - i * n] ** 2)) for i in range(k)][::-1]     # oldest first
     last = blocks[-1]
