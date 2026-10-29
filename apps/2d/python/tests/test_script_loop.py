@@ -58,14 +58,15 @@ def test_a_failed_look_is_said_and_the_merge_stands(tmp_path, monkeypatch):
 
 
 @needs_engine
-def test_look_returns_one_sheet_and_the_faults(tmp_path):
+def test_look_returns_one_sheet_and_notes_only_when_asked(tmp_path):
     rt = Runtime(make_app(str(tmp_path), ["demo"]), app_tools())
     reply, images = rt.call("run_script", {"source": FIRST, "name": "film.py", "look": [0.5, 1.5, 3]}, AGENT)
     assert reply["ok"], reply["summary"]
     look = reply["data"]["look"]
     assert look["times"] == [0.5, 1.5, 3.0] and len(images) == 1 and look["sheet"] in reply["files"]
-    assert isinstance(look["faults"], list) and all("text" in f and "start" in f for f in look["faults"])
-    assert "Look at main" in reply["summary"]
+    assert "notes" not in look and "notes" not in reply and "Look at main" in reply["summary"]
+    noted, _ = rt.call("run_script", {"source": FIRST, "name": "film.py", "look": [0.5], "notes": True}, AGENT)
+    assert isinstance(noted["data"]["look"]["notes"], list) and isinstance(noted["notes"], list), noted["summary"]
 
 
 def test_an_export_that_waits_fails_loudly(tmp_path):

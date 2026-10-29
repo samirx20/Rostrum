@@ -1,5 +1,5 @@
-"""A row keeps its place and its slots while its cards come in one by one (layout.py: start..end, opacity and shifts
-never free a slot), and review names a layer its layout jumps in one frame (review_jump), not a smooth re-flow.
+"""A row keeps its place and its slots while its cards fade in one by one (layout.py: opacity and shifts never free a
+slot; a layer outside its start..end takes no room, as the script wrote it), and review names a layer its layout jumps in one frame (review_jump), not a smooth re-flow.
 Canary 3E R8: a row of pricing cards fading in looked as if it re-centred."""
 from rostrum_core import Document
 
@@ -12,7 +12,7 @@ HEAD = 'comp("c", width=1000, height=600, fps=10, duration=3)\n'
 CARDS = '''
 with row("cards", x=100, y=300, w=800, gap=20, justify="center"):
     for i in range(3):
-        shape(f"card_{i}", w=200, h=120, start=i * 0.8)
+        shape(f"card_{i}", w=200, h=120)
 for i in range(3):
     layer(f"card_{i}").key("opacity", {i * 0.8: 0, i * 0.8 + 0.4: 1}).key("shiftY", {i * 0.8: 40, i * 0.8 + 0.4: 0})
 '''
@@ -34,6 +34,13 @@ def test_cards_fading_in_one_by_one_keep_the_row_and_their_slots():
               for s, t in zip(seen, (0.0, 0.3, 0.9, 1.7, 2.5))}
         assert len(xs) == 1 and len(ys) == 1, f"card_{i} moved: {xs} {ys}"
     assert len({tuple(sorted(s.get("cards", {}).items())) for s in seen}) == 1
+
+
+def test_a_card_before_its_start_takes_no_room():
+    with textsize.use(FakeEngine()):
+        comp = _doc(CARDS.replace("h=120)", "h=120, start=i * 0.8)")).item("c")
+        early, late = layout.solve(comp, 0.0), layout.solve(comp, 2.5)
+    assert "card_2" not in early and "card_2" in late
 
 
 def _jumps(src):

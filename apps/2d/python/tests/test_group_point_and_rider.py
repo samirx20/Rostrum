@@ -3,7 +3,6 @@ nested joint groups landed off screen when they counted from a hidden 1920 x 108
 sits on it (x / y given to it are an offset; a dot given the frame's centre landed 1100 px off its curve, silently)."""
 import pytest
 from rostrum_core import Document
-from rostrum_core.errors import RostrumError
 from rostrum_core.tree import walk
 
 from fake_layout import FakeEngine
@@ -40,10 +39,10 @@ def test_a_group_without_x_y_keeps_its_children_where_they_are_written():
     assert b["s"] == pytest.approx((250, 150, 350, 250), abs=0.5)
 
 
-def test_a_rider_sits_on_its_path_and_a_far_x_y_is_refused_with_the_fix():
+def test_a_rider_sits_on_its_path_and_a_given_x_y_is_its_offset_never_refused():
     b = boxes('path("line", d="M 100 500 L 900 500", stroke=True, fill="none")\n'
               'shape("dot", shape="ellipse", w=20, h=20, ridePath="line", rideAt="end")\n')
     assert b["dot"] == pytest.approx((890, 490, 910, 510), abs=1)
-    with pytest.raises(RostrumError, match="Leave x / y out"):
-        boxes('path("line", d="M 100 500 L 900 500", stroke=True, fill="none")\n'
-              'shape("dot", shape="ellipse", w=20, h=20, ridePath="line", rideAt="end", x=960, y=540)\n')
+    far = boxes('path("line", d="M 100 500 L 900 500", stroke=True, fill="none")\n'
+                'shape("dot", shape="ellipse", w=20, h=20, ridePath="line", rideAt="end", x=960, y=540)\n')
+    assert far["dot"] == pytest.approx((1850, 1030, 1870, 1050), abs=1)    # what the script wrote: the end + (960, 540)

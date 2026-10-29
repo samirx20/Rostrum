@@ -27,14 +27,14 @@ with group("pane", x=320, y=180, w=600, h=340):
 '''
 
 
-def test_cards_running_into_each_other_are_named_with_the_y_to_type():
+def test_cards_running_into_each_other_are_named_with_where_they_end():
     rows = [f for f in review_panels.facts(_sampled(CARDS)) if f["kind"] == "panel_overlap"]
     assert len(rows) == 1 and rows[0]["ids"] == ["a", "b"]
-    # a's words reach y = 40 + 60 + half a line (its drawn extent, not h=40); b moves to that + 16, in pane px, not the
-    # zoomed picture's px
-    assert '"pane" px' in rows[0]["text"] and 'set "b" y = ' in rows[0]["text"]
-    y = float(rows[0]["text"].split('set "b" y = ')[1].split(",")[0])
-    assert 120 < y < 140
+    # a's words reach y = 40 + 60 + half a line (its drawn extent, not h=40), in pane px, not the zoomed picture's px;
+    # a measurement, never an instruction
+    assert '"pane" px' in rows[0]["text"] and "set " not in rows[0]["text"]
+    y = float(rows[0]["text"].split('"a" ends at y = ')[1].split(" ")[0])
+    assert 104 < y < 124
 
 
 def test_a_group_never_in_the_picture_is_named_once_and_one_partly_in_is_not():

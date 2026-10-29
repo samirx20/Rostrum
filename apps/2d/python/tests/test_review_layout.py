@@ -33,7 +33,7 @@ with group("home", x=160, y=90, w=200, h=160):
 def test_text_partly_under_the_block_below_it_names_both_and_where_to_place_it():
     rows = _kinds(review_layout.overlaps(_sampled(SCREEN.format(ty=42))))
     assert rows["text_crossed"]["ids"] == ["nav_title", "hero_bg"]
-    assert 'place "hero" below "nav"' in rows["text_crossed"]["text"] and "ends at y =" in rows["text_crossed"]["text"]
+    assert '"nav" ends at y =' in rows["text_crossed"]["text"] and "place" not in rows["text_crossed"]["text"]
     assert "text_crossed" not in _kinds(review_layout.overlaps(_sampled(SCREEN.format(ty=20))))     # clear of it
 
 
@@ -60,7 +60,7 @@ def test_texts_on_texts_but_not_a_short_cross_fade_swap():
 def test_a_cursor_on_a_label():
     label = 'text("send_lbl", body="Send requests", size=20, x=160, y=90)\n'
     rows = _kinds(review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=150, y=90, w=30, h=30, fill="#222")\n')))
-    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and 'spot="beside"' in rows["pointer_on_text"]["text"]
+    assert rows["pointer_on_text"]["ids"] == ["send_lbl", "cursor"] and "spot=" not in rows["pointer_on_text"]["text"]
     away = review_layout.overlaps(_sampled(label + 'shape("cursor", shape="ellipse", x=40, y=30, w=30, h=30, fill="#222")\n'))
     assert away == []
     assert review_layout.overlaps(_sampled(label + 'shape("handle", x=150, y=90, w=30, h=30, fill="#222")\n'))[0]["kind"] == "text_crossed"
@@ -69,7 +69,7 @@ def test_a_cursor_on_a_label():
 def test_a_tiny_end_card_but_not_a_normal_lock_up():
     tiny = review_layout.end_card(_sampled('shape("mark", x=150, y=90, w=10, h=10, fill="#6a4dff")\n'
                                            'text("word", body="Tally", size=8, x=172, y=90)\n'))
-    assert tiny and tiny[0]["kind"] == "end_small" and "scale the lock-up up" in tiny[0]["text"]
+    assert tiny and tiny[0]["kind"] == "end_small" and "% of the frame height" in tiny[0]["text"]
     normal = review_layout.end_card(_sampled('shape("mark", x=160, y=64, w=56, h=56, fill="#6a4dff")\n'
                                              'text("word", body="Tally", size=30, x=160, y=126)\n'))
     assert normal == []
@@ -86,7 +86,7 @@ with group("phone", x=160, y=90, w=60, h=120):
 def test_a_phone_placed_off_the_frame_or_nibbled_by_a_push_in_but_not_a_deep_push_in():
     assert _kinds(review_device.facts(_sampled(PHONE.replace('y=90, w=60', 'y=40, w=60'))))["device_cut"]["id"] == "phone"
     push = _kinds(review_device.facts(_sampled(PHONE + 'frame().fit(rect=(85, 48, 150, 84), at=0)\n')))
-    assert 'frame().fit(["phone"]' in push["push_cut"]["text"] and "% of the film" in push["push_cut"]["text"]
+    assert 'frame().fit' not in push["push_cut"]["text"] and "% of the film" in push["push_cut"]["text"]
     deep = review_device.facts(_sampled(PHONE + 'frame().fit(rect=(140, 60, 40, 22), at=0)\n'))
     assert [r["kind"] for r in deep] == ["push_in"] and deep[0]["info"]
 
