@@ -27,7 +27,8 @@ inside them:
 - `padding`, `gap`, `align` (`start` `center` `end` `stretch`), `justify` (`start` `center` `end` `between` …).
 - Sizes in px, `"50%"`, `"fill"` or `"fit"`; `grow=1` takes the room left; texts wrap where the box ends.
 - Inside a box, `x=` / `y=` fail (the box places the layer) unless you give `apart=True` (a badge, a pointer).
-- **A layer with no `x`, `y` sits at its parent's centre** (the frame's middle, or its group's).
+- **A layer with no `x`, `y` sits at its parent's centre** (the frame's middle, or its group's). `x`, `y` place its
+  anchor, the centre by default: `x=960` centres it on a 1920-wide frame whatever its size.
 - **Named anchors:** `anchor="top-left"`, `"top"`, `"bottom-left"`, `"bottom-right"`, `"center"` … say which point
   of the layer its `x`, `y` place, and where it turns and grows from (`anchor="bottom"` grows a bar up from its floor).
 

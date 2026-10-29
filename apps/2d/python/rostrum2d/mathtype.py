@@ -147,15 +147,16 @@ def _typeset_class():
 
 
 def for_script(layer) -> dict:
-    """`math_text(id, tex, x=0, y=0, size=64, color="#ffffff", **path_fields)` for scripts: a group `id` holding one path
-    layer per symbol and rule (ids `<id>_<n>_<what>`), the formula's top-left at (x, y) in comp px, `size` the font size in
-    px. Gives the group; `.parts` / `.find(symbol)` / `.span(first, last)` give its path layers (or address one by its id). Fields beyond these (opacity, rotation, scale) go to the group; others (stroke=,
+    """`math_text(id, tex, x=, y=, size=64, color="#ffffff", **path_fields)` for scripts: a group `id` holding one path
+    layer per symbol and rule (ids `<id>_<n>_<what>`), the group's box the formula's size; `x`, `y` place its anchor (the
+    centre unless `anchor=` says otherwise) as for every layer, and with none it sits at its parent's centre; `size` the font
+    size in px. Gives the group; `.parts` / `.find(symbol)` / `.span(first, last)` give its path layers (or address one by its id). Fields beyond these (opacity, rotation, scale) go to the group; others (stroke=,
     strokeColor=, strokeWidth=, fill="none" …) to every path."""
     from . import pathdata
     path = pathdata.for_script(layer)["path"]
     Typeset = _typeset_class()
 
-    def math_text(id=None, tex=None, x=0, y=0, size=64, color="#ffffff", **fields):
+    def math_text(id=None, tex=None, x=None, y=None, size=64, color="#ffffff", **fields):
         if tex is None:
             raise ValueError('math_text(id, tex, x=, y=, size=, color=): give the formula, e.g. math_text("eq", r"\\frac{1}{2}")')
         parts = math_parts(tex, size)
@@ -163,7 +164,9 @@ def for_script(layer) -> dict:
         for _what, d in parts:
             x1, y1 = pathdata.bounds(pathdata.commands(d))[2:]
             w, h = max(w, x1), max(h, y1)
-        group = layer("group", id, w=round(w, 2), h=round(h, 2), x=x + w / 2, y=y + h / 2, **{k: fields.pop(k) for k in ("opacity", "rotation", "scale", "name") if k in fields})
+        place = {k: v for k, v in (("x", x), ("y", y)) if v is not None}       # the anchor, as for every layer
+        own = {k: fields.pop(k) for k in ("opacity", "rotation", "scale", "name", "anchor", "anchorX", "anchorY") if k in fields}
+        group = layer("group", id, w=round(w, 2), h=round(h, 2), **place, **own)
         base = group.id
         made = []
         with group:
