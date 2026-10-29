@@ -93,8 +93,14 @@ All of a step's pictures are made in **one paint** of the page, each run's layer
 (blitz-paint `Run::Keep`, anyrender `begin_kept`), not one paint per picture. What a layer
 streaks over is what lies under it, so this is each layer's own motion blur laid over the others, as After Effects
 blurs each layer: where two layers that move differently overlap, it differs a little from averaging whole sub-frames.
-A layer that only moves but blends (a blend mode, glow, frosted glass) is painted as laid out, moved to each
-sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. In an export or a still
+A layer laid on with add, screen or multiply streaks like the others, its streak laid on with its own blend (anyrender
+`draw_cached_streak` takes it): those blends are linear in the layer's picture, so the average of the layer laid on at
+each move is its average picture laid on once (`still_runs.rs` `keeps`; blends inside a layer stay inside it, its element
+an isolated group). A layer that only moves but blends otherwise (another blend mode, a glow drawn from its own picture,
+frosted glass) is painted as laid out, moved to each sub-frame (one per px of its path), over the layers under it and
+averaged: no layout per step. A group the same in every sub-frame but for its own place and its children's, each child
+only moving its own way (bubbles rising in a group the frame pans past: `streak.rs` `split`), is drawn the same way with
+each child moved instead (`Streak.parts`, blurred.rs), as many taps as its longest child's path. In an export or a still
 (the page at its own size) the pictures reach up to 128 px past each edge of the frame (`blurred.rs` `MARGIN`), so a
 layer that runs past the edge streaks what lies there in; a moving layer whose streak reads further past the edge than
 that, or whose size isn't known before layout (a text, a path), or any in a zoomed or cropped view, is built like a
@@ -106,13 +112,16 @@ average). A layer still staged per sub-frame gets as many sub-frames as its own 
 at least `shutterSamples`, not the frame's count; only its own pieces are written at each sub-frame (`stage.rs`
 `parts_of`). A top-level layer with nothing keyed inside it (its children, effects, masks and stops; no rig, not following
 a path) is evaluated at the probes by its own fields only, its insides taken from the frame's own (`eval.rs`
-`at_reusing`; not in a comp with trails or smears). A layer's blur, shadow and stroke reach past its boxes is scaled by
+`at_reusing`; not in a comp with trails or smears), and so are the staged sub-frames. An evaluated layer's fields are the
+scene's own, borrowed, when nothing keyed changes them (`Item.props`), so copying, dropping and comparing it costs
+nothing; which layers are mattes is read once per group (`matte.rs` `drawn`). `eval_bench_tests.rs` times the evaluation
+of whole films by step. A layer's blur, shadow and stroke reach past its boxes is scaled by
 how much it is stretched on screen (its scale, its groups', the frame's zoom: `steps.rs` `widest`). A frame's
 `timing.evalSplit` says where its evaluation ms went (probes, steps, moves, staged sub-frames, holds); with
 `ROSTRUM2D_PROFILE` each motion-blur paint is labelled `mb-picture`, `mb-streaks`, `mb-blend`, `mb-edge`, `mb-staged`.
 
 A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer whose
-matte changes or moves differently) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
+matte changes or moves differently, a group whose children change more than their place) is staged and painted at every
 sub-frame, alone, over the picture of the layers under it, and averaged; the layers above it are drawn once over that.
 Only such layers cost a layout per step. When the sub-frames draw different layers (one starts or ends inside the
 shutter), every sub-frame is drawn whole, as before. At most `KEPT_BYTES` (serve.rs, 768 MB) of streak pictures are kept
@@ -125,8 +134,8 @@ a fast preview while playing; or a timing test at 8 vs 16). The screen's playbac
 **Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
 
 **Cost:** one layout of the page, two paints (the streak pictures, then the frame), and one streak pass per moving
-layer (its cost grows with its steps); a layer that blends, or reads too far past the frame's edge, costs a paint per
-step; a layer that changes while the shutter is open costs a stage and paint per step.
+layer (its cost grows with its steps); a layer that blends other than add, screen or multiply, a group whose children
+move apart, or a layer reading too far past the frame's edge costs a paint per step; a layer that changes while the shutter is open costs a stage and paint per step.
 
 ## Trails
 

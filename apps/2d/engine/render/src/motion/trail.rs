@@ -49,7 +49,7 @@ fn echoes<'a>(plan: &'a Plan, root: &'a Node, layer: &Item<'a>, fps: f64) -> Vec
         }
         rename(&mut copy, plan, i);
         let faded = copy.num("opacity") * fade.powi(i as i32);
-        copy.props.insert("opacity".into(), Value::from(faded));
+        copy.props.to_mut().insert("opacity".into(), Value::from(faded));
         out.push(copy);
     }
     out

@@ -74,18 +74,18 @@ pub fn resolve(parent: &Node, layers: &mut [Item], t: f64) {
         let turn = if it.on("rideTurn") { angle } else { 0.0 };
         for (f, v) in [("x", x), ("y", y), ("rotation", turn)] {
             let own = it.num(f);
-            it.props.insert(f.into(), Value::from(own + v));
+            it.props.to_mut().insert(f.into(), Value::from(own + v));
         }
     }
     for it in layers.iter_mut().filter(|it| follows(it.node)) {
         let Ok(path) = target(it.node, "pathLayer", &parent.layers) else { continue };
         let p = props_at(path, t);
         for f in TAKEN {
-            it.props.insert((*f).into(), p[*f].clone());
+            it.props.to_mut().insert((*f).into(), p[*f].clone());
         }
-        it.props.insert("path".into(), p["d"].clone());
+        it.props.to_mut().insert("path".into(), p["d"].clone());
         for (to, from) in [("followW", "w"), ("followH", "h"), ("followFrom", "trimStart"), ("followTo", "trimEnd")] {
-            it.props.insert(to.into(), p[from].clone());
+            it.props.to_mut().insert(to.into(), p[from].clone());
         }
     }
 }

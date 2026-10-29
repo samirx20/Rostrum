@@ -755,7 +755,10 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
             Some(crate::runs::Run::Moved(k, m)) if scene.draw_cached_moved(k, m) => return,
             Some(crate::runs::Run::Streak(k, s)) if {
                 let streak = crate::runs::streak(s);
-                scene.draw_cached_streak(k, &streak.moves, streak.rect)
+                // Laid on with the layer's own blend (its kept picture was drawn onto nothing, where every blend is "over").
+                let node = &self.dom.as_ref().tree()[node_id];
+                let blend = node.primary_styles().map_or(peniko::BlendMode::default(), |s| crate::blend::css_blend(&s));
+                scene.draw_cached_streak(k, &streak.moves, streak.rect, blend)
             } => return,
             Some(crate::runs::Run::Shift(m)) => return self.render_element(scene, node_id, Affine::new(m) * parent_style_transform, clip_rect),
             Some(crate::runs::Run::Keep(k)) if scene.begin_kept(k) => {

@@ -19,7 +19,7 @@ pub(super) fn measure(it: &mut Item, prev: &Item) {
         stretch(me, s, (me.num("x") - p.num("x"), me.num("y") - p.num("y")))
     });
     if let Some(v) = measured {
-        it.props.insert(KEY.into(), v);
+        it.props.to_mut().insert(KEY.into(), v);
     }
     for l in &mut it.layers {
         measure(l, prev);

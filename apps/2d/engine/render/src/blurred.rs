@@ -75,12 +75,18 @@ pub(crate) fn draw(
             }
         } else if let Some(st) = streak(p).filter(|st| st.blends) {
             // A layer that only moves but blends with what is under it: painted as laid out, moved to each sub-frame (a
-            // tap per px of its path), over the picture below, and averaged. No layout.
+            // tap per px of its path), over the picture below, and averaged. No layout. A group whose children move each
+            // their own way (`parts`) is drawn as laid out with each child moved instead, as many taps as the longest path.
             end = p + 1;
-            let taps = taps(&st.moves, view, size);
+            let parts: Vec<(NodeId, &Moves)> = st.parts.iter().filter_map(|(id, m)| Some((s.doc.get_element_by_id(id)?, m))).collect();
+            if parts.len() != st.parts.len() {
+                return Err(format!("motion blur: a moving child of piece {p} is not on the page"));
+            }
+            let taps = parts.iter().map(|(_, m)| taps(m, view, size)).chain([taps(&st.moves, view, size)]).max_by_key(Vec::len).unwrap_or_default();
             let w = 1.0 / taps.len() as f32;
             for (j, &i) in taps.iter().enumerate() {
-                blitz_paint::set_plan(around(&kids, base, p..end, HashMap::from([(kids[p], Run::Shift(st.moves[i]))])));
+                let shift = if parts.is_empty() { HashMap::from([(kids[p], Run::Shift(st.moves[i]))]) } else { parts.iter().map(|(n, m)| (*n, Run::Shift(m[i]))).collect() };
+                blitz_paint::set_plan(around(&kids, base, p..end, shift));
                 crate::profile::label("mb-blend");
                 timed(s, None, true, false)?;
                 s.painter.accumulate(j == 0, w)?;
@@ -95,7 +101,7 @@ pub(crate) fn draw(
                     q += 1;
                     continue;
                 };
-                let r = q + 1 + (q + 1..n).take_while(|&r| !varies[r] && streak(r).is_some_and(|o| !o.blends && alike(&m.moves, &o.moves))).count();
+                let r = q + 1 + (q + 1..n).take_while(|&r| !varies[r] && streak(r).is_some_and(|o| !o.blends && !o.alone && !m.alone && alike(&m.moves, &o.moves))).count();
                 runs.push((q..r, m));
                 q = r;
             }

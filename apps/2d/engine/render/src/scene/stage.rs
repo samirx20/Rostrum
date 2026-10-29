@@ -99,7 +99,7 @@ fn each_sibling(parent: &Item, place: impl FnMut(&Item, String) -> String) -> R<
 /// `each_sibling`, the pieces `keep` doesn't name (by index) left empty.
 fn each_sibling_kept(parent: &Item, keep: &dyn Fn(usize) -> bool, mut place: impl FnMut(&Item, String) -> String) -> R<Vec<String>> {
     let mut out = vec![];
-    for (i, l) in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)).enumerate() {
+    for (i, l) in super::matte::drawn(parent).enumerate() {
         if !keep(i) {
             out.push(String::new());
             continue;

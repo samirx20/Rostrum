@@ -32,7 +32,7 @@ impl Pose {
     /// The rig node's bones posed at `t` (its parts were checked when the scene loaded: check.rs).
     pub fn solve(rig: &Node, t: f64) -> Pose {
         let bones: Vec<&Node> = rig.rig.iter().filter(|p| p.kind == "bone").collect();
-        let props: Vec<Map<String, Value>> = bones.iter().map(|b| props_at(b, t)).collect();
+        let props: Vec<Map<String, Value>> = bones.iter().map(|b| props_at(b, t).into_owned()).collect();
         let ids: Vec<String> = bones.iter().map(|b| b.id.clone()).collect();
         let parent: Vec<Option<usize>> = props.iter().map(|p| ids.iter().position(|id| id == text(p, "parent"))).collect();
         let rest: Vec<Aff> = props.iter().map(|p| Aff::translate(num(p, "x"), num(p, "y")) * Aff::rotate(num(p, "angle"))).collect();

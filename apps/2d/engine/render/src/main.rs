@@ -65,6 +65,8 @@ mod cold_warm_tests;
 #[cfg(test)]
 mod depth_tests;
 #[cfg(test)]
+mod eval_bench_tests;
+#[cfg(test)]
 mod incremental_tests;
 #[cfg(test)]
 mod opsz_tests;

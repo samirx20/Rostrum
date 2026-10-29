@@ -265,8 +265,38 @@ fn a_probe_reusing_the_frames_insides_is_the_full_evaluation() {
         assert_eq!(format!("{f:?}"), format!("{r:?}"), "at {}", f.t);
     }
     let ids = ["g", "s", "m"];
-    let a = super::streak::moves(&centre, &full, |_| true, |_| 0.0, |_| false);
-    let b = super::streak::moves(&centre, &reused, |_| true, |_| 0.0, |id| ids.contains(&id));
+    let a = super::streak::moves(&centre, &full, |_, _| true, |_| 0.0, |_| false);
+    let b = super::streak::moves(&centre, &reused, |_, _| true, |_| 0.0, |id| ids.contains(&id));
     assert_eq!(format!("{a:?}"), format!("{b:?}"));
     assert!(a.0.iter().filter(|m| m.is_some()).count() >= 2, "the group and the matted layer are streaks: {:?}", a.1);
+}
+
+/// motion/streak.rs `split`: a group whose children move each their own way (bubbles rising while the group pans) is
+/// drawn from the frame's one layout, each child moved to each sub-frame: nothing is staged per sub-frame, and each
+/// child's moves are its own move through the group's.
+#[test]
+fn a_group_whose_children_move_apart_is_drawn_child_by_child() {
+    let lin = |a: f64, b: f64| json!([{ "t": 0.0, "v": a, "ease": "linear" }, { "t": 1.0, "v": b, "ease": "linear" }]);
+    let mut g = item("g", "group", json!({ "w": 400.0, "h": 200.0, "x": 300.0, "y": 300.0 }));
+    g["anim"] = json!({ "x": lin(300.0, 360.0) });
+    let mut up = item("up", "shape", json!({ "w": 20.0, "h": 20.0, "x": 50.0, "y": 100.0 }));
+    up["anim"] = json!({ "y": lin(100.0, -500.0), "opacity": lin(1.0, 0.0) });
+    let mut down = item("down", "shape", json!({ "w": 20.0, "h": 20.0, "x": 300.0, "y": 100.0 }));
+    down["anim"] = json!({ "y": lin(100.0, 700.0) });
+    g["layers"] = json!([up, down, item("still", "shape", json!({ "w": 20.0, "h": 20.0, "x": 200.0, "y": 50.0 }))]);
+    let mut comp = item("c", "comp", json!({ "shutter": 180.0, "shutterSamples": 8.0 }));
+    comp["layers"] = json!([g]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let staged = crate::scene_serve::stage_at(&scene, 0.5, &json!({})).unwrap();
+    assert!(staged.sample_pieces().is_empty(), "the page is laid out once");
+    let st = staged.streaks()[1].as_ref().expect("the group is drawn from its layout");
+    let ids: Vec<&str> = st.parts.iter().map(|p| p.0.as_str()).collect();
+    assert_eq!(ids, ["up", "down", "still"]);
+    let travel = |k: usize, f: usize| st.parts[k].1.last().unwrap()[f] - st.parts[k].1[0][f];
+    // Half a frame at 30 fps open: the group moves 1 px right, "up" 10 px up and "down" 10 px down within it.
+    // The sub-frames sit at the middles of n slices of it: the first to the last is (n - 1) / n of the move.
+    let n = st.parts[0].1.len() as f64;
+    let span = (n - 1.0) / n;
+    assert!((travel(0, 5) + 10.0 * span).abs() < 0.2 && (travel(1, 5) - 10.0 * span).abs() < 0.2, "{st:?}");
+    assert!((travel(2, 4) - span).abs() < 0.05 && travel(2, 5).abs() < 1e-9, "the still child moves with the group");
 }
