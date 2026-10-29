@@ -105,6 +105,12 @@ def finish(node: dict, item: dict, folder=None, data: dict | None = None, amount
         node["props"].pop(name, None)
     node["props"]["detail"] = clay_detail.detail(data or {}, item, folder)
     node["props"]["smooth"] = True
+    node["steps"], node["cache"] = built(item, folder, data, node["props"]["detail"], amount)
+
+
+def built(item: dict, folder, data: dict | None, detail: float, amount: dict[str, float] | None = None):
+    """(steps, cache): the clay's keyed steps at these layer Amounts (a dabs file as its absolute path in the project,
+    inline dabs as `dabList`) and its cache file."""
     steps = chain(item.get("steps", []), data, item, amount)
     for s in steps:
         if "dabList" in s:
@@ -114,5 +120,4 @@ def finish(node: dict, item: dict, folder=None, data: dict | None = None, amount
                 raise ValueError(f'clay {item["id"]}: a stroke names the dabs file "{s["dabs"]}", but the document '
                                  "has no project folder to find it in (save it into a project first)")
             s["dabs"] = str(clay_dabs.path(folder, s["dabs"]))
-    node["steps"] = steps
-    node["cache"] = str(cache_file(steps[-1]["key"], node["props"]["detail"])) if steps else ""
+    return steps, (str(cache_file(steps[-1]["key"], detail)) if steps else "")

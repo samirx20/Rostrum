@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, shot_layer, copies_fields, copies_path, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_faces, clay_scene, shot_layer, copies_fields, copies_path, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -218,7 +218,12 @@ def _node(item: dict, fr: _Frames) -> dict:
     if type_ in ("mesh", "clay") and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]), fr.stack, moves)):
         node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "clay":
-        clay_scene.finish(node, item, fr.folder, fr.data)      # its steps, keyed, and its cache (clay_scene.py)
+        moving = clay_faces.per_frame(item, fr)                # a keyed sculpt layer's Amount: face shapes
+        clay_scene.finish(node, item, fr.folder, fr.data, moving[0] if moving else None)   # its steps, keyed, its cache
+        if moving:
+            detail = node["props"]["detail"]
+            fr.faces[item["id"]] = clay_faces.variants(
+                moving, lambda a: clay_scene.built(item, fr.folder, fr.data, detail, a))
     if type_ == "import":
         node["props"]["parts"] = [{"path": pt["path"], "material": pt["material"], "visible": pt["visible"]}
                                   for pt in item.get("parts", [])]
@@ -239,6 +244,7 @@ def describe(data: dict, shot_id: str, folder=None, sim: str = "use") -> dict:
     frames = range(info["start"], info["end"] + 1)
     fr = _Frames(data, frames, info["fps"], folder)
     fr.shot_camera, fr.shot_size = info["camera"], [info["width"], info["height"]]      # copies: what must see them
+    fr.faces = {}                                          # clays whose shape moves over the shot (clay_faces.py)
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')
@@ -254,4 +260,7 @@ def describe(data: dict, shot_id: str, folder=None, sim: str = "use") -> dict:
     }
     paint_scene.paint(scene, data, _out, folder)          # painted meshes get their own material with the painted pictures
     from .sim import overlay                              # here, not at the top: sim/ reads this module
-    return overlay.apply(scene, data, shot_id, folder, sim)
+    scene = overlay.apply(scene, data, shot_id, folder, sim)
+    if fr.faces:                                          # never sent as it is: clay_faces.at gives each frame's scene
+        scene[clay_faces.KEY] = {"start": info["start"], "clays": fr.faces}
+    return scene

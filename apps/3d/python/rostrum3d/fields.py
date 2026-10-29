@@ -26,7 +26,7 @@ from .sim import fields as SIM
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS), "mesh": ("shape", SHAPE_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay", "copies")      # scene items (USD prims)
-KEYED = (*ITEMS, "effector", "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
+KEYED = (*ITEMS, "effector", "bone", "claylayer")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine", "copies")
 LISTS = {"doc": ["items", "materials", "shots", "poses", "collections"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
@@ -35,6 +35,7 @@ LISTS = {"doc": ["items", "materials", "shots", "poses", "collections"], "group"
          "combine": ["children", "keys"],
          "copies": ["children", "keys"],               # its source item(s) and its effectors
          "effector": ["keys"],
+         "claylayer": ["keys"],                        # a sculpt layer's Amount keyed: a face shape (clay_faces.py)
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
 DATA_GROUPS = {"Mesh data", "Bone data", "Mirror data", "Simulation data"}   # data an operation writes (a mesh's points, a bone's head, a mirrored copy's link), never rows

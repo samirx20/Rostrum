@@ -292,10 +292,11 @@ class Item:
         script_figure.bend(self._b, self._clay_node("bend"), joint, keys, ease)
         return self
 
-    def layer(self, name: str | None, amount: float = 1.0, on: bool = True) -> "Item":
+    def layer(self, name: str | None, amount: float = 1.0, on: bool = True, keys=None, ease: str = "smooth") -> "Item":
         """A clay's sculpt layer (claylayer.add): the lumps, draws, spins and strokes after it go on the layer `name`
         (made the first time, with `amount` 0..1 and `on`), applied after the Base at its Amount; .layer(None) goes back
-        to the Base. Key it like any item: the layer's id is "<clay>.<name>" (spaces as _)."""
+        to the Base. keys={seconds: amount} makes it a face shape (the smile comes on over time), as .key("amount", …)
+        on the layer, whose id is "<clay>.<name>" (spaces as _)."""
         node = self._clay_node("layer")
         if name is None:
             node["sculptLayer"] = ""
@@ -309,6 +310,10 @@ class Item:
         else:
             found.update(amount=amount, on=on)
         node["sculptLayer"] = lay_id
+        if keys is not None:
+            lay = next(x for x in lays if x["id"] == lay_id)
+            lay.setdefault("keys", [])
+            Item(self._b, lay).key("amount", keys, ease)
         return self
 
     def _clay_node(self, what: str) -> dict:

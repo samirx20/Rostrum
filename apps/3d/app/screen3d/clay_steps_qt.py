@@ -44,7 +44,7 @@ class StepRows(QObject):
 
     def __init__(self, b, names=None, parent=None, kind="claystep"):
         super().__init__(parent)
-        self.b, self.step, self._scrub = b, "", None
+        self.b, self.step, self._scrub, self.keyed = b, "", None, kind == "claylayer"   # a layer's Amount: a face shape
         params = [p for p in F.FIELDS[kind]
                   if (p.name in names if names else p.name not in OFF_ROWS and p.group != "Step data")]
         self._static = rows.layout(SimpleNamespace(params=params), "Step" if kind == "claystep" else "Layer")
@@ -53,7 +53,13 @@ class StepRows(QObject):
     def pick(self, step: dict | None):
         new = (step or {}).get("id", "") != self.step
         self.step = (step or {}).get("id", "")
-        out = rows.evaluate(self._static, step, self.b.facts_of(step), False) if step is not None else []
+        if step is None:
+            out = []
+        elif self.keyed:                         # its value at the playhead and its key mark, as on an item's rows
+            out = rows.evaluate(self._static, self.b.shown_values(step), self.b.facts_of(step), False,
+                                lambda name: self.b.anim_state(step, name))
+        else:
+            out = rows.evaluate(self._static, step, self.b.facts_of(step), False)
         self.model.reset(out) if new else self.model.update(out)
 
     rows = Property(QObject, lambda s: s.model, constant=True)
@@ -95,7 +101,23 @@ class StepRows(QObject):
 
     @Slot(str)
     def toggleAnimate(self, name):
-        pass                                    # steps are never keyed
+        """A step is never keyed; a sculpt layer's Amount is (a face shape): a key at the playhead, or the key there goes."""
+        self._key(name, False)
+
+    @Slot(str)
+    def stopAnimating(self, name):
+        self._key(name, True)
+
+    def _key(self, name, stop):
+        if not (self.keyed and self.step):
+            return
+
+        def go():
+            if stop and self.b.anim_state(self.b.doc.item(self.step), name) not in ("keyed", "onkey"):
+                return
+            calls, label = self.b.animate_calls(self.step, name, stop=stop)
+            self.b._apply(calls, label)
+        self.b._guard(go)
 
 
 class ClaySteps(QObject):

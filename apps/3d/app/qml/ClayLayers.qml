@@ -88,7 +88,7 @@ Column {
     Repeater {      // the chosen layer's Amount
         objectName: "clayLayerRows"
         model: box.layers.rows.rows
-        delegate: InspectorRow { width: box.width; bridge: box.layers.rows; instant: box.layers.rows.rows.instant }
+        delegate: InspectorRow { width: box.width; bridge: box.layers.rows; keyMarks: true; instant: box.layers.rows.rows.instant }
     }
     Item { width: 1; height: box.layers.chosen !== "" ? Theme.gap : 0 }
     RowButton {

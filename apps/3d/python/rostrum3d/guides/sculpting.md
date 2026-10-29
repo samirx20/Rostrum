@@ -105,6 +105,12 @@ then dial it from nothing (0 %) to as sculpted (100 %), or switch it off, withou
 5. **Layer ▾** under the Amount: **Bake into Base** keeps the strokes as they show now and removes the layer; **Remove layer**
    takes the layer and its strokes away. Each is one undo step.
 
+**Face shapes.** A layer's Amount can be keyed like any setting: the diamond at the right of its Amount row keys it at
+the playhead. Press **Home**, set Amount 0 % and click the diamond; press **End** (or move the playhead), type 100 %:
+a second key. Play: the smile comes on over that time. Make one layer per expression (smile, blink, brow up) and key
+each on its own. Each change of shape rebuilds only that layer's strokes, so a few strokes play back quickly; a layer
+of hundreds of strokes takes longer per frame. Painted clays: paint is laid on the clay's first-frame shape.
+
 How it is made: the Base's steps first, then each layer's, top to bottom. A layer's strokes work at their strength ×
 Amount (a lump on a layer grows with it); at 0 % or off, the clay is as if the layer weren't there. Changing an Amount
 redoes only that layer and the ones below it, never the Base.

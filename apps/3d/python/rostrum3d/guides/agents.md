@@ -277,7 +277,9 @@ The time left is a number to use, not a reason to stop early.
   clay's `sculptLayer`, so the next `clay.stroke` / pieces go on it (a step's `layer`; `clay.stroke layer=` names one,
   `""` = the Base; `clay.set sculptLayer=""` goes back to the Base); `claylayer.set amount|on|name`;
   `claylayer.bake` (into the Base, as it shows now); `claylayer.remove` (with its strokes). The Base is made first,
-  then each layer at its Amount; in a script `c.layer("smile", amount=0.5).stroke(…)`, `c.layer(None)` back to the Base. Detail (the smallest grain) follows the shot cameras:
+  then each layer at its Amount; in a script `c.layer("smile", amount=0.5).stroke(…)`, `c.layer(None)` back to the Base. **Face shapes**: key a layer's
+  `amount` (`key.add` on the layer's id, or `c.layer("smile", keys={0: 0, 1.5: 1})`): look_frame / look_motion and
+  renders show each frame's shape (the clay is rebuilt per change of Amount, only the layer's strokes). Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
   they need, never finer than the clay's size allows in memory (a 50 cm clay stops near 1.4 mm; `look_frame what "shape"`
   says "Detail held at …" when a close shot asks for more); `clay.set detailMode=fixed detail=0.001` fixes it (finer is

@@ -45,7 +45,9 @@ def settle(screen, clay_id, before=None):
     v = screen.bridge.viewport
     W.pump(30, lambda: v._r.idle() and not v._next.isActive(), "the picture to settle")
     if before is not None:
-        W.pump(20, lambda: W.clay_info(v, clay_id).get("hash") != before, "the clay's new shape")
+        import inspect
+        W.pump(20, lambda: W.clay_info(v, clay_id).get("hash") != before,
+               f"the clay's new shape (line {inspect.stack()[1].lineno})")
     return W.clay_info(v, clay_id).get("hash")
 
 
@@ -177,6 +179,38 @@ def main():
         W.check(not doc.item(clay_id).get("sculptLayers"), "Bake into Base: the layer is gone")
         W.check(settle(screen, clay_id) == part, "baked: the clay keeps the shape it showed")
         snap(screen, "5-baked")
+
+        # 6. a face shape: a new layer's Amount keyed 0 at the start, 100 % at the end
+        baked = settle(screen, clay_id)
+        W.click(win, W.find(win.contentItem(), "clayLayerAdd"))
+        W.pump(0.6)
+        lay2 = doc.item(clay_id)["sculptLayer"]
+        W.check(bool(lay2), f"+ Layer again: a new layer chosen ({lay2})")
+        drag(screen, win, clay_id, QPoint(at.x(), round(at.y() + radius * 0.3)), radius * 0.5)
+        QTest.keyClick(win, Qt.Key_Home)
+        W.pump(0.5)
+        type_amount(win, 0)
+        mark = W.find(W.find(win.contentItem(), "clayLayers"), "keymark:amount")
+        W.check(mark is not None and mark.isVisible(), "the Amount row has its key mark")
+        if mark is not None:
+            W.click(win, mark)
+            W.pump(0.6)
+        W.check(len(doc.item(lay2).get("keys", [])) == 1, f"the key mark keyed Amount at the start ({doc.item(lay2).get('keys')})")
+        QTest.keyClick(win, Qt.Key_End)
+        W.pump(0.5)
+        type_amount(win, 100)
+        keys = doc.item(lay2).get("keys", [])
+        W.check(len(keys) == 2, f"100 % typed at the end is a second key ({[(k['t'], k['v']) for k in keys]})")
+        end_shape = settle(screen, clay_id)
+        snap(screen, "6b-face-shape-end")
+        QTest.keyClick(win, Qt.Key_Home)
+        W.pump(0.5)
+        start_shape = settle(screen, clay_id, end_shape)
+        W.check(start_shape == baked, "at the start (Amount 0) the clay is as before the layer")
+        snap(screen, "6a-face-shape-start")
+        QTest.keyClick(win, Qt.Key_End)
+        W.pump(0.5)
+        W.check(settle(screen, clay_id, start_shape) == end_shape, "at the end the layer shows in full again")
         W.check(not v.status.startswith("Error"), f"no viewport error ({v.status or '-'})")
         W.K32.CloseHandle(W.ct.c_void_p(core))
     finally:
@@ -184,7 +218,7 @@ def main():
         app.processEvents()
         shutil.rmtree(project, ignore_errors=True)
     if W.FAILS:
-        print(f"\n{len(W.FAILS)} check(s) failed")
+        print(f"\n{len(W.FAILS)} check(s) failed: " + " | ".join(W.FAILS))
         sys.exit(1)
     print("\nevery check passed")
 

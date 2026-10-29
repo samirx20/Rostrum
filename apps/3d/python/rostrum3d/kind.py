@@ -127,7 +127,7 @@ def check(data: dict) -> list[str]:
         if stray:                                        # e.g. a re-run that gave an id another kind (light → mesh)
             problems.append(f'{t} {item["id"]}: has {", ".join(stray)}, which a {t} does not have (did a script give '
                             f'the id "{item["id"]}" to a different kind of thing? Use a new id for the new kind)')
-        if t in (*F.KEYED, "material") and not PRIM_ID.match(item["id"]):
+        if t in (*F.KEYED, "material") and t != "claylayer" and not PRIM_ID.match(item["id"]):   # a sculpt layer is no prim
             problems.append(f'id "{item["id"]}": a {t} id is letters, digits and _ only, not starting with a digit')
         if t in F.KEYED:
             _check_keys(item, problems)

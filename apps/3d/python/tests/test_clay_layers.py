@@ -67,3 +67,24 @@ def test_bake_keeps_the_shape():
     d.apply({"op": "claylayer.bake", "target": ["head.smile"]}, SAM)
     assert not d.item("head").get("sculptLayers")
     assert [s["key"] for s in made(d)] == before
+
+
+FACE = SRC.replace('head.layer("smile", amount=0.5)', 'head.layer("smile", keys={0: 0.0, 1: 1.0})')
+
+
+def test_a_keyed_amount_sends_each_frame_its_own_shape():
+    from rostrum3d import clay_faces
+    from rostrum3d.compile import describe
+    d = Document.new(KIND)
+    d.run_script("head.py", run_source(FACE + 'cam = camera("cam", z=2)\nshot("s", camera=cam, fps=4, start=0, end=1)\n',
+                                       "head.py"))
+    scene = describe(d.data, "s")
+    assert clay_faces.KEY in scene
+
+    def ops(sc):
+        return [s["op"] for s in next(n for n in sc["items"] if n["id"] == "head")["steps"]]
+    first, last = clay_faces.at(scene, 0), clay_faces.at(scene, 3)
+    assert clay_faces.KEY not in first and ops(first) == ["add", "carve"]       # Amount 0: the Base alone
+    assert ops(last) == ["add", "carve", "add"]                                  # the smile on
+    assert clay_faces.at(scene, 3) is last                                       # the same dict: "already sent" holds
+    assert [r[0] for r in clay_faces.runs(scene, 0, 3)] == [0, 1, 2, 3]          # each frame a shape of its own

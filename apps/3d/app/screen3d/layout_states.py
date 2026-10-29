@@ -287,7 +287,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # More fold, in sight at 900 high), and Turn into clay on the Make tiles while an exact part is selected
         ("clay-drawn", drawn_clay(), ["select buddy", "settled", "press Q", "settled"]),
         # PR4: the drawn clay with a sculpt layer made by a real click on the Steps head's "+ Layer": the Layers list
-        # (Base, Layer 1 chosen, its Amount row and ⋯ under it) above Steps
+        # (Base, Layer 1 chosen, its Amount row and Layer ▾ under it) above Steps
         ("clay-layers", drawn_clay(), ["select buddy", "settled", "press Q", "settled", "clickon clayLayerAdd", "settled"]),
         # Pose (Shift+P, pose_qt.py): its joints found on the drawn clay, the bones, the panel's three rows; the right-click menu
         ("pose-tool", drawn_clay(), ["select buddy", "settled", "press Shift+P", "wait 2000", "settled"]),

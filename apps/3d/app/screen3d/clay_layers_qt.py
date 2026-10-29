@@ -2,7 +2,8 @@
 
 - `items`: the Base, then the selected clay's layers, each its name, whether it is on, and whether the next stroke goes
   on it (`chosen`). Absent until the clay has a layer: the Steps head's "+ Layer" makes the first (claylayer.add).
-- `rows`: the chosen layer's Amount (the kit's InspectorRow: drag, type, scrub), `claylayer.set` on that layer.
+- `rows`: the chosen layer's Amount (the kit's InspectorRow: drag, type, scrub, and its key mark: K keys it at the
+  playhead, a face shape), `claylayer.set` on that layer.
 - `choose`: where the next stroke goes (clay.set sculptLayer, "" = the Base); `toggleOn`, `rename`, `bake`, `remove`:
   claylayer.set on / name, claylayer.bake, claylayer.remove. One undo step each, the calls agents make.
 """
@@ -27,6 +28,7 @@ class ClayLayers(QObject):
         self.amountRows = StepRows(self.b, ["amount"], self, kind="claylayer")
         self.b.docChanged.connect(self.refresh)
         self.b.selectionChanged.connect(self.refresh)
+        self.b.frameChanged.connect(lambda: self.refresh() if self._layers() else None)   # a keyed Amount at the playhead
         self.refresh()
 
     def _clay(self):
@@ -44,7 +46,7 @@ class ClayLayers(QObject):
         lays, now = self._layers(), self._next()
         rows = [{"id": "", "label": BASE, "on": True, "chosen": now == "", "amount": ""}] if lays else []
         rows += [{"id": x["id"], "label": x.get("name") or x["id"], "on": bool(x.get("on", True)),
-                  "chosen": x["id"] == now, "amount": f"{round(100 * float(x.get('amount', 1.0)))} %"} for x in lays]
+                  "chosen": x["id"] == now, "amount": f"{round(100 * float(self.b.shown_values(x).get('amount', 1.0)))} %"} for x in lays]
         self.model.update(rows)
         self.amountRows.pick(next((x for x in lays if x["id"] == now), None))
         self.changed.emit()

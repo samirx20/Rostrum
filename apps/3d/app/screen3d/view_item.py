@@ -24,7 +24,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, Signal, Slot
 
-from rostrum3d import paint_scene, runtime
+from rostrum3d import clay_faces, paint_scene, runtime
 
 MODULE = runtime.REPO / "apps" / "3d" / "core" / ".build" / "install" / "qml"   # the Rostrum3DView module (build.bat)
 ANSWER_S = 120.0             # a request the window doesn't answer in this long fails loudly (a scene of many clays)
@@ -117,6 +117,7 @@ class ViewLink(QObject):
 
     def needs(self, scene: dict) -> str | None:
         """The scene's request line when the item doesn't hold this scene yet (it is then counted as sent), else None."""
+        scene = clay_faces.at(scene)             # face shapes: never sent whole (frames.py sends each frame's)
         if scene is self._last:                  # the same dict as last time (a drag keeps its press's scene)
             return None
         h = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
@@ -213,6 +214,7 @@ class ItemEngine:
         self.pid = os.getpid()                   # the process doing the live view's work (checks count its cycles)
 
     def ensure_scene(self, scene: dict) -> bool:
+        scene = clay_faces.at(scene)
         self._scene = scene
         line = self.link.needs(scene)
         if line is None:
