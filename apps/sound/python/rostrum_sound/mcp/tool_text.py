@@ -43,7 +43,7 @@ SAY = {
     # tools on their own
     "edit_loudness": "When reaching the loudness target took heavy limiting: measured ways to need less, each with ready ops; `apply` makes one (a job): {\"apply\": \"best\"}.",
     "render_audition": "Hear an instrument, kit, file or a track's notes as a short WAV; the song is unchanged.",
-    "look_arrangement": "The written song as a picture (tracks, bars, sections, markers) and who starts on each marker; no render.",
+    "look_arrangement": "The written song as a picture (a row per track: notes by pitch, shaded by level; bars, sections, markers), each track's level and range, and who starts on each marker; no render.",
     "inspect_diagnose": "Everything broken in a song (missing files, past the end, out of range …), each with its fix.",
     "look_video": "The picture the sound is for: frames, a contact sheet, or motion with sudden stops.",
     "edit_sounds_from_motion": "Musical answers to a 2D motion export's moments; adds only what `add` names.",
@@ -130,7 +130,7 @@ ARG_OF = {
     ("render_mix", "preset"): "editor: 48 kHz float, group stems, markers.",
     ("render_mix", "format"): "wav24 video, wav16 CD, wav32f, flac, mp3.",
     ("render_mix", "sampleRate"): "Hz; default the song's.",
-    ("render_mix", "trim"): "Stop at the last audible sound.",
+    ("render_mix", "trim"): "Only when true: stop at the last audible sound.",
     ("render_mix", "from"): "Only a part, from here; needs to.",
     ("render_mix", "to"): "The part's end.",
     ("render_mix", "name"): "File name without its type.",

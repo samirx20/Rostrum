@@ -56,8 +56,8 @@ def scope(song: Song) -> dict:
             raise ValueError("bars count from 1")
         return Beat(meter.bar_start(song.root, n))
 
-    def ring_out(on=True, soft_end=True):
-        """Off: the song stops hard at its length, no ring-out fade (listen/end_check.py reads the ending). Needs the length first."""
+    def ring_out(on=True, soft_end=False):
+        """Off: the song stops at its length as written (only a 10 ms ramp, no click); soft_end=True fades its last 0.1 s. Needs the length first."""
         if song.root.get("length") is None:
             raise ValueError("ring_out() needs the song's length first: write length(...) before ring_out(False)")
         song.set(ringOut=bool(on), endFade=bool(soft_end))

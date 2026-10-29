@@ -140,7 +140,7 @@ def register(tools: Tools):
                    "description": "; ".join(f"{f['id']}: {f['label']} — {f['detail']}" for f in deliver.FORMATS) + "; wav: the same as wav24. Every file of the render is in this format."},
         "sampleRate": {"type": "integer", "enum": [r["id"] for r in deliver.RATES],
                        "description": "Hz: 44100 (music), 48000 (video), 96000 (high resolution; not for mp3). Default: the document's rate."},
-        "trim": {"type": "boolean", "default": True, "description": "Trim the silent end: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length. False: the song's full length."},
+        "trim": {"type": "boolean", "default": False, "description": "False (default): the song's full length as rendered. True: the silent end is cut: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length (with a `length`, never below it)."},
         "from": {"description": "Only a part of the song: where the file starts (seconds, a beat or a marker, like any time). Needs `to`. The engine renders the part itself, mastered and measured on its own, so the loudness is the part's; the silent end is trimmed only if `trim` is on."},
         "to": {"description": "Where the part ends (a time). Needs `from`."},
         "name": {"type": "string", "description": "The mix file's name without its type (\"Launch theme\" -> Launch theme.wav), as the Export sheet's name field. Default: <item>_mix. Characters a file name can't hold are replaced; stems keep their track names. Not for a listening check (solo / mute)."},

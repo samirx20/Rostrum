@@ -85,8 +85,8 @@ def steps(doc, out: list, engine=None) -> Iterator[None]:
         many = kind in ("after-the-end", "held-past-end")          # one line naming several: no one item to select
         out.append({"kind": kind, "item": w.split(":", 1)[0] if ":" in w and not many else "", "message": w, "fix": FIXES[kind]})
     if cut := past_end.hard_end(data):
-        out.append({"kind": "hard-end", "item": cut, "message": "Soft end is off and sound is still playing at the song's Length, "
-                    "so the file ends with a click", "fix": "Turn Soft end back on (doc.set endFade true), or end the music before the Length"})
+        out.append({"kind": "hard-end", "item": cut, "message": "Ring out and Soft end are off and sound is still playing at the song's Length, "
+                    "so the file stops there on a 10 ms ramp", "fix": "Only if you want it softer: Soft end (doc.set endFade true, a 0.1 s fade), or end the music before the Length"})
     if engine is not None:                           # notes a track's recorded sound can't play (the render would refuse)
         out += [{**p, "fix": FIXES["out-of-range"]} for p in note_ranges.problems(data, engine)]
 

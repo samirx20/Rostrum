@@ -6,7 +6,7 @@ the schedule asks for. `deliver` turns those into the chosen files in the same f
 the mix. The choices are plain data (`FORMATS`, `RATES`) so the screen and the MCP tool list the same ones, each with
 its words; `Options.read` checks a request and says in words what is wrong (MP3 has no 96 kHz, say).
 
-    opts = deliver.Options.read({"format": "wav24", "sampleRate": 48000, "trim": True})
+    opts = deliver.Options.read({"format": "wav24", "sampleRate": 48000, "trim": True})   # trim is opt-in
     r = deliver.deliver(folder, r, names, opts)        # r: the engine's answer; returns it with the new files and lengths
 """
 from __future__ import annotations
@@ -73,7 +73,7 @@ def choices() -> dict:
 class Options:
     format: str = DEFAULT_FORMAT
     sample_rate: int = 48000
-    trim: bool = True
+    trim: bool = False               # asked only: the silent end (below -80 dBFS) is cut to the last sound + TAIL; off, the file is the engine's whole length
     start: float | None = None       # a range of the song (seconds): `from` / `to` in a request; both or neither
     end: float | None = None
     length: float | None = None      # exact: the song's Length (seconds) the file must be; what still sounds there is cut (a de-click)
@@ -98,7 +98,7 @@ class Options:
                                                               and 0 <= a < b):
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {a} to {b}", "is not a stretch of the song",
                                hint='Give both `from` and `to` in seconds, with 0 ≤ from < to (or neither for the whole song).')
-        return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b),
+        return cls(fmt, int(rate), bool(args.get("trim", False)), None if a is None else float(a), None if b is None else float(b),
                    None if args.get("length") is None else float(args["length"]), float(args.get("ring") or 0.0), bool(args.get("loop")))
 
     @property

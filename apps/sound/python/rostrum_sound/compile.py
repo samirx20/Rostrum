@@ -30,7 +30,8 @@ DUCK_KEYS = ("under", "depth", "attack", "release", "lookahead", "hold", "voice"
 BUS_KEYS = ("volume", "pan", "mute")
 MASTER_MIX = ("volume", "trackReverbSpace")
 MASTERING = ("reverb", "fadeIn", "fadeOut", "truePeak", "glue", "safetyClip")
-END_FADE = 0.1          # seconds: the soft end (doc field endFade): agent piece B ended at 0.28 in its last 5 ms; with it, 0.000
+END_FADE = 0.1          # seconds: the soft end, only when asked (doc field endFade true)
+END_DECLICK = 0.01      # seconds: a stop at the length with Ring out off is only this short ramp (no click), never a fade
 
 
 class _Compiler:
@@ -208,8 +209,8 @@ def compile(doc, solo=None, mute=None, master=True, matched=True, memo: dict | N
     if root.get("length") is None or root.get("ringOut"):   # what rings at the Length (or after the last note, with no
         out["ringOut"] = True                                # Length set) dies away (engine: ending.rs); the soft end's fade
                                                              # cut a ringing ride and chord at -17 dBFS (production round)
-    elif root.get("endFade", True):      # the song's soft end (doc field endFade): notes ringing at its Length stop softly
-        out["master"]["fadeOut"] = max(out["master"].get("fadeOut", 0), END_FADE)
+    else:                                # Ring out off: the stop at the Length is the asked cut; a 10 ms ramp keeps it click-free, and
+        out["master"]["fadeOut"] = max(out["master"].get("fadeOut", 0), END_FADE if root.get("endFade") else END_DECLICK)   # only an asked Soft end (endFade) is 0.1 s
     around = (matched, markers.project_rows() or None, *(v for k, v in root.items() if k != "tracks"))
     out["tracks"] = [_kept(memo, c, t, bool(t.get("mute") or t["id"] in silent or bool(heard) and t["id"] not in heard),
                            around) for t in tracks]

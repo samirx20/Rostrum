@@ -155,7 +155,7 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
     `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure or stop raises, and the
     `.partial` folder is removed (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
-    file format, sample rate and trimming the silent end (default: 24-bit WAV at the song's rate, trimmed). The
+    file format, sample rate and trimming the silent end (only when asked: `trim`; default: 24-bit WAV at the song's rate, the engine's whole length). The
     files are named after the tracks; the manifest keeps the id → file mapping. `stems`: "all" (a file per track and per group),
     a list of track ids, [] (none) or "groups" (a stem per group and per ungrouped track: stem_groups.py).
     `markers_file`: also write `markers.json` beside the files (the Editor preset). `say(words)`: what it is doing now
