@@ -25,6 +25,8 @@ CLIENT_VISIBLE = ("empty", "sparse", "text_edge", "text_margin", "text_crossed",
                   "painted_over", "edge_cut", "rig_cut")
 PASSING = ("edge_cut", "rig_cut")      # a subject cut by the edge counts only when it stays cut ...
 PASS_S = 2.0                           # ... this long or more (walking in or out of the picture takes about a second)
+SUBJECTS = ("group", "image", "video", "rig")   # ... and is a card, a picture, a clip or a character: a plain shape, path or
+                                                # drawing bleeding off the edge is scenery (Undertow r1: 39 reef shapes refused)
 
 FIX = {
     "empty": "put something on screen in this stretch: bring the next layer in sooner, or end the scene earlier",
@@ -99,7 +101,9 @@ def is_fault(r: dict) -> bool:
     k = r.get("rank_kind") or r["kind"]
     if k in NOT_FAULTS or k not in CLIENT_VISIBLE:
         return False
-    return k not in PASSING or r.get("end", 0) - r.get("start", 0) >= PASS_S - 1e-6
+    if k not in PASSING:
+        return True
+    return r.get("end", 0) - r.get("start", 0) >= PASS_S - 1e-6 and r.get("type", "rig" if k == "rig_cut" else "group") in SUBJECTS
 
 
 def advice(rows: list[dict], limit: int = 3) -> list[str]:

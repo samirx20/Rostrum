@@ -49,3 +49,10 @@ def test_keep_quoting_the_brief_passes_and_an_unquoted_one_is_refused(tmp_path):
     with pytest.raises(RostrumError) as e:
         faults.deliver(found, brief_keep.screen(found, other, data), "render_export", film)
     assert "never asks for a crop at the frame edge" in str(e.value)
+
+
+def test_scenery_bleeding_off_the_edge_is_advice_a_card_is_a_fault():
+    shape_cut = {"kind": "edge_cut", "type": "shape", "start": 0, "end": 10, "id": "reef3", "text": "reef3 cut"}
+    card_cut = {**shape_cut, "type": "group", "id": "card"}
+    passing = {**card_cut, "end": 1}
+    assert [f["id"] for f in film_faults.as_faults([shape_cut, card_cut, passing])] == ["edge_cut:card"]

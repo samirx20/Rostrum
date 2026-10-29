@@ -44,7 +44,7 @@ def _cuts(rows: list[dict]) -> list[dict]:
         if c["type"] != "text" and (c["id"] not in best or c["end"] - c["start"] > best[c["id"]]["end"] - best[c["id"]]["start"]):
             best[c["id"]] = c
     return [{"kind": "rig_cut" if c["type"] == "rig" else "edge_cut", "start": c["start"], "end": c["end"], "id": c["id"],
-             "text": _cut_text(c)} for c in best.values()]
+             "type": c["type"], "text": _cut_text(c)} for c in best.values()]
 
 
 def _cut_text(c: dict) -> str:
