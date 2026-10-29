@@ -39,7 +39,7 @@ REACH_OK = 0.5           # a file within this of its target has reached it (what
 
 
 def _n(v: float) -> str:
-    return f"{round(v, 1):g}".replace("-", "−")
+    return f"{round(v, 1):g}"           # an ASCII minus, as every other number in the replies (and pasteable into a script)
 
 
 def a_lot(db: float) -> str:

@@ -12,7 +12,7 @@ drop_gap.py, faults.py), read from there, never copied.
 """
 from __future__ import annotations
 
-from . import drop_gap, moments as mo, rise_gap, rival
+from . import drop_gap, moments as mo, rise_gap, rival, squash
 from .faults import DULL_DB, SQUASH_DB
 from .speech_room import TARGET_DB
 
@@ -29,6 +29,7 @@ RULES = {
     "flat_lift": [("rise_lu", ">=", mo.LIFT_LU, 1.5, "the 3 s after over the 3 s before", " LU")],
     "flat_top": [("grew_db", ">=", mo.GROW_DB, 4.5, "top end brighter than the start", " dB")],
     "squashed_hit": [("reduced_db", "<=", SQUASH_DB, 4.0, "limiting on it", " dB")],
+    "squashed_mix": [("reduced_db", "<=", squash.LINE_DB, squash.NEAR_DB, "limiting on the mix", " dB")],
     "short_climax": [("held_s", ">=", mo.HOLD_S, 2, "held over the build", " s")],
     "late_climax": [("off_s", "<=", mo.CLIMAX_LATE_S, 3.5, "loudest moment after the downbeat", " s")],
     "early_climax": [("off_s", ">=", -mo.CLIMAX_EARLY_S, -0.75, "loudest moment against the downbeat", " s")],
@@ -38,6 +39,7 @@ RULES = {
     "dull_top": [("brightest_db", ">=", DULL_DB, DULL_DB - 2.0, "brightest tenth's 4–16 kHz against 250 Hz–1 kHz", " dB")],
     "busy_speech_band": [("room_db", ">=", TARGET_DB, TARGET_DB - 1.5, "voice over the music in 1–4 kHz", " dB")],
 }
+KEPT_NEAR = ("squashed_mix",)   # whole-piece faults whose keep follows the near rule too (mcp/asked_keep.py)
 
 def _rules(f) -> list[tuple]:
     d, k = f.get("measured") or {}, f["kind"]
