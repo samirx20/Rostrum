@@ -120,5 +120,22 @@ Item {
     Timer { id: followEnd; interval: 400; onTriggered: panel.following = false }
     Connections { target: flick; function onContentHeightChanged() { if (panel.following) panel.showMore() } }
     function showMore() { flick.contentY = Math.max(0, flick.contentHeight - flick.height) }
+    // Clean mesh: its running bar or its failure line is always in view (at 900 high the group starts under the fold)
+    property bool cleanBusy: false          // scrolled once as it starts or fails, never again while it ticks
+    Connections {
+        target: viewport.clay.cleanObj
+        function onChanged() {
+            const job = viewport.clay.cleanObj, now = job.running || job.failure !== ""
+            if (now && !panel.cleanBusy) Qt.callLater(panel.show, cleanMesh)
+            panel.cleanBusy = now
+        }
+    }
+    function show(item) {
+        const y = item.mapToItem(col, 0, 0).y + Theme.pad
+        if (y + item.height > flick.contentY + flick.height)
+            flick.contentY = Math.min(Math.max(0, flick.contentHeight - flick.height), y + item.height - flick.height + Theme.pad)
+        else if (y < flick.contentY)
+            flick.contentY = Math.max(0, y - Theme.pad)
+    }
     EdgeFade { flick: flick; anchors.fill: flick }    // rows that don't fit scroll: a half-scrolled row fades
 }
