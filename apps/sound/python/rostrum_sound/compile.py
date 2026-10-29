@@ -23,7 +23,7 @@ from .doc import markers, meter, tempo, times
 from .doc.registry import LISTS
 
 NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
-HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
+HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay", "cut")
 CLIP_KEYS = ("media", "in", "length", "at", "volume", "pitch", "shift", "stretch", "pan", "panTo", "fadeIn", "fadeOut", "reverb")
 TRACK_KEYS = ("volume", "pan", "reverb", "tone")
 DUCK_KEYS = ("under", "depth", "attack", "release", "lookahead", "hold", "voice")

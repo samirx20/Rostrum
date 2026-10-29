@@ -38,19 +38,6 @@ def ask(engine, inst: dict) -> tuple[int, int] | None:
     return _KEPT[key]
 
 
-def words(name: str, lo: int, hi: int, bad) -> str:
-    """The refusal for notes `bad` (MIDI) outside a sound's range: "Timpani plays C2–C4: A1 is below it"."""
-    bad = sorted(set(bad))
-    under, over = [m for m in bad if m < lo], [m for m in bad if m > hi]
-    said = []
-    for ms, side in ((under, "below"), (over, "above")):
-        if ms:
-            names = [V._name(m) for m in ms[:3]] + ([f"{len(ms) - 3} more"] if len(ms) > 3 else [])
-            listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
-            said.append(f"{listed} {'is' if len(ms) == 1 else 'are'} {side} it")
-    return f"{name} plays {V._name(lo)}–{V._name(hi)}: " + "; ".join(said)
-
-
 def ranges(root: dict, engine, tracks) -> tuple[dict, dict]:
     """({track: (lowest MIDI, highest MIDI)}, {track: why it was not checked}) for `tracks`."""
     found, unchecked = {}, {}

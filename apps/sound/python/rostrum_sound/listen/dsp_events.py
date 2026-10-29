@@ -118,17 +118,20 @@ def harmonic_part(S: np.ndarray, time_k: int, freq_k: int) -> np.ndarray:
     return S * H / np.maximum(H + P, 1e-20)
 
 
-def chroma(y: np.ndarray, sr: float, hop: int, fmin: float = 55.0, fmax: float = 4200.0) -> np.ndarray:
+def chroma(y: np.ndarray, sr: float, hop: int, fmin: float = 55.0, fmax: float = 4200.0, pitched: bool = False):
     """[12, frames every `hop`] pitch-class energy (C first) of the harmonic part, each frame scaled to its loudest
     class. Each STFT bin (n_fft 8192, step hop / 2) goes to the semitone it lies on, weighted down towards the edge
-    between two semitones (where leakage sits); drums are taken out first (harmonic_part, ~0.4 s × ~80 Hz medians)."""
+    between two semitones (where leakage sits); drums are taken out first (harmonic_part, ~0.4 s × ~80 Hz medians).
+    `pitched`: also each STFT step's harmonic energy and its whole energy in the band ([2, steps]: how much of what
+    sounds is notes, not drums), returned as (chroma, energies)."""
     n_fft, step = 8192, hop // 2
     f = fft_frequencies(sr, n_fft)
     sel = (f >= fmin) & (f <= fmax)
     rows = np.flatnonzero(sel)
     lo, hi = max(0, rows[0] - 15), rows[-1] + 16                         # room for the frequency median
-    S = harmonic_part(np.abs(stft(y, n_fft, step))[lo:hi], time_k=int(0.4 * sr / step) | 1, freq_k=31)
-    S = S[rows - lo]
+    A = np.abs(stft(y, n_fft, step))[lo:hi]
+    S = harmonic_part(A, time_k=int(0.4 * sr / step) | 1, freq_k=31)[rows - lo]
+    energies = np.stack([(S ** 2).sum(axis=0), (A[rows - lo] ** 2).sum(axis=0)]) if pitched else None
     p = 12 * np.log2(f[sel] / 440.0) + 69
     near = np.round(p).astype(int)
     bank = np.zeros((12, sel.sum()))
@@ -136,7 +139,8 @@ def chroma(y: np.ndarray, sr: float, hop: int, fmin: float = 55.0, fmax: float =
     c = bank @ S
     cp = np.pad(c, ((0, 0), (1, 1)), mode="edge")                      # back to one frame per hop, smoothed
     c = (0.5 * cp[:, 1:-1] + 0.25 * cp[:, :-2] + 0.25 * cp[:, 2:])[:, ::2]
-    return c / np.maximum(c.max(axis=0, keepdims=True), 1e-12)
+    c = c / np.maximum(c.max(axis=0, keepdims=True), 1e-12)
+    return (c, energies) if pitched else c
 
 
 def closing_1x3(mask: np.ndarray) -> np.ndarray:

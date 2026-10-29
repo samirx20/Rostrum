@@ -106,7 +106,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
         ("timeline-zoomed", ["--sample"], ["zoom 4 0.5"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
-        # the rows a recorded sound can't play, tinted red (roll_range.py; vibraphone F3-F6, a note at E3 under it)
+        # the rows past a recorded sound's samples, shaded a little darker (roll_range.py; vibraphone F3-F6, a note at E3 under it)
         ("roll-out-of-range", ["--sample"], [VIB, "select vib", "dock editor", "tool draw", "wait 2"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
         ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",

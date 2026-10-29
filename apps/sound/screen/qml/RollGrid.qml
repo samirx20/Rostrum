@@ -50,7 +50,8 @@ Item {
     readonly property var rowInKey: rowKey.inKey       // false: outside the song's key there, the row is shaded darker
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
     // The keys the track's recorded sound plays ([lo, hi], the engine's own range: backend.rollPlayable); the rows
-    // outside it are tinted red with a line at the edge, and a Draw click there is refused in words. [] = any key.
+    // outside it are shaded darker, with a neutral hairline at the edge: a quiet hint of where the samples end,
+    // not a limit (a note there is drawn like any other and plays from the nearest sample). [] = any key.
     readonly property var playable: notes ? backend.rollPlayable : []
     function plays(k) { return playable.length !== 2 || (k >= playable[0] && k <= playable[1]) }
     height: count * rowH
@@ -87,14 +88,14 @@ Item {
                     ctx.globalAlpha = inKey ? 1 : 0.75; ctx.fillStyle = inKey ? Theme.raised : "black"
                     ctx.fillRect(kw, y, W - kw, h); ctx.globalAlpha = 1
                 }
-                if (!g.plays(key)) {      // its sound can't play this key: a red tint (the key's name stays readable)
-                    ctx.globalAlpha = 0.16; ctx.fillStyle = Theme.danger; ctx.fillRect(kw, y, W - kw, h); ctx.globalAlpha = 1
+                if (!g.plays(key)) {      // past its sound's recorded samples: a soft neutral shade (the key's name stays readable)
+                    ctx.globalAlpha = 0.5; ctx.fillStyle = "black"; ctx.fillRect(kw, y, W - kw, h); ctx.globalAlpha = 1
                 }
                 if (key % 12 === 0) { ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1) }
                 else if (g.shownKeys) { ctx.globalAlpha = 0.45; ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1); ctx.globalAlpha = 1 }
                 paintKey(ctx, key, y, h, kw - 2, "#d6d6d6", "#161616")
-                if (g.plays(key) !== g.plays(g.keyAtRow(i + 1)) && i + 1 < n) {   // the range's edge: a red line across
-                    ctx.globalAlpha = 0.7; ctx.fillStyle = Theme.danger; ctx.fillRect(kw, y + h - 1, W - kw, 1); ctx.globalAlpha = 1
+                if (g.plays(key) !== g.plays(g.keyAtRow(i + 1)) && i + 1 < n) {   // the range's edge: a neutral hairline
+                    ctx.globalAlpha = 1; ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1); ctx.globalAlpha = 1
                 }
             }
         }

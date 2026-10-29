@@ -3,12 +3,14 @@
     m = moment("hit", at=31.5)                  # the marker "hit" (the render's check reads hit / stop / drums out /
                                                 #   drums back / climax / lift as asked moments) and a Moment
     m.rest(strings, basses, before=0.4)         # a breath before: nothing starts in the 0.4 s before, what rings is cut there
-    m.stop(band, keys, until=37.5, short=0.2)   # the band stops: on-the-moment notes play (cut to 0.2 s), what rings ends,
-                                                #   nothing starts again before 37.5 s (default: the song's end)
-    m.choke(keys, after=0.25)                   # notes sounding at the moment end 0.25 s after it (drum hits ring as
-                                                #   recorded: no length to cut; the reply counts and says so)
-    m.strike(brass, ["C2", "G2", "C3"], vel=1.0, ring=4.0); m.strike(drums, "crash", vel=1.0)
+    m.stop(band, keys, until=37.5, short=0.2)   # the band stops: on-the-moment notes and hits play (cut to 0.2 s), what
+                                                #   rings ends, nothing starts again before 37.5 s (default: the song's end)
+    m.choke(drums, keys, after=0.25)            # what sounds at the moment (notes, a crash still ringing) ends 0.25 s after it
+    m.strike(brass, ["C2", "G2", "C3"], vel=1.0, ring=4.0); m.strike(drums, "crash", vel=1.0, ring=1.5)
     m.swell(strings, over=4.0, low=0.5)         # velocities in the 4 s before rise from 0.5x to full into the moment
+
+A drum hit ends by its `cut` (seconds after it is struck; the engine stops it there on every kit, fading over its last
+10 ms): stop and choke write it on the hits they end, strike's `ring` on the hits it adds.
 
 `at` is any time (seconds, bar(n), "#marker"); `at` left out uses a marker of that name already there. The actions are
 kept and applied when the script ends, after every note is written, on the notes the script wrote (`apply`), in the
@@ -66,24 +68,20 @@ class Moment:
                         release=_secs(release, "release", w, ["release=0.05"]))
 
     def choke(self, *tracks, after=None):
-        """Notes sounding at the moment end `after` seconds past it (the pedal lifted). Drum hits have no length: they
-        ring as recorded and the reply counts them as left ringing, with why."""
+        """Notes and drum hits sounding at the moment end `after` seconds past it (the pedal lifted, the cymbal grabbed)."""
         w = f"moment {self.name} › choke"
         return self._do("choke", _tracks(tracks, w, "m.choke(keys, after=0.25)"),
                         after=_secs(after, "after", w, ["after=0.25"]))
 
     def strike(self, track, what, vel=None, ring=None):
-        """A layer of the hit on `track`: a note or chord held `ring` seconds, or (a kit) a drum hit / list of drums."""
+        """A layer of the hit on `track`: a note or chord held `ring` seconds, or (a kit) a drum hit / list of drums, cut
+        after `ring` seconds when given (else it rings out)."""
         w = f"moment {self.name} › strike"
         _tracks([track], w, 'm.strike(brass, ["C2", "G2"], vel=1.0, ring=4.0)')
         kit = track.fields.get("instrument") == "kit"
         if not kit and ring is None:
             raise RostrumError(codes.BAD_ARGUMENT, w, f"track {track.id}", "needs how long the strike rings (ring= seconds)",
                                ['m.strike(brass, ["C2", "G2"], vel=1.0, ring=4.0)'], "A kit takes drum names: m.strike(drums, \"crash\").")
-        if kit and ring is not None:
-            raise RostrumError(codes.BAD_ARGUMENT, w, f"ring={ring!r}", "is not for a kit: a drum hit rings as it was recorded",
-                               ['m.strike(drums, "crash", vel=1.0)', 'm.strike(drums, ["kick", "crash"])'],
-                               "A shorter ring: write the hit itself, track.hit(\"crash\", at, decay=0.3).")
         ring = None if ring is None else _secs(ring, "ring", w, ["ring=4.0"])
         return self._do("strike", [track], what=what, vel=vel, ring=ring, kit=kit)
 
@@ -120,7 +118,7 @@ def apply(song) -> None:
         where = f"moment {m.name}"
         at = markers.time_of(root, m.name, where)
         end = times.seconds(song.root["length"], root, where) if song.root.get("length") is not None else float("inf")
-        said, hits = [], False
+        said = []
         for kind, tracks, a in m.actions:
             c, names = E.Counts(), ", ".join(t.id for t in tracks)
             for t in tracks:
@@ -138,14 +136,13 @@ def apply(song) -> None:
             lead = {"rest": f"rest {a.get('before', 0):.2f} s", "stop": "stop", "choke": f"choke after {a.get('after', 0):.2f} s",
                     "swell": f"swell over {a.get('over', 0):.1f} s", "strike": "strike"}[kind]
             said.append(f"{lead} on {names} ({c.said()})")
-            hits = hits or bool(c.get(E.LEFT_RINGING))
-        say(f"moment {m.name} at {at:.2f} s: " + "; ".join(said or ["no actions"]) + (f". Why the hits: {E.WHY_HITS}" if hits else ""))
+        say(f"moment {m.name} at {at:.2f} s: " + "; ".join(said or ["no actions"]))
 
 
 def _strike(track, at, a, counts):
     if a["kit"]:
         for drum in a["what"] if isinstance(a["what"], (list, tuple)) else [a["what"]]:
-            track.hit(drum, at=round(at, 6), vel=a["vel"])
+            track.hit(drum, at=round(at, 6), vel=a["vel"], cut=a["ring"])
             counts.add("hits added")
     else:
         track.note(a["what"], at=round(at, 6), dur=a["ring"], vel=a["vel"])
