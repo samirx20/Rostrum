@@ -364,13 +364,38 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         let eval_at = |ts: f64| crate::scene::eval::shutter_at(t, ts, || Ok::<_, String>(comp_focused(scene, &plan, ts, alpha, &focus)));
         // Where each layer is, at a few times spread over the open shutter (motion/streak.rs `probe_times`; the middle
         // one is the frame's own, `centre`): the frame's step count and its streaks' moves are read off them.
-        let at_probes = probe_times.iter().map(|&ts| if ts == t { Ok(centre.clone()) } else { eval_at(ts) }).collect::<Result<Vec<_>, _>>()?;
+        // Without trails or smears, a probe re-reads only the own fields of the layers whose insides are the same all
+        // through the frame (eval.rs `own_only`, `at_reusing`): the same comp as `eval_at`, field for field.
+        let own_only = if plan.adds_nothing() { crate::scene::eval::own_only(&scene.comp) } else { vec![] };
+        let reused: std::collections::HashSet<&str> = scene.comp.layers.iter().zip(&own_only).filter(|(_, o)| **o).map(|(n, _)| n.id.as_str()).collect();
+        let probe_at = |ts: f64| {
+            if reused.is_empty() {
+                return eval_at(ts);
+            }
+            crate::scene::eval::shutter_at(t, ts, || {
+                let mut comp = crate::scene::eval::at_reusing(&scene.comp, ts, &centre, &own_only).expect("the comp always shows");
+                if let Some(cam) = comp.layers.iter_mut().find(|l| l.kind == "camera") {
+                    for (f, v) in &focus {
+                        match v {
+                            Some(v) => cam.props.insert((*f).into(), v.clone()),
+                            None => cam.props.remove(*f),
+                        };
+                    }
+                }
+                if alpha {
+                    comp.props.insert("background".into(), Value::String("transparent".into()));
+                }
+                Ok::<_, String>(comp)
+            })
+        };
+        let at_probes = probe_times.iter().map(|&ts| if ts == t { Ok(centre.clone()) } else { probe_at(ts) }).collect::<Result<Vec<_>, _>>()?;
+        mark("probes", &mut split);
         let times = crate::motion::sub_frames(&scene.comp, req, t, &at_probes)?;
         let n = times.len();
-        mark("probes", &mut split);
+        mark("steps", &mut split);
         let held = req["held"].as_bool() == Some(true);
         let reaches = |p: usize| crate::motion::streak::pad(&centre_pieces[p]);
-        let (moves, staged) = if held { (vec![], vec![]) } else { crate::motion::streak::moves(&centre, &at_probes, |p| crate::still_runs::regroups(&centre_pieces[p]), reaches) };
+        let (moves, staged) = if held { (vec![], vec![]) } else { crate::motion::streak::moves(&centre, &at_probes, |p| crate::still_runs::regroups(&centre_pieces[p]), reaches, |id| reused.contains(id)) };
         let moves: Vec<_> = moves.into_iter().map(|m| m.map(|mut m| {
             m.moves = crate::motion::streak::spread(&m.moves, n);
             m

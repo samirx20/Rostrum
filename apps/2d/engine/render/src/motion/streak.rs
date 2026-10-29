@@ -47,9 +47,12 @@ pub struct Streak {
 /// For each stage piece of `centre` (piece 0 the background, then one per drawn top-level layer: stage.rs `parts`):
 /// its moves when it only moves, None when it is the same in every sub-frame (it moves under HOLD_PX) or must be staged
 /// per sub-frame. `items` are the sub-frames' evaluated comps; `streakable(p)` says piece p may be drawn as a kept
-/// picture (still_runs.rs `regroups`; else it `blends`); `spread(p)` how far piece p's blurs and shadows reach past its boxes (page px).
+/// picture (still_runs.rs `regroups`; else it `blends`); `spread(p)` how far piece p's blurs and shadows reach past its boxes (its own px: `pad`).
+/// `shares(id)`: the sub-frames' layer `id` has `centre`'s own children, effects, masks and stops (eval.rs
+/// `at_reusing`), so only its own fields are compared.
 /// Also returns which pieces are staged per sub-frame. Empty when the sub-frames don't draw the same layers.
-pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, spread: impl Fn(usize) -> f64) -> (Vec<Option<Streak>>, Vec<bool>) {
+pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, spread: impl Fn(usize) -> f64, shares: impl Fn(&str) -> bool) -> (Vec<Option<Streak>>, Vec<bool>) {
+    let rigid = |a: &Item, b: &Item| if shares(a.id) { same_own(a, b, true) } else { same_but_place(a, b, true) };
     let drawn = |c: &'_ Item| -> Vec<String> { super::hold::drawn(c).iter().map(|l| l.id.to_string()).collect() };
     let ids = drawn(centre);
     if items.iter().any(|c| drawn(c) != ids) {
@@ -61,8 +64,7 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
     let mut out = vec![None];
     let mut staged = vec![false];
     for (k, l) in super::hold::drawn(centre).into_iter().enumerate() {
-        let rigid = subs.iter().all(|s| same_but_place(l, s[k], true));
-        let m = rigid.then(|| moved(cv.as_ref(), l, &views, |i| Some(subs[i][k]))).flatten();
+        let m = subs.iter().all(|s| rigid(l, s[k])).then(|| moved(cv.as_ref(), l, &views, |i| Some(subs[i][k]))).flatten();
         // A matted layer moves as one picture when its matte is the same picture moved alike (a frame's move over a title
         // and the water that reveals it); else it is staged.
         let m = match crate::scene::matte::of(l, centre) {
@@ -70,7 +72,7 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
             Some(None) => None,
             Some(Some(mt)) => m.filter(|m| {
                 let at = |i: usize| crate::scene::matte::of(subs[i][k], &items[i]).flatten();
-                (0..items.len()).all(|i| at(i).is_some_and(|s| same_but_place(mt, s, true)))
+                (0..items.len()).all(|i| at(i).is_some_and(|s| rigid(mt, s)))
                     && moved(cv.as_ref(), mt, &views, at).is_some_and(|mm| mm.iter().zip(m.iter()).all(|(a, b)| alike(a, b)))
             }),
         };
@@ -128,8 +130,8 @@ fn still(l: &Item, view: Option<&View>, moves: &[Aff]) -> bool {
     }))
 }
 
-/// How far a piece's own blurs, shadows and strokes reach past its boxes (page px, generously): three times each blur and
-/// shadow number, once each stroke or border number, read from its markup.
+/// How far a piece's own blurs, shadows and strokes reach past its boxes (its own px, generously; `reach` scales it as the
+/// layer is on screen): three times each blur and shadow number, once each stroke or border number, read from its markup.
 pub fn pad(piece: &str) -> f64 {
     let mut pad = 0.0;
     for (key, k) in [("blur(", 3.0), ("shadow(", 3.0), ("shadow:", 3.0), ("stroke-width", 1.0), ("border", 1.0)] {
@@ -144,7 +146,8 @@ pub fn pad(piece: &str) -> f64 {
 }
 
 /// The page px rectangles of the layer's picture under any of `moves` (its reach) and of the picture itself (its boxes'
-/// corners, its own and its children's, as steps.rs measures them, `pad` further out). None when a part of it has no
+/// corners, its own and its children's, as steps.rs measures them, `pad` further out, times the most any of them is
+/// stretched on screen). None when a part of it has no
 /// box (a path, a picture without a size).
 fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64; 4], [f64; 4])> {
     fn boxed(it: &Item) -> bool {
@@ -157,7 +160,8 @@ fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64
     super::steps::corners(l, view.map_or(Aff::ID, |v| v.map(l)), &mut corners);
     let bound = |pts: &mut dyn Iterator<Item = Pt>| pts.fold([f64::MAX, f64::MAX, f64::MIN, f64::MIN], |r, p| [r[0].min(p.0), r[1].min(p.1), r[2].max(p.0), r[3].max(p.1)]);
     let b = bound(&mut corners.into_values());
-    let pad = pad + 2.0;
+    // The markup's numbers are the layer's own px: scaled up (its scale, its groups', the frame's zoom) they reach further.
+    let pad = pad * super::steps::widest(l, view.map_or(Aff::ID, |v| v.map(l))).max(1.0) + 2.0;
     let (x0, y0, x1, y1) = (b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad);
     let ink = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)];
     let r = bound(&mut moves.iter().flat_map(|m| ink.map(|p| m.apply(p))));
@@ -168,6 +172,13 @@ fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64
 /// picture, moved. A turn or scale
 /// change under a tilt or a smear (applied between them, stage.rs `transform`) isn't a move of the picture.
 fn same_but_place(a: &Item, b: &Item, top: bool) -> bool {
+    let all = |x: &[Item], y: &[Item]| x.len() == y.len() && x.iter().zip(y).all(|(p, q)| same_but_place(p, q, false));
+    same_own(a, b, top) && all(&a.effects, &b.effects) && all(&a.masks, &b.masks) && all(&a.layers, &b.layers) && all(&a.stops, &b.stops)
+}
+
+/// `same_but_place` for `a` and `b` themselves, not what is in them (the same items when `b` is `at_reusing`'s: their
+/// copies compare equal and carry no smear, which a frame that reuses them has none of).
+fn same_own(a: &Item, b: &Item, top: bool) -> bool {
     if a.id != b.id || a.kind != b.kind || a.props.len() != b.props.len() {
         return false;
     }
@@ -179,8 +190,7 @@ fn same_but_place(a: &Item, b: &Item, top: bool) -> bool {
         }
         v == w || TONE.contains(&k.as_str()) || colour(v) && colour(w) || matches!((v.as_f64(), w.as_f64()), (Some(x), Some(y)) if (x - y).abs() <= HOLD_PX)
     });
-    let all = |x: &[Item], y: &[Item]| x.len() == y.len() && x.iter().zip(y).all(|(p, q)| same_but_place(p, q, false));
-    props && !a.props.keys().any(|k| k == "~smear") && all(&a.effects, &b.effects) && all(&a.masks, &b.masks) && all(&a.layers, &b.layers) && all(&a.stops, &b.stops)
+    props && !a.props.keys().any(|k| k == "~smear")
 }
 
 /// How many times a frame's layers are evaluated at to find its steps and its streaks (`probe_times`): a move over one

@@ -44,6 +44,16 @@ pub struct SkiaSceneCache {
     pub held: Option<skia_safe::Image>,
     /// Rostrum patch (E2): the pictures `draw_cached` draws (still runs of a motion-blurred frame, set by the caller).
     pub cached: Vec<skia_safe::Image>,
+    /// Rostrum patch (streak blur, one paint): where each kept picture's top-left px lies in the frame (device px; none
+    /// listed: (0, 0)). A picture made with a `kept_margin` reaches past the frame's edges.
+    pub cached_at: Vec<(i32, i32)>,
+    /// Rostrum patch (streak blur, one paint): the pictures this paint draws into (`begin_kept`), by number, and the
+    /// canvas and origin drawing goes back to (`end_kept`); `take_kept` hands them over once the paint is done.
+    kept: Vec<Option<(skia_safe::Surface, (i32, i32))>>,
+    kept_prev: Option<(usize, (i32, i32))>,
+    /// Rostrum patch (streak blur, one paint): how far past each edge of the canvas the next paint's kept pictures
+    /// reach (device px), so a streak that reads past the frame's edge reads the layer there, not the edge px.
+    pub kept_margin: i32,
     /// Rostrum patch (X6): one entry per open layer (push_layer / push_clip_layer), `Some` for a layer drawn offscreen
     /// because its filter writes buffers to the comp's node cache.
     captures: Vec<Option<Capture>>,
@@ -156,6 +166,17 @@ impl SkiaSceneCache {
     }
 
     /// Increment the generation on the caches. Should be called once per frame.
+    /// Rostrum patch (streak blur, one paint): the pictures the last paint drew into (`begin_kept`), in number order
+    /// (a number it skipped is None), each with where its top-left px lies in the frame (device px).
+    pub fn take_kept(&mut self) -> Vec<Option<(skia_safe::Image, (i32, i32))>> {
+        std::mem::take(&mut self.kept).into_iter().map(|s| s.map(|(mut s, at)| (s.image_snapshot(), at))).collect()
+    }
+
+    /// Where kept picture `k`'s top-left px lies in the frame (device px).
+    fn cached_origin(&self, k: usize) -> (f32, f32) {
+        self.cached_at.get(k).map_or((0.0, 0.0), |&(x, y)| (x as f32, y as f32))
+    }
+
     pub fn next_gen(&mut self) {
         self.typeface.next_gen();
         self.normalized_typeface.next_gen();
@@ -221,6 +242,10 @@ impl Default for SkiaSceneCache {
             glyph_pos_buf: Default::default(),
             held: None,
             cached: Vec::new(),
+            cached_at: Vec::new(),
+            kept: Vec::new(),
+            kept_prev: None,
+            kept_margin: 0,
             captures: Vec::new(),
             origin: (0, 0),
             soft_clips: Vec::new(),
@@ -271,7 +296,8 @@ impl SkiaScenePainter<'_> {
     fn draw_moved_over(&mut self, k: usize, m: [f64; 6], area: skia_safe::Rect) -> bool {
         let Some(image) = self.cache.cached.get(k).cloned() else { return false };
         let [a, b, c, d, e, f] = m.map(|v| v as f32);
-        let local = skia_safe::Matrix::new_all(a, c, e, b, d, f, 0.0, 0.0, 1.0);
+        let at = self.cache.cached_origin(k);
+        let local = skia_safe::Matrix::new_all(a, c, e, b, d, f, 0.0, 0.0, 1.0) * skia_safe::Matrix::translate(at);
         let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
         let Some(shader) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&local)) else { return false };
         let mut paint = Paint::default();
@@ -974,13 +1000,52 @@ impl PaintScene for SkiaScenePainter<'_> {
         }
         put(count.offset(), moves.len() as f32);
         let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
-        let Some(child) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, None) else { return false };
+        let at = skia_safe::Matrix::translate(self.cache.cached_origin(k));
+        let Some(child) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&at)) else { return false };
         let children = [skia_safe::runtime_effect::ChildPtr::Shader(child)];
         let Some(shader) = effect.make_shader(skia_safe::Data::new_copy(&data), &children, None) else { return false };
         let mut paint = Paint::default();
         paint.set_shader(shader);
         self.fill_device(area, &paint);
         true
+    }
+
+    fn begin_kept(&mut self, k: usize) -> bool {
+        // Only between top-level layers: not inside a kept picture, a capture or a layer of a 3D plane.
+        if self.cache.kept_prev.is_some() || !self.cache.base_3d.is_empty() {
+            return false;
+        }
+        if self.cache.kept.len() <= k {
+            self.cache.kept.resize_with(k + 1, || None);
+        }
+        let margin = self.cache.kept_margin.max(0);
+        if self.cache.kept[k].is_none() {
+            let info = self.inner.image_info();
+            let info = info.with_dimensions((info.width() + 2 * margin, info.height() + 2 * margin));
+            let Some(mut surface) = self.inner.new_surface(&info, None) else { return false };
+            surface.canvas().clear(Color::TRANSPARENT);
+            self.cache.kept[k] = Some((surface, (self.cache.origin.0 - margin, self.cache.origin.1 - margin)));
+        }
+        // The canvas's clips stay (what lies outside them is not drawn on it either), but for a margin past its edges.
+        let clip = self.inner.device_clip_bounds().filter(|_| margin == 0);
+        let (surface, origin) = self.cache.kept[k].as_mut().unwrap();
+        let (canvas, origin) = (surface.canvas() as *const Canvas, *origin);
+        self.cache.kept_prev = Some((self.inner as *const Canvas as usize, std::mem::replace(&mut self.cache.origin, origin)));
+        // SAFETY: the canvas belongs to a surface the cache keeps until `take_kept`, after the paint (and `end_kept`).
+        self.inner = unsafe { &*canvas };
+        self.inner.save();
+        if let Some(c) = clip {
+            self.inner.clip_irect(c, None);
+        }
+        true
+    }
+
+    fn end_kept(&mut self) {
+        let Some((prev, origin)) = self.cache.kept_prev.take() else { return };
+        self.inner.restore();
+        self.cache.origin = origin;
+        // SAFETY: `prev` is the canvas in use when `begin_kept` switched, alive for the whole paint.
+        self.inner = unsafe { &*(prev as *const Canvas) };
     }
 
     fn draw_warped(&mut self, content: &anyrender::Scene, mesh: &anyrender::WarpMesh) {

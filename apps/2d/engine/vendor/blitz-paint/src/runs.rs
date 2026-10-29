@@ -20,6 +20,9 @@ pub enum Run {
     /// Rostrum patch (streak blur): the node painted as it is laid out, moved by an affine in page px (CSS `matrix()`
     /// order): a layer that only moved but blends with what is under it, drawn at each sub-frame without a new layout.
     Shift([f64; 6]),
+    /// Rostrum patch (streak blur, one paint): the node painted into picture `k` of this paint instead of the canvas
+    /// (`PaintScene::begin_kept`), so one paint makes every picture a step's streaks read.
+    Keep(usize),
 }
 
 thread_local! {
@@ -71,6 +74,7 @@ pub fn set_viewport(rect: Option<kurbo::Rect>) {
     VIEWPORT.with(|v| *v.borrow_mut() = rect);
 }
 
-pub(crate) fn viewport() -> Option<kurbo::Rect> {
+/// The rectangle `set_viewport` set on this thread (None: the page's own).
+pub fn viewport() -> Option<kurbo::Rect> {
     VIEWPORT.with(|v| *v.borrow())
 }
