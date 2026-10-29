@@ -19,7 +19,7 @@ tints copies near a point instead, and doesn't show on copies still simulating.)
 | `grid` | `count` is the total, `columns`; `spacingX` = between columns, `spacingZ` = between rows (rows fill from the first) |
 | `circle` | `count`, `radius`; `faceOut` turns each copy to face away from the middle |
 | `surface` | `surface` = the item they stand on; `amountBy` count or density (per m²); `minSpacing`; `alongSurface`; `onTop` |
-| `path` | `path` = a text, SVG or drawing (`path2d`) mesh; `count` copies evenly along all its outlines by length (each outline, every letter and every hole, gets its share and wraps round); `alongPath` (on) turns each copy's +X along the line and its up out of the outline's flat side; `pathShift` 0–1 slides them all along (1 = once round) |
+| `path` | `path` = a text, SVG or drawing (`path2d`) mesh; `count` copies evenly along all its outlines by length (each outline, every letter and every hole, gets its share and wraps round); `alongPath` (on) turns each copy's +X along the line and its up out of the outline's flat side; `pathShift` slides them all along (1 = once round; keyable: the copies travel along the outline over time) |
 | `pour` | a stream from a mouth at the copies item's origin: `radius` = the mouth's radius (each copy starts somewhere inside that disc, flat in the item's own x z); `pourTime` = seconds the copies leave over, evenly, from `fallStart` (default 2; 0 = all at once); `pourSpeed` = m/s each leaves with along the copies item's own down (0: they just drop; turn the copies item, `rx`/`rz`, to aim it sideways); `pourSpread` = degrees off that aim (default 10), so the stream fans out |
 
 Where the copies sit: a line starts at the copies item's origin and steps by `spacing`; a grid's first copy is at the origin
@@ -32,7 +32,7 @@ showing a drawing from Rostrum2D. Then `copies("lights", bulb, layout="path", pa
 or hide it (`visible=False`) when only the copies should show; keep it when the copies trim a solid word. With
 `alongPath` on, a long source (a dash, a link) lies along the line; turn the source inside the copies item to choose
 which of its sides runs along. Short outlines get few copies: the count is shared by length, so raise `count` until the
-smallest letter reads. The path is read at the shot's first frame (`pathShift` is a still setting).
+smallest letter reads. The path is read at the shot's first frame. **Slide can be keyed**: `pathShift` 0 → 1 over the shot sends every copy once round its outline (2: twice; any number, it wraps), `lights.key("pathShift", {0: 0, 4: 1})`; in the window, press K on Slide at two times, as on any setting.
 
 A **pour** only moves once it falls (`simulate("falls")`, the guide *simulate*); before that the copies sit together in the
 mouth. Make it the brief's way, in one script: put the source where the spout is, `copies("beans", bean, layout="pour",

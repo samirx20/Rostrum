@@ -157,6 +157,9 @@ def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
     else:
         for k in copies_fields.PATH_KEYS:
             node["props"].pop(k, None)
+            node.get("anim", {}).pop(k, None)
+        if "anim" in node and not node["anim"]:
+            del node["anim"]
 
 
 def _outline_props(id_: str, values: dict, props: dict, folder):

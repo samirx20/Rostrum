@@ -123,10 +123,7 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
   }
   else if (key == "path") p.path = text(v, where);
   else if (key == "alongPath") p.alongPath = flag(v, where);
-  else if (key == "pathShift") {
-    p.pathShift = at_least(v, where, 0);
-    if (p.pathShift > 1) fail(where, std::to_string(p.pathShift) + " is too big", "0 .. 1 (a share of the path's length)");
-  }
+  else if (key == "pathShift") p.pathShift = number(v, where);  // a share of the length: 1 = once round, wraps
   else if (key == "pathPoints") p.pathPoints = read_path_points(v, where);
   else if (key == "pathClosed") p.pathClosed = read_path_closed(v, where);
   else if (key == "seenBy") p.seenBy = text(v, where);
@@ -375,6 +372,14 @@ std::vector<Copy> lay_out(const State& s) {
   return out;
 }
 
+// The layout at frame index k: `laid`, or (a keyed Slide, v1.32) the path laid again with that frame's Slide.
+std::vector<Copy> base_at(const State& s, size_t k) {
+  if (s.p.slide.size() <= 1) return s.laid;
+  State moved = s;
+  moved.p.pathShift = s.p.slide[std::min(k, s.p.slide.size() - 1)];
+  return lay_out(moved);
+}
+
 // Keyed copies at frame index k, over the layout (the effectors come after).
 void keyed_at(const std::vector<Held>& held, size_t k, std::vector<Copy>& copies) {
   for (const Held& h : held)
@@ -475,7 +480,7 @@ std::vector<GfMatrix4d> places(const UsdStageRefPtr& stage, const State& s, bool
 }
 
 bool moves(const UsdStageRefPtr& stage, const State& s) {
-  if (any_keyed(s)) return true;
+  if (any_keyed(s) || s.p.slide.size() > 1) return true;
   for (const Effector& e : s.effectors)
     if (e.moves()) return true;
   if (s.effectors.empty()) return false;
@@ -544,7 +549,7 @@ void write_values(const UsdStageRefPtr& stage, State& s) {
   }
   const std::vector<GfVec4f> untinted(n, GfVec4f(0));
   const auto at = [&](size_t k) {
-    std::vector<Copy> c = s.laid;
+    std::vector<Copy> c = base_at(s, k);
     std::vector<GfVec4f> tints = untinted;
     keyed_at(s.held, k, c);
     apply(s.effectors, k, world[std::min(k, world.size() - 1)], c, coloured ? &tints : nullptr);
@@ -560,7 +565,7 @@ void write_values(const UsdStageRefPtr& stage, State& s) {
     return;
   }
   // only what an effector or a keyed copy changes gets samples; the rest is the layout's plain value
-  const bool keyed = any_keyed(s);
+  const bool keyed = any_keyed(s) || s.p.slide.size() > 1;  // a keyed Slide moves and turns every copy
   const bool by_pos = keyed || has_kind(s, Effector::Push) || has_kind(s, Effector::Move),
              by_rot = keyed || has_kind(s, Effector::Turn),
              by_scl = has_kind(s, Effector::Scale) || has_kind(s, Effector::Hide);
@@ -657,6 +662,10 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   for (const char* key : kKeys) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
   for (const char* key : kOptionalKeys)
     if (it.props.has(key)) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
+  if (it.props.has("pathShift")) {  // (v1.32) Slide may be keyed: one value per frame, the path laid again each frame
+    std::vector<double> slide = it.nums("pathShift");
+    if (slide.size() > 1) s.p.slide = std::move(slide);
+  }
   check_path(s.p, it.id);
   s.held = read_held(held, it.id + ".held", size_t(ctx.end - ctx.start + 1));
   s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
@@ -714,6 +723,7 @@ double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const
   const auto t0 = std::chrono::steady_clock::now();
   Params p = s.p;  // checked whole before anything changes
   for (const auto& [key, value] : props) set_param(p, key, value, "copies.props." + key);
+  if (props.count("pathShift")) p.slide.clear();  // a Slide set live is still until the next scene
   check_path(p, "copies.props");
   std::vector<Held> h = s.held;
   if (held) {
@@ -744,8 +754,8 @@ double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const
 std::vector<Copy> at_frame(const UsdStageRefPtr& stage, const State& s, int frame, GfMatrix4d* world) {
   UsdGeomXformCache xc{UsdTimeCode(frame)};
   *world = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path));
-  std::vector<Copy> c = s.laid;
   const size_t k = size_t(std::clamp(frame - s.start, 0, s.end - s.start));
+  std::vector<Copy> c = base_at(s, k);
   keyed_at(s.held, k, c);
   apply(s.effectors, k, *world, c, nullptr);
   return c;
