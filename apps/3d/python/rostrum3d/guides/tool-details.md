@@ -12,7 +12,7 @@ the asset library is `edit_import_asset` (`what` "import", "search", "sources");
 
 One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized); neither on a shot whose Quality is Stylized = stylized. stylized = the stylized look: the only one that draws materials' Lines and Halftone (Light to colour shows in final too). through = a light's id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped (blown out; stylized: pure white, its picked colours are shown as they are), which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known, and for every text in the picture which way it reads from this camera (left to right, mirrored, upside down, seen from behind or edge-on, its angle to the horizontal; data `text`). onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc or a spacing; a quick look only (not final), drawn by the live view, so no studio light or outline. highlight = "steps:arm" or "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step` names them); the reply gives each region's box in pixels and what hides part of it. A posed clay is outlined as posed. `notes: true` ends the reply with measured notes (e.g. too dark or blown out, a subject cut by the frame, something floating or sunk): `Notes (n): [id] what (when) | …`. Off by default; judge the picture yourself.
 
-- `quality`: fast = Storm (about a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
+- `quality`: fast = Storm, the live preview (a few tenths of a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
 - `renderer`: Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials).
 - `width`: Picture width in px; the height follows the shot's shape.
 - `through`: A light's id (rect, disk, strip, sphere, distant): look from where it stands along the way it shines (60° tall view, level) instead of through the shot camera, to aim it.
@@ -24,7 +24,7 @@ One rendered frame of a shot, seen through the SHOT's camera by the same render 
 
 A contact sheet: `count` frames spread over the shot (or a range) in one image, each tile labelled with its frame and time. Drawn fast (Storm; stylized for a shot whose Quality is Stylized) unless you say otherwise. Use it to check a whole move at a glance; look_frame for detail. `notes: true` ends the reply with measured notes (e.g. too dark or blown out, a subject cut by the frame, something floating or sunk): `Notes (n): [id] what (when) | …`, and when the shot simulates a fall or cloth, an On screen line: the range opens mid-drop or after the landing, the last stretch doesn't move. Off by default; judge the picture yourself.
 
-- `quality`: fast = Storm (about a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
+- `quality`: fast = Storm, the live preview (a few tenths of a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
 - `renderer`: Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials).
 - `width`: Width of each tile in px.
 - `start`: Seconds from the start of the shot. Default 0.
@@ -49,7 +49,7 @@ One contact sheet for several shots, ONE ROW PER SHOT: `count` frames spread ove
 - `shots`: Shot ids or names (as the Shots list shows them), in the order of the rows. Default: every shot of the document.
 - `count`: Frames in each row, evenly spaced from the shot's first to last frame (a shot with fewer frames gives every row that many).
 - `width`: Width of each tile in px; a tile's height follows its shot's own shape.
-- `quality`: fast = Storm (about a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
+- `quality`: fast = Storm, the live preview (a few tenths of a second a frame), final = Cycles (path traced, what export gives). Not given on a shot whose Quality is Stylized: the stylized look.
 - `renderer`: Overrides quality: storm, cycles or stylized (the stylized look: materials' Lines, Halftone and Light to colour, every other material plainly lit by the scene's real lights; guide materials).
 
 ## look_frame what "material"

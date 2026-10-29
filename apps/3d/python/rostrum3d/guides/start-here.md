@@ -9,8 +9,8 @@ is an operation, and every look draws the scene again from the document.
 1. **Write ONE script** for the whole scene (Python, the helpers in guide `script`). Keep it in a .py file.
 2. **Run it with a look**: `run_script` with `path` (or `source`), a stable `name` and `look: true`. The reply carries
    the picture through the shot's camera.
-3. **Look at the picture and judge it yourself.** `look_frame` is the main check: a quick Storm frame (960×540, about
-   1.5 s), so look often: after each change, a sheet (`what "sheet"`) for the whole shot. Is it dark or blown out, a
+3. **Look at the picture and judge it yourself.** `look_frame` is the main check: the live preview, what the window shows (Storm, 960×540, under
+   a second; a sheet too), so look often: after each change, a sheet (`what "sheet"`) for the whole shot. Is it dark or blown out, a
    subject cut by the edge, something floating or sunk, a wrong pose? You decide.
 4. **Change the script**, not the picture: if a shadow is wrong, move the light; if a thing is too small, check the camera
    before scaling the thing.
