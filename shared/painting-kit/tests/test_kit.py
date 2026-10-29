@@ -121,3 +121,49 @@ def test_a_grown_drawing_keeps_its_pixels_and_stamps_only_the_new_stroke(monkeyp
     C.forget()
     fresh = C.render(grown, 320 + dx + 40, 200 + dy).rgba
     assert np.abs(fresh - live).max() < 1 / 255     # the same picture (points rounded to 0.01 px: last-bit floats)
+
+
+def test_a_mask_made_round_its_shape_is_the_whole_canvas_mask():
+    """compose._mask draws only round the shape (and its feather's reach): the same bytes as the whole canvas at 4x,
+    or every masked wash would change."""
+    from PIL import Image, ImageDraw, ImageFilter
+    from rostrum_paint import compose
+    rng = np.random.default_rng(3)
+    for i in range(40):
+        w, h = int(rng.integers(60, 400)), int(rng.integers(60, 300))
+        cx, cy, r = rng.uniform(-40, w + 40), rng.uniform(-40, h + 40), rng.uniform(4, 300)
+        ang = np.sort(rng.uniform(0, 2 * np.pi, int(rng.integers(3, 12))))
+        pts = [[float(cx + r * rng.uniform(0.3, 1) * np.cos(a)), float(cy + r * rng.uniform(0.3, 1) * np.sin(a))] for a in ang]
+        mask = {"points": pts, "feather": [0, 0.5, 2.3, 9, 40][i % 5], "invert": i % 7 == 0}
+        im = Image.new("L", (w * 4, h * 4), 0)
+        ImageDraw.Draw(im).polygon([(x * 4, y * 4) for x, y in pts], fill=255)
+        im = im.reduce(4)
+        if mask["feather"]:
+            im = im.filter(ImageFilter.GaussianBlur(mask["feather"]))
+        whole = np.asarray(im, np.float32) / 255
+        assert np.array_equal(compose.mask_array(mask, w, h), 1 - whole if mask["invert"] else whole), i
+
+
+def test_a_fresh_process_goes_on_from_the_state_kept_on_disk(doc, tmp_path, monkeypatch):
+    """A layer state kept on disk (kept_disk) gives the pixels a full replay gives, and only the strokes after it
+    are stamped."""
+    from rostrum_core.cache import Cache
+    from rostrum_paint import kept_disk
+    monkeypatch.setattr(kept_disk, "CACHE", Cache(tmp_path / "cache"))
+    monkeypatch.setattr(kept_disk, "_MISSING", set())
+    monkeypatch.setattr(kept_disk, "EVERY", 0.0)
+    monkeypatch.setattr(C, "READ_S", 0.0)
+    doc.apply(strokes("ink", 5, brush="bristle") + strokes("glaze", 2, y0=80, brush="chalk"), AGENT)
+    C.render(doc.item("c"), *WH)
+    kept_disk.flush()
+    C.forget()                                               # a new process: nothing in memory
+    doc.apply(strokes("glaze", 1, y0=130, brush="chalk"), AGENT)
+    stamped, real = [], C.stamp
+    monkeypatch.setattr(C, "stamp", lambda *a, **k: stamped.append(a[1]["id"]) or real(*a, **k))
+    resumed = C.render(doc.item("c"), *WH).rgba.copy()
+    assert len(stamped) == 1
+    kept_disk.flush()
+    C.forget()
+    monkeypatch.setattr(kept_disk, "CACHE", Cache(tmp_path / "empty"))
+    monkeypatch.setattr(kept_disk, "_MISSING", set())
+    assert np.array_equal(C.render(doc.item("c"), *WH).rgba, resumed)

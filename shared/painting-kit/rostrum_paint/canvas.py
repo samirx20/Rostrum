@@ -30,7 +30,7 @@ import numpy as np
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import brush, compose, fill, marks, native, shape, wash
+from . import brush, compose, fill, kept_disk, marks, native, shape, wash
 
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state at least every N strokes ...
@@ -238,6 +238,10 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
     got = KEPT.get(keys[start])
     if start == n and got is not None:
         return got[0], got[1], keys[n]
+    if (disk := _from_disk(keys, start, w, h)) is not None:   # a later state kept on disk (a fresh process)
+        start, got = disk
+        if start == n:
+            return got[0], got[1], keys[n]
     if start == 0 and n and (grown := _grown_from(paint, w, h, at, keys)) is not None:
         start, got = grown[0], grown[1:]
         if start == n:
@@ -245,6 +249,7 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
     px = got[0].copy() if got else blank(paint, w, h)
     top = got[1].copy() if got else np.full((h, w), -1, np.int32)
     last, copy_s, spent = start, 0.0, 0.0       # the stroke a state was last kept at; what a copy of this canvas costs; stamping since
+    on_disk = 0.0                               # stamping since the last state kept on disk
     for i in range(start, n):
         s = paint["strokes"][i]
         t0 = time.perf_counter()
@@ -253,6 +258,10 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
             x0, y0, x1, y1 = cov.bbox
             top[y0:y1, x0:x1][cov.a > 1 / 255] = i
         spent += time.perf_counter() - t0
+        on_disk += time.perf_counter() - t0
+        if on_disk >= kept_disk.EVERY and i + 1 < n:
+            kept_disk.save(keys[i + 1], px, top)
+            on_disk = 0.0
         # A kept state is a copy of the whole canvas, so on a big canvas a copy every 24 strokes cost more than the strokes
         # (a 5200 x 1300 grass layer: 25 s of a 68 s first look) and the memory budget held only the last few anyway.
         # So one is kept when the strokes since the last cost CHECKPOINT_COST copies, which undo / redo then replay at most.
@@ -261,7 +270,21 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
             KEPT.put(keys[i + 1], px.copy(), top.copy())
             copy_s, spent, last = time.perf_counter() - t0, 0.0, i + 1
     KEPT.put(keys[n], px, top)
+    if on_disk >= READ_S:
+        kept_disk.save(keys[n], px, top)
     return px, top, keys[n]
+
+
+READ_S = 0.05                    # s of stamping worth more than reading a state back from disk
+
+
+def _from_disk(keys, start, w, h):
+    """(i, (pixels, top)) of the latest state after keys[start] kept on disk (kept_disk; then in memory too), or None."""
+    for i in range(len(keys) - 1, start, -1):
+        if kept_disk.has(keys[i]) and (got := kept_disk.load(keys[i], w, h)) is not None:
+            KEPT.put(keys[i], *got)
+            return i, got
+    return None
 
 
 def _layers(canvas, w, h):

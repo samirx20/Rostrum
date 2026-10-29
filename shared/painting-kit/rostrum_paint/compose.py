@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 import json
+import math
 
 import numpy as np
 
@@ -93,19 +94,34 @@ def mask_array(mask: dict, w: int, h: int) -> np.ndarray:
     return _mask(json.dumps({k: mask[k] for k in ("points", "feather", "invert")}, sort_keys=True), w, h)
 
 
+def _mask_box(points, feather: float, w: int, h: int) -> tuple[int, int, int, int] | None:
+    """(x0, y0, x1, y1) canvas px holding every px a mask's polygon and its feather can reach (None: none on the
+    canvas). The blur is three box passes about `feather` px wide each, so 3 x (feather + 2) px round the shape; outside,
+    the whole canvas's mask is 0 (the same bytes, test_kit)."""
+    m = 3 * (math.ceil(feather) + 2) if feather else 1
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    x0, y0 = max(0, math.floor(min(xs)) - m), max(0, math.floor(min(ys)) - m)
+    x1, y1 = min(w, math.ceil(max(xs)) + 1 + m), min(h, math.ceil(max(ys)) + 1 + m)
+    return (x0, y0, x1, y1) if x1 > x0 and y1 > y0 else None
+
+
 @lru_cache(maxsize=64)
 def _mask(spec: str, w: int, h: int) -> np.ndarray:
     from PIL import Image, ImageDraw, ImageFilter
     m = json.loads(spec)
     if len(m["points"]) < 3:
         raise ValueError(f"a paint mask needs at least 3 points, it has {len(m['points'])}")
-    ss = 4
-    im = Image.new("L", (w * ss, h * ss), 0)
-    ImageDraw.Draw(im).polygon([(x * ss, y * ss) for x, y in m["points"]], fill=255)
-    im = im.reduce(ss)
-    if m["feather"]:
-        im = im.filter(ImageFilter.GaussianBlur(m["feather"]))
-    a = np.asarray(im, np.float32) / 255
+    ss, out = 4, np.zeros((h, w), np.uint8)
+    box = _mask_box(m["points"], m["feather"], w, h)
+    if box is not None:     # only round the shape: a window's wash drew and blurred the whole canvas at 4x (~40 ms each)
+        x0, y0, x1, y1 = box
+        im = Image.new("L", (x1 * ss, y1 * ss), 0)     # drawn where it sits (moved, the polygon's px came out different)
+        ImageDraw.Draw(im).polygon([(x * ss, y * ss) for x, y in m["points"]], fill=255)
+        im = im.crop((x0 * ss, y0 * ss, x1 * ss, y1 * ss)).reduce(ss)
+        if m["feather"]:
+            im = im.filter(ImageFilter.GaussianBlur(m["feather"]))
+        out[y0:y1, x0:x1] = np.asarray(im)
+    a = out.astype(np.float32) / 255
     a = 1 - a if m["invert"] else a
     a.setflags(write=False)
     return a
