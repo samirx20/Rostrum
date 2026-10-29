@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import clay_dabs, clay_detail, clay_reach, clay_shapes
+from . import clay_dabs, clay_detail, clay_layers, clay_reach, clay_shapes
 from .clay_fields import CLAY, STEP as CLAYSTEP
 
 VERSION = "rostrum3d-clay@9"          # bump when the core builds the same steps differently (the cache key holds it)
@@ -73,15 +73,16 @@ def _items(data: dict | None) -> dict:
     return out
 
 
-def chain(steps: list[dict], data: dict | None = None) -> list[dict]:
+def chain(steps: list[dict], data: dict | None = None, clay: dict | None = None,
+          amount: dict[str, float] | None = None) -> list[dict]:
     """The shown steps as the core reads them, each with its key: sha256 of (previous key + the step's canonical
     JSON), first 24 hex. A piece's blend is held off the pieces it doesn't touch, per pair (clay_reach.py: `pairs`). Inline dabs are left out of the hashed text (their name stands for them). `data`: the
-    document, where a piece made from an item finds it (else its stored sourceKey stands)."""
+    document, where a piece made from an item finds it (else its stored sourceKey stands). `clay`: its sculpt layers
+    (clay_layers.py: the Base's steps, then each layer's at its Amount, `amount` {layer id: Amount} when given)."""
     out, prev, items = [], "", _items(data)
-    near = clay_reach.pairs(steps)                       # a blend never reaches a piece it doesn't touch
-    for n, s in enumerate(steps):
-        if s.get("hidden"):
-            continue
+    shown = [clay_layers.scaled(s, a) for s, a in clay_layers.ordered(steps, clay or {}, amount) if not s.get("hidden")]
+    near = clay_reach.pairs(shown)                       # a blend never reaches a piece it doesn't touch
+    for n, s in enumerate(shown):
         step = _step(s, items)
         if n in near:
             step["pairs"] = near[n]
@@ -96,7 +97,7 @@ def cache_file(last_key: str, detail: float) -> Path:
     return CACHE.path("clay", cache_key("clay.volume", VERSION, [last_key], {"detail": detail})) / "clay.vdb"
 
 
-def finish(node: dict, item: dict, folder=None, data: dict | None = None):
+def finish(node: dict, item: dict, folder=None, data: dict | None = None, amount: dict[str, float] | None = None):
     """Turn a compiled clay node into the contract's: no brush settings, `detail` the number to build at (worked out
     from `data`'s shots when it follows the camera, clay_detail.py), smooth normals, its keyed steps (a dabs file as
     its absolute path in the project, inline dabs as `dabList`), and its cache file."""
@@ -104,7 +105,13 @@ def finish(node: dict, item: dict, folder=None, data: dict | None = None):
         node["props"].pop(name, None)
     node["props"]["detail"] = clay_detail.detail(data or {}, item, folder)
     node["props"]["smooth"] = True
-    steps = chain(item.get("steps", []), data)
+    node["steps"], node["cache"] = built(item, folder, data, node["props"]["detail"], amount)
+
+
+def built(item: dict, folder, data: dict | None, detail: float, amount: dict[str, float] | None = None):
+    """(steps, cache): the clay's keyed steps at these layer Amounts (a dabs file as its absolute path in the project,
+    inline dabs as `dabList`) and its cache file."""
+    steps = chain(item.get("steps", []), data, item, amount)
     for s in steps:
         if "dabList" in s:
             del s["dabs"]                                     # inline: the core reads the list
@@ -113,5 +120,4 @@ def finish(node: dict, item: dict, folder=None, data: dict | None = None):
                 raise ValueError(f'clay {item["id"]}: a stroke names the dabs file "{s["dabs"]}", but the document '
                                  "has no project folder to find it in (save it into a project first)")
             s["dabs"] = str(clay_dabs.path(folder, s["dabs"]))
-    node["steps"] = steps
-    node["cache"] = str(cache_file(steps[-1]["key"], node["props"]["detail"])) if steps else ""
+    return steps, (str(cache_file(steps[-1]["key"], detail)) if steps else "")

@@ -65,13 +65,16 @@ def _at(plan: list, t: float | None, stack: list[dict]) -> list:
     return out
 
 
-def transforms(chain: list[tuple[dict, int]], t: float | None = None, stack: list[dict] = ()) -> list:
-    """Each bone's transform in the mesh's own space: at rest (t None) or at time t (seconds), with the document's
-    animation layers (`stack`, layers.stack_of) laid over."""
-    return _at(_plan(chain), t, stack)
+def transforms(chain: list[tuple[dict, int]], t: float | None = None, stack: list[dict] | None = None) -> list:
+    """Each bone's transform in the mesh's own space: at rest (t None) or, at time t (seconds), the pose you see: the
+    document's animation layers (`stack`, layers.stack_of; [] for none) laid over the Base. A time without the stack is
+    an error, so nothing (the picture, the bone lines, a hold) can draw the Base under a posed layer."""
+    if t is not None and stack is None:
+        raise TypeError("skin.transforms at a time needs the document's layer stack (layers.stack_of; [] for none)")
+    return _at(_plan(chain), t, stack or ())
 
 
-def poser(chain: list[tuple[dict, int]], stack: list[dict] = ()):
+def poser(chain: list[tuple[dict, int]], stack: list[dict]):
     """time (seconds, or None: rest) -> transforms(chain, time, stack), the bones' keys read once for every time asked."""
     plan = _plan(chain)
     return lambda t: _at(plan, t, stack)
@@ -95,7 +98,7 @@ def _flat(m) -> list[float]:
     return [round(x, 6) for x in (*lin[0], *lin[1], *lin[2], *t)]
 
 
-def skin(mesh: dict, times: list[float], stack: list[dict] = (), moves=None) -> dict | None:
+def skin(mesh: dict, times: list[float], stack: list[dict], moves=None) -> dict | None:
     """The core's `skin` for a mesh at these times (seconds, one per frame), or None: no bones, or Bend with bones off.
     `moves`: frame index -> each bone's now × rest⁻¹ there, when the caller already has them (follow.moves)."""
     chain = bones_of(mesh)

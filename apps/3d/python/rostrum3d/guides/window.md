@@ -129,8 +129,9 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Draw: drag an outline and it puffs into
   clay, on a clay it joins; Spin: drag half a profile beside the vertical line; Lump: a click drops a ball of clay;
   Turn into clay, with an exact part or import selected) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull,
-  Flatten, Crease, and Mask on its own row), Size and Strength, the **Steps** list (an eye hides a step, double-click
-  names it, a click shows its settings), then **More** (closed at first: Falloff, Spacing, Front faces only, Mirror). A drag on the clay sculpts (Ctrl: the
+  Flatten, Crease, and Mask on its own row), Size and Strength, **Layers** once the clay has a sculpt layer (Base and each layer with its Amount; a click says
+  where the next stroke goes), the **Steps** list (an eye hides a step, double-click
+  names it, a click shows its settings; **+ Layer** at its head makes a sculpt layer), then **More** (closed at first: Falloff, Spacing, Front faces only, Mirror). A drag on the clay sculpts (Ctrl: the
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
   the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select, and so does picking a shape from
   Shapes (the next click places it). The guide `sculpting` has it all.
@@ -424,7 +425,8 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
   - **Curves** (the header's **Keys | Curves**, there once something is animated): the value curves on the same time
     scale. With nothing picked, every animated item's curves; pick an item to see only its own; **Picked | All curves**
     switches between the two (the animation panel's **All curves** opens it with everything). Click a setting's name to
-    hide or show its line, an item's name for all its lines; each line fills the view's height. Drag a diamond to change
+    hide or show its line, an item's name for all its lines; each line fills the view's height, its lowest and highest
+    value written at the right edge in its colour (lines that end at one height stack their values). Drag a diamond to change
     a key's time and value (it snaps like the rows; Ctrl moves freely). Click a key for its handles and drag one to shape
     the ease (it becomes Custom). Right-click a key for the Ease list. Each drag is one undo step. Agents:
     `key.set {ease: "custom", x1, y1, x2, y2}` does what a handle drag does.

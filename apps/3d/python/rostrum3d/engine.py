@@ -24,6 +24,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 LOG_DIR = Path.home() / ".rostrum" / "logs"
+from . import clay_faces
 from .runtime import need_stylized, run_exe, runtime_env             # where the libraries are and how the engine program finds them
 
 
@@ -67,6 +68,7 @@ class Engine:
         self._lines: queue.Queue = queue.Queue()
         self._hash, self._lock, self._notices = None, threading.RLock(), []
         self._held = None                               # the scene object last sent (ensure_scene: no hash for the same one)
+        self._base = None                               # the scene last asked for, face shapes and all (clay_faces.py)
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
         self.copies: dict = {}                          # the last scene's copies info: {id: {count, seen, camera}} (contract 2, copies)
@@ -148,16 +150,27 @@ class Engine:
 
     # --- the requests
     def load(self, scene: dict) -> dict:
+        scene = clay_faces.at(scene)                    # never the face shapes' frames themselves: the first frame's
         self._held = None                               # ensure_scene names it once the load is through
         out = self._request({"scene": scene})
         self.copies = out.get("copies") or {}
         self._hash = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
         return out
 
-    def ensure_scene(self, scene: dict) -> bool:
+    def ensure_scene(self, scene: dict, frame=None) -> bool:
         """Send the scene only when it differs from the one the engine holds. True when it was sent. A scene with
         painted clays whose surface isn't made yet (`paintLater`) is loaded twice: without their pictures, then with
-        them (paint_scene.send)."""
+        them (paint_scene.send). A scene whose clays change shape over the shot (face shapes) is sent as it is at
+        `frame` (the shot's first when None); view and render send it again for the frames they draw."""
+        self._base = scene
+        return self._ensure(clay_faces.at(scene, frame))
+
+    def _at(self, frame) -> None:
+        """The held scene as it is at `frame`, when its clays change shape over the shot."""
+        if self._base is not None and clay_faces.KEY in self._base:
+            self._ensure(clay_faces.at(self._base, frame))
+
+    def _ensure(self, scene: dict) -> bool:
         with self._lock:
             self._ensure_running()
             if self._hash and scene is self._held:      # the very scene sent last (draw.scene_of keeps one per document state)
@@ -180,6 +193,26 @@ class Engine:
         `progress(i, of, line)` after each frame; `step(line)` while Cycles draws one ({"frame", "fraction", "ms"})."""
         if req.get("renderer") == "stylized":
             need_stylized("render")
+        if self._base is None or clay_faces.KEY not in self._base:
+            return self._render_one(progress, timeout_s, step, req)
+        # face shapes: one request per run of frames with the same shapes, each after that run's scene; the replies'
+        # frames in order, the progress counted over them all
+        first, last = req["frames"] if req.get("frames") else (req["frame"], req["frame"])
+        out, done = None, 0
+        for a, b in clay_faces.runs(self._base, first, last):
+            self._at(a)
+            part = {k: v for k, v in req.items() if k not in ("frame", "frames")}
+            part.update({"frames": [a, b]} if req.get("frames") else {"frame": a})
+            on = progress and (lambda i, of, line, n0=done: progress(n0 + i, last - first + 1, line))
+            got = self._render_one(on, timeout_s, step, part)
+            done += b - a + 1
+            if out is None:
+                out = got
+            else:
+                out["frames"] += got.get("frames", [])
+        return out
+
+    def _render_one(self, progress, timeout_s, step, req) -> dict:
         req = _shown(req)
         out = self._request({"render": {**req, "progress": progress is not None or step is not None}},
                             timeout_s or float(req.get("timeoutS", 600)) + 60, progress, step)
@@ -255,6 +288,7 @@ class Engine:
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""
         if req.get("renderer") == "stylized":
             need_stylized("view")
+        self._at(req.get("frame"))
         out = self._request({"view": _shown(req)})
         return (*self._pixels(out["shm"]), out)
 

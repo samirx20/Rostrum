@@ -292,8 +292,8 @@ class Pose(PoseDrag, QObject):
         except ValueError:                          # not in the picture (hidden): nothing to draw
             return
         clay = self._clay0 or it
-        drawn = PV.overlay(clay, L.holds_of(clay), world, View.of(cam, scene, self.b.frame, w, h), self.b.time, w, h,
-                           lit, turns)
+        drawn = PV.overlay(clay, L.holds_of(clay), world, View.of(cam, scene, self.b.frame, w, h), self.b.time,
+                           L.layering(self.b)[1], w, h, lit, turns)
         self._lines, self._dots, self._rings = drawn["lines"], drawn["dots"], drawn["rings"]
 
     def _chip_gone(self):

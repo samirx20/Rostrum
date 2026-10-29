@@ -20,12 +20,18 @@ BLEND_SHARE, BLEND_CAP = 0.5, 0.05     # a drawn or spun piece's blend: × its h
 DEFAULT = {p.name: p.default for p in CLAY}
 
 
+def layer_of(clay: dict, args: dict) -> str:
+    """The sculpt layer a new step goes on: `layer` as given ("" = the Base), else the clay's Sculpt on."""
+    return args["layer"] if args.get("layer") is not None else clay.get("sculptLayer") or ""
+
+
 def piece_values(clay: dict, args: dict, shape: str) -> dict:
     """A sphere or capsule's values: what was given, else the blend at half the radius and the clay's own mirror."""
     r = args.get("radius") or RADIUS
     values = {"step": "piece", "shape": shape, "at": args["at"], "radius": r, "mode": args.get("mode") or "add",
               "blend": args["blend"] if args.get("blend") is not None else round(r * 0.5, 6),
-              "symmetry": args.get("symmetry") or clay["symmetry"], "name": args.get("name") or ""}
+              "symmetry": args.get("symmetry") or clay["symmetry"], "name": args.get("name") or "",
+              "layer": layer_of(clay, args)}
     if shape == "capsule":
         values["to"] = args["to"]
     return values
@@ -44,13 +50,13 @@ def stroke_values(clay: dict, args: dict) -> dict:
               for k, own in STROKE_FROM_CLAY.items()}
     values["invert"] = bool(args.get("invert"))
     values.update({k: args[k] for k in (*PATHS, "dir") if args.get(k)})
-    return {"step": "stroke", "name": args.get("name") or "", **values}
+    return {"step": "stroke", "name": args.get("name") or "", "layer": layer_of(clay, args), **values}
 
 
 def _shared(clay: dict, args: dict, size: float) -> dict:
     blend = args["blend"] if args.get("blend") is not None else round(min(BLEND_SHARE * size, BLEND_CAP), 6)
     return {"mode": args.get("mode") or "add", "blend": blend, "symmetry": args.get("symmetry") or clay["symmetry"],
-            "name": args.get("name") or ""}
+            "name": args.get("name") or "", "layer": layer_of(clay, args)}
 
 
 def _lump(clay: dict, args: dict, points) -> dict:

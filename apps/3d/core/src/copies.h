@@ -45,6 +45,7 @@ struct Params {
   std::vector<bool> pathClosed;
   bool alongPath = true;
   double pathShift = 0;
+  std::vector<double> slide;    // (v1.32) a keyed Slide: pathShift per frame of the shot (empty: still)
   std::string seenBy;           // camera id: only the copies it sees are drawn ("" = all)
   int seenW = 1920, seenH = 1080;
 };

@@ -228,7 +228,7 @@ def segments(clay: dict, t) -> dict:
     """{joint: (head, tail, length)} in the clay's own space, at rest (t None) or posed at t."""
     chain = skin.bones_of(clay)
     return {b.get("joint", b["id"]): (s[:3], s[3:], float(b.get("length", 0.0)))
-            for m, (b, _) in zip(skin.transforms(chain, t), chain) for s in [skin.segment(m, b)]}
+            for m, (b, _) in zip(skin.transforms(chain, t, []), chain) for s in [skin.segment(m, b)]}
 
 
 def sculpt_posed(w: Walk, clay: str, report: dict):

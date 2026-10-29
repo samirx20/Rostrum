@@ -13,7 +13,22 @@ Column {
     readonly property var steps: viewport.clay.stepsObj
     readonly property int shown: Math.min(steps.count, 8)
 
-    Text { objectName: "clayStepsHead"; text: "Steps"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+    Item {
+        width: box.inner; height: Math.max(head.implicitHeight, newLayer.height)
+        Text { id: head; objectName: "clayStepsHead"; anchors.verticalCenter: parent.verticalCenter; text: "Steps"
+               color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+        Text {      // a sculpt layer: the strokes after it go on it, with an Amount (ClayLayers.qml)
+            id: newLayer
+            objectName: "clayLayerAdd"
+            anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+            text: "+ Layer"; color: layerArea.containsMouse ? Theme.fg : Theme.fg2
+            font.family: uiFont; font.pixelSize: Theme.label
+            height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
+            MouseArea { id: layerArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor; onClicked: viewport.clay.layersObj.add() }
+            HoverTip { text: "New sculpt layer"; help: "The next strokes go on it, with an Amount to dial them in and out."; hovered: layerArea.containsMouse }
+        }
+    }
     Item { width: 1; height: Theme.gap }
     ListView {
         id: list

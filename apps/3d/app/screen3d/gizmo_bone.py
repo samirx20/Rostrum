@@ -7,6 +7,7 @@ the one already there changed). Never the still value, which would move the rest
 """
 from __future__ import annotations
 
+from rostrum_core.keys import layers
 from rostrum3d import aim, skin, through
 
 from . import gizmo as G
@@ -29,7 +30,7 @@ def frame(doc, bone: dict, values: dict, scene: dict, frame_no: int, t: float):
     chain = skin.bones_of(doc.item(mesh))
     at = next(i for i, (b, _) in enumerate(chain) if b["id"] == bone["id"])
     parent = chain[at][1]
-    carrier = aim.compose(world, skin.transforms(chain, t)[parent]) if parent >= 0 else world
+    carrier = aim.compose(world, skin.transforms(chain, t, layers.stack_of(doc.data))[parent]) if parent >= 0 else world
     return G.item_frame(carrier, values)
 
 

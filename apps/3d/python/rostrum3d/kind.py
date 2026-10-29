@@ -23,11 +23,11 @@ from rostrum_core.tree import walk
 from rostrum_core.errors import codes
 from rostrum_core.keys import layers as anim_layers
 
-from . import clay_dabs, clay_fields, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
+from . import clay_dabs, clay_fields, clay_layers, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
 
 LISTS = anim_layers.with_lists({**F.LISTS, **rostrum_paint.LISTS})   # a mesh is a paint canvas (the shared kit); doc › animLayers
 HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",),
-         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS,
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), "sculptLayers": ("claylayer",), **rostrum_paint.HOLDS,
          **anim_layers.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
@@ -127,7 +127,7 @@ def check(data: dict) -> list[str]:
         if stray:                                        # e.g. a re-run that gave an id another kind (light → mesh)
             problems.append(f'{t} {item["id"]}: has {", ".join(stray)}, which a {t} does not have (did a script give '
                             f'the id "{item["id"]}" to a different kind of thing? Use a new id for the new kind)')
-        if t in (*F.KEYED, "material") and not PRIM_ID.match(item["id"]):
+        if t in (*F.KEYED, "material") and t != "claylayer" and not PRIM_ID.match(item["id"]):   # a sculpt layer is no prim
             problems.append(f'id "{item["id"]}": a {t} id is letters, digits and _ only, not starting with a digit')
         if t in F.KEYED:
             _check_keys(item, problems)
@@ -155,6 +155,7 @@ def check(data: dict) -> list[str]:
             by_id = {i["id"]: i for i in everything}               # a step made from an item names it (CL3)
             for step in item.get("steps", []):
                 clay_fields.check_step(item, step, problems, by_id)
+            clay_layers.check(item, problems)
         if t in ("mesh", "clay"):
             paint_fields.check_strokes(item, problems)
         if t == "mesh" and item.get("mirror"):

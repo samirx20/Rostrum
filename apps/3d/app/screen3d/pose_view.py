@@ -21,15 +21,16 @@ def chain_of(clay: dict) -> list[tuple[dict, int]]:
     return skin.bones_of(clay)
 
 
-def transforms(chain, t: float, turns: dict | None = None) -> list:
-    """Each bone's transform in the clay's space at time t, the bones in `turns` turned that way instead."""
+def transforms(chain, t: float | None, stack: list[dict], turns: dict | None = None) -> list:
+    """Each bone's transform in the clay's space at time t as you see it (the document's layer `stack` laid over, None:
+    rest), the bones in `turns` (shown turns, pose_ik's) turned that way instead."""
     if not turns:
-        return skin.transforms(chain, t)
+        return skin.transforms(chain, t, stack)
     out = []
     for bone, parent in chain:
         v = {k: float(bone.get(k, 0.0)) for k in ("x", "y", "z")}
         own = turns.get(bone["id"])
-        m = skin.transforms([(bone, -1)], t)[0] if own is None else             aim.local({**v, **{k: float(own[k]) for k in skin.TURN}, "sx": 1.0, "sy": 1.0, "sz": 1.0})
+        m = skin.transforms([(bone, -1)], t, stack)[0] if own is None else             aim.local({**v, **{k: float(own[k]) for k in skin.TURN}, "sx": 1.0, "sy": 1.0, "sz": 1.0})
         out.append(aim.compose(out[parent], m) if parent >= 0 else m)
     return out
 
@@ -92,11 +93,12 @@ def chip(chain, grabbed: str, turns: dict) -> str:
     return f"{name_of(bones[grabbed])} · {most:.0f}°"
 
 
-def overlay(clay: dict, holds: list[dict], world, view, t: float, w: float, h: float, lit=(),
+def overlay(clay: dict, holds: list[dict], world, view, t: float, stack: list[dict], w: float, h: float, lit=(),
             turns: dict | None = None) -> dict:
-    """{lines: [{a, b, id, joint, lit}], dots: [{p, id, joint}], rings: [{p, bone, at}]} in parts of the viewport."""
+    """{lines: [{a, b, id, joint, lit}], dots: [{p, id, joint}], rings: [{p, bone, at}]} in parts of the viewport: the
+    pose you see at t (the layer `stack` laid over), the same one the picture bends the clay with."""
     chain = chain_of(clay)
-    now, rest = transforms(chain, t, turns), skin.transforms(chain)
+    now, rest = transforms(chain, t, stack, turns), skin.transforms(chain)
 
     def at(p):
         q = view.project(aim.point(world, p))

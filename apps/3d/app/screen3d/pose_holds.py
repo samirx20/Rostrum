@@ -73,7 +73,7 @@ class PoseHolds:
         chain = PV.chain_of(it)
         i = next(k for k, (b, _) in enumerate(chain) if b["id"] == d["id"])
         world = through.find_item(sc, it["id"], self.b.frame)[0]
-        head = aim.point(world, PV.transforms(chain, self.b.time)[i][1])
+        head = aim.point(world, PV.transforms(chain, self.b.time, L.layering(self.b)[1])[i][1])
         to = G._on_plane(view, *self._px(x, y), head)
         self._end()
         self.b._guard(lambda: self.b._apply(L.move_joint_calls(it["id"], d["id"], to), f"Move joint {d['joint']}"))
@@ -81,5 +81,6 @@ class PoseHolds:
     def _rest_spot(self, it, bone, local):
         """A drawn spot on the clay back on its rest shape (the engine's own `rest`, when its pick gives one, wins)."""
         chain = PV.chain_of(it)
-        return PV.to_rest(chain, PV.transforms(chain, self.b.time), PV.transforms(chain, None), bone, local)
+        now = PV.transforms(chain, self.b.time, L.layering(self.b)[1])
+        return PV.to_rest(chain, now, PV.transforms(chain, None, []), bone, local)
 

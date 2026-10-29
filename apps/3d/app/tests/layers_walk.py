@@ -3,7 +3,8 @@
 # (the Base); then, by real keys and mouse only (bridge calls only read state to check it):
 #   1. Alt+2 (Animate page), ⧉, + New layer: a layer, chosen.
 #   2. The ball picked, 0.5 typed into its Z: a key ON THE LAYER (the Base's keys untouched); the value shown is 0.5.
-#   3. The layer's weight slider dragged to about half: ONE undo step, weight ~0.5.
+#   3. The layer's weight slider dragged down past half and back to half in one drag: the slider lives through the whole
+#      drag (its row updates in place), ONE undo step, weight ~0.5.
 #   4. Its on switch clicked: off. 5. Ctrl+Z: on again.
 # Pictures after each step go to the out folder. Not collected by pytest:
 #   <venv python> apps\3d\app\tests\layers_walk.py --out <folder>
@@ -21,6 +22,7 @@ import clay_walk as W  # noqa: E402  (puts this checkout's code first; its real-
 
 from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
+import shiboken6  # noqa: E402
 from rostrum_core import Document, Who  # noqa: E402
 from rostrum_core.keys import keys_of  # noqa: E402
 from rostrum3d import KIND  # noqa: E402
@@ -111,14 +113,18 @@ def main():
         n0 = len(doc.history.changes)
         if sl is not None:
             y = sl.height() / 2
-            a0 = sl.mapToScene(QPointF(sl.width() * 0.97, y)).toPoint()
-            a1 = sl.mapToScene(QPointF(sl.width() * 0.5, y)).toPoint()
+            a0, a1, a2 = (sl.mapToScene(QPointF(sl.width() * f, y)).toPoint() for f in (0.97, 0.2, 0.5))
             QTest.mouseMove(win, a0)
             QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a0)
-            for i in range(1, 9):
-                QTest.mouseMove(win, QPoint(a0.x() + (a1.x() - a0.x()) * i // 8, a0.y()))
-                W.pump(0.03)
-            QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, a1)
+            for frm, to in ((a0, a1), (a1, a2)):           # down past half, then back: the drag must live through its own changes
+                for i in range(1, 9):
+                    QTest.mouseMove(win, QPoint(frm.x() + (to.x() - frm.x()) * i // 8, frm.y()))
+                    W.pump(0.03)
+                if to is a1:
+                    mid = layers()[0].get("weight", 1.0) if layers() else None
+                    W.check(mid is not None and mid < 0.35, f"mid-drag: the weight follows the pointer ({mid})")
+            W.check(shiboken6.isValid(sl), "the weight slider is the same one all through the drag (its row updated in place)")
+            QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, a2)
             W.pump(0.5)
         w = layers()[0].get("weight", 1.0) if layers() else None
         W.check(w is not None and 0.35 < w < 0.65, f"the weight is about half ({w})")

@@ -55,8 +55,9 @@ COPIES = [
            "(a word: copies round every letter). Where it is at the shot's start counts; hide it if only the copies should show"),
     T("alongPath", "Face along it", "Copies", True, S, PATH,
       help="Each copy turns so its +X runs along the path and its up stands out of the path's flat side (off: as the source stands)"),
-    N("pathShift", "Slide", "Copies", 0, 1, 0.01, "", S, PATH, default=0.0,
-      help="Slides every copy along the path by this share of its length (1 = once round)"),
+    N("pathShift", "Slide", "Copies", -1000, 1000, 0.01, "", S, PATH, default=0.0,
+      help="Slides every copy along the path by this share of its length (1 = once round, 2 = twice); key it and the "
+           "copies travel along the word over time"),
     T("faceOut", "Face outward", "Copies", True, S, CIRCLE, help="Each copy turns to face away from the middle"),
     X("surface", "Surface", "Copies", "", P, SURFACE, refers="item",
       help="The item the copies are scattered over (a plane, a mesh, a clay, an import)"),
@@ -114,7 +115,8 @@ EFFECTOR = [
     C("colour", "Colour", "Change near", "#ff6a3d", P, IS("kind", "colour")),
 ]
 
-STILL = {"copies": {p.name for p in COPIES if p.type == "number" and p.name not in {q.name for q in TRANSFORM}},
+KEYABLE = {"pathShift"}                       # copies numbers that may move over time (the core lays the path out per frame)
+STILL = {"copies": {p.name for p in COPIES if p.type == "number" and p.name not in {q.name for q in TRANSFORM} | KEYABLE},
          "effector": {"kind", "near", "field", "seed", "falloff", "axis"}}
 STARTING_AMOUNT = {"scale": 0.5, "turn": 30.0, "push": 0.2, "move": 0.2, "colour": 1.0}   # a new effector's amount when none is given (hide has none)
 
