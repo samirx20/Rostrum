@@ -39,10 +39,12 @@ to an arm tall. Units are metres, degrees and seconds; y is up; the camera stand
 - **Light.** Your lights add to the start key and rim (`replace_start_lights=True` takes them out, and the reply
   says so). `brightness=` is in stops against the start key on its subject: 0 the same, +1 twice, −1 half.
 - **Pose.** A character is ONE clay (`c.lump(...)` pieces), posed by its joints:
-  `c.pose(t, **{"picture-right hand": {"up": 0.22, "out": -0.15}})`, one call per time (a world point or up / out /
-  forward metres from rest; "left hand", "hand.R" and "picture-left hand" all work; the reply notes a target out of
-  reach). A wave reads only when big and repeated: the hand over the head, swinging about half the figure's height,
-  three times or more, to the shot's end (guide `posing` › For agents); or
+  `c.pose(t, **{"picture-right hand": {"up": 0.17, "out": -0.11, "forward": 0.06}})`, one call per time (a world point
+  or up / out / forward metres from rest; "left hand", "hand.R" and "picture-left hand" all work; the reply notes a
+  target out of reach; the arm is kept clear of the head, `clear=0` lets it touch). A wave reads only when big and
+  repeated: the hand beside the head and a little forward, swinging a good share of the figure's height, three times
+  or more, to the shot's end, turning points every 0.35 s, not 0.5 or 1 s (stills one second apart catch the same
+  pose; guide `posing` › For agents); or
   `c.bend("arm.R", {0: (0, 0, 0), 1: (0, 0, -80)})` (guide `posing`).
 - **At a pixel.** `edit_place_on` with a pixel `x`, `y` of the picture you were just shown (and its `width`): a mesh
   stands on the surface there (an eye on a face); `what: "highlight"` aims a light so its shine lands there.

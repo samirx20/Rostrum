@@ -52,8 +52,10 @@ hard way (they have to be kept touching and moved together by hand).
 
 ```python
 c = clay("buddy", radius=0.07, material=material("body", start="clay", baseColor="#e07a3f"))   # middle at 0.07 high
-c.lump((0, 0.195, 0), 0.055, name="head")                       # overlaps the body: a neck forms between
-c.lump((0.055, 0.11, 0), 0.02, to=(0.13, 0.07, 0), name="arm")  # from inside the body, out and a little down
+c.lump((0, 0.175, 0), 0.055, name="head", blend=0.012)          # overlaps the body: a neck forms between
+c.lump((0.06, 0.095, 0), 0.02, to=(0.17, 0.02, 0), name="arm")  # from inside the body, out and down, clear of the head
+c.lump((0.035, 0.015, 0), 0.026, to=(0.04, -0.04, 0), name="leg")             # legs: the figure stands on them
+c.lump((0.042, -0.048, 0.012), 0.02, to=(0.045, -0.05, 0.045), name="foot")   # feet pointing forward
 ```
 
 Then `look_frame` (`shot: "shot_1"`), and `look_frame` with `what: "shape"` (`target: "buddy"`) for its outline and size in numbers.
@@ -84,10 +86,10 @@ would make, the reply says so (`spotSize`, about a sixth of the body's width at 
 ### 4. The wave: bend the joints at several times
 
 In the script, after the last piece: `c.bend(joint, {seconds: (x, y, z)})` turns a joint by those degrees about the
-clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(seconds, **{"picture-right hand": {"up": 0.22, "out": -0.15}})`
+clay's own X, Y, Z (it faces +Z) from its rest, at each time; `c.pose(seconds, **{"picture-right hand": {"up": 0.17, "out": -0.11, "forward": 0.06}})`
 moves a part's end at that time instead (a world point, or up / out / forward metres from its rest; for a wave that
-reads, the hand goes over the head and swings about half the figure's height, three times or more, to the shot's
-end: guide `posing` › For agents; "picture-left hand" names the hand on the picture's left; the reply notes a target out of reach). The first one finds the joints from the shape (with the engine):
+reads, the hand goes beside the head, a little forward, and swings a good share of the figure's height, three times
+or more, to the shot's end, turning points every 0.35 s, not 0.5 or 1 s, so stills one second apart differ: guide `posing` › For agents; "picture-left hand" names the hand on the picture's left; the reply notes a target out of reach). The first one finds the joints from the shape (with the engine):
 `body`, `chest`, `head`, `arm.L` / `forearm.L`, `foot.L` …; `.R` is the character's right, the −x side, on the
 picture's left. A wrong joint name fails with the list of the ones it has.
 
