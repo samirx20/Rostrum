@@ -75,10 +75,6 @@ impl Readback {
         }
     }
 
-    pub fn in_flight(&self) -> usize {
-        self.pending.len()
-    }
-
     /// Queues the copy of framebuffer `fbo` (width × height, 8-bit or half-float RGBA) into the next buffer.
     /// The caller has submitted the frame's drawing and resets Skia's GL state afterwards.
     pub fn start(&mut self, fbo: u32, width: u32, height: u32, half: bool) {

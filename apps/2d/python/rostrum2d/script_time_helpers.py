@@ -81,8 +81,18 @@ def helpers(build) -> dict:
 
     def stagger(items, every=0.1, start=0.0):
         """[(time, item), …]: the first at `start`, each next `every` seconds later (marker times when start is one)."""
+        if isinstance(every, bool) or not isinstance(every, (int, float)):
+            raise ValueError(f"stagger(every={every!r}): every is the seconds between two items, a number like 0.15")
+        try:
+            items = list(items)
+        except TypeError:
+            raise ValueError(f"stagger({items!r}, …): the first argument is the list of items to space out, e.g. stagger([a, b, c], every=0.2)") from None
+        for i, it in enumerate(items):
+            if isinstance(it, (tuple, list)) and len(it) == 2 and isinstance(it[0], (int, float, T.Time)) and hasattr(it[1], "node"):
+                raise ValueError(f"stagger: item {i} is a (time, item) pair {tuple(it)!r}; stagger gives those pairs, it takes the items "
+                                 f"alone: stagger([a, b, c], every=0.2, start=1) -> [(1, a), (1.2, b), (1.4, c)]")
         t0 = _time(build, start, "stagger(start=…)")
-        return [(t0 + round(i * float(every), 6) if isinstance(t0, T.Time) else round(t0 + i * float(every), 6), it)
+        return [(t0 + round(i * every, 6) if isinstance(t0, T.Time) else round(t0 + i * every, 6), it)
                 for i, it in enumerate(items)]
 
     return {"marker": marker, "after": after, "stagger": stagger}

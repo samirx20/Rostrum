@@ -15,12 +15,24 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
 ```
 
 - `row(id, …)` lays its layers left to right, `column` top to bottom, `grid(columns=3)` in cells, `stack` on top of
-  each other (each placed by `align` / `justify`: a label centred on a pill). Each is a group with a `layout`, so
+  each other (a label centred on a pill, a title in a card's corner). Each is a group with a `layout`, so
   `layer("menu")` keys, moves and restyles it like any group, and the settings panel shows the same fields.
 - The box's words: `padding` (`padding_x`, `padding_y` for one axis), `gap` (`row_gap` between wrapped lines or grid
   rows), `justify` along the line (`start`, `center`, `end`, `between`, `around`, `evenly`), `align` across it
   (`start`, `center`, `end`, `stretch`, `baseline`), `wrap=True`, `columns=3` or `columns="1fr 2fr 200px"`,
   `bg="#hex"` and `radius` (its own background), `overflow="hidden"` (cut what runs past its edge; visible at first).
+- **Which way `justify` and `align` act**, as CSS flexbox, always inside the padding:
+
+  | box | `justify` moves its layers | `align` moves its layers |
+  |---|---|---|
+  | `row` | left ↔ right (`start` = left) | top ↕ bottom (`start` = top) |
+  | `column` | top ↕ bottom (`start` = top) | left ↔ right (`start` = left) |
+  | `stack` | left ↔ right, as a row (`start`, `center`, `end`) | top ↕ bottom, as a row |
+
+  So a title in a card's bottom-left corner is `stack(…, justify="start", align="end")`; top-right is
+  `justify="end", align="start"`; dead centre is `justify="center", align="center"`. A box's `align` starts at
+  `stretch`: a text stretched down its box keeps its lines at the top, so it looks the same as `align="start"`.
+  A layer is placed by its whole box (a text by its measured lines), whatever its anchor.
 - Sizes, on a box and on a shape or image: `w=` / `h=` take px (`320`), a share of the parent box (`"50%"`), `"fill"`
   (the room the parent leaves) or, on a box, `"fit"` (hug what is inside; the default).
 - **Leave a box's or a card's `h` out** unless the design needs that exact height: left out, it grows to fit its words,

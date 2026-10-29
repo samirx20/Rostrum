@@ -54,8 +54,27 @@ def _same_shot(a, b, w: float) -> bool:
             and abs(a[2] / (b[2] or 1) - 1) < FRAMING_SAME * 2 and abs(a[3] - b[3]) < 0.5)
 
 
+def camera_travel(shots_in: list[tuple | None]) -> dict:
+    """How far the camera went from its first shot over `shots_in`: {"px": most centre travel, "zoom": most zoom change in %,
+    "turn": most roll in degrees}. All zero only when no key changed anything."""
+    got = [s for s in shots_in if s is not None]
+    if not got:
+        return {"px": 0.0, "zoom": 0.0, "turn": 0.0}
+    a = got[0]
+    return {"px": max(((s[0] - a[0]) ** 2 + (s[1] - a[1]) ** 2) ** 0.5 for s in got),
+            "zoom": max(abs(s[2] / (a[2] or 1) - 1) * 100 for s in got), "turn": max(abs(s[3] - a[3]) for s in got)}
+
+
+def _moved_words(m: dict) -> str:
+    """What the camera did, in the units it was measured: "drifts 40 px", "drifts 40 px and zooms 3 %"."""
+    bits = [f"drifts {m['px']:.3g} px" if m["px"] >= 0.05 else "", f"zooms {m['zoom']:.2g} %" if m["zoom"] >= 0.05 else "",
+            f"turns {m['turn']:.2g}°" if m["turn"] >= 0.05 else ""]
+    return " and ".join(b for b in bits if b)
+
+
 def framing(comp: dict, times: list[float], step: float) -> list[dict]:
-    """Stretches of HOLD_FRAMING_S or more where the frame neither moves nor cuts (measured from each stretch's first shot)."""
+    """Stretches of HOLD_FRAMING_S or more where the frame neither jumps nor moves much (measured from each stretch's first
+    shot). It says what the camera did there: nothing at all, or its total travel (a slow drift is a move, only a small one)."""
     w, _ = comp_size(comp)
     got, held, anchor = shots(comp, times), [], None
     for s in got:
@@ -65,11 +84,16 @@ def framing(comp: dict, times: list[float], step: float) -> list[dict]:
     held = [h or (i + 1 < len(held) and held[i + 1]) for i, h in enumerate(held)]     # the stretch's first sample is in it too
     whole = got[0] is None and all(s is None for s in got)
     out = []
-    for t0, t1, _, _ in _runs(times, held, step, HOLD_FRAMING_S):
+    for t0, t1, a, b in _runs(times, held, step, HOLD_FRAMING_S):
         everything = t0 <= times[0] + 1e-9 and t1 >= times[-1] + step - 1e-9
-        say = ("the framing never changes: no camera move or cut in the whole film" if everything else
-               "the framing holds still (no camera move or cut)") + (" (the scene has no frame/camera)" if whole else "")
-        out.append({"kind": "framing_held", "start": t0, "end": t1, "text": f"{_span(t0, t1)}: {say}"})
+        move = camera_travel(got[a:b + 1])
+        if not _moved_words(move):
+            say = ("the framing never changes: no camera move or cut in the whole film" if everything else
+                   "the framing holds still (no camera move or cut)") + (" (the scene has no frame/camera)" if whole else "")
+        else:
+            say = f"the camera {_moved_words(move)} over {_span(t0, t1)}; no cut" + (" in the whole film" if everything else "")
+        out.append({"kind": "framing_held", "start": t0, "end": t1, "text": f"{_span(t0, t1)}: {say}",
+                    "camera_px": round(move["px"], 2), "camera_zoom_pct": round(move["zoom"], 2), "camera_turn_deg": round(move["turn"], 2)})
     return out
 
 

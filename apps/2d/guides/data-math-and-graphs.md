@@ -64,13 +64,12 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 ## Typeset equations (fractions, sums, roots)
 
 `math_text` typesets LaTeX-style maths into **ordinary path layers**: one path per symbol and per rule (a fraction bar and
-a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on. Write the formula as a raw string (`r"..."`) so `rac` keeps its backslash, and close every `\left` with a `
-ight` and every `{` with a `}`: a piece typeset on its own (to highlight one term) must be balanced by itself, so cut the formula between terms, not inside a bracket pair.
+a root's bar are paths too), held in a group. Nothing special to animate: key them, colour them, move them, draw them on. Write the formula as a raw string (`r"..."`) so `\frac` keeps its backslash, and close every `\left` with a `\right` and every `{` with a `}`: a piece typeset on its own (to highlight one term) must be balanced by itself, so cut the formula between terms, not inside a bracket pair.
 
 ```python
 comp("eq", width=1920, height=1080, fps=30, duration=5, background="#0c0d12")
 eq = math_text("fourier", r"f(x)=\frac{4}{\pi}\sum_{k=1}^{\infty}\frac{\sin((2k-1)x)}{2k-1}",
-               x=240, y=380, size=110, color="#f4f1ea")      # x, y: the formula's top-left; size: font size in px
+               x=960, y=440, size=110, color="#f4f1ea")      # x, y: its centre (its anchor); size: font size in px
 
 for i, part in enumerate(eq.parts):                           # reveal left to right
     part.key("opacity", {0.3 + i * 0.05: 0, 0.5 + i * 0.05: 1})
@@ -79,7 +78,7 @@ for part in eq.find("bar") + eq.find("sum"):                  # colour a kind of
 for part in eq.span(6, 8):                                    # a term (parts 6 to 8 here: the 4 over pi), by its numbers
     part.key("fill", {3.0: "#f4f1ea", 3.4: "#5ec8ff"})
 
-w = math_text("write", r"E=mc^2", x=240, y=800, size=140, fill="none", stroke=True, strokeColor="#f4f1ea", strokeWidth=3)
+w = math_text("write", r"E=mc^2", x=960, y=820, size=140, fill="none", stroke=True, strokeColor="#f4f1ea", strokeWidth=3)
 for i, part in enumerate(w.parts):                            # write-on: each symbol's outline draws, one after another
     part.key("trimEnd", {1.0 + i * 0.3: 0, 1.6 + i * 0.3: 1})
 ```
@@ -97,8 +96,10 @@ for i, part in enumerate(w.parts):                            # write-on: each s
   stroke off (`strokeWidth` → 0) to let the letters fill in.
 - **Move or morph:** each part is a path: key `x`, `y` to slide a term (the rest stays), or move the whole group. To turn one
   equation into another, fade matching symbols (same `find` name) and slide them to their new places.
-- **Place it:** the group's box is the formula's size, so `eq.w`, `eq.h` give it; to centre on the comp,
-  `x=(1920 - w) / 2` needs w first: make it once at x=0, read `eq.w`, and set `eq.x = 960` (the group's anchor is its centre).
+- **Place it:** the group's box is the formula's size, so `eq.w`, `eq.h` give it. Like every layer, `x`, `y` (in the call
+  or `eq.x`, `eq.y` later) place its **anchor**, its centre unless `anchor=` says otherwise, and with neither it sits at its
+  parent's centre. So `x=960, y=540` centres it on a 1920 × 1080 comp whatever its size; `anchor="top-left", x=240`
+  starts it 240 px from the left.
 - Outside a script the operation `math.add` (`tex`, `x`, `y`, `size`, `color`, `id`) makes the same group.
 
 ## Morphing one function into another

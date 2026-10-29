@@ -76,6 +76,9 @@ Only the settings that apply to the chosen format are shown.
    composition's own settings, the quality and a new version of the app count for every piece. Change one 6-second
    section of a 70-second film and the next export draws about 6–8 seconds. Agents: the reply says it, such as
    "Re-rendered 3 of 35 segments (6 s), the rest reused; took 41 s", and its `segments` has the numbers.
+   **A held moment costs almost nothing.** A frame where nothing on screen changes from the frame before (no key,
+   no motion blur, no grain or video moving) is not drawn again: the MP4 gets the same picture again, the same pixels.
+   Only the moving seconds cost drawing time.
 8. Agents: an MP4 export (`format: "mp4"`, or `what: "video"`) **returns at once** with a job id and draws in the
    background from a copy of the document taken at the call, so edits made meanwhile are not in that file. Keep working
    and ask `inspect_job` with the id (`wait_s` up to 25) for its progress and, once done, the finished reply. To wait in

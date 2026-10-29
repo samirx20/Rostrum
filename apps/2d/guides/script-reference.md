@@ -25,6 +25,9 @@ document
 - Copy a comp with everything in it with `comp.duplicate` (the copy lands right after it, named "<name> copy"), put comps in order with `comp.move` (`index` 0 = first), delete a throw-away comp with `comp.remove` (never the last one; Undo brings it back). A comp added without a name is numbered: "Scene 2", "Scene 3". Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
 - A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`, `shutter` (motion blur, degrees; 0 = off; see frame-parallax-motion-blur). A layer's `x`, `y` is where its **anchor** sits
   in its parent (comp px, 0,0 top-left; or the group's box). **Leave `x`, `y` out and it sits at its parent's centre.**
+  **To centre** a layer by hand, put its anchor on the middle: `x = width / 2` (960 on a 1920-wide comp), whatever its
+  size; `(1920 - w) / 2` is the left edge for a centred box, right only with `anchor="top-left"`. A `row` / `column` /
+  `grid` / `stack` given `x`, `y` is the one case whose anchor is its top-left (a box laid out from its corner).
   The anchor by name: `anchor="top-left"`, `"top"`, `"left"`, `"center"` (the default), `"bottom-right"` … or a pair
   `anchor=(0, 1)`; as numbers `anchorX`/`anchorY`, 0 to 1 across the box.
   To turn round a known spot, `item.pivot(x, y)` puts the anchor on that comp point and nothing moves (any layer; the
