@@ -1,4 +1,4 @@
-//!   rostrum2d-render encode-mp4 [--tagged] <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
+//!   rostrum2d-render encode-mp4 [--tagged] [--nv12] [--keep=<folder>] <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
 //!   rostrum2d-render encode-mp4 --check     exit 0 when this computer can write MP4, else the reason on stderr
 //! RGBA8 frames (straight alpha, the framing of encode_cmd.rs) → an H.264 MP4 through the operating system's own
 //! encoder, never libx264 (GPL). Windows: Media Foundation's sink writer, the GPU's encoder when there is one, else
@@ -8,6 +8,10 @@
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
+//! `--nv12`: frames come as NV12 (w×h×3/2 bytes, nv12.rs's own conversion, made by the sender) instead of RGBA8.
+//! `--keep=<folder>` (with `--tagged`; files wait in that folder while written): an export's held encoder (sink.rs): it stays running across an export's parts and
+//! exports, a 2 mark followed by a path saves the frames so far as that file, and the next file's writer is made ahead
+//! (its 2-4 s start, the graphics card's encoder, taken while the file before encodes). See `mf::write`.
 //! `--tagged`: each frame comes after a byte, 0 for a picture that follows, 1 for the picture before it again (sink.rs:
 //! a still stretch of an export costs no bytes in the pipe and no conversion; the encoder gets the same frame again).
 //! A thread reads the next frame while this one converts and writes the one before (three buffers going round); at the end
@@ -44,8 +48,15 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if args.first().map(String::as_str) == Some("--check") {
         return Ok(0);
     }
-    let tagged = args.first().map(String::as_str) == Some("--tagged");
-    let args = &args[tagged as usize..];
+    let flags = args.iter().take_while(|a| a.starts_with("--")).count();
+    let flag = |f: &str| args[..flags].iter().any(|a| a == f);
+    let (tagged, nv12) = (flag("--tagged"), flag("--nv12"));
+    // --keep=<folder>: where the files being written wait (Rostrum's cache, never the person's export folder)
+    let keep: Option<String> = args[..flags].iter().find_map(|a| a.strip_prefix("--keep=").map(String::from));
+    if keep.is_some() && !tagged {
+        return Err("--keep needs --tagged (its save marks are tagged)".into());
+    }
+    let args = &args[flags..];
     let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]")?;
     let (w, h) = (num(args, 1, "width")?, num(args, 2, "height")?);
     let (fps, kbps) = (num(args, 3, "fps")?, num(args, 4, "bitrate (kbps)")?);
@@ -59,8 +70,9 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if quality.is_some_and(|q| !(1..=100).contains(&q)) {
         return Err(format!("quality is 1 to 100; got {}", quality.unwrap()));
     }
-    let done = mf::write(out, w, h, fps, kbps, quality, tagged); // the writer is released here, so the file can be removed
-    if done.is_err() {
+    let kept = keep.is_some();
+    let done = mf::write(out, w, h, fps, kbps, quality, tagged, nv12, keep); // the writer is released here, so the file can be removed
+    if done.is_err() && !kept {   // a kept encoder's files were saved whole, or are its own hidden ones (removed)
         let _ = std::fs::remove_file(out);
     }
     done
@@ -152,7 +164,9 @@ mod mf {
                 }
                 None => p.SetUINT32(&CODECAPI_AVEncCommonRateControlMode, eAVEncCommonRateControlMode_UnconstrainedVBR.0 as u32)?,
             }
-            p.SetUINT32(&CODECAPI_AVEncCommonQualityVsSpeed, 100)?;
+            // ROSTRUM2D_MP4_SPEED (0-100, to measure): the encoder's quality-vs-speed; 100, its best, unless set.
+            let qvs = std::env::var("ROSTRUM2D_MP4_SPEED").ok().and_then(|v| v.trim().parse::<u32>().ok()).unwrap_or(100).min(100);
+            p.SetUINT32(&CODECAPI_AVEncCommonQualityVsSpeed, qvs)?;
             p.SetUINT32(&CODECAPI_AVEncMPVGOPSize, fps * 2)?;
             Ok(p)
         }
@@ -185,82 +199,187 @@ mod mf {
         }
     }
 
-    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>, tagged: bool) -> Result<u32, String> {
+    /// What the writer is made with (a file's settings; `open` makes one writer from them).
+    #[derive(Clone, Copy)]
+    pub struct Spec {
+        pub w: u32,
+        pub h: u32,
+        pub fps: u32,
+        pub kbps: u32,
+        pub quality: Option<u32>,
+    }
+
+    /// One MP4 being written: the writer, its stream, the file it writes.
+    struct Open {
+        writer: IMFSinkWriter,
+        stream: u32,
+        path: String,
+    }
+    // Media Foundation's writer is free-threaded in this process's multithreaded COM: a spare is made on another thread.
+    unsafe impl Send for Open {}
+
+    /// A writer for `path`, started (BeginWriting): the costly step, 2-4 s with the graphics card's encoder.
+    fn open(path: &str, sp: Spec) -> Result<Open, String> {
         unsafe {
+            let attrs = step("making the writer's settings", attributes(2))?;
+            step("allowing the GPU's encoder", attrs.SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, 1))?;
+            step("choosing the MP4 container", attrs.SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4))?;
+            let wide: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+            let writer = step(format!("creating {path} (MFCreateSinkWriterFromURL)"),
+                MFCreateSinkWriterFromURL(PCWSTR(wide.as_ptr()), None::<&IMFByteStream>, &attrs))?;
+            let output = step("describing the H.264 output", output_type(sp.w, sp.h, sp.fps, sp.kbps))?;
+            let input = step("describing the NV12 input", input_type(sp.w, sp.h, sp.fps))?;
+            let params = step("making the encoder's settings", encoder_settings(sp.fps, sp.quality))?;
+            let stream = step("adding the H.264 stream (AddStream)", writer.AddStream(&output))?;
+            step("connecting the encoder to NV12 frames (SetInputMediaType)", writer.SetInputMediaType(stream, &input, &params))?;
+            step("starting to write (BeginWriting)", writer.BeginWriting())?;
+            Ok(Open { writer, stream, path: path.to_string() })
+        }
+    }
+
+    /// What the reading thread hands on: a picture, the one before again (`--tagged` 1), or "save the frames so far as
+    /// this file" (`--keep` 2).
+    enum Got {
+        Pic(Vec<u8>),
+        Again,
+        Save(String),
+    }
+
+    /// The next writer, being made (`--keep`): the next file starts at once, its 2-4 s start taken while this one encodes.
+    struct Spare {
+        dir: std::path::PathBuf,
+        k: u32,
+        making: Option<std::thread::JoinHandle<Result<Open, String>>>,
+    }
+
+    impl Spare {
+        fn arm(&mut self, sp: Spec) {
+            self.k += 1;
+            let path = self.dir.join(format!(".encoding-{}-{}.mp4.partial", std::process::id(), self.k)).to_string_lossy().into_owned();
+            self.making = Some(std::thread::spawn(move || {
+                unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok().map_err(|e| e.to_string())? };
+                open(&path, sp)
+            }));
+        }
+
+        fn take(&mut self) -> Result<Open, String> {
+            self.making.take().ok_or("no next writer was being made")?.join().map_err(|_| "making the next writer panicked".to_string())?
+        }
+    }
+
+    impl Drop for Spare {
+        /// A spare never used: its writer released, its hidden file removed.
+        fn drop(&mut self) {
+            if let Some(Ok(Ok(o))) = self.making.take().map(|t| t.join()) {
+                let path = o.path.clone();
+                drop(o);
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+
+    /// `out`, written from the frames on stdin. `keep` (`--keep`, an export's held encoder): files are written under a
+    /// hidden name in `out`'s folder, and each 2 mark followed by a path (u32 length, little-endian, then UTF-8) saves the
+    /// frames since the one before as that file ("encode-mp4: saved <n> <path>" on stderr) while the next writer, made
+    /// ahead, takes the frames after it; frames never saved are dropped at the end. Returns the frames written (saved).
+    #[allow(clippy::too_many_arguments)]
+    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>, tagged: bool, nv12_in: bool, keep_in: Option<String>) -> Result<u32, String> {
+        unsafe {
+            let t_start = std::time::Instant::now();
             step("starting COM (CoInitializeEx)", CoInitializeEx(None, COINIT_MULTITHREADED).ok())?;
             let mut session = Session { mf: false };
             step("starting Media Foundation (MFStartup)", MFStartup(MF_VERSION, MFSTARTUP_LITE))?;
             session.mf = true;
-
-            let attrs = step("making the writer's settings", attributes(2))?;
-            step("allowing the GPU's encoder", attrs.SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, 1))?;
-            step("choosing the MP4 container", attrs.SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4))?;
-            let wide: Vec<u16> = out.encode_utf16().chain(Some(0)).collect();
-            let writer = step(format!("creating {out} (MFCreateSinkWriterFromURL)"),
-                MFCreateSinkWriterFromURL(PCWSTR(wide.as_ptr()), None::<&IMFByteStream>, &attrs))?;
-
-            let output = step("describing the H.264 output", output_type(w, h, fps, kbps))?;
-            let input = step("describing the NV12 input", input_type(w, h, fps))?;
-            let params = step("making the encoder's settings", encoder_settings(fps, quality))?;
-            let stream = step("adding the H.264 stream (AddStream)", writer.AddStream(&output))?;
-            step("connecting the encoder to NV12 frames (SetInputMediaType)", writer.SetInputMediaType(stream, &input, &params))?;
-            step("starting to write (BeginWriting)", writer.BeginWriting())?;
-            eprintln!("encode-mp4: encoder {}", encoder_name(&writer, stream));
+            let t_mf = t_start.elapsed().as_secs_f64();
+            let sp = Spec { w, h, fps, kbps, quality };
+            let keep = keep_in.is_some();
+            let dir = std::path::PathBuf::from(keep_in.unwrap_or_default());
+            if keep {
+                std::fs::create_dir_all(&dir).map_err(|e| format!("the encoder's folder {}: {e}", dir.display()))?;
+            }
+            let mut spare = Spare { dir, k: 0, making: None };
+            let mut file = if keep {
+                spare.arm(sp);
+                let first = spare.take()?;
+                spare.arm(sp);
+                first
+            } else {
+                open(out, sp)?
+            };
+            eprintln!("encode-mp4: encoder {}", encoder_name(&file.writer, file.stream));
+            eprintln!("encode-mp4: started in {:.2} s (Media Foundation {t_mf:.2} s, the writer and its encoder {:.2} s)",
+                      t_start.elapsed().as_secs_f64(), t_start.elapsed().as_secs_f64() - t_mf);
 
             let (wu, hu) = (w as usize, h as usize);
             let size = wu * hu * 3 / 2;
             // A thread reads the frames (three buffers going round) while this one converts and encodes the one before,
             // so the pipe's time and the encoder's overlap.
-            // None: the picture before again (`--tagged`).
-            let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Option<Vec<u8>>, String>>(3);
+            let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Got, String>>(3);
             let (free, free_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+            // `--nv12`: the frames come as NV12 already (the export's drawing workers convert them side by side, sink.rs).
+            let frame_bytes = if nv12_in { size } else { wu * hu * 4 };
             for _ in 0..3 {
-                let _ = free.send(vec![0u8; wu * hu * 4]);
+                let _ = free.send(vec![0u8; frame_bytes]);
             }
             std::thread::spawn(move || {
                 let mut stdin = std::io::stdin().lock();
                 let mut i = 0u32;
+                let send = |g: Result<Got, String>| full_tx.send(g).is_ok();
                 loop {
                     if tagged {
                         let mut tag = [0u8];
                         match frame(&mut stdin, &mut tag, i) {
                             Ok(true) if tag[0] == 1 => {
-                                if full_tx.send(Ok(None)).is_err() {
+                                if !send(Ok(Got::Again)) {
                                     break;
                                 }
                                 i += 1;
                                 continue;
                             }
+                            Ok(true) if tag[0] == 2 && keep => {
+                                let mut len = [0u8; 4];
+                                let path = frame(&mut stdin, &mut len, i).and_then(|_| {
+                                    let mut b = vec![0u8; u32::from_le_bytes(len) as usize];
+                                    frame(&mut stdin, &mut b, i)?;
+                                    String::from_utf8(b).map_err(|e| format!("a file name that is not UTF-8: {e}"))
+                                });
+                                let bad = path.is_err();
+                                if !send(path.map(Got::Save)) || bad {
+                                    break;
+                                }
+                                continue;
+                            }
                             Ok(true) if tag[0] == 0 => {}
                             Ok(true) => {
-                                let _ = full_tx.send(Err(format!("frame {i}: its mark is {} (0: a picture, 1: the one before again)", tag[0])));
+                                let _ = send(Err(format!("frame {i}: its mark is {} (0: a picture, 1: the one before again, 2 with --keep: save)", tag[0])));
                                 break;
                             }
                             Ok(false) => break,
                             Err(e) => {
-                                let _ = full_tx.send(Err(e));
+                                let _ = send(Err(e));
                                 break;
                             }
                         }
                     }
                     let Ok(mut buf) = free_rx.recv() else { break };
                     match frame(&mut stdin, &mut buf, i) {
-                        Ok(true) => drop(full_tx.send(Ok(Some(buf)))),
+                        Ok(true) => drop(send(Ok(Got::Pic(buf)))),
                         Ok(false) if tagged => {
-                            let _ = full_tx.send(Err(format!("frame {i} ended after its mark, before its picture")));
+                            let _ = send(Err(format!("frame {i} ended after its mark, before its picture")));
                             break;
                         }
                         Ok(false) => break,
                         Err(e) => {
-                            let _ = full_tx.send(Err(e));
+                            let _ = send(Err(e));
                             break;
                         }
                     }
                     i += 1;
                 }
             });
-            let mut n = 0u32;
+            let (mut n, mut saved) = (0u32, 0u32);
             let mut nv12 = vec![0u8; size];
+            let mut have = false; // a picture is in `nv12` (a repeat needs one)
             let (mut waited, mut converted, mut encoded) = (0f64, 0f64, 0f64); // seconds, for the log
             let mut lap = std::time::Instant::now();
             let mut took = |into: &mut f64| {
@@ -270,11 +389,39 @@ mod mf {
             while let Ok(read) = full.recv() {
                 took(&mut waited);
                 // A new picture into NV12 (kept: a repeat is the same NV12 again).
-                if let Some(rgba) = read? {
-                    crate::nv12::from_rgba(&rgba, wu, hu, &mut nv12);
-                    let _ = free.send(rgba);
-                } else if n == 0 {
-                    return Err("frame 0 is marked as the picture before it again; there is none".into());
+                match read? {
+                    Got::Pic(pic) => {
+                        if nv12_in {
+                            nv12.copy_from_slice(&pic);
+                        } else {
+                            crate::nv12::from_rgba(&pic, wu, hu, &mut nv12);
+                        }
+                        let _ = free.send(pic);
+                        have = true;
+                    }
+                    Got::Again if !have => return Err("frame 0 is marked as the picture before it again; there is none".into()),
+                    Got::Again => {}
+                    Got::Save(path) => {
+                        if n == 0 {
+                            return Err(format!("save as {path}: no frames since the file before"));
+                        }
+                        step("finishing the MP4 (Finalize)", file.writer.Finalize())?;
+                        let mut finished = 0.0;
+                        took(&mut finished);
+                        let done = std::mem::replace(&mut file, spare.take()?);
+                        let tmp = done.path.clone();
+                        drop(done);
+                        if std::fs::rename(&tmp, &path).is_err() {
+                            // another drive (or the name is taken): copied over, then the hidden one removed
+                            std::fs::copy(&tmp, &path).map_err(|e| format!("saving {path}: {e}"))?;
+                            let _ = std::fs::remove_file(&tmp);
+                        }
+                        spare.arm(sp);
+                        eprintln!("encode-mp4: {n} frames; waiting for frames {waited:.2} s, converting {converted:.2} s, encoder {encoded:.2} s, finishing {finished:.2} s");
+                        eprintln!("encode-mp4: saved {n} {path}");
+                        (saved, n, waited, converted, encoded) = (saved + n, 0, 0.0, 0.0, 0.0);
+                        continue;
+                    }
                 }
                 let buf = step(format!("frame {n}: MFCreateMemoryBuffer"), MFCreateMemoryBuffer(size as u32))?;
                 let mut p = std::ptr::null_mut();
@@ -289,14 +436,21 @@ mod mf {
                 let at = |i: u32| i as i64 * 10_000_000 / fps as i64;
                 step(format!("frame {n}: SetSampleTime"), sample.SetSampleTime(at(n)))?;
                 step(format!("frame {n}: SetSampleDuration"), sample.SetSampleDuration(at(n + 1) - at(n)))?;
-                step(format!("frame {n}: encoding (WriteSample)"), writer.WriteSample(stream, &sample))?;
+                step(format!("frame {n}: encoding (WriteSample)"), file.writer.WriteSample(file.stream, &sample))?;
                 took(&mut encoded);
                 n += 1;
+            }
+            if keep {
+                // Frames never saved have no file to go to: the hidden one goes with its writer.
+                let tmp = file.path.clone();
+                drop(file);
+                let _ = std::fs::remove_file(tmp);
+                return Ok(saved);
             }
             if n == 0 {
                 return Err("no frames arrived".into());
             }
-            step("finishing the MP4 (Finalize)", writer.Finalize())?;
+            step("finishing the MP4 (Finalize)", file.writer.Finalize())?;
             let mut finished = 0.0;
             took(&mut finished);
             eprintln!("encode-mp4: {n} frames; waiting for frames {waited:.2} s, converting {converted:.2} s, encoder {encoded:.2} s, finishing {finished:.2} s");

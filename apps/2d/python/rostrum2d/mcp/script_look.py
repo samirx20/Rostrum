@@ -14,7 +14,7 @@ from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import film_faults, look_empty, render, review
+from . import film_faults, look_empty, look_quality, render, review
 from .look import SHEET_WIDTH
 from .pick import doc_and_comp
 
@@ -65,8 +65,9 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             tiles = [(t, Path(tmp) / f"t{i}.png") for i, t in enumerate(times)]
             tiny = [(t, Path(tmp) / f"s{i}.png") for i, t in enumerate(samples)]
             step = lambda done, total: job.progress(done, len(tiles) + len(tiny))
-            render.small_stills(ctx.tool, scene, tiles, tile_w, step)
-            render.small_stills(ctx.tool, scene, tiny, look_empty.SAMPLE_W, lambda d, n: step(len(tiles) + d, n))
+            preview = look_quality.samples(look_quality.PREVIEW)      # the canvas's picture: quick on any film
+            render.small_stills(ctx.tool, scene, tiles, tile_w, step, preview)
+            render.small_stills(ctx.tool, scene, tiny, look_empty.SAMPLE_W, lambda d, n: step(len(tiles) + d, n), preview)
             w, h = sheet.contact_sheet([(png, f"{t:.2f} s   f{round(t * fps)}") for t, png in tiles], tile_w, cols, dest)
             pixels = look_empty.scan_pngs(tiny, every, duration) if noting else []
         rows = review.ranked(pixels + found, duration)
@@ -82,7 +83,8 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
         reply.data["look"] = {"job_id": got.data.get("job_id"), "status": got.data.get("status")}
         return reply
     seen = got.data["result"]
-    said = f'\nLook at {comp["id"]}: contact sheet of {len(times)} moments ({", ".join(f"{t:g}" for t in times)} s), {seen["width"]}×{seen["height"]}.'
+    said = f'\nLook at {comp["id"]}: contact sheet of {len(times)} moments ({", ".join(f"{t:g}" for t in times)} s), {seen["width"]}×{seen["height"]}. '
+    said += look_quality.line(comp, look_quality.PREVIEW) + (' (look_frame with quality "final" for one moment.)' if look_quality.blurred(comp) else "")
     reply.summary += said
     reply.data["look"] = seen
     reply.files += got.files

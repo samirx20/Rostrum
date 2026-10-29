@@ -12,8 +12,11 @@ again unless it is the very object described last time, in the same context:
     document's paintings (a painted fill reads its painting): any change of these forgets everything.
 Inputs outside the document that the call can't see (a 3D render finishing, a picture or font appearing on disk) make
 the caller `forget()` (the screen's bridge2d does on a 3D render, a marker move and made paint pictures). A node whose
-making listed paint pictures into `later` is never kept (the pictures come later); its warnings (a placeholder) and
-missing fonts are said again each time it is kept. Layers timed from a marker keep their timed copy between calls
+making listed paint pictures into `later` is kept with those jobs (`pending`): kept, it lists the same jobs into `later`
+again, so the caller still sees what is not made; once the caller has run any of them (`ran`), it is described again
+(a look makes only the pictures of the frames it shows, so a painted film always has some left: before, its drawings
+were described again on every look, ~1-1.6 s). Its warnings (a placeholder) and missing fonts are said again each
+time it is kept. Layers timed from a marker keep their timed copy between calls
 (retime.timed's memo), so they are kept too.
 """
 from __future__ import annotations
@@ -32,6 +35,7 @@ class _Kept:
     inside: dict                    # {id: _Kept} of everything inside it, carried over when it is kept
     warnings: list
     fonts: list                     # (text id, missing font) pairs
+    pending: list                   # the paint-picture jobs its making put in `later` (not made then)
 
 
 class Keeper:
@@ -68,7 +72,10 @@ class Keeper:
             return scene._node(item, fps, baked, where, n, vis)
         key = (n, vis)
         got = self._kept.get(item["id"])
-        if got is not None and got.item is item and got.key == key and self._changed.isdisjoint(got.ids):
+        if got is not None and got.item is item and got.key == key and self._changed.isdisjoint(got.ids) and (
+                not got.pending or where.get("later") is not None):
+            if got.pending:                         # its pictures still to make: listed again, as describing it would
+                where["later"].extend(got.pending)
             if got.warnings:
                 where.setdefault("warnings", []).extend(got.warnings)
             if got.fonts:
@@ -85,13 +92,16 @@ class Keeper:
         finally:
             inside = self._stack.pop()
         self.made += 1
-        if later is not None and len(later) > listed:       # its pictures come later: made again next time
-            if self._stack:
-                self._stack[-1].update(inside)
-            return node
         self._keep(_Kept(item, key, node, frozenset(inside) | {item["id"]}, inside,
-                         where.get("warnings", [])[warned:], list(where.get("missing_fonts", {}).items())[fonts:]))
+                         where.get("warnings", [])[warned:], list(where.get("missing_fonts", {}).items())[fonts:],
+                         list(later[listed:]) if later is not None else []))
         return node
+
+    def ran(self, jobs: list) -> None:
+        """The caller made these pictures (jobs from `later`): every kept node that listed one (and the groups round
+        it, which listed it too) is described again next time, with the made picture in place of its stand-in."""
+        done = {id(j) for j in jobs}
+        self._kept = {k: v for k, v in self._kept.items() if not any(id(j) in done for j in v.pending)}
 
     def _keep(self, got: _Kept):
         """Remember `got` (and what is inside it) for the next call, and in the node being made around it."""

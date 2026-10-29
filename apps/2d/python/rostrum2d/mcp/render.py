@@ -65,11 +65,16 @@ def look_scene(doc, comp_id: str, at: float | None = None, times: list[float] | 
     scene = warm.scene(doc, comp_id, (comp or {}).get("duration", 5.0), times if times is not None else None if at is None else [at])
     if at is None or comp is None:
         return scene
-    try:
-        cut = edge_cut.warnings_at(doc.data, comp, at)
-    except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
-        cut = [f"(The frame-edge check could not run: {e}.)"]
+    cut = edge_warnings(doc.data, comp, at)
     return {**scene, "warnings": [*scene.get("warnings", []), *cut]} if cut else scene
+
+
+def edge_warnings(doc_data: dict, comp: dict, at: float) -> list[str]:
+    """One frame's look: a subject cut by the frame edge at `at`, in words (edge_cut.py); its own failure said, never raised."""
+    try:
+        return edge_cut.warnings_at(doc_data, comp, at)
+    except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
+        return [f"(The frame-edge check could not run: {e}.)"]
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:
@@ -90,21 +95,31 @@ def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=No
         raise _fail(where, "the engine", e) from e
 
 
-def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width: int, progress=None) -> None:
+FAST_PNG = 1       # zlib level of a look's PNG: the same pixels (lossless), written ~4x quicker than PIL's default 6
+
+
+def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width: int, progress=None, samples: int | None = None,
+                 rgb: bool = False) -> list[tuple[int, int]] | None:
     """Draw each (time, png path) `width` px wide: the same frame drawn smaller by the engine (Engine.pixels' scale, as
-    the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. Full width or more: stills."""
+    the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. `samples`: motion-blur steps
+    (1: preview quality, look_quality.py; None: the composition's, as the export). Full width at final quality: stills
+    (returns None then; else each picture's size). `rgb`: written without alpha, as the sheets show a look (one PNG
+    write: the look's own file, not a copy of a raw one)."""
     from PIL import Image
     fps, comp_w = scene["comp"]["props"]["fps"], scene["comp"]["props"]["width"]
-    if width >= comp_w:
+    if width >= comp_w and samples is None:
         return stills(where, scene, items, progress)
+    sizes = []
     try:
         with warm.engine(scene) as eng:
             for i, (t, png) in enumerate(items):
                 try:
-                    view, w, h, stride = eng.pixels(t, scale=width / comp_w)
+                    view, w, h, stride = eng.pixels(t, samples, scale=min(1.0, width / comp_w))
                     data = bytes(view)                   # copied out: the engine's memory is reused next frame
                     view.release()
-                    Image.frombuffer("RGBA", (w, h), data, "raw", "RGBA", stride, 1).save(png, "PNG")
+                    img = Image.frombuffer("RGBA", (w, h), data, "raw", "RGBA", stride, 1)
+                    (img.convert("RGB") if rgb else img).save(png, "PNG", compress_level=FAST_PNG)
+                    sizes.append((w, h))
                 except Exception as e:
                     raise _fail(where, f"frame {round(t * fps)} ({t:.3f} s)", e) from e
                 if progress:
@@ -113,19 +128,20 @@ def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width
         raise
     except Exception as e:
         raise _fail(where, "the engine", e) from e
+    return sizes
 
 
-def area_still(where: str, scene: dict, t: float, area, width: int, png: Path) -> tuple[int, int]:
+def area_still(where: str, scene: dict, t: float, area, width: int, png: Path, samples: int | None = None) -> tuple[int, int]:
     """Only `area` [x, y, w, h] (comp px) of the frame at `t`, drawn by the engine at `width` px wide (sharp: a zoom,
-    not a crop of a small picture), as `png`. Returns its size."""
+    not a crop of a small picture), as `png`. Returns its size. `samples` as small_stills'."""
     from PIL import Image
     x, y, w, h = (float(v) for v in area)
     try:
         with warm.engine(scene) as eng:
-            view, pw, ph, stride = eng.pixels(t, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
+            view, pw, ph, stride = eng.pixels(t, samples, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
             data = bytes(view)
             view.release()
-            Image.frombuffer("RGBA", (pw, ph), data, "raw", "RGBA", stride, 1).save(png, "PNG")
+            Image.frombuffer("RGBA", (pw, ph), data, "raw", "RGBA", stride, 1).save(png, "PNG", compress_level=FAST_PNG)
             return pw, ph
     except RostrumError:
         raise

@@ -31,16 +31,17 @@ _keeper = Keeper()
 def scene(doc, comp_id: str, duration: float, times: list[float] | None = None) -> dict:
     """The composition's whole description as it is now, made again only where the document changed since the last look.
     `times`: the only moments the call draws: Drawn so far pictures are made for those frames (and a motion blur's
-    reach), the others stand in until a look draws them (their nodes are described again then, never kept)."""
+    reach), the others stand in until a look draws them (then only the drawings whose pictures were made are described
+    again: scene_keep's `ran`; a repeat look at made moments reuses the whole description)."""
     with _lock:
         args = (doc.data, comp_id, M.times(doc.folder), doc.folder, (0.0, duration))
         jobs: list = []
         got = _keeper.describe(*args, later=jobs)
+        if jobs and times is not None:
+            jobs = write_on.wanted(jobs, _frames(doc.data, comp_id, times))
         if jobs:
-            if times is not None:
-                jobs = write_on.wanted(jobs, _frames(doc.data, comp_id, times))
-            if jobs:
-                drawing.make_all(jobs, None, None)  # paint pictures first (kept by content), then described with them
+            drawing.make_all(jobs, None, None)      # paint pictures first (kept by content), then described with them
+            _keeper.ran(jobs)
             got = _keeper.describe(*args, later=[])
         if got.get("warnings"):                     # a placeholder (a 3D render not made yet) may be ready next time
             _keeper.forget()

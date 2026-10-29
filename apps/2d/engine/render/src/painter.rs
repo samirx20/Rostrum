@@ -406,6 +406,14 @@ impl Painter {
         }
     }
 
+    /// Frees the GPU memory kept between draws (textures, layers); its context and built programs stay: an export's
+    /// idle drawing worker (export_pool.rs). The pixels never depend on it.
+    pub fn release(&mut self) {
+        if let Some(gl) = self.gl.as_mut() {
+            gl.gr.purge_unlocked_resources(skia_safe::gpu::PurgeResourceOptions::AllResources);
+        }
+    }
+
     /// The size of the pictures it paints (`set_view`'s).
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)

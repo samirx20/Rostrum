@@ -114,3 +114,31 @@ def test_a_look_makes_only_the_pictures_of_the_frames_it_draws(tmp_path, monkeyp
     looked = {e["at"]: e["src"] for e in scene._pictures(d, 10, {"until": 1.0, "later": []})}
     exported = {e["at"]: e["src"] for e in scene._pictures(d, 10, {"until": 1.0})}
     assert looked[3] == exported[3] and looked[4] != exported[4]     # the frame drawn is the export's; others wait
+
+
+def test_a_repeat_look_keeps_the_painted_description_until_its_pictures_are_made(tmp_path, monkeypatch):
+    """scene_keep: a drawing with pictures still to make is kept (its jobs listed again), so a repeat look reuses it
+    (re-described on every look before: ~1-1.6 s on the Night Market film); once a look made one (`ran`), it is
+    described again and equals a fresh description."""
+    monkeypatch.setenv("ROSTRUM_CACHE_DIR", str(tmp_path))
+    from rostrum_core import cache
+    from rostrum2d.scene_keep import Keeper
+    monkeypatch.setattr(cache, "CACHE", cache.Cache())
+    monkeypatch.setattr(write_on, "CACHE", cache.CACHE)
+    f = frame()
+    f["paints"][0]["strokes"][0]["color"] = "#123456"          # a drawing of its own (no picture made by another test)
+    d = {"id": "d", "type": "drawing", "w": W, "h": H, "frames": [f],
+         "keys": [{"prop": "drawnSoFar", "t": 0.0, "v": 0.0}, {"prop": "drawnSoFar", "t": 0.6, "v": 1.0}]}
+    data = {"comps": [{"id": "c", "type": "comp", "width": W, "height": H, "fps": 10, "duration": 1.0, "layers": [d]}]}
+    keeper, args = Keeper(), (data, "c", {}, None, (0.0, 1.0))
+    first: list = []
+    keeper.describe(*args, later=first)
+    again: list = []
+    keeper.describe(*args, later=again)
+    assert first and keeper.made == 0 and again == first        # kept, and its pictures still said to be made
+    job = [next(j for j in again if isinstance(j, write_on.Ahead))]     # a look at the frame it shows makes it
+    for j in job:
+        j()
+    keeper.ran(job)
+    looked = keeper.describe(*args, later=[])
+    assert keeper.made > 0 and looked == scene.describe(*args, later=[])

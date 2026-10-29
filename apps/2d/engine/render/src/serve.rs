@@ -100,6 +100,14 @@ pub(crate) struct Session {
     pub(crate) deferred: Option<crate::handoff::Started>,
     /// What paints (`with_painting`): every open and scene reply says it.
     pub(crate) painting: Value,
+    /// The page shell the document was made from (`page` / `twin` compare it).
+    pub(crate) shell: String,
+    /// An export's extra drawing workers, kept between exports (export_pool.rs); they go with this session.
+    pub(crate) pool: crate::export_pool::Pool,
+    /// The MP4 encoder kept between exports (encode_mp4.rs `--keep`; scene_export.rs) with the settings it was started
+    /// with, and the settings of the one taking this export's frames.
+    pub(crate) kept_encoder: Option<(String, Sink)>,
+    pub(crate) kept_key: Option<String>,
 }
 
 /// Opens a session in place of the running one (`session`), on the running one's GL context (painter.rs `into_gl`): one
@@ -149,14 +157,14 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
         Some(e) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
             let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true))?)
+            Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true), e["nv12"].as_bool() == Some(true))?)
         }
         None => None,
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None }, reply))
 }
 
 /// What a drawing worker's session copies from the export's (`twin`): size, depth, colour and what paints.
@@ -197,7 +205,7 @@ pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let painting = like.painting.clone();
-    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false })
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None })
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -252,6 +260,7 @@ pub(crate) fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
     s.stage = stage;
     s.stage_open = false;
     s.kept_pieces = Default::default();
+    s.shell = html.to_string();
     Ok(json!({ "ok": true, "timing": { "pageMs": t0.elapsed().as_secs_f64() * 1000.0 } }))
 }
 
@@ -668,7 +677,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
             let raw = s.painter.read()?;
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             let t3 = Instant::now();
-            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false, repeat: false };
+            let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false, repeat: false, nv12: false };
             s.sink.as_mut().unwrap().push(px)?;
             wait_ms += t3.elapsed().as_secs_f64() * 1000.0;
         }
@@ -803,7 +812,7 @@ fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut
 fn collect(s: &mut Session) -> Result<f64, String> {
     let t = Instant::now();
     let (raw, index, ready) = s.painter.finish_read()?;
-    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready, repeat: false };
+    let px = Pixels { raw, spec: s.color, width: s.width, deep: s.deep, index, ready, repeat: false, nv12: false };
     s.sink.as_mut().ok_or("no encoder")?.push(px)?;
     Ok(t.elapsed().as_secs_f64() * 1000.0)
 }
@@ -812,7 +821,7 @@ fn collect(s: &mut Session) -> Result<f64, String> {
 /// that frame again, nothing drawn or read back. This worker's frames in flight go first, so it never waits on its own.
 pub(crate) fn repeat(s: &mut Session, index: u32) -> Result<(), String> {
     drain(s)?;
-    let px = Pixels { raw: vec![], spec: s.color, width: s.width, deep: s.deep, index, ready: true, repeat: true };
+    let px = Pixels { raw: vec![], spec: s.color, width: s.width, deep: s.deep, index, ready: true, repeat: true, nv12: false };
     s.sink.as_mut().ok_or("no encoder")?.push(px)
 }
 

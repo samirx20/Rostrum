@@ -5,7 +5,9 @@
 //! time on. With several drawing workers the steps add up over all of them (so they can sum to more than `totalS`).
 //! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
 //! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs); `repeatedFrames`: how many
-//! frames had the stage of the frame before and went to the encoder as that picture again, not drawn (export_crew.rs).
+//! frames had the stage of the frame before and went to the encoder as that picture again, not drawn (export_crew.rs);
+//! `workerStartS` the seconds the extra workers took to be ready and `workersMade` how many made their session now (the
+//! others were kept from an earlier export: export_pool.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
 //! `warning` says in words when that was not the computer's main graphics card; `encoder` names the MP4 encoder
 //! used and whether it ran on the graphics card (sink.rs `encoder`, with where its time went); `read` how the frames
@@ -59,7 +61,27 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         (e, _) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
             let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            s.sink = Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true))?);
+            // `keep` (encode_mp4.rs --keep): the session's held encoder takes the frames when its settings match (its
+            // file aside: each export names its own), else a new one is started and kept; its 2-4 s start is paid once.
+            let file = req["file"].as_str();
+            let key = (e["keep"].as_bool() == Some(true)).then(|| {
+                let same: Vec<&str> = args.iter().map(String::as_str).filter(|a| Some(*a) != file).collect();
+                format!("{program}|{}", same.join("|"))
+            });
+            if key.is_some() && file.is_none() {
+                return Err("export encode keep needs file (the file each export is saved as)".into());
+            }
+            s.sink = match (key, s.kept_encoder.take()) {
+                (Some(k), Some((held, mut sink))) if k == held => {
+                    sink.begin_file();
+                    s.kept_key = Some(k);
+                    Some(sink)
+                }
+                (k, _) => {
+                    s.kept_key = k;
+                    Some(Sink::start(program, &args, e["repeat"].as_bool() == Some(true), e["nv12"].as_bool() == Some(true))?)
+                }
+            };
         }
     }
     let warning = painting_warning(&s.painting);
@@ -69,13 +91,22 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
     let span = Span { start, fps, n };
-    let (rows, costs, worker_start_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
-    let code = if images.is_none() { Some(serve::finish(s)?) } else { None };
+    let (rows, costs, worker_start_s, workers_made, turn_s) = export_crew::draw_all(held, s, req, span, workers, progress)?;
+    let kept = s.sink.as_ref().is_some_and(Sink::is_kept);
+    if kept {
+        serve::drain(s)?;
+    }
+    let code = if images.is_some() { None } else if kept { Some(0) } else { Some(serve::finish(s)?) };
     if let Some(sink) = &s.sink {
         // Every frame, once, in order (sink.rs `push` notes each frame's number as it is queued).
         if images.is_none() && (sink.pushed() != n || !sink.in_order()) {
             return Err(format!("export: the encoder took {} frames of {n}{}", sink.pushed(), if sink.in_order() { "" } else { ", out of order" }));
         }
+    }
+    if kept {
+        // a held encoder saves this export's frames as its file and goes on running (a wrong count above is never saved)
+        let file = req["file"].as_str().ok_or("export encode keep needs file")?;
+        s.sink.as_mut().unwrap().save(file)?;
     }
     if let Some(file) = req["file"].as_str() {
         if std::fs::metadata(file).map_or(true, |m| m.len() == 0) {
@@ -99,12 +130,18 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     }
     timing.insert("stillPieces".into(), json!(rows.iter().map(|r| r.still).sum::<u64>()));
     timing.insert("workerStartS".into(), json!(worker_start_s));
+    timing.insert("workersMade".into(), json!(workers_made));
+    timing.insert("turn".into(), json!({ "convertS": turn_s[0], "waitS": turn_s[1], "handS": turn_s[2] }));
     timing.insert("repeatedFrames".into(), json!(rows.iter().filter(|r| r.repeat).count()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);
     let budget_mb = crate::export_workers::budget(s.width, s.height, workers) >> 20;
     // How the frames came back from the graphics card: the encoder's bytes from its output step, or as stored.
     let read = if images.is_some() { Value::Null } else if s.painter.last_read_ready { json!("output step on the GPU") } else { json!("as stored") };
+    if kept {
+        // held for the next export, under the settings it was started with
+        s.kept_encoder = s.sink.take().zip(s.kept_key.take()).map(|(sink, k)| (k, sink));
+    }
     let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "read": read, "workers": workers, "budgetMB": budget_mb });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)

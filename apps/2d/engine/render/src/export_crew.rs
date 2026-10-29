@@ -2,6 +2,7 @@
 //! (claimed in order from one counter, so a worker held up by a slow frame never leaves the others idle) through a
 //! session of their own (serve.rs `twin`: its own page, and on the GPU its own GL context made and used on that
 //! thread), so a frame's layout and paint on the processor overlap other frames' and the graphics card stays fed.
+//! The extra workers are kept between exports (export_pool.rs): a film drawn in parts starts each part drawing at once.
 //! This thread is worker 0, on the export's own session. Each worker has a markup thread building its next frames'
 //! stage ahead (`AHEAD` at most: it claims the frames, in order). A frame is a function of its time
 //! alone (cold_warm_tests.rs), so which worker drew it never shows in its pixels.
@@ -25,6 +26,7 @@ use crate::scene_serve::{draw, stage_at, Held, Staged};
 use crate::serve::{self, Session};
 use crate::sink::Sink;
 use crate::sink_turn::Turn;
+use crate::export_pool;
 use crate::export_workers::budget;
 
 #[cfg(test)]
@@ -45,8 +47,16 @@ struct Shared {
     claim: AtomicU64,
     failed: Mutex<Option<String>>,
     prints: Mutex<HashMap<u64, u128>>,
-    /// Microseconds the drawing workers took to start (their sessions made: page, fonts, GL context), summed.
+    /// Microseconds the drawing workers took to start (their sessions made: page, fonts, GL context; or kept), summed.
     start_us: AtomicU64,
+    /// How many extra workers made their session in this export (the others kept theirs: export_pool.rs).
+    made: AtomicU64,
+}
+
+/// What an extra worker sends this thread: a drawn frame, then its end (its layers' timings, or its failure).
+enum Msg {
+    Row(Row),
+    Done(Result<Costs, String>),
 }
 /// One drawn frame: its number in the export, ms, the STEPS (ms), motion-blur samples and still pieces.
 pub struct Row {
@@ -77,8 +87,9 @@ impl Span {
 }
 
 /// Draws every frame of `span` with `workers` workers; the rows in frame order and the layers' timings.
-/// Also the seconds the extra workers took to start, summed.
-pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64), String> {
+/// Also the seconds the extra workers took to start, summed, how many of them made their session now, and the
+/// encoder's turn's seconds (sink_turn.rs `spent`).
+pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64, u64, [f64; 3]), String> {
     let html = crate::scene_serve::shell_of(held.scene()?, s.width, s.height)?;
     let like = s.like();
     let turn = match s.sink.take() {
@@ -94,7 +105,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     };
     let per = budget(s.width, s.height, workers);
     s.painter.set_budget(per);
-    let shared = Shared { claim: AtomicU64::new(0), failed: Mutex::new(None), prints: Mutex::new(HashMap::new()), start_us: AtomicU64::new(0) };
+    let shared = Shared { claim: AtomicU64::new(0), failed: Mutex::new(None), prints: Mutex::new(HashMap::new()), start_us: AtomicU64::new(0), made: AtomicU64::new(0) };
     let fail = |e: &str| {
         shared.failed.lock().unwrap().get_or_insert_with(|| e.to_string());
         if let Some(t) = &turn {
@@ -109,54 +120,75 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
             progress(json!({ "progress": done, "of": span.n, "elapsedS": elapsed, "leftS": elapsed / done as f64 * (span.n - done) as f64 }));
         }
     };
-    std::thread::scope(|sc| {
-        let (tx, rx) = channel::<Row>();
-        let crew: Vec<_> = (1..workers)
-            .map(|w| {
-                let (tx, turn, html, like, fail, shared) = (tx.clone(), turn.clone(), &html, &like, &fail, &shared);
-                sc.spawn(move || {
-                    let r = catch_unwind(AssertUnwindSafe(|| {
-                        let started = Instant::now();
-                        let mut ws = serve::twin(like, html).map_err(|e| format!("export: starting drawing worker {w}: {e}"))?;
-                        shared.start_us.fetch_add(started.elapsed().as_micros() as u64, Ordering::Relaxed);
-                        ws.painter.set_budget(per);
-                        ws.sink = turn.map(Sink::turn);
-                        let r = share(held, &mut ws, req, span, shared, &mut |row| drop(tx.send(row)));
-                        settle(&mut ws, r)
-                    }))
-                    .unwrap_or_else(|_| Err(format!("export: drawing worker {w} panicked")));
-                    if let Err(e) = &r {
-                        fail(e);
-                    }
-                    r
-                })
-            })
-            .collect();
-        drop(tx);
+    let (tx, rx) = channel::<Msg>();
+    let tx = Mutex::new(tx);
+    let mut ends = vec![];
+    // An extra worker: its kept session (export_pool.rs; made on its first export), its frames, then its GPU memory freed.
+    let job = |w: usize, slot: &mut Option<Session>| {
+        let send = |m: Msg| drop(tx.lock().unwrap().send(m));
+        let r = catch_unwind(AssertUnwindSafe(|| {
+            let started = Instant::now();
+            let (ws, made) = export_pool::session(slot, &like, &html).map_err(|e| format!("export: starting drawing worker {w}: {e}"))?;
+            if made {
+                shared.made.fetch_add(1, Ordering::Relaxed);
+            }
+            shared.start_us.fetch_add(started.elapsed().as_micros() as u64, Ordering::Relaxed);
+            ws.painter.set_budget(per);
+            ws.sink = turn.clone().map(Sink::turn);
+            let r = share(held, ws, req, span, &shared, &mut |row| send(Msg::Row(row)));
+            let r = settle(ws, r);
+            ws.sink = None;
+            ws.painter.release();
+            r
+        }))
+        .unwrap_or_else(|_| Err(format!("export: drawing worker {w} panicked")));
+        if r.is_err() {
+            *slot = None; // a worker that failed starts afresh next time
+        }
+        if let Err(e) = &r {
+            fail(e);
+        }
+        send(Msg::Done(r));
+    };
+    let mut pool = std::mem::take(&mut s.pool);
+    let extra = workers - 1;
+    pool.run(extra, &job, || {
         let mine = share(held, s, req, span, &shared, &mut |row| {
             note(row, &mut rows);
-            while let Ok(r) = rx.try_recv() {
-                note(r, &mut rows);
+            while let Ok(m) = rx.try_recv() {
+                match m {
+                    Msg::Row(r) => note(r, &mut rows),
+                    Msg::Done(d) => ends.push(d),
+                }
             }
         });
         match settle(s, mine) {
             Ok(c) => costs.merge(c),
             Err(e) => fail(&e),
         }
-        for r in rx.iter() {
-            note(r, &mut rows);
-        }
-        for h in crew {
-            match h.join() {
-                Ok(Ok(c)) => costs.merge(c),
-                Ok(Err(e)) => fail(&e),
-                Err(_) => fail("export: a drawing worker panicked"),
-            }
-        }
     });
+    // Every worker has finished (Pool::run waits): its rows and its end are all in the channel.
+    for m in rx.try_iter() {
+        match m {
+            Msg::Row(r) => note(r, &mut rows),
+            Msg::Done(d) => ends.push(d),
+        }
+    }
+    let ended = ends.len();
+    for d in ends {
+        match d {
+            Ok(c) => costs.merge(c),
+            Err(e) => fail(&e),
+        }
+    }
+    if ended != extra {
+        fail("export: a drawing worker stopped without finishing");
+    }
+    s.pool = pool;
     s.painter.set_budget(crate::painter::gpu_budget(s.width, s.height));
     s.sink = None; // this thread's turn; the encoder comes back below
     let failure = shared.failed.into_inner().unwrap();
+    let turn_s = turn.as_ref().map_or([0.0; 3], |t| t.spent());
     if let Some(t) = turn {
         let sink = Turn::into_sink(t)?;
         // A failed export's encoder is stopped here (dropped), never finished: no partial file is reported as made.
@@ -169,7 +201,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     if rows.len() as u64 != span.n || rows.iter().enumerate().any(|(k, r)| r.i != k as u64) {
         return Err(format!("export: {} of {} frames were drawn", rows.len(), span.n));
     }
-    Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6))
+    Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6, shared.made.load(Ordering::Relaxed), turn_s))
 }
 
 /// A worker's end: its frames in flight to the encoder, or dropped when it failed.
