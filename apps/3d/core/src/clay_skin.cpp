@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <functional>
 #include <vector>
@@ -83,6 +84,27 @@ double smooth_share() {
   }();
   return v;
 }
+
+// hello-fast: the smooth weights are worked out on a lattice of this × the ball's radius and blended per point from the
+// 8 corners of its cell, not for every point (Hello's ~29 skin samples a point cost 4-16 s per new shape). The lattice
+// is fixed in clay space, so a point shared by two blocks still gets the same weights in both, and a corner is worked
+// out once per rig. 0 = every point on its own (to compare); ROSTRUM3D_CLAY_SKIN_GRID sets it (0..1).
+double grid_share() {
+  static const double v = [] {
+    const char* env = std::getenv("ROSTRUM3D_CLAY_SKIN_GRID");
+    return env ? std::clamp(std::atof(env), 0.0, 1.0) : 0.25;
+  }();
+  return v;
+}
+
+// a lattice corner's key: its 3 cell numbers, 21 bits each (±1 million steps)
+std::uint64_t corner_key(std::int64_t x, std::int64_t y, std::int64_t z) {
+  constexpr std::int64_t off = 1 << 20, mask = (1 << 21) - 1;
+  return (std::uint64_t((x + off) & mask) << 42) | (std::uint64_t((y + off) & mask) << 21) | std::uint64_t((z + off) & mask);
+}
+
+// most corners kept per rig; past it the kept ones are dropped and worked out again as needed (~60 MB)
+constexpr size_t kGridMost = 1000000;
 
 // the sample offsets of the averaging ball (radius 1): its middle, 6 along the axes, 8 towards the corners, half way
 // in and all the way out (the inner ones keep a thin limb's weights from being swamped by the far side's)
@@ -216,8 +238,12 @@ void Skinning::weigh(Block& b) const {
   b.w.assign(n * k, 0.0f);
   const float* xyz = reinterpret_cast<const float*>(b.rest.cdata());
   const double radius = smooth_share() * mean_bone(rig_->rest);
+  const double step = grid_share() * radius;
+  if (step > 0) grid_weights(xyz, n, radius, step, b.idx.data(), b.w.data());
   tbb::parallel_for(tbb::blocked_range<size_t>(0, n, 512), [&](const tbb::blocked_range<size_t>& r) {
-    if (radius > 0) {
+    if (step > 0) {
+      // (weighed above, on the lattice)
+    } else if (radius > 0) {
       smooth_weights(xyz + 3 * r.begin(), r.size(), radius, b.idx.data() + r.begin() * k, b.w.data() + r.begin() * k);
     } else {
       skin_weights(xyz + 3 * r.begin(), r.size(), rig_->rest, b.idx.data() + r.begin() * k, b.w.data() + r.begin() * k,
@@ -271,6 +297,91 @@ void Skinning::smooth_weights(const float* xyz, size_t n, double radius, int* id
       w[i * k + j] = float(total > 0 ? top[j].first / total : (j == 0 ? 1.0 : 0.0));
     }
   }
+}
+
+void Skinning::grid_weights(const float* xyz, size_t n, double radius, double step, int* idx, float* w) const {
+  const int k = skin_influences(bones());
+  // each point's cell and where it sits in it (0..1 per axis)
+  std::vector<std::int64_t> cell(n * 3);
+  std::vector<float> frac(n * 3);
+  std::vector<std::uint64_t> keys(n * 8);
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, n, 4096), [&](const tbb::blocked_range<size_t>& r) {
+    for (size_t i = r.begin(); i < r.end(); ++i) {
+      for (int c = 0; c < 3; ++c) {
+        const double u = double(xyz[3 * i + c]) / step, f = std::floor(u);
+        cell[3 * i + c] = std::int64_t(f);
+        frac[3 * i + c] = float(u - f);
+      }
+      for (int j = 0; j < 8; ++j)
+        keys[i * 8 + j] = corner_key(cell[3 * i] + (j & 1), cell[3 * i + 1] + ((j >> 1) & 1), cell[3 * i + 2] + ((j >> 2) & 1));
+    }
+  });
+  std::vector<std::uint64_t> want(keys);
+  std::sort(want.begin(), want.end());
+  want.erase(std::unique(want.begin(), want.end()), want.end());
+  // the corners not kept yet, worked out (in parallel, outside the lock: the same corner always comes out the same)
+  std::vector<std::uint64_t> missing;
+  {
+    std::lock_guard<std::mutex> lock(gridMu_);
+    for (std::uint64_t key : want)
+      if (!grid_.count(key)) missing.push_back(key);
+  }
+  if (!missing.empty()) {
+    const std::int64_t off = 1 << 20, mask = (1 << 21) - 1;
+    std::vector<float> at(missing.size() * 3);
+    for (size_t i = 0; i < missing.size(); ++i) {
+      const std::uint64_t key = missing[i];
+      at[3 * i] = float(double(std::int64_t((key >> 42) & mask) - off) * step);
+      at[3 * i + 1] = float(double(std::int64_t((key >> 21) & mask) - off) * step);
+      at[3 * i + 2] = float(double(std::int64_t(key & mask) - off) * step);
+    }
+    std::vector<int> cidx(missing.size() * k);
+    std::vector<float> cw(missing.size() * k);
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, missing.size(), 32), [&](const tbb::blocked_range<size_t>& r) {
+      smooth_weights(at.data() + 3 * r.begin(), r.size(), radius, cidx.data() + r.begin() * k, cw.data() + r.begin() * k);
+    });
+    std::lock_guard<std::mutex> lock(gridMu_);
+    if (grid_.size() + missing.size() > kGridMost) grid_.clear();
+    for (size_t i = 0; i < missing.size(); ++i) {
+      Corner c{};
+      for (int j = 0; j < k; ++j) c.idx[j] = cidx[i * k + j], c.w[j] = cw[i * k + j];
+      grid_[missing[i]] = c;
+    }
+  }
+  // this block's corners, copied once (no lock while blending)
+  std::vector<Corner> corners(want.size());
+  {
+    std::lock_guard<std::mutex> lock(gridMu_);
+    for (size_t i = 0; i < want.size(); ++i) corners[i] = grid_.at(want[i]);
+  }
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, n, 1024), [&](const tbb::blocked_range<size_t>& r) {
+    std::pair<double, int> in[8 * kSkinMost];
+    for (size_t i = r.begin(); i < r.end(); ++i) {
+      int m = 0;
+      for (int j = 0; j < 8; ++j) {
+        const float fx = frac[3 * i], fy = frac[3 * i + 1], fz = frac[3 * i + 2];
+        const double t = double(j & 1 ? fx : 1 - fx) * double(j & 2 ? fy : 1 - fy) * double(j & 4 ? fz : 1 - fz);
+        if (t <= 0) continue;
+        const Corner& c = corners[size_t(std::lower_bound(want.begin(), want.end(), keys[i * 8 + j]) - want.begin())];
+        for (int q = 0; q < k; ++q) {
+          if (c.w[q] <= 0) continue;
+          int at = 0;
+          while (at < m && in[at].second != c.idx[q]) ++at;
+          if (at == m) in[m++] = {0.0, c.idx[q]};
+          in[at].first += t * c.w[q];
+        }
+      }
+      if (m == 0) in[m++] = {1.0, 0};  // (never: a corner's weights add up to 1)
+      const int keep = std::min(m, k);
+      std::partial_sort(in, in + keep, in + m, std::greater<>());
+      double total = 0;
+      for (int j = 0; j < keep; ++j) total += in[j].first;
+      for (int j = 0; j < k; ++j) {
+        idx[i * k + j] = j < keep ? in[j].second : in[0].second;
+        w[i * k + j] = j < keep && total > 0 ? float(in[j].first / total) : (j == 0 ? 1.0f : 0.0f);
+      }
+    }
+  });
 }
 
 void Skinning::pose_block(Block& b) const {
