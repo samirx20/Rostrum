@@ -12,7 +12,7 @@ and the shot crumb list them (materials(), shots()).
 """
 from __future__ import annotations
 
-from rostrum_core.keys import keys_of
+from rostrum_core.keys import keys_of, layers as anim_layers
 from rostrum_gui import anim_rows
 from rostrum3d import fields as F
 from rostrum3d.anims import animations
@@ -39,8 +39,9 @@ def named(data: dict, key: str) -> list[dict]:
     return [{"value": m["id"], "label": label_of(m)} for m in data.get(key, [])]
 
 
-def _animated(item: dict) -> list[str]:
-    return [p.name for p in F.FIELDS.get(item["type"], ()) if any(k["prop"] == p.name for k in item.get("keys", []))]
+def _animated(item: dict, layer: str = "") -> list[str]:
+    return [p.name for p in F.FIELDS.get(item["type"], ())
+            if any(k["prop"] == p.name and (k.get("layer") or "") == layer for k in item.get("keys", []))]
 
 
 def _summary(keys: list[dict], fps: float) -> list[dict]:
@@ -52,19 +53,20 @@ def _summary(keys: list[dict], fps: float) -> list[dict]:
     return list(by.values())
 
 
-def scene_rows(data: dict, folded: set[str], opened: str, fps: float = 24) -> list[dict]:
+def scene_rows(data: dict, folded: set[str], opened: str, fps: float = 24, layer: str = "") -> list[dict]:
     """The scene list with its keys on the same rows (the kit's LayerTrack rowData): {row "layer"|"part"|"field", id,
     owner, label, kind, depth, fold, material (its name), keys, stretches, bar, start, end}. `opened`: the item whose
-    animated fields (and second lines) get rows of their own."""
+    animated fields (and second lines) get rows of their own. `layer`: the timeline's chosen animation layer, whose
+    keys alone show ("" = the Base; a layer's keys have no stretches)."""
     mats = {m["id"]: label_of(m) for m in data.get("materials", [])}
     out: list[dict] = []
 
     def add(it, depth, fold="", row="layer", cutter=False):
-        props, anims = _animated(it), animations(it)
+        props, anims = _animated(it, layer), [] if layer else animations(it)
         is_open = it["id"] == opened
         later = [a for a in anims if a["line"] > 0] if is_open else []      # folded: one line holds every key
         elsewhere = {k["id"] for a in later for k in a["keys"]}
-        keys = _summary([k for p in props for k in _keys(it, p) if k["id"] not in elsewhere], fps)
+        keys = _summary([k for p in props for k in _keys(it, p, layer) if k["id"] not in elsewhere], fps)
         times = [k["t"] for k in keys]
         out.append({**_row(it, depth, fold, row), "owner": it["id"], "keys": keys, "cutter": cutter,
                     "material": mats.get(it.get("material", ""), ""), "bar": len(times) > 1,
@@ -79,7 +81,7 @@ def scene_rows(data: dict, folded: set[str], opened: str, fps: float = 24) -> li
         if is_open:
             out.extend({"row": "field", "id": f"{it['id']}.{p}", "owner": it["id"], "label": F.param(it["type"], p).label,
                         "kind": "", "depth": depth + 1, "fold": "", "material": "", "animated": True,
-                        "keys": _keys(it, p), "prop": p} for p in props)
+                        "keys": _keys(it, p, layer), "prop": p} for p in props)
 
     def walk(items, depth, cutters=False):
         for n, it in enumerate(items):
@@ -102,5 +104,6 @@ def scene_items(data: dict):
         stack.extend(reversed(it.get("children", []) + it.get("bones", [])))
 
 
-def _keys(owner: dict, prop: str) -> list[dict]:
-    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"]} for k in keys_of(owner, prop)]
+def _keys(owner: dict, prop: str, layer: str = "") -> list[dict]:
+    keys = anim_layers.layer_keys(owner, prop, layer) if layer else keys_of(owner, prop)
+    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"]} for k in keys]

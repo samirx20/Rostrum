@@ -35,6 +35,25 @@ pub(crate) fn subtree_ink(dom: &BaseDocument, node: &Node, scale: f64, follow: b
     Some(ink)
 }
 
+/// Rostrum patch (B1): whether an element draws nothing in its own box: a plain `div` with no background colour or
+/// picture, no border, no inset shadow, no text and nothing stamped (the frame's full-frame wrapper round each layer,
+/// frame/mod.rs `place`). A layer on such an element holds only what its children draw, so it need not cover its box.
+pub(crate) fn draws_nothing_itself(node: &Node, styles: &style::properties::ComputedValues) -> bool {
+    use crate::color::ToColorColor as _;
+    use style::values::generics::image::GenericImage;
+    let bg = styles.get_background();
+    let clear = bg.background_color.resolve_to_absolute(&styles.clone_color()).as_srgb_color().components[3] == 0.0
+        && bg.background_image.0.iter().all(|i| matches!(i, GenericImage::None));
+    let b = styles.get_border();
+    let no_border = [&b.border_top_style, &b.border_right_style, &b.border_bottom_style, &b.border_left_style]
+        .into_iter()
+        .all(|s| matches!(*s, BorderStyle::None | BorderStyle::Hidden));
+    let no_inset = styles.get_effects().box_shadow.0.iter().all(|s| !s.inset);
+    let plain_div = node.element_data().is_some_and(|e| &*e.name.local == "div" && e.image_data().is_none());
+    let stamps = ["data-particles", "data-trails", "data-shutter-held"].iter().any(|a| crate::particles::data_attr(node, a).is_some());
+    clear && no_border && no_inset && plain_div && !stamps && !node.flags.is_inline_root()
+}
+
 /// Where `child`'s own space lands in its parent's space (`parent` maps that to the root's): its location, then its own
 /// transform, as render.rs places it.
 fn placed(child: &Node, parent: Affine, scale: f64) -> Affine {

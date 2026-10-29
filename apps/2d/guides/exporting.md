@@ -76,6 +76,9 @@ Only the settings that apply to the chosen format are shown.
    composition's own settings, the quality and a new version of the app count for every piece. Change one 6-second
    section of a 70-second film and the next export draws about 6–8 seconds. Agents: the reply says it, such as
    "Re-rendered 3 of 35 segments (6 s), the rest reused; took 41 s", and its `segments` has the numbers.
+   **A stopped export keeps what it finished.** Pieces are drawn and kept 300 frames at a time (10 s at 30 fps), so after `run_stop` (or
+   Cancel) the next export of the same film draws only from the stretch it was on. A change to the frame or the
+   composition's settings still counts for every piece, so it draws everything again.
    **A held moment costs almost nothing.** A frame where nothing on screen changes from the frame before (no key,
    no motion blur, no grain or video moving) is not drawn again: the MP4 gets the same picture again, the same pixels.
    Only the moving seconds cost drawing time.

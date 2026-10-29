@@ -12,7 +12,8 @@ FINAL_TIP = "Shows in Final, not in the Quick view"
 APPROX_TIP = "Shows fully in Final; the Quick view only hints at it"
 STYLIZED_TIP = "Shows in the Stylized look only"
 FINAL_STYLIZED_TIP = "Shows in Final and Stylized, not in the Quick view"
-NONE_FIRST = {"material", "item"}       # fields naming another item that may name none ("" = no material, focus on a distance)
+NONE_FIRST = {"material": "None", "item": "None",     # fields naming another item that may name none, and what "" reads
+              "collection": "Everything"}             # ("" = no material, focus on a distance, render everything)
 DATA_GROUPS = F.DATA_GROUPS              # data an operation writes (a mesh's points, a bone's head), never rows
 
 
@@ -123,5 +124,5 @@ class RowsMixin:
                 doc_items = doc_items or list(self.doc.items())
                 named = [{"value": i["id"], "label": outline.label_of(i)} for i in doc_items if i["id"] != self._sel
                          and (i.get("type") == p.kind or (p.kind == "item" and i.get("type") in F.ITEMS))]
-                r["type"], r["options"] = "choice", ([{"value": "", "label": "None"}] if p.kind in NONE_FIRST else []) + named
+                r["type"], r["options"] = "choice", ([{"value": "", "label": NONE_FIRST[p.kind]}] if p.kind in NONE_FIRST else []) + named
         return rows

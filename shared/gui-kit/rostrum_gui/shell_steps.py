@@ -8,6 +8,7 @@ is found among the app's windows (the one with AppShell's functions).
     panels fold               Ctrl+\: the side panels fold away
     area <name>               the accent edge on that area (guides, left, centre, right, bottom)
     hover <objectName>        the pointer rests on that control (its hover help shows after 500 ms)
+    clickon <objectName>      a real mouse click on the centre of that control (an icon button with no words)
     name edit                 the project's name on the top bar, clicked: its rename field is open
     click <words>             a real mouse click (press, release) on the visible text that starts with these words,
                               e.g. "click +  New", "click Open the sample": the way a hand presses it
@@ -22,7 +23,7 @@ from PySide6.QtGui import QGuiApplication
 
 from .meta import has_method
 
-WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "mouseclick", "mousedrag")
+WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "clickon", "mouseclick", "mousedrag")
 
 
 def window():
@@ -55,6 +56,8 @@ def do(step: str) -> bool:
         win.setProperty("focusArea", verb)
     elif word == "hover" and verb:
         _hover(win, verb)
+    elif word == "clickon" and verb:
+        _click_on(win, verb)
     elif word == "click" and rest:
         _click(win, rest)
     elif word == "mouseclick" and arg:
@@ -79,6 +82,19 @@ def _hover(win, name):
         raise ValueError(f"hover: no control named {name!r} in this window")
     p = it.mapToScene(QPointF(it.width() / 2, it.height() / 2))
     hover(win, p)
+
+
+def _click_on(win, name):
+    from PySide6.QtCore import QCoreApplication, QPoint, QPointF, Qt
+    from PySide6.QtTest import QTest
+    it = win.findChild(QObject, name)
+    if it is None or not it.isVisible():
+        raise ValueError(f"clickon: no visible control named {name!r} in this window")
+    p = it.mapToScene(QPointF(it.width() / 2, it.height() / 2))
+    at = QPoint(int(p.x()), int(p.y()))
+    QTest.mouseMove(win, at)
+    QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
+    QCoreApplication.processEvents()
 
 
 def _click(win, words):

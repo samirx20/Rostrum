@@ -14,6 +14,12 @@ pub(crate) fn convert_filters(filters: &[StyloFilter]) -> Option<Filter> {
     ))
 }
 
+/// Rostrum patch (B1): a filter made of Gaussian blurs alone (CSS `blur()`: the frame's depth of field). Its picture
+/// is its content spread by at most its expansion, whatever the layer's size, so its layer may be bounded by its ink.
+pub(crate) fn blurs_only(f: &Filter) -> bool {
+    f.nodes().iter().all(|n| matches!(n.effect, FilterEffect::GaussianBlur(_)))
+}
+
 /// The id in an element's `filter: url(#id)` (Rostrum proof patch). Stylo built for Servo cannot hold
 /// a url() filter (its Url variant is uninhabited), so it is read from the property shim.
 pub(crate) fn url_filter_id(node: &blitz_dom::Node) -> Option<String> {

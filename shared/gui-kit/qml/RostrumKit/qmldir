@@ -93,6 +93,7 @@ LayerTimeline 1.0 LayerTimeline.qml
 StretchBand 1.0 StretchBand.qml
 AnimPanel 1.0 AnimPanel.qml
 EaseCurve 1.0 EaseCurve.qml
+CurveEditor 1.0 CurveEditor.qml
 EaseIcon 1.0 EaseIcon.qml
 EaseList 1.0 EaseList.qml
 EasePicker 1.0 EasePicker.qml
@@ -117,3 +118,4 @@ BlockItem 1.0 BlockItem.qml
 BlockPort 1.0 BlockPort.qml
 BlockWire 1.0 BlockWire.qml
 BlockAddList 1.0 BlockAddList.qml
+AnimLayers 1.0 AnimLayers.qml

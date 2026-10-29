@@ -79,13 +79,38 @@ fade and scroll bar), `curves` (shown while Curves is on), `overlay` (drawn over
 (rows that stay in compact). A row's time side is `LayerTrack` (bar, `KeyDot` diamonds merged by `KeyGroups.js`,
 `StretchBand` stretches, spring tails, repeat ghosts) with `cells` for the app's own marks (2D: `FrameMarks`, a drawing's
 cells). `AnimPanel` is the picked animation over the settings (`allowed` hides it: 2D while drawing); `EaseCurve` its curve.
-2D plugs them in at `apps/2d/screen/qml/Main.qml` and `LayerRows.qml`.
+2D plugs them in at `apps/2d/screen/qml/Main.qml` and `LayerRows.qml`; 3D at `apps/3d/app/qml/SceneList.qml`.
+
+**The curve view (`CurveEditor.qml`, PR2).** The `curves` slot takes the kit's `CurveEditor { visible: backend.curves.on;
+ruler: <timeline>.ruler; labelWidth: <timeline>.labelWidth }`. `backend.curves` is an app's subclass of
+`rostrum_gui/curve_view.py` `CurveView` (2D: `screen2d/curves.py`, 3D: `screen3d/curves3d.py`), which answers small hooks:
+`state` (the data, then the selection), `picked_items` / `scene_items`, `fields_of(item)` (its animated (owner, prop),
+parts too), `field_label` / `item_label`, `limits`, `picked_keys` / `pick_key`, `snap_targets`, `time_limits`, and
+optionally `item` (2D: placed), `key_time` (2D: a layer's offset, keys on markers), `curve`. Everything else is the kit's:
+which curves (the picked items', or every animated item's with nothing picked or **All curves** chosen; `canAll` only
+where All shows more), the legend grouped under each item's name (click a curve or an item: hide / show), each curve fitted to its own value
+range, a key drag (`key.set` {t, v}, snapped, kept in range) and a handle drag (`key.set` {ease: custom, x1 y1 x2 y2})
+as one doc gesture each, and a right-click on a key = the key's Ease list (`backend.keyBar.askMenu`: the tangent kinds
+are the eases). The curve numbers are `rostrum_core/keys/curve.py` (`curve_of`, `handles_of`). Screen steps, the same in
+every app: `rostrum_gui/curve_steps.py` (`curves on|off|all|mine`, `curvedrag`, `handledrag`). `AnimPanel` has an
+**All curves** button (`backend.curves.showAll()`) wherever the app has a curve view.
 
 They read the app's `backend` (the same names 2D's has): `time`, `playing`, `togglePlay`, `setTime`, `frameInfo`, `markers`,
 `markerEdit`, `select`, `selected`, `multi`, `layers`, `curves`, `keys`, `keyBar`, `stretch`, `timeSnap`, `beginBarDrag` /
 `barDragTo` / `beginKeyDrag` / `keyDragTo` / `endDrag`. The rows' data (`rowData`: keys, stretches, bar, lines) come from
 `rostrum_core.keys.animations(owner, names)`; the operations behind them (`anim.ease`, `key.scale`, `key.paste`,
 `key.stagger`) are registered with `rostrum_core.keys.register_anim_ops` on the app's own items.
+
+## Animation layers
+A stack of moves laid over the Base, each with a weight (a breath over a walk; rostrum_core/keys/layers.py). The kit's
+`AnimLayers.qml` goes in the play cell through `LayerTimeline { layers: AnimLayers {} }`: one small ⧉ button (lit while a
+layer is chosen) opening a popover with the layers top first, the Base at the bottom and + New layer. A row: click
+picks it (a person's new keys and value changes go on it, `route` in rostrum_gui/anim_layers.py; the rows show only
+its keys, the app passes `rows_layer()` to its row lister), double-click renames, the switch turns it on / off,
+Add | Replace, the weight slider (one drag = one change; once the weight has a key, the slider keys it at the
+playhead), ⋯ for Key the weight here, Move up / down, Delete layer and its keys. The app plugs the model
+(`AnimLayers(bridge)`, `backend.animLayers`) and registers the operations (`register_layer_ops`,
+`register_key_ops(…, layers=True)`). 3D: apps/3d/app/screen3d/layers3d.py. 2D: not plugged yet.
 
 ## Not built yet
 - The marker right-click menu (Rename · Share with the project / Keep it here only · Colour · Delete, with "3 things

@@ -222,7 +222,7 @@ def look_empty(ctx, args):
     every = max(every, (end - start) / MAX_SAMPLES)
     last = (round(duration * fps) - 1) / fps
     times = [min(start + i * every, last) for i in range(int((end - start) / every + 1e-9))]
-    scene = render.look_scene(doc, comp["id"])
+    scene = render.look_scene(doc, comp["id"], times=times)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_empty_") as tmp:

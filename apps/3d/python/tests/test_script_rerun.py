@@ -70,8 +70,6 @@ def test_a_rerun_after_undo_lands_instead_of_holding_everything_back():
     assert {"mesh_1", "mesh_2"} <= {i["id"] for i in d.data["items"]} and not report.held
 
 
-@pytest.mark.xfail(strict=True, reason="KNOWN OPEN (shared merge): a script that replaces the start lights and removes the "
-                   "start camera gets 'held back: changed by script:start.py' on the camera; harmless, the agent's own camera is used")
 def test_replacing_the_start_lights_and_removing_its_camera_holds_nothing_back():
     from rostrum3d.start_scene import SOURCE as START
     d = Document.new(KIND)

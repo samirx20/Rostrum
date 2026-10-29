@@ -39,6 +39,7 @@ from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
 from . import fields as F, fontlist, mathtype, paint_fields, paint_grow, pathdata, plot, script_frame, script_music, script_others, script_sample, script_scramble, script_words as W, shafts, text_anchor, text_measure, text_runs
+from .evaluate import script_marks
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -47,7 +48,7 @@ from .ops_expr import expr_id, link_source
 from .rig import motion as rig_motion, script as rig_script
 from .swap import child_index
 from . import script_layout, ui_blocks, ui_pointer
-from . import script_time, script_transitions
+from . import script_inert, script_time, script_transitions
 from .lipsync import script as lipsync_script
 
 # Python's plain built-ins a script may use (script-reference.md lists them; keep the two the same). No print (the MCP
@@ -115,11 +116,11 @@ class Item:
 
     def measure(self, at: float = 0) -> tuple[float, float]:
         """A text's box (w, h) in its own px at `at` (before scale), measured by the engine code that draws it: lay
-        out a line by its real width (`x = 1800 - t.measure()[0] * t.scale`)."""
+        out a line by its real width (`x = 1800 - t.measure()[0] * t.scale`). `at` may be a marker time ("#drop+0.2")."""
         self._need("text", "measure")
         from .evaluate import resolve
         from .textsize import size
-        return size(resolve(self.node, at))
+        return size(resolve(self.node, script_time.seconds(self._b, at, f"{self.id}.measure at")))
 
     def run(self, which) -> "text_runs.Run":
         """A styled run of this text by its words or number (text_runs.py): `t.run("move").key("color", {…})`."""
@@ -158,6 +159,7 @@ class Item:
                 k[name] = F.param("key", name).check(x, f"{self.id}.{prop} at {t} s {name}")
             # a key at a time this field already has a key (an earlier key() or f.cut / f.fit) replaces it: the later call wins
             self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
+        script_inert.given(self._b, self.node, [prop])
         return self
 
     def show(self, choices: dict) -> "Item":
@@ -369,6 +371,7 @@ class Build:
         self.sized = set()          # groups whose script gave a size (w or h): never refitted
         self.pointed = set()        # unsized groups whose script gave x / y: their children count from that point
         self.counts: dict[str, int] = {}     # type -> the last counted N (new_id)
+        self.given: dict[str, tuple] = {}    # item id -> (node, the fields the script gave it): script_inert.py
 
     def new_id(self, type_, id_):
         if id_ is None:         # ids only get taken, so the next free N per type is never below the last one given
@@ -408,6 +411,7 @@ class Build:
             node[k] = F.param(node["type"], k).check(v, f'{node["id"]}.{k}')
             if node["type"] == "group" and k in ("w", "h"):
                 self.sized.add(node["id"])
+        script_inert.given(self, node, [k for k in given if k != "name"])   # a field's switch turned, said if inert
         if node["type"] == "text":                   # Align moves a point text's anchor with it (text_anchor.py)
             node.update(text_anchor.follow(before, node, given))
         if node["type"] in ("text", "textstyle") and {"font", "italic"} & set(node) and (
@@ -551,6 +555,14 @@ def _brief(b: "Build", words) -> None:
     b.root["brief"] = words.strip()
 
 
+class Tree(dict):
+    """The document tree a script built, with `notes`: lines for run_script's reply (fields given where they do nothing)."""
+
+    def __init__(self, root: dict, notes: list[str]):
+        super().__init__(root)
+        self.notes = notes
+
+
 def run_source(source: str, name: str, doc=None) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged.
     `doc`: the document it will be merged into (run_script passes it), so the ids it already holds are left alone."""
@@ -566,15 +578,16 @@ def run_source(source: str, name: str, doc=None) -> dict:
              **lipsync_script.for_script(b), **script_scramble.for_script(b), **script_music.for_script(b), **script_time.for_script(b),
              **script_transitions.for_script(b)}
     try:
-        exec(compile(source, name, "exec"), scope)
-        for finish in getattr(b, "finishers", ()):     # end-of-script passes (rig.motion: limbs' natural bend, colour)
-            finish()
+        with script_marks(lambda: script_time.times(b)):   # the script's own reads see marker keys at their moment
+            exec(compile(source, name, "exec"), scope)
+            for finish in getattr(b, "finishers", ()):     # end-of-script passes (rig.motion: limbs' natural bend, colour)
+                finish()
         _grow_drawings(b.root)
         _check_links(b.root, b.taken)
         script_time.publish(b)                       # last: the script's markers only once everything else passed
     except Exception as e:
         raise _failed(e, name, scope) from e
-    return b.root
+    return Tree(b.root, script_inert.notes(b))
 
 
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document

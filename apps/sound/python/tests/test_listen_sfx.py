@@ -63,3 +63,18 @@ def test_a_held_note_is_a_tone_and_mains_hum_is_hum():
     assert not any(x["is_hum"] for x in found if x["note"] == "D3")
     lone = tones(0.3 * np.sin(2 * np.pi * 65.4 * t) + 0 * drone)          # a lone flat steady low note is not hum
     assert lone and not any(x["is_hum"] for x in lone)
+
+
+def test_each_start_says_how_strong_it_is_in_its_own_file(tmp_path):
+    # Re-bench member note: a part's starts were given without their strength (only the mix's hits had one).
+    import numpy as np
+    import soundfile as sf
+    from rostrum_sound.listen.onsets import onsets
+    sr, x = 48000, np.zeros(48000 * 2)
+    for t, a in ((0.5, 0.5), (1.2, 0.05)):        # a loud hit, then one 20 dB softer
+        i = int(t * sr)
+        x[i:i + 2400] = a * np.exp(-np.arange(2400) / 400) * np.sin(np.arange(2400) * 0.3)
+    sf.write(str(tmp_path / "part.wav"), x, sr)
+    r = onsets(tmp_path / "part.wav")
+    assert len(r["peaks_dbfs"]) == len(r["onsets_s"]) == 2
+    assert r["peaks_dbfs"][0] > -7 and 16 < r["peaks_dbfs"][0] - r["peaks_dbfs"][1] < 24

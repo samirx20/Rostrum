@@ -322,3 +322,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | An offset inside an element (background tiles and their stride, a raster background's place, a box shadow's offset, scrolled contents, an SVG image's or custom widget's place) is applied in the element's own space (`pre_translate`), not after its transform (`then_translate`, on screen). Guard: `render/src/seam_tests.rs` › `a_scaled_gradient_box_has_no_seam` | under a scale (a layer's `scale`, the frame's zoom) the offsets stayed unscaled: a gradient on a shape with an outline is drawn in tiles from inside the outline, the tiles overlapped and the next one restarted the gradient at the unscaled box's edge, a hard seam inside the shape; a shadow's offset did not grow with its layer |
+
+## B1: depth of field under motion blur (Undertow, 2026-10-29)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `render.rs` + `ink.rs` + `filters.rs`: a filter layer whose filter is Gaussian blurs only (`filters::blurs_only`: CSS `blur()`, the frame's depth of field) bounds its layer by its subtree's ink through turned children and SVGs too (H27 / Night Bloom gave filtered layers up on those), and an element that draws nothing in its own box (`ink::draws_nothing_itself`: a plain `div`, no background, border, inset shadow, text or stamps — the frame's full-frame wrapper round each top-level layer) adds no box to its layer: the layer covers only where its subtree draws, grown by the blur's spread | with depth of field every top-level layer's wrapper was a frame-sized layer and a frame-sized blur, whatever the layer held: Undertow r1's ~150 small, turned or off-frame layers were ~150 full-frame blurs a frame (~2 s a frame with no motion blur), times every motion-blur step. Pictures: expected within the soft-edge rounding H27 measured (≤ 2/255); the lead's before/after compare checks it |

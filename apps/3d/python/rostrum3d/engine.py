@@ -69,6 +69,7 @@ class Engine:
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
         self.copies: dict = {}                          # the last scene's copies info: {id: {count, seen, camera}} (contract 2, copies)
+        self._ours = None                               # the process we ended on purpose (run_stop, a cancelled render): its end is no crash
         self.stopped = False                            # kill(for_good=True): a cancelled job's engine never starts again
         _MINE.add(self)
 
@@ -96,11 +97,12 @@ class Engine:
         if self.proc is None:
             self._start()
         elif self.proc.poll() is not None:
-            code, old = self.proc.returncode, self.log_path
+            code, old, ours = self.proc.returncode, self.log_path, self.proc is self._ours
             self.restarts += 1
             self._start()
-            self._notices.append(f"The 3D engine had stopped (exit {code}, log {old}); it was started again (pid {self.pid}) "
-                                 "and the scene sent again.")
+            if not ours:                                # our own stop (run_stop) is no crash: nothing to report
+                self._notices.append(f"The 3D engine had stopped (exit {code}, log {old}); it was started again (pid {self.pid}) "
+                                     "and the scene sent again.")
 
     def take_notices(self) -> list[str]:
         out, self._notices = self._notices, []
@@ -120,6 +122,7 @@ class Engine:
                 try:
                     line = self._lines.get(timeout=max(0.1, timeout_s - (time.perf_counter() - t0)))
                 except queue.Empty:
+                    self._ours = self.proc
                     self.proc.kill()                    # our own child, by its handle; the next request starts a new one
                     self.proc.wait()
                     raise EngineError(f"3D engine took over {timeout_s:g} s for {name}; it was stopped; log {self.log_path}") from None
@@ -133,6 +136,7 @@ class Engine:
                     try:
                         progress(out["progress"], out.get("of"), out) if "progress" in out else step(out)
                     except BaseException:               # a stop request: the render cannot be told to stop, so the process is
+                        self._ours = self.proc
                         self.proc.kill()                # (our own child); the next request starts a new one
                         self.proc.wait()
                         raise
@@ -294,6 +298,7 @@ class Engine:
         self.stopped = self.stopped or for_good
         proc = self.proc
         if proc is not None and proc.poll() is None:
+            self._ours = proc
             proc.kill()
             try:
                 proc.wait(timeout=5)

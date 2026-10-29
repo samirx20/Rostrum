@@ -5,7 +5,8 @@
     m.rest(strings, basses, before=0.4)         # a breath before: nothing starts in the 0.4 s before, what rings is cut there
     m.stop(band, keys, until=37.5, short=0.2)   # the band stops: on-the-moment notes play (cut to 0.2 s), what rings ends,
                                                 #   nothing starts again before 37.5 s (default: the song's end)
-    m.choke(cymbals, after=0.25)                # what sounds at the moment ends 0.25 s after it
+    m.choke(keys, after=0.25)                   # notes sounding at the moment end 0.25 s after it (drum hits ring as
+                                                #   recorded: no length to cut; the reply counts and says so)
     m.strike(brass, ["C2", "G2", "C3"], vel=1.0, ring=4.0); m.strike(drums, "crash", vel=1.0)
     m.swell(strings, over=4.0, low=0.5)         # velocities in the 4 s before rise from 0.5x to full into the moment
 
@@ -65,9 +66,10 @@ class Moment:
                         release=_secs(release, "release", w, ["release=0.05"]))
 
     def choke(self, *tracks, after=None):
-        """Notes sounding at the moment end `after` seconds past it (a choked cymbal, the pedal lifted)."""
+        """Notes sounding at the moment end `after` seconds past it (the pedal lifted). Drum hits have no length: they
+        ring as recorded and the reply counts them as left ringing, with why."""
         w = f"moment {self.name} › choke"
-        return self._do("choke", _tracks(tracks, w, "m.choke(cymbal, after=0.25)"),
+        return self._do("choke", _tracks(tracks, w, "m.choke(keys, after=0.25)"),
                         after=_secs(after, "after", w, ["after=0.25"]))
 
     def strike(self, track, what, vel=None, ring=None):
@@ -81,7 +83,7 @@ class Moment:
         if kit and ring is not None:
             raise RostrumError(codes.BAD_ARGUMENT, w, f"ring={ring!r}", "is not for a kit: a drum hit rings as it was recorded",
                                ['m.strike(drums, "crash", vel=1.0)', 'm.strike(drums, ["kick", "crash"])'],
-                               "Cut what rings with m.choke(...).")
+                               "A shorter ring: write the hit itself, track.hit(\"crash\", at, decay=0.3).")
         ring = None if ring is None else _secs(ring, "ring", w, ["ring=4.0"])
         return self._do("strike", [track], what=what, vel=vel, ring=ring, kit=kit)
 
@@ -118,7 +120,7 @@ def apply(song) -> None:
         where = f"moment {m.name}"
         at = markers.time_of(root, m.name, where)
         end = times.seconds(song.root["length"], root, where) if song.root.get("length") is not None else float("inf")
-        said = []
+        said, hits = [], False
         for kind, tracks, a in m.actions:
             c, names = E.Counts(), ", ".join(t.id for t in tracks)
             for t in tracks:
@@ -136,7 +138,8 @@ def apply(song) -> None:
             lead = {"rest": f"rest {a.get('before', 0):.2f} s", "stop": "stop", "choke": f"choke after {a.get('after', 0):.2f} s",
                     "swell": f"swell over {a.get('over', 0):.1f} s", "strike": "strike"}[kind]
             said.append(f"{lead} on {names} ({c.said()})")
-        say(f"moment {m.name} at {at:.2f} s: " + "; ".join(said or ["no actions"]))
+            hits = hits or bool(c.get(E.LEFT_RINGING))
+        say(f"moment {m.name} at {at:.2f} s: " + "; ".join(said or ["no actions"]) + (f". Why the hits: {E.WHY_HITS}" if hits else ""))
 
 
 def _strike(track, at, a, counts):

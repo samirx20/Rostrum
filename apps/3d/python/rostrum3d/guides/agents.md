@@ -124,6 +124,9 @@ A shot carries its own render settings as fields, set like any other shot field 
 - `renderRange` `shot` (all of it) or `range`; then `renderStart` and `renderEnd` are seconds from the start of the shot,
   and the frame at `renderEnd` is the last one.
 - `renderFormat` `png` (the default), `exr` or `both`: what the screen's render sheet saves.
+- `renderOnly` a collection id (`""`, the default: everything): the shot renders that collection's items alone; lights,
+  cameras and the groups holding members stay, everything else that draws is hidden in that shot (e.g. the characters
+  on their own, then the set without them in a second shot, for the Editor). Exists once the scene has a collection.
 - The passes an EXR carries, switches that exist only while `renderFormat` is `exr` or `both` and Quality is not Stylized:
   `passLight`, `passShadow`, `passReflections`, `passMasks` (on by default), `passDepth`, `passNormal`, `passLightGroups`,
   `passCryptomatte`, `passMotion`. A call's `passes` (`["light", "shadow", "reflections", "masks", "depth", "normal",

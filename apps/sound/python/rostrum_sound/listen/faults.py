@@ -21,7 +21,7 @@ NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "so
              "drums_in_gap": drop_gap.words, "early_rival": rival.words,
              "gap_before": rise_gap.words, "squashed_mix": squash.words, "buried_hit": hit_room.words}
 
-HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
+HELD_S = 12.0          # one harmony (pitch-class shape, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
 HELD_MOVED_DB = 12.0   # ...unless its level moves this much (a long swell or a fade is movement the ear follows)
 DULL_DB = -20.0       # the brightest tenth of the piece's top end (4–16 kHz) under this against 250 Hz–1 kHz: dull
@@ -36,13 +36,16 @@ _BLOCK = 11            # chroma frames per block (about 1 s)
 def held_spans(y, sr) -> list[dict]:
     """Stretches where the harmony does not move: every ~1 s block's pitch-class shape within HELD_ALIKE (cosine) of
     the stretch's mean, the sound audible (> -50 dBFS), for HELD_S or longer, its level moving under HELD_MOVED_DB.
-    The longest first, non-overlapping."""
+    The longest first, non-overlapping. The shape is each block's twelve classes less their own mean: which notes stand
+    out, not the floor every class carries in a real mix (reverb, harmonics, a melody, the bass), which made any two
+    blocks in one key ≥ 0.9 alike and a ii-V every two beats read as one held harmony."""
     m = resample(mono(y), sr, _SR) if sr != _SR else mono(y)
     c = chroma(m, _SR, _HOP)
     nb = c.shape[1] // _BLOCK
     if nb < 2:
         return []
     cb = c[:, :nb * _BLOCK].reshape(12, nb, _BLOCK).mean(axis=2)
+    cb = cb - cb.mean(axis=0, keepdims=True)
     cb = cb / (np.linalg.norm(cb, axis=0, keepdims=True) + 1e-12)
     blk = _BLOCK * _HOP
     lv = np.array([10 * np.log10(np.mean(m[i * blk:(i + 1) * blk].astype(np.float64) ** 2) + 1e-12) for i in range(nb)])

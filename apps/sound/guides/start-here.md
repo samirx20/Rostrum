@@ -55,6 +55,9 @@ To hear one part's share, `solo` or `mute` it and compare the rows. A start in a
 - **A moment fixed to a picture** (a cut at 12.4 s): land a bar on it without bending the music,
   `downbeat(bar(5), at=12.4)` (or `at="#cut"`), or glide the tempo into it, `land(bar(9), at="#cut", ramp_from=bar(5))`.
   Then keep writing in bars. `marker("cut", at=12.4, shared=True)` publishes it so 2D follows it.
+- **Scoring a 2D film:** music and picture must be in one project folder. Started together for one agent, the Sound and
+  2D servers open the same folder; when you open another folder in one of them, open it in the other too
+  (`run_open_project` on each). Make the song the main mix (`run_set_main_mix`): it plays under 2D's export.
 - **A build into a moment:** `build_to("#hit", over=beats(8), parts=[cymbal_roll(drums), crescendo(strings, ["D3", "A3"])])`
   writes plain notes you can edit.
 - **Keep a part moving:** `strings.shape("vol", 0.4, 1.0, over=(bar(1), "#climax"), curve="late")` plays it softer to

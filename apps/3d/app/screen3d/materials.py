@@ -100,6 +100,11 @@ class Materials3D(QObject):
         return [i for i in self.b.selection if self.b.doc.item(i).get("type") in USERS]
 
     @Slot(str)
+    def rowAction(self, action_id):
+        """A material row's button (the inspector calls its bridge's rowAction): Use all shots, as on an item's rows."""
+        self.b.rowAction(action_id)
+
+    @Slot(str)
     def assign(self, material_id):
         if self.b.shotOnly:                     # Only in this shot: the shown shot's own material (bridge_shot_only.py)
             return self.b._guard(lambda: self.b._apply([self.b.edit_call(i, "material", material_id) for i in self._sel()], "Material"))
@@ -145,7 +150,7 @@ class Materials3D(QObject):
 
     def _rows(self):
         it = self._holder()
-        mid = it.get("material", "") if it else ""
+        mid = self.b.shown_values(it).get("material", "") if it else ""     # as the shown shot has them (PR1)
         mat = self.b.doc.item(mid) if mid and self.b.doc.has(mid) else None
         new = mat is None or mid != self._mat
         self._mat = mid if mat else ""
@@ -155,8 +160,8 @@ class Materials3D(QObject):
         else:
             op = self.b.doc.kind.registry.field_op("material")
             static = sections.layout(op, "material")
-            out = rows.evaluate(static, route.shown_values(mat, self.b.time), self.b.facts_of(mat),
-                                False, opened=self._open)
+            out = self.b.mark_shot_own(mat["id"], rows.evaluate(static, self.b.shown_values(mat), self.b.facts_of(mat),
+                                                                False, opened=self._open))
             top = [r for r in out if r["row"] == "param" and r.get("in") == ""]      # the essentials: primary params and their group's rest
             rest = [r for r in out if r not in top]
             for model, part in ((self.headModel, top), (self.model, rest)):

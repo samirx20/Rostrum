@@ -134,7 +134,10 @@ for i, r in enumerate(rows):                          # stagger the rows in: shi
 ```
 
 A second screen of the same device (a detail page the first one opens into) is a column the size of the screen set
-apart inside it, `with column("detail", apart=True, x=0, y=0, w=scr.w, h=scr.h):`; its blocks go from its own top.
+apart inside it, `with column("detail", apart=True, anchor="top-left", x=0, y=0, w=scr.w, h=scr.h):`; its blocks go
+from its own top. Like every layer, a box sits on its anchor, the centre unless named: without `anchor="top-left"`,
+`x=0, y=0` puts its centre on the screen's corner and only a quarter of it shows (or keep the centre and write
+`x=scr.w / 2, y=scr.h / 2`).
 
 ### A pointer and taps
 
@@ -161,7 +164,9 @@ size=72)` (the text's other fields after the numbers), or on any text: `text("n"
 countPrefix="$", figures="tabular lining").key("count", {2: 0, 3.2: 186.4})`. As an operation, `text.counter` (`from`,
 `to`, `at`, `duration`, `ease`, `decimals`, `digits`, `separator`, `prefix`, `suffix`). More steps (it counts, pauses,
 counts on): more keys on `count`. The ease of the first key shapes the count (`easeOut` slows into the final value). A
-number that should land on a beat: key the end on that time, not the start.
+number that should land on a beat: key the end on that time, not the start. `at` takes a marker time too
+(`at="#open+1.4"`: both keys stay on the marker). In a row or column a counter takes the room of the widest number it
+shows, so the blocks around it stay still while it counts.
 
 ## Density: what makes a screen read as a real product
 
@@ -265,7 +270,7 @@ Effects are a layer's look, in order (`effect.add`, or `item.effect(type, id, ..
 | `backdrop` (frosted glass) | Blurs what is **behind** the layer inside its box and corner radius. `radius` (blur), `fillAmount` (how much of the layer's own look shows over the glass: a pale fill at 0.25 reads as frosted), `saturate`, `brightness`. |
 | `blur` | `radius` blurs the layer itself. |
 | `shadow` | `dx`, `dy`, `radius` (softness), `color`, `strength`. |
-| `glow` | `radius`, `strength`, `ownColor` or `color`. |
+| `glow` | `radius`, `strength`; it glows in the layer's own colours (`ownColor`, on) until you give `color`: a `color` turns `ownColor` off (give `ownColor=True` as well and the colour is kept but not used). |
 | `gradient` | Fills the layer instead of its colour: `style` linear / radial / conic, `angle`, `cx`, `cy`, `color1`, `color2`, optional middle colour. |
 | `grain` | Film grain on the layer's own look: `amount`, `size` (px), `colour`, `still` (a fixed texture), `smooth` (on: soft round specks; off: square cells). |
 | `rough` | Moves the layer's pixels by smooth noise, so every edge wobbles as if drawn or cut by hand: `amount` (px an edge moves at most), `size` (px, how wide one bump is), `detail` (1–8: finer wobble on top), `boil` (a new wobble every that many frames; 0 = still), `seed`. Works on any layer, a group (all its layers warp together), text and pictures. |

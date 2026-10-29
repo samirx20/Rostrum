@@ -127,8 +127,10 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 Every argument besides `id` is a field. The field names, ranges and defaults are the ones `inspect_operations` (the `<type>.add` / `<type>.set` entries) and `inspect_item` show; an unknown field, a wrong type or an out-of-range number fails (see Errors). Units: metres, degrees, seconds;
 colours `"#rrggbb"`.
 
-A field that doesn't apply as the item is made is refused, never stored: `width` on a sphere, `fStop` without `dof=True`, a
-`strip`'s `length` on a `rect`. Set what it depends on in the same call (`shape=`, `kind=`, `dof=True`, `rig=`).
+A field that doesn't apply as the item is made is not used, never stored: `width` on a sphere, `fStop` without `dof=True`, a
+`strip`'s `length` on a `rect`, `seenByCamera` on anything but a dome. The script still runs, everything else in it is applied,
+and the reply names each one (`strip.seenByCamera: not used on a strip light (it only applies when Kind is 'dome')`). Set what it
+depends on in the same call (`shape=`, `kind=`, `dof=True`, `rig=`) to use it.
 
 The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visible`; a rig takes only `x y z rx ry rz visible`). `px py pz` is the pivot, in the item's own space: the point it turns and scales around; with a pivot, `x y z` is where the pivot stands. Items also take `follow` (an item to ride on, `followAmount` 0..1 keyed to pick up and let go; `followPose=True`: ride the bone of a posed clay nearest it) and `stick` (a mesh to stand on; `y` is then the height above it):
 
@@ -136,7 +138,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
   svg: `svgFile` or `pathData`, `svgWidth`; path2d: `doc2d layer svgWidth`; outline faces: `frontMaterial bevelMaterial sideMaterial backMaterial`
   (`depth` is how far an outline is pushed out).
 - **light** `kind length width height radius angle texture turn seenByCamera color intensity exposure temperature spread card lightsOnly normalize shadows`
-  (`lightsOnly` is ids separated by spaces; `turn` and `texture` are for a dome).
+  (`lightsOnly` is ids separated by spaces; `turn`, `texture` and `seenByCamera` are for a dome only; `length` for a strip).
 - **camera** `focalLength sensorWidth dof fStop focusDistance focusItem near far` (`focusItem`: an item id kept sharp as it moves).
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation subsurface subsurfaceColor subsurfaceRadius bumpTexture bumpStrength emissionColor emissionStrength thinFilm sheen sheenRoughness sheenTint coatTint coatIor brushDirection`; `material(id, start="fabric", baseColor=…)` begins from a starting point (guide `materials`). A pattern (checks, stripes, weave) goes on as a block: `graph.add` + `graph.connect` (guide `materials`).
@@ -197,8 +199,8 @@ them like its own, in the same run (one undo step):
   intensity=8)` keeps its place and aim. A shot with no camera is seen through the default view, and the reply says so.
 
 The same goes for anything another script or a person made: **made again under its id**, this script replaces it (never a
-second copy). From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
-usual (`force` lets the script win).
+second copy). From then on the script owns them: a re-run under its name changes them again, and what the new scene or the other
+script had set is never held back. A field a person changed by hand is held back as usual (`force` lets the script win).
 
 ## Nesting
 
@@ -226,7 +228,7 @@ Materials and shots always go to the top level, even when made inside a `with`.
   that starts at it. Eases: `linear hold smooth snappy natural heavy easeIn easeOut easeInOut spring bounce custom`.
   Key ids come from the item, field and time (`cube.ry.k2000`), so the same script gives the same keys every run.
   Springs and curves: `item.key("y", {0: 0.1, 1: 0}, ease="spring", stiffness=240, damping=14)` (settings on every key), or per key
-  `{0: {"v": 0, "ease": "custom", "x1": 0.2, "y1": 0, "x2": 0.1, "y2": 1.1}, 1: 30}`. A setting that doesn't fit the key's ease is refused.
+  `{0: {"v": 0, "ease": "custom", "x1": 0.2, "y1": 0, "x2": 0.1, "y2": 1.1}, 1: 30}`. A setting that doesn't fit the key's ease is not used, and the reply says so.
   `item.key("visible", {0: False, 1.2: True})` shows and hides: on or off from each key to the next, never in between.
 - `item.aim(item_or_id)` or `item.aim((x, y, z))` points the item's −Z at an item's origin or a point, every frame (turns `rx ry rz` off while it aims).
   `item.aim(target, roll=90)` then turns it around the way it points: a strip light stands on end, a camera's horizon tilts. `roll` can be keyed.
@@ -239,10 +241,10 @@ and `import math`. Nothing else: no files, no other imports, no `print`. A scrip
 
 ## Errors
 
-A script that fails changes nothing. The error names the script and line, then what was wrong and what is accepted:
+A script that fails changes nothing. (A field that doesn't apply is not a failure: the script runs and the reply's warnings name
+it, "a.width: not used on a sphere mesh … everything else was applied".) The error names the script and line, then what was wrong and what is accepted:
 
 - `script "p.py" failed (line 4): … "wd" is not a field of a mesh. Accepted: shape, width, …` (a near miss gets a suggestion)
-- `… a.width only applies when shape is 'box' or shape is 'plane'. Set that too to use width.`
 - `… a.ry at 1 s: ease='bogus' is not one of the choices. Accepted: linear, hold, …`
 - `… "width" can't be animated on a camera; animatable: focalLength, …`
 - `… id "a" is used twice in the script (already mesh).` (making it twice; `edit("a")` again is fine)

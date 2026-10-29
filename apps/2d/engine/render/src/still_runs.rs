@@ -168,10 +168,13 @@ pub fn moving_runs(cuts: &[Vec<String>], bases: &[usize], base: usize, still: &[
     let mut out: Vec<(Range<usize>, [f64; 6])> = vec![];
     let mut last: Option<Vec<[f64; 6]>> = None;              // the moves of the run being grown
     for p in 0..pieces.len() {
-        let Some((m, d)) = moves(p) else {
+        // Kept only when every other sample merely moves it (B1): a piece some sample changes is drawn per sample anyway,
+        // so its kept picture was a paint spent for nothing (and stopped that sample using the others' pictures).
+        let Some((m, Some(d))) = moves(p) else {
             last = None;
             continue;
         };
+        let d = Some(d);
         let joins = matches!((&d, &last, out.last()), (Some(d), Some(l), Some((r, _))) if r.end == p && alike(d.as_slice(), l.as_slice()));
         if joins {
             let last_run = out.len() - 1;               // joins: there is one, ending here
@@ -233,5 +236,8 @@ mod tests {
         assert_eq!(ranges, vec![0..2, 2..3, 4..5], "a and b share a picture; c moves twice as far; d blends; e is not next to a");
         assert_eq!(runs[0].1[5], -12.0, "the base's matrix of the run's first piece");
         assert_eq!(super::moving_runs(&cuts, &[1, 1, 1], 1, &[0..1], (1.0, 0.0, 0.0)).iter().map(|(r, _)| r.clone()).collect::<Vec<_>>(), vec![1..2, 2..3, 4..5], "a still piece is not moved");
+        let mut changed = cuts.clone();
+        changed[2][2] = changed[2][2].replace("></div>", "><i></i></div>");
+        assert_eq!(super::moving_runs(&changed, &[1, 1, 1], 1, &[], (1.0, 0.0, 0.0)).iter().map(|(r, _)| r.clone()).collect::<Vec<_>>(), vec![0..2, 4..5], "c changes in a sample: not kept");
     }
 }

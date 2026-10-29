@@ -67,8 +67,8 @@ def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "
                            hint="Pick one with inspect_sounds (Sound's library and your sound folders).")
     song = project_sound.song(folder, chosen)
     if song is None:
-        raise RostrumError(codes.BAD_ARGUMENT, "sound.cue", "the project", "has no RostrumSound item to put the sound in",
-                           hint="Make the project's sound in RostrumSound first (it owns every sound and mixes it).")
+        raise RostrumError(codes.BAD_ARGUMENT, "sound.cue", f"the project {folder}", "has no RostrumSound song to put the "
+                           "sound in", hint=project_sound.where_the_music_is(folder))
     with joint.step():                                  # the marker and the clip: one Undo step
         name = _marker(folder, doc, layer_id, who)
         snd = project_sound.open_song(folder, song["id"])   # live: one door with Sound's own window and 2D's Undo

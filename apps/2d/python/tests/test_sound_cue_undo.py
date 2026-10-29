@@ -47,3 +47,16 @@ def test_undo_opens_the_song_when_it_is_not_open_here(tmp_path):
     doc = _cued(tmp_path)
     hit = desk.undo([doc, markers.open_to_change(tmp_path)], ME, lambda item: project_sound.open_item(tmp_path, item))
     assert hit is not None and _cue_clips(tmp_path) == []
+
+
+def test_no_song_here_names_the_folder_the_agents_sound_works_in(tmp_path, monkeypatch):
+    """Re-bench D1: the cue error said "make the sound in RostrumSound first" to agents who had, in Sound's own folder."""
+    from rostrum_core import agent_last
+    monkeypatch.setenv("ROSTRUM_AGENT_HOME", str(tmp_path / "agent"))
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "cue-agent")
+    here = tmp_path / "film"
+    assert f'run_open_project {{"folder": "{here}"}}' in project_sound.where_the_music_is(here)
+    (tmp_path / "sound").mkdir()
+    agent_last.remember("rostrum-sound", tmp_path / "sound", "song")
+    said = project_sound.where_the_music_is(here)
+    assert str((tmp_path / "sound").resolve()) in said and "another project" in said and str(here) in said

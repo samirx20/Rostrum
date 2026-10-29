@@ -15,9 +15,10 @@ from .spatial import between
 
 
 def keys_of(owner: dict, prop: str) -> list[dict]:
-    """A field's keys by time. Keys timed on a marker (marked.py) sort after the others until the app resolved
-    them; `track_value` needs resolved keys (seconds only)."""
-    return sorted((k for k in owner.get("keys", []) if k.get("prop") == prop), key=lambda k: order(k["t"]))
+    """A field's Base keys by time (a key on an animation layer has `layer`: layers.py reads those). Keys timed on a
+    marker (marked.py) sort after the others until the app resolved them; `track_value` needs resolved keys."""
+    return sorted((k for k in owner.get("keys", []) if k.get("prop") == prop and not k.get("layer")),
+                  key=lambda k: order(k["t"]))
 
 
 def animated(owner: dict) -> set[str]:

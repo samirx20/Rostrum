@@ -2,7 +2,7 @@
 Each problem: {kind, item, message, fix}. Read-only. The checks come from the pieces that already decide each thing:
 the shared file rule (rostrum_core.project.media_problems: missing and outside files), the cleaned-take cache
 (cleanup.cached), the song's warnings (DocKind.warn: designed sounds no longer made) and, given the sound engine, notes a
-track's recorded sound can't play (note_ranges: the render would refuse the whole song)."""
+track's recorded sound can't play (note_ranges: the render plays them from the nearest sample, stretched)."""
 from __future__ import annotations
 
 from typing import Iterator
@@ -87,7 +87,7 @@ def steps(doc, out: list, engine=None) -> Iterator[None]:
     if cut := past_end.hard_end(data):
         out.append({"kind": "hard-end", "item": cut, "message": "Ring out and Soft end are off and sound is still playing at the song's Length, "
                     "so the file stops there on a 10 ms ramp", "fix": "Only if you want it softer: Soft end (doc.set endFade true, a 0.1 s fade), or end the music before the Length"})
-    if engine is not None:                           # notes a track's recorded sound can't play (the render would refuse)
+    if engine is not None:                           # notes a track's recorded sound can't play (played stretched)
         out += [{**p, "fix": FIXES["out-of-range"]} for p in note_ranges.problems(data, engine)]
 
 

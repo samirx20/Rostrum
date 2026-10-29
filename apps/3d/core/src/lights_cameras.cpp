@@ -16,6 +16,7 @@
 #include "item_track.h"
 #include "light_extras.h"
 #include "materials.h"
+#include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -114,7 +115,7 @@ void build_camera(Item& it, const SdfPath& path) {
   const bool dof = it.props.flag("dof");
   const auto fstop = it.nums("fStop");
   it.write<float>(cam.CreateFStopAttr(), dof ? fstop.size() : 1,
-                  [&](size_t i) { return dof ? float(pick(fstop, i)) : 0.0f; });  // f-stop 0 = no depth of field
+                  [&](size_t i) { return float(dof ? pick(fstop, i) : kClosedFStop); });  // off: closed, never 0 (view_camera.h)
   write_float(it, cam.CreateFocusDistanceAttr(), "focusDistance");
   // Motion blur: the shot's shutter, frame-relative and centred (USD's shutter:open / close; Cycles' Hydra plug-in
   // samples the camera's moves inside it, and the engine switches Cycles' motion blur on when it is open, hydra.cpp).

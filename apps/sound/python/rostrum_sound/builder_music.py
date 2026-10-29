@@ -21,7 +21,17 @@ class MusicMap:
 
     def marker(self, name, at, id=None, shared=False):
         """A marker; the same name again at the same time is the same marker (marker("hit") then moment("hit") at
-        it), at another time a loud error naming both. shared=True: a project marker (published by run_script)."""
+        it), at another time a loud error naming both. shared=True: a project marker (published by run_script).
+        `at="#<its own name>"` names the marker already there (the script's or the project's): nothing new is made."""
+        own = markers.parts(at)
+        if own and own[1] == 0 and markers.key(own[0]) == markers.key(name):
+            if not any(markers.key(m["name"]) == markers.key(name) for m in self.marks()):
+                raise RostrumError(codes.BAD_ARGUMENT, f"marker {name}", f"at={at!r}",
+                                   f'names the marker "{name}" itself, which is not there yet: give it a time',
+                                   hint=f'marker("{name}", at=31.5) or at=bar(17)')
+            if shared:
+                self.shared.add(markers.key(name))
+            return
         same = next((m for m in self.markers if m["id"] == (id or ids.marker(name))), None)
         if same is not None:
             if same["at"] == at:

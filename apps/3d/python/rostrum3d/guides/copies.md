@@ -92,5 +92,5 @@ A colour effector shows in Final on a source with a material (laid over its base
 - A copies item with nothing inside it, or only effectors: "has nothing to copy".
 - layout `surface` with no `surface`, or the surface being (inside) the thing copied.
 - `count` while `amountBy` is density (the count then comes from the area), `columns` outside a grid, `radius` outside a circle or a pour, `pourTime`/`pourSpeed`/`pourSpread` outside a pour: the
-  field is refused until the layout makes it apply.
+  field is refused by `copies.set` until the layout makes it apply (in a script it is not used, and the reply names it; the rest runs).
 - `copies.hold` with a copy number past the last one.

@@ -59,8 +59,8 @@ def stats(xs):
     xs = sorted(x for x in xs if x is not None)
     if not xs:
         return None
-    return {"median": round(st.median(xs), 1), "p90": round(xs[int(0.9 * (len(xs) - 1))], 1), "max": round(xs[-1], 1),
-            "n": len(xs)}
+    return {"min": round(xs[0], 1), "median": round(st.median(xs), 1), "p90": round(xs[int(0.9 * (len(xs) - 1))], 1),
+            "p95": round(xs[int(0.95 * (len(xs) - 1))], 1), "max": round(xs[-1], 1), "n": len(xs)}
 
 
 def table(recs):
@@ -120,16 +120,18 @@ def summarise(recs_all, firsts):
     each stroke on its own."""
     rest = stats([total(r) for r in recs_all])
     f = stats(firsts)
-    return {"typical": rest and rest["median"], "slowest10": rest and rest["p90"], "worst": rest and rest["max"],
+    return {"min": rest and rest["min"], "typical": rest and rest["median"], "slowest10": rest and rest["p90"],
+            "p95": rest and rest["p95"], "worst": rest and rest["max"],
             "firstMedian": f and f["median"], "firstMax": f and f["max"], "requests": len(recs_all),
             "strokes": len(firsts), "firsts": [round(x, 1) for x in firsts]}
 
 
 def markdown(title, summary):
     fmt = lambda x: "-" if x is None else f"{x:.1f}"  # noqa: E731
-    lines = [f"### {title}", "", "| brush | typical | slowest 10 % | first dab (max) |", "|---|---|---|---|"]
+    lines = [f"### {title}", "", "| brush | min | typical (median) | p95 | first dab (median / max) |", "|---|---|---|---|---|"]
     for brush, s in summary.items():
-        lines.append(f"| {brush} | {fmt(s['typical'])} | {fmt(s['slowest10'])} | {fmt(s['firstMax'])} |")
+        lines.append(f"| {brush} | {fmt(s['min'])} | {fmt(s['typical'])} | {fmt(s['p95'])} | "
+                     f"{fmt(s['firstMedian'])} / {fmt(s['firstMax'])} |")
     return "\n".join(lines) + "\n"
 
 

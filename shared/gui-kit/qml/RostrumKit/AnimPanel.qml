@@ -5,7 +5,7 @@ import RostrumKit
 // is picked in the timeline (backend.stretch, screen2d/stretch_select.py). On the settings grid (Theme.labelColumnFor /
 // fieldFor / halfFor / wideFor): ‹ back (Esc does the same) · Move · "title · Position"; one row per number (from | to);
 // Start, Length; Ease (the kit's one EasePicker: the current ease's curve and name, the same list as the Key block's); its curve
-// (handles to drag where the ease is a cubic) and the four numbers; Reverse | Delete. No headings over the groups: each
+// (handles to drag where the ease is a cubic) and the four numbers; All curves (the timeline's Curves, every item's); Reverse | Delete. No headings over the groups: each
 // field says what it is (a gap parts them). Every edit is one operation call (anim.ease, key.set, key.handles).
 Rectangle {
     id: panel
@@ -107,6 +107,13 @@ Rectangle {
             Words { width: Theme.labelColumnFor(panel.w); height: parent.height; text: "Curve" }
             Words { x: Theme.labelColumnFor(panel.w); leftPadding: Theme.gap; height: parent.height   // on the fields' text
                     text: (panel.info.handles || []).map(v => v.toFixed(2)).join("  ") }
+        }
+        Line {   // the timeline's Curves with every animated item's curves (the kit's CurveEditor.qml), where the app has one
+            visible: !!backend.curves && backend.curves.offered && !(backend.curves.on && backend.curves.all)
+            Button { objectName: "animAllCurves"; x: Theme.labelColumnFor(panel.w); width: Theme.fieldFor(panel.w)
+                     anchors.verticalCenter: parent.verticalCenter; kind: "ghost"
+                     text: "All curves"; help: "Every animated setting's curve in the timeline, keys and handles to drag"
+                     onClicked: backend.curves.showAll() }
         }
         Item { width: 1; height: Theme.gap }
         Line {   // Reverse | Delete: the field column's two halves

@@ -77,6 +77,18 @@ def test_the_file_is_exactly_the_length_asked_whatever_rings_on_or_is_silent(tmp
         assert "stops while ringing" in r["warnings"][-1] and "not faded" in r["warnings"][-1]   # (Sam, 2026-10-29)
 
 
+@pytest.mark.parametrize("tail, rings", [(0.02, True), (0.0006, False)])     # -37 dBFS still sounds; -67 dBFS has finished
+def test_stops_while_ringing_is_said_exactly_when_look_sound_calls_the_end_still_sounding(tmp_path, tail, rings):
+    from rostrum_sound.listen.ending import ending
+    rate, t = 48000, np.arange(int(5.0 * 48000)) / 48000                  # Morning Light r2: a -67 dBFS tail was "stops while ringing"
+    x = np.where(t < 3.0, 0.5, tail) * np.sin(2 * np.pi * 220 * t)
+    sf.write(str(tmp_path / "song_mix.wav"), np.stack([x, x], axis=1).astype("float32"), rate, subtype="FLOAT")
+    r = deliver.deliver(tmp_path, {"file": str(tmp_path / "song_mix.wav"), "stems": {}}, {}, deliver.Options.read({"sampleRate": 48000, "length": 4.0}), "song")
+    y, sr = sf.read(r["file"], always_2d=True)
+    assert sf.info(r["file"]).duration == pytest.approx(4.0, abs=1e-3)
+    assert any("stops while ringing" in w for w in r["warnings"]) is rings and ending(y, sr)["finished"] is not rings
+
+
 def test_a_resumed_agent_session_gets_its_song_back(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     from rostrum_sound.mcp.app import open_or_new

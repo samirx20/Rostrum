@@ -91,3 +91,20 @@ def test_collection_targets_lights_materials_and_hide_in_one_shot():
     d.apply({"op": "collection.set", "target": ["props"], "args": {"include": ["box"]}}, SAM)
     d.apply({"op": "collection.material", "target": ["props"], "args": {"material": ""}}, SAM)
     assert d.item("box")["material"] == "" and d.item("ball")["material"] == ""
+
+
+def test_render_only_a_collection_and_a_deleted_item_leaves_no_trace():
+    d = _doc()
+    d.apply({"op": "collection.add", "args": {"name": "Props", "items": ["ball", "cup"]}}, SAM)
+    coll = d.data["collections"][0]["id"]
+    d.apply({"op": "shot.set", "target": ["close_02"], "args": {"renderOnly": coll}}, SAM)
+    close, wide = describe(d.data, "close_02"), describe(d.data, "wide_01")
+    assert _node(close, "box")["props"]["visible"] is False and _node(close, "ball")["props"]["visible"] is True
+    assert _node(close, "lamp")["props"].get("visible", True) is True
+    assert _node(wide, "box")["props"]["visible"] is True                # the other shot renders everything
+    d.apply({"op": "light.set_in_shot", "target": ["lamp"], "args": {"shot": "close_02", "intensity": 9}}, SAM)
+    d.apply({"op": "item.remove", "target": ["lamp", "cup"]}, SAM)
+    assert "lamp" not in d.item("close_02").get("overrides", {})
+    assert d.item(coll)["items"] == ["ball"]
+    d.undo(SAM)
+    assert d.item("close_02")["overrides"]["lamp"] == {"intensity": 9} and "cup" in d.item(coll)["items"]

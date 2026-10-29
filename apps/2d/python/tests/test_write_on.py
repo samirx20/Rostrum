@@ -91,3 +91,26 @@ def test_a_picture_not_made_yet_never_stands_in_with_more_than_is_drawn(tmp_path
     for job in later:
         job()
     assert scene._pictures(d, 10, {"until": 1.0, "later": []}) == scene._pictures(d, 10, {"until": 1.0})
+
+
+def test_a_look_makes_only_the_pictures_of_the_frames_it_draws(tmp_path, monkeypatch):
+    """warm.scene's `times`: a look at a few moments makes the Drawn so far pictures shown at those frames, not every
+    frame's (a run_script look at 2 moments of the Night Market film made ~600, ~80 s); what it draws is the export's."""
+    monkeypatch.setenv("ROSTRUM_CACHE_DIR", str(tmp_path))
+    from rostrum_core import cache
+    monkeypatch.setattr(cache, "CACHE", cache.Cache())
+    monkeypatch.setattr(write_on, "CACHE", cache.CACHE)
+    f = frame()
+    f["paints"][0]["strokes"][0]["color"] = "#654321"          # a drawing of its own (no picture made by another test)
+    d = {"id": "d", "type": "drawing", "w": W, "h": H, "frames": [f],
+         "keys": [{"prop": "drawnSoFar", "t": 0.0, "v": 0.0}, {"prop": "drawnSoFar", "t": 0.6, "v": 1.0}]}
+    later = []
+    scene._pictures(d, 10, {"until": 1.0, "later": later})
+    pics = [j for j in later if isinstance(j, write_on.Ahead)]
+    assert [j.covers for j in pics] == [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]    # each from its frame to the next's
+    assert set(write_on.wanted(later, {3})) == {j for j in later if not isinstance(j, write_on.Ahead)} | {pics[2]}
+    for job in write_on.wanted(later, {3}):
+        job()
+    looked = {e["at"]: e["src"] for e in scene._pictures(d, 10, {"until": 1.0, "later": []})}
+    exported = {e["at"]: e["src"] for e in scene._pictures(d, 10, {"until": 1.0})}
+    assert looked[3] == exported[3] and looked[4] != exported[4]     # the frame drawn is the export's; others wait

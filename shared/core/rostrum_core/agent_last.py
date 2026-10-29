@@ -9,6 +9,14 @@ alone: Agent Hub starts every child agent in the same worktree, and a new agent 
 
     remember(app, folder, item)         run_open_project calls this (open_folder.py), and start-up for a scratch project
     recall(app, ext)                    start-up (agent_start.py): this folder's row, when its document is still there
+
+One film, one folder: the session's apps share a record too, `~/.rostrum/settings/agent-film.json`, {session key: {folder,
+app}}: the folder any of its apps last opened. A Sound server started beside a 2D one opens the 2D project's folder (and
+the other way round), so the music made in Sound is the song under 2D's export (agent_start.py).
+
+    film()                              {folder, app} this session's apps last opened, when the folder is still there
+    set_film(app, folder)               every remember, and start-up's new scratch folder (inside film_lock())
+    where(app)                          the folder `app` last opened for this session (another app's, to name it)
 """
 from __future__ import annotations
 
@@ -64,6 +72,8 @@ def remember(app: str, folder, item: str) -> None:
             data.pop(_here(), None)
             data[_here()] = {"folder": str(Path(folder).resolve()), "item": item}
             write_atomic(file(app), json.dumps(dict(list(data.items())[-KEEP:]), indent=1, ensure_ascii=False))
+        with film_lock():
+            set_film(app, folder)
     except OSError:
         pass                                     # a record we could not write only loses the reopen convenience
 
@@ -75,3 +85,32 @@ def recall(app: str, ext: str) -> dict | None:
         return None
     return {"folder": row["folder"], "item": row["item"]}
 
+
+
+FILM = "agent-film"
+
+
+def film_lock():
+    """Held around reading the film record and making a scratch folder, so two servers starting at once share one."""
+    return userhome.locked(file(FILM))
+
+
+def set_film(app: str, folder) -> None:
+    """This session's apps now work in `folder` (`app` opened it). Call inside film_lock()."""
+    data = _read(FILM)
+    data.pop(_here(), None)
+    data[_here()] = {"folder": str(Path(folder).resolve()), "app": app}
+    write_atomic(file(FILM), json.dumps(dict(list(data.items())[-KEEP:]), indent=1, ensure_ascii=False))
+
+
+def film() -> dict | None:
+    """{folder, app}: the folder this session's apps last opened (and which app), when it is still there."""
+    row = _read(FILM).get(_here())
+    return row if row and Path(row["folder"]).is_dir() else None
+
+
+def where(app: str) -> str | None:
+    """The folder `app` (e.g. "rostrum-sound") last opened for this agent session, or None: lets one app say where the
+    other is working when the two differ."""
+    row = _read(app).get(_here())
+    return row["folder"] if row else None
