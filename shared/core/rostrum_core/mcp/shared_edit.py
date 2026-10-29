@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..errors import RostrumError, codes
 from .edit_summary import sentence, summarize
+from .faults import NOTES
 from .jobs import MAX_WAIT_S, outcome
 from .reply import Reply
 from .tools import Tools
@@ -109,9 +110,10 @@ def register(tools: Tools):
 
 
 LOOK = {"look": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
-                 "description": "Look in the same call: true (6 moments) or seconds, e.g. [2, 7, 12]. The reply opens NOT DONE: "
-                                "(each fault: id, when, fix) or DONE:, with a contact sheet."}}
-LOOK_LEAD = ("Write the whole film as one script; pass look to get stills + faults back; edit and re-run under the same name. ")
+                 "description": "Look in the same call: true (6 moments) or seconds, e.g. [2, 7, 12]: a contact sheet "
+                                "to judge by eye. With notes: true the checks' measurements come too."}, **NOTES}
+LOOK_LEAD = ("Write the whole film as one script; pass look to see stills of it, judge them yourself, edit and re-run under "
+             "the same name. ")
 
 
 def with_look(tools: Tools):
