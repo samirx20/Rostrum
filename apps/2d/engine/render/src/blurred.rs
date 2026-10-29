@@ -5,7 +5,7 @@
 //!
 //! The pieces are drawn in stage order, in steps: a step draws its pieces over the picture of the steps before it (kept
 //! picture 0, drawn in place of the first piece). A step of pieces that are the same in every sub-frame is one paint: its
-//! streaks first painted alone and kept (at most `most_kept` pictures at once; past it the next streaks are the next
+//! streaks first painted and kept, those that read none of each other's pictures together (at most `most_kept` pictures at once; past it the next streaks are the next
 //! step); a streak that never reaches the frame isn't drawn, one whose picture runs past the frame's edge is painted at
 //! each of its moves instead (no layout) and averaged. A step of pieces that change is painted at every sub-frame and averaged: over the same picture below, the
 //! average is the layers' own average laid over it, exactly. Steps never reorder pieces, so blends and backdrops see what
@@ -108,19 +108,29 @@ pub(crate) fn draw(
             }).collect();
             // A run whose streak never reaches the frame isn't drawn.
             let off: Vec<bool> = runs.iter().map(|(run, _)| run.clone().all(|i| streak(i).and_then(|st| st.reach).is_some_and(|r| r[2] <= seen[0] || r[0] >= seen[2] || r[3] <= seen[1] || r[1] >= seen[3]))).collect();
-            // Each run painted alone into a picture of its own; at most `most_kept` pictures a step, the runs past them the
-            // next step's.
+            // Runs whose streaks read none of each other's pictures share one picture, painted together (`shares`); one
+            // painted at each of its moves (`edge`) has its own. At most `most_kept` pictures a step, the runs past them
+            // the next step's.
+            let spots: Vec<Option<Spot>> = runs.iter().map(|(run, m)| {
+                let ink = joined(run.clone().map(|i| streak(i).filter(|st| st.reach.is_some()).map(|st| st.ink)))?;
+                let reach = joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?;
+                Some(Spot { reads: reads(reach, &m.moves, seen, 1.0 / k), ink })
+            }).collect();
             let mut pictures: Vec<Vec<usize>> = vec![];
             let mut taken = runs.len();
             for i in 0..runs.len() {
                 if off[i] {
                     continue;
                 }
-                if pictures.len() + 1 >= most_kept {
-                    taken = i;
-                    break;
+                let with = pictures.iter().position(|g| g.iter().all(|&o| !edge[o] && !edge[i] && shares(spots[o], spots[i])));
+                match with {
+                    Some(g) => pictures[g].push(i),
+                    None if pictures.len() + 1 < most_kept => pictures.push(vec![i]),
+                    None => {
+                        taken = i;
+                        break;
+                    }
                 }
-                pictures.push(vec![i]);
             }
             q = if taken < runs.len() { runs[taken].0.start } else { q };
             let mut slot = vec![0; taken];
@@ -167,10 +177,7 @@ pub(crate) fn draw(
                     plan.insert(kids[k], Run::Skip);
                 }
                 // The run's reach: every piece's, joined (unknown for one: the whole frame).
-                let reach = run.clone().try_fold(None::<[f64; 4]>, |a, i| {
-                    let b = streak(i)?.reach?;
-                    Some(Some(a.map_or(b, |a| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])])))
-                }).flatten();
+                let reach = joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)));
                 let rect = reach.map(|b| [((b[0] - x0) * k).floor() as f32, ((b[1] - y0) * k).floor() as f32, ((b[2] - x0) * k).ceil() as f32, ((b[3] - y0) * k).ceil() as f32]);
                 moves.push(blitz_paint::Streak { moves: on_device(&m.moves, view, size), rect });
             }
@@ -223,6 +230,49 @@ fn crosses(ink: [f64; 4], seen: [f64; 4]) -> bool {
     !covers && (ink[0] < seen[0] || ink[1] < seen[1] || ink[2] > seen[2] || ink[3] > seen[3])
 }
 
+/// A run's streak, for sharing a picture: where it reads that picture and where its own picture is (page px).
+#[derive(Clone, Copy, Debug)]
+struct Spot {
+    reads: [f64; 4],
+    ink: [f64; 4],
+}
+
+/// Two runs may share one picture: each run's size is known, and neither streak reads where the other's picture is
+/// (so neither picks up the other's px). None: unknown, never shared.
+fn shares(a: Option<Spot>, b: Option<Spot>) -> bool {
+    let apart = |x: [f64; 4], y: [f64; 4]| x[2] <= y[0] || y[2] <= x[0] || x[3] <= y[1] || y[3] <= x[1];
+    matches!((a, b), (Some(a), Some(b)) if apart(a.reads, b.ink) && apart(b.reads, a.ink))
+}
+
+/// Where a streak reads its picture (page px), as the GPU pass does (anyrender_skia `draw_cached_streak`): each px of
+/// its `reach` inside the frame `seen` (the rect rounded out to whole device px) reads the picture at that px carried
+/// back through every one of its `moves`, held inside the frame (the picture is stretched past its edges), sampled
+/// smoothly. `slack`: what the rounding and the smooth sampling add, each side.
+fn reads(reach: [f64; 4], moves: &Moves, seen: [f64; 4], slack: f64) -> [f64; 4] {
+    use crate::rig::math::Aff;
+    let grow = |r: [f64; 4]| [r[0] - slack, r[1] - slack, r[2] + slack, r[3] + slack];
+    let held = |r: [f64; 4]| [r[0].clamp(seen[0], seen[2]), r[1].clamp(seen[1], seen[3]), r[2].clamp(seen[0], seen[2]), r[3].clamp(seen[1], seen[3])];
+    let area = held(grow(reach));
+    let corners = [(area[0], area[1]), (area[2], area[1]), (area[0], area[3]), (area[2], area[3])];
+    let mut out = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
+    for m in moves {
+        // A move that can't be undone: it may read anywhere in the picture.
+        let Some(back) = (Aff { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }).inverse() else { return grow(seen) };
+        for q in corners.map(|p| back.apply(p)) {
+            out = [out[0].min(q.0), out[1].min(q.1), out[2].max(q.0), out[3].max(q.1)];
+        }
+    }
+    grow(held(out))
+}
+
+/// The rectangles joined (None when one isn't known, or there are none).
+fn joined(mut rects: impl Iterator<Item = Option<[f64; 4]>>) -> Option<[f64; 4]> {
+    rects.try_fold(None::<[f64; 4]>, |a, b| {
+        let b = b?;
+        Some(Some(a.map_or(b, |a| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])])))
+    }).flatten()
+}
+
 /// Two streaks' moves are within a quarter px of each other over the frame: one picture, one streak.
 fn alike(a: &Moves, b: &Moves) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(x, y)| (0..4).all(|i| (x[i] - y[i]).abs() <= 1e-4) && (x[4] - y[4]).abs() <= 0.25 && (x[5] - y[5]).abs() <= 0.25)
@@ -252,4 +302,33 @@ fn taps(m: &Moves, view: (f32, f32, f32), (w, h): (u32, u32)) -> Vec<usize> {
         return (0..n).collect();
     }
     (0..taps).map(|i| (((i as f64 + 0.5) * n as f64 / taps as f64) as usize).min(n - 1)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{reads, shares, Spot};
+
+    /// A box sliding right from `x0` to `x1` page px over 9 sub-frames: its moves and its reach.
+    fn slide(ink: [f64; 4], x0: f64, x1: f64) -> (super::Moves, [f64; 4]) {
+        let moves = (0..9).map(|j| [1.0, 0.0, 0.0, 1.0, x0 + (x1 - x0) * j as f64 / 8.0, 0.0]).collect();
+        (moves, [ink[0] + x0, ink[1], ink[2] + x1, ink[3]])
+    }
+
+    fn spot(ink: [f64; 4], x0: f64, x1: f64) -> Option<Spot> {
+        let (moves, reach) = slide(ink, x0, x1);
+        Some(Spot { reads: reads(reach, &moves, [0.0, 0.0, 1920.0, 1080.0], 1.0), ink })
+    }
+
+    #[test]
+    fn streaks_share_a_picture_only_when_neither_reads_the_others() {
+        // Far apart: one picture.
+        assert!(shares(spot([100.0, 100.0, 140.0, 140.0], 0.0, 60.0), spot([600.0, 100.0, 640.0, 140.0], 0.0, 2.0)));
+        // A dot sliding 60 px right, a still one 30 px behind where it starts: their reaches miss each other's pictures,
+        // but the streak's px past its start read back over the still dot (the moves undone), so they don't share.
+        assert!(!shares(spot([100.0, 100.0, 140.0, 140.0], 0.0, 60.0), spot([30.0, 100.0, 70.0, 140.0], 0.0, 2.0)));
+        // Reads held inside the frame: a dot sliding in from past the left edge reads the frame's edge px only.
+        assert!(shares(spot([-80.0, 100.0, -20.0, 140.0], 0.0, 120.0), spot([300.0, 100.0, 340.0, 140.0], 0.0, 2.0)));
+        // A run whose size isn't known never shares.
+        assert!(!shares(None, spot([600.0, 100.0, 640.0, 140.0], 0.0, 2.0)));
+    }
 }

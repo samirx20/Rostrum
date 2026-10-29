@@ -61,11 +61,19 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
     let mut out = vec![None];
     let mut staged = vec![false];
     for (k, l) in super::hold::drawn(centre).into_iter().enumerate() {
-        let rigid = crate::scene::matte::of(l, centre).is_none() && subs.iter().all(|s| same_but_place(l, s[k], true));
-        let m = rigid.then(|| {
-            let from = placed(cv.as_ref(), l);
-            subs.iter().zip(&views).map(|(s, v)| Some(placed(v.as_ref(), s[k]) * from.inverse()?)).collect::<Option<Vec<Aff>>>()
-        }).flatten();
+        let rigid = subs.iter().all(|s| same_but_place(l, s[k], true));
+        let m = rigid.then(|| moved(cv.as_ref(), l, &views, |i| Some(subs[i][k]))).flatten();
+        // A matted layer moves as one picture when its matte is the same picture moved alike (a frame's move over a title
+        // and the water that reveals it); else it is staged.
+        let m = match crate::scene::matte::of(l, centre) {
+            None => m,
+            Some(None) => None,
+            Some(Some(mt)) => m.filter(|m| {
+                let at = |i: usize| crate::scene::matte::of(subs[i][k], &items[i]).flatten();
+                (0..items.len()).all(|i| at(i).is_some_and(|s| same_but_place(mt, s, true)))
+                    && moved(cv.as_ref(), mt, &views, at).is_some_and(|mm| mm.iter().zip(m.iter()).all(|(a, b)| alike(a, b)))
+            }),
+        };
         match m {
             Some(m) if still(l, cv.as_ref(), &m) => {
                 out.push(None);
@@ -86,6 +94,18 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
         }
     }
     (out, staged)
+}
+
+/// Where `l`, placed as at the frame's time (`cv` its frame), goes in each sub-frame (`views`, `at`: its frame and the
+/// layer there): None when it isn't there or a place has no inverse.
+fn moved<'i, 'a: 'i>(cv: Option<&View>, l: &Item, views: &[Option<View>], at: impl Fn(usize) -> Option<&'i Item<'a>>) -> Option<Vec<Aff>> {
+    let from = placed(cv, l).inverse()?;
+    views.iter().enumerate().map(|(i, v)| Some(placed(v.as_ref(), at(i)?) * from)).collect()
+}
+
+/// Two moves within a ten-thousandth in turn and scale and HOLD_PX in place: the same move.
+fn alike(a: &Aff, b: &Aff) -> bool {
+    [a.a - b.a, a.b - b.b, a.c - b.c, a.d - b.d].iter().all(|d| d.abs() <= 1e-4) && (a.e - b.e).abs() <= HOLD_PX && (a.f - b.f).abs() <= HOLD_PX
 }
 
 /// The layer's place, turn and scale, seen through the frame (stage.rs `layer`, frame/mod.rs `place`): its content's
@@ -163,30 +183,29 @@ fn same_but_place(a: &Item, b: &Item, top: bool) -> bool {
     props && !a.props.keys().any(|k| k == "~smear") && all(&a.effects, &b.effects) && all(&a.masks, &b.masks) && all(&a.layers, &b.layers) && all(&a.stops, &b.stops)
 }
 
-/// How many sub-frames a frame's layers are evaluated at to find their streaks (`probes`): a move over one shutter
-/// opening (a 60th of a second at 30 fps) is close to straight between them, and each evaluation of a busy comp costs
-/// about 10-25 ms.
+/// How many times a frame's layers are evaluated at to find its steps and its streaks (`probe_times`): a move over one
+/// shutter opening (a 60th of a second at 30 fps) is close to straight between them, and each evaluation of a busy comp
+/// costs a few ms.
 const PROBES: usize = 5;
 
-/// The sub-frames (of `n`) the layers are evaluated at: the first, the last and evenly between (all when `n` is few).
-pub fn probes(n: usize) -> Vec<usize> {
-    if n <= PROBES {
-        return (0..n).collect();
-    }
-    (0..PROBES).map(|i| ((i * (n - 1)) as f64 / (PROBES - 1) as f64).round() as usize).collect()
+/// The times the layers are evaluated at, in order: the open shutter's start, its end and evenly between (the middle
+/// one is the frame's own time, `t`, exactly). They don't depend on the step count, so the steps (steps.rs
+/// `from_probes`) and the streaks are read off the same evaluations.
+pub fn probe_times(t: f64, fps: f64, angle: f64) -> Vec<f64> {
+    let open = angle / 360.0 / fps;
+    (0..PROBES).map(|k| if 2 * k + 1 == PROBES { t } else { t + open * (k as f64 / (PROBES - 1) as f64 - 0.5) }).collect()
 }
 
-/// The moves at all `n` sub-frames from those at `probes` (`moves[i]` at sub-frame `probes[i]`): each matrix entry
-/// straight between its neighbouring probes.
-pub fn spread(moves: &[[f64; 6]], probes: &[usize], n: usize) -> Moves {
-    if probes.len() == n {
-        return moves.to_vec();
-    }
+/// The moves at each of `n` sub-frames (shutter.rs `sample_times`: the middle of each of n equal slices of the open
+/// shutter) from those at the probes (`moves[k]` at `probe_times`' k-th): each matrix entry straight between the
+/// neighbouring probes.
+pub fn spread(moves: &[[f64; 6]], n: usize) -> Moves {
+    let last = moves.len() - 1;
     (0..n).map(|j| {
-        let i = probes.windows(2).position(|w| j <= w[1]).unwrap_or(probes.len() - 2);
-        let (a, b) = (probes[i], probes[i + 1]);
-        let f = (j as f64 - a as f64) / (b - a).max(1) as f64;
-        std::array::from_fn(|k| moves[i][k] + (moves[i + 1][k] - moves[i][k]) * f)
+        let at = (j as f64 + 0.5) / n as f64 * last as f64;
+        let i = (at.floor() as usize).min(last.saturating_sub(1));
+        let f = at - i as f64;
+        std::array::from_fn(|k| moves[i][k] + (moves[(i + 1).min(last)][k] - moves[i][k]) * f)
     }).collect()
 }
 
@@ -217,12 +236,13 @@ pub fn pick(m: usize, n: usize) -> Vec<usize> {
 mod tests {
     #[test]
     fn moves_between_probes_are_read_off_them() {
-        let p = super::probes(9);
-        assert_eq!(p, vec![0, 2, 4, 6, 8]);
+        let p = super::probe_times(1.0, 30.0, 180.0);
+        assert_eq!(p[2], 1.0, "the middle probe is the frame's own time");
+        assert!((p[0] - (1.0 - 1.0 / 120.0)).abs() < 1e-12 && (p[4] - (1.0 + 1.0 / 120.0)).abs() < 1e-12, "{p:?}");
         let at = |x: f64| [1.0, 0.0, 0.0, 1.0, x, 0.0];
-        let m = super::spread(&[at(-4.0), at(-2.0), at(0.0), at(2.0), at(4.0)], &p, 9);
-        assert_eq!(m.iter().map(|m| m[4]).collect::<Vec<_>>(), vec![-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(super::probes(3), vec![0, 1, 2]);
+        // A straight move of 8 px over the open shutter: 4 sub-frames at the middle of each quarter.
+        let m = super::spread(&[at(-4.0), at(-2.0), at(0.0), at(2.0), at(4.0)], 4);
+        assert_eq!(m.iter().map(|m| m[4]).collect::<Vec<_>>(), vec![-3.0, -1.0, 1.0, 3.0]);
     }
 
     #[test]

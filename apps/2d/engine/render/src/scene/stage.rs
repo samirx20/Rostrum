@@ -57,9 +57,18 @@ pub fn stage(comp: &Item) -> R<String> {
 /// The stage markup of the comp at one time, one piece per top-level element (the background, then each top-level
 /// layer): serve.rs stages only the pieces that changed since the last frame (restage.rs).
 pub fn parts(comp: &Item) -> R<Vec<String>> {
+    parts_of(comp, &|_| true)
+}
+
+/// `parts`, but only the pieces `keep` names (by index: 0 the background, then one per drawn top-level layer); the
+/// others are left empty (a motion-blur sub-frame writes only the layers it stages).
+pub fn parts_of(comp: &Item, keep: &dyn Fn(usize) -> bool) -> R<Vec<String>> {
     let background = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
     // The frame (crate::frame): each top-level layer seen through it, by its depth; the frame itself isn't drawn.
-    placed(comp, background, crate::frame::View::of(comp)?)
+    let view = crate::frame::View::of(comp)?;
+    let mut out = vec![if keep(0) { background } else { String::new() }];
+    out.extend(each_sibling_kept(comp, &|i| keep(i + 1), |l, markup| view.place(l, markup))?);
+    Ok(out)
 }
 
 /// The stage markup of the world view (spec § 8.3; the world picture, scene_world.rs): each top-level layer where the
@@ -83,9 +92,18 @@ fn siblings(parent: &Item, place: impl FnMut(&Item, String) -> String) -> R<Stri
 }
 
 /// `siblings`, one piece per layer.
-fn each_sibling(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -> R<Vec<String>> {
+fn each_sibling(parent: &Item, place: impl FnMut(&Item, String) -> String) -> R<Vec<String>> {
+    each_sibling_kept(parent, &|_| true, place)
+}
+
+/// `each_sibling`, the pieces `keep` doesn't name (by index) left empty.
+fn each_sibling_kept(parent: &Item, keep: &dyn Fn(usize) -> bool, mut place: impl FnMut(&Item, String) -> String) -> R<Vec<String>> {
     let mut out = vec![];
-    for l in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)) {
+    for (i, l) in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)).enumerate() {
+        if !keep(i) {
+            out.push(String::new());
+            continue;
+        }
         let own = place(l, layer(l)?);
         out.push(match super::matte::of(l, parent) {
             None => own,

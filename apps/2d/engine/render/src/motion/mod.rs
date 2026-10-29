@@ -97,15 +97,19 @@ impl Plan {
     }
 }
 
-/// The sub-frame times of the frame at `t` (none: no motion blur). The comp's `shutterSamples` (Blur steps) is the
-/// fewest: a frame whose layers move further on screen gets more (steps.rs). A request's own `shutterSamples` is the exact
-/// count (1 = a fast preview while playing, or a timing test).
-pub fn sub_frames(comp: &Node, req: &serde_json::Value, t: f64) -> Result<Vec<f64>, String> {
+/// The times the frame at `t`'s layers are evaluated at to find its steps and streaks (streak.rs `probe_times`; none:
+/// no motion blur).
+pub fn probe_times(comp: &Node, req: &serde_json::Value, t: f64) -> Result<Vec<f64>, String> {
     let (angle, n) = shutter(comp, req)?;
-    if angle <= 0.0 || n < 2 {
-        return Ok(vec![]);
-    }
-    let n = if req["shutterSamples"].is_null() { steps::steps(comp, t, fps(comp), angle, n) } else { n };
+    Ok(if angle <= 0.0 || n < 2 { vec![] } else { streak::probe_times(t, fps(comp), angle) })
+}
+
+/// The sub-frame times of the frame at `t`, from the comp evaluated at its `probe_times` (`probes`). The comp's
+/// `shutterSamples` (Blur steps) is the fewest: a frame whose layers move further on screen gets more (steps.rs). A
+/// request's own `shutterSamples` is the exact count (1 = a fast preview while playing, or a timing test).
+pub fn sub_frames(comp: &Node, req: &serde_json::Value, t: f64, probes: &[Item]) -> Result<Vec<f64>, String> {
+    let (angle, n) = shutter(comp, req)?;
+    let n = if req["shutterSamples"].is_null() { steps::from_probes(probes, n) } else { n };
     Ok(sample_times(t, fps(comp), angle, n))
 }
 
