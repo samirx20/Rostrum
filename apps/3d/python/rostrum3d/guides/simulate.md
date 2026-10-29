@@ -108,7 +108,7 @@ The `run_simulation` tool computes the whole shot as a job (`inspect_job` shows 
 and stores it. It reports how many fell, how many came to rest and how many end inside the camera's picture. Then
 `look_frame what "sheet"` shows the motion. `sim.run` does the same as an operation (in a script's batch of operations).
 
-**What a video shows of the fall.** `render_video` (a re-export, `estimate_only` and `render_send_shot` too), `look_frame what "sheet"`, `look_motion` and
+**What a video shows of the fall.** `render_video` (a re-export, `estimate_only` and `render_send_shot` too), `look_frame what "sheet"` (with `notes: true`), `look_motion` and
 `run_simulation` judge the frames they cover, not only the whole shot, and say in plain words, with the fix: *the cut opens mid-drop* or
 *after the thing landed* (a `start` later than the fall's start: start the cut at or before it), *a thing is already moving at the first
 frame* (the shot opens mid-fall: give it a moment with `fallStart`, or start it higher), and *everything settles at 0.4 s, the last 7 s

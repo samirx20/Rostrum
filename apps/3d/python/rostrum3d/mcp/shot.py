@@ -97,6 +97,13 @@ def renderer_of(args: dict, default_quality: str = "fast") -> str:
     return args.get("renderer") or QUALITY[args.get("quality", default_quality)]
 
 
+def quality_line(renderer: str) -> str:
+    """The one plain line every look ends with: which quality the picture is."""
+    return {"storm": '\nQuality: live preview (Storm, what the window shows); quality "final" draws it as the export does (Cycles, slower).',
+            "cycles": "\nQuality: final (Cycles, as the export draws it).",
+            "stylized": "\nQuality: Stylized, as the window and the export draw it."}.get(renderer, "")
+
+
 def look_renderer(args: dict, doc, infos: list[dict]) -> str:
     """A look's renderer: the call's renderer or quality, else stylized when every shot looked at renders Stylized (Storm can't
     draw Lines or Halftone, and the stylized look is as quick), else Storm."""

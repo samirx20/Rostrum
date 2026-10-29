@@ -14,7 +14,7 @@ from rostrum3d.compile import shot_info
 
 from . import draw, picture_facts, shot_faults
 from .look import _settings
-from .shot import look_renderer, seconds, size_of
+from .shot import look_renderer, quality_line, seconds, size_of
 
 SPREAD = 4            # look: true -> this many frames spread over the shot
 TILE_W = 480
@@ -62,7 +62,7 @@ def _looked(ctx, doc, look, reply: Reply, notes: bool = False) -> Reply:
     reply.summary += (f"\nLooked at {info['id']} through {info['camera']}: {len(frames)} frames, {frames[0]}–{frames[-1]} "
                       f"({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), {renderer}, {sw}×{sh}.")
     miss, miss_facts = picture_facts.storm_misses(doc.data, renderer)
-    reply.summary += miss
+    reply.summary += miss + quality_line(renderer)
     reply.data["look"] = {"shot": info["id"], "frames": frames, "renderer": renderer, "width": sw, "height": sh, **miss_facts}
     reply.files, reply.images, reply.faults = [*reply.files, dest], [*reply.images, dest], found
     reply.warnings += engine.take_notices()

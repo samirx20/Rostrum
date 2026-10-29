@@ -15,7 +15,7 @@ from rostrum3d.sim.fall_view import fall_note
 
 from . import draw, onion_look, paint_canvas, picture_facts, shot_faults, step_look, text_facts
 from .shape_look import length
-from .shot import COUNT, ITEM_SHOT, LOOK, TIME, WIDTH, count_of, width_of, check_frame, doc_and_shot, frame_of, look_renderer, seconds, size_of
+from .shot import COUNT, ITEM_SHOT, LOOK, TIME, WIDTH, count_of, width_of, check_frame, doc_and_shot, frame_of, look_renderer, quality_line, seconds, size_of
 
 tools = Tools()
 LOOK_SAMPLES = 64                         # Cycles samples for a look (denoised); render_still has its own
@@ -103,7 +103,7 @@ def look_frame(ctx, args):
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
         found = None if away or not asked(args) else shot_faults.check(doc.data, info, [frame], {frame: dest}, ctx.app.folder, renderer)   # a light's view is not the shot's picture
         seat = f'from a view {view_look.words(view)} (the shot camera and document unchanged)' if view else f'through camera {info["camera"]}'
-        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} {seat}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
+        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} {seat}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}{quality_line(renderer)}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
                       **({"view": {k: [round(c, 4) for c in view[k]] if k in ("eye", "target") else round(view[k], 3) for k in view}} if view else {}),
                       **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts},
@@ -164,9 +164,9 @@ def look_sheet(ctx, args):
             found = (shot_faults.check(doc.data, info, frames, dict(zip(frames, pngs)), ctx.app.folder, renderer)     # the tiles are still on disk here
                      if asked(args) else None)
         return Reply(f'Contact sheet of {info["id"]}: {len(frames)} frames, {frames[0]}–{frames[-1]} ({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), '
-                     f'{renderer}, {sw}×{sh}.', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
+                     f'{renderer}, {sw}×{sh}.{quality_line(renderer)}', {"frames": frames, "times": [round(seconds(info, f), 4) for f in frames], "width": sw, "height": sh,
                                                  "cols": cols, "camera": info["camera"]}, [dest], [dest],
-                     [*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1))])], faults=found)
+                     [*engine.take_notices(), *filter(None, [fall_note(doc.data, info["id"], ctx.app.folder, (f0, f1)) if asked(args) else ""])], faults=found)
 
     return ctx.long(f'look_sheet {info["id"]}', job_fn)
 

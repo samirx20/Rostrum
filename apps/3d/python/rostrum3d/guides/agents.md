@@ -54,7 +54,7 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      `full` for the speed on every frame. `path: "buddy.hand.L"` (or an item) instead measures that part on the picture:
      place per sample (0–1), speed, travel as a share of the picture's height, and a frame with its trail drawn on it. A thing set to Falls is measured where the stored simulation has it; when the
      simulation is out of date or not computed the reply says so first and is no all-clear (`run_simulation`, wait with
-     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_frame what "sheet"` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
+     `inspect_job`, look again). A cloth's folds and each copy of a falling copies item are listed as not measured. An **On screen** line (also from `render_video`, `look_frame what "sheet"` with `notes: true` and `run_simulation`, for the frames they cover: a cut that opens mid-drop, a shot that opens mid-fall, a still last stretch) per falling
      thing and cloth says how many frames of its drop (until it first lands) the shot camera shows, and names a fall that happens above
      or outside the picture or starts already at rest, with the fix (`sim.start_in_view` / script `.start_in_view()`, and `fallStart`, which
      holds a falling thing or a cloth in the picture until that second; [Simulate](simulate.md)).
