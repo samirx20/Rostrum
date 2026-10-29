@@ -73,7 +73,9 @@ def _folder(build):
 
 def times(build) -> dict[str, float]:
     """{name: seconds}: the project's shared markers (and songs'), with the markers this script makes over them."""
-    shared = M.times(_folder(build)) if _folder(build) is not None else {}
+    if getattr(build, "shared_marks", None) is None:     # read once a run: they change only when it publishes
+        build.shared_marks = M.times(_folder(build)) if _folder(build) is not None else {}
+    shared = build.shared_marks
     mine = _state(build).time_marks
     return {**{n: t for n, t in shared.items() if lookup(mine, n) is None}, **mine}
 

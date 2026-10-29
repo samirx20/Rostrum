@@ -294,8 +294,10 @@ id, so every drawing scatters differently. A painting (a painted fill) boils wit
 2. Fill the in-betweens with `onion=true`, so each drawing sits between its neighbours.
 3. Check the loop: the last drawing must lead into the first. `render_export` with `what: "video"` and watch it.
 
-A look (`look_frame`, a sheet, a part of a video) makes only the drawings that show then, several at once; the first
-look at a big painted scene is the slowest (each new drawing is painted once, then kept by its content).
+A look (`look_frame`, a sheet, `run_script`'s `look`, a part of a video) makes only the drawings that show at the moments
+it draws, several at once, and under `drawnSoFar` only the pictures of those frames; the first look at a big painted
+scene is the slowest (each new drawing is painted once, then kept by its content). The export makes every frame's
+painting-on pictures the looks didn't, so the first export after a paint change takes longer than a look.
 
 ## Not yet
 

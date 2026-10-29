@@ -53,15 +53,16 @@ def scene_later(doc, comp_id: str, span: tuple[float, float] | None = None, fram
     return make
 
 
-def look_scene(doc, comp_id: str, at: float | None = None) -> dict:
+def look_scene(doc, comp_id: str, at: float | None = None, times: list[float] | None = None) -> dict:
     """What the looks draw (look_frame, sheets, run_script's look, the review): the whole composition, described again
     only where the document changed (warm.py), its refusals first as scene_of's. `at`: one frame's look, whose reply
-    names a subject cut by the frame edge then."""
+    names a subject cut by the frame edge then. `times` (or `at`): the only moments drawn with it, so only their
+    Drawn so far pictures are made (warm.scene); none: every one."""
     from rostrum2d import follow
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    scene = warm.scene(doc, comp_id, (comp or {}).get("duration", 5.0))
+    scene = warm.scene(doc, comp_id, (comp or {}).get("duration", 5.0), times if times is not None else None if at is None else [at])
     if at is None or comp is None:
         return scene
     try:

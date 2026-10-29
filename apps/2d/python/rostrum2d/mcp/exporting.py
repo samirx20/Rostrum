@@ -32,9 +32,7 @@ def next_steps(look: str, has_sound: bool, folder) -> str:
     under a silent video (in the fair benchmark agents left 3 of 7 films silent, not knowing how)."""
     said = f"See it: {look}."
     if not has_sound and folder:
-        said += (f' It is silent. For music under it: on rostrum-sound, run_open_project {{"folder": "{folder}"}}, write the '
-                 "music with run_script (its inspect_guide 'scoring-to-picture'), run_set_main_mix; the next export here "
-                 "puts that mix under the picture.")
+        said += " It is silent: this project has no RostrumSound song. " + project_sound.where_the_music_is(folder) +             " The next export here puts that mix under the picture."
     return said
 
 

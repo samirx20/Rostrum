@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 import threading
 
+from rostrum_core.keys import keys_of
+
 from . import boxes, textsize
 from .evaluate import resolve
 from .layout_fields import GROWS, SIZED
@@ -153,8 +155,8 @@ class Plan:
             return self._box(c, group)
         self.items[c["id"]] = c
         style: dict = {}
-        if c["type"] == "text" and by_letter(p):        # drawn letter by letter: no wrap, a box of its own line
-            w, h = textsize.size(p)
+        if c["type"] == "text" and own_line(p):         # drawn letter by letter or counting: no wrap, a fixed box
+            w, h = counting_size(c, p) if p.get("counter") else textsize.size(p)
             style.update(width=w, height=h)
             self._child_style(c, p, group, style)
             return {"id": c["id"], "kind": "leaf", "style": style, "w": w, "h": h}
@@ -220,7 +222,7 @@ class Plan:
                 p = self.p_of(item)
                 if not wrapped:
                     out.append(p)
-                elif _narrowed(p, w) and not by_letter(p):
+                elif _narrowed(p, w) and not own_line(p):
                     out.append({**p, "boxWidth": w})
         return out
 
@@ -251,7 +253,7 @@ class Plan:
                 o = {}
                 if c["type"] == "text":
                     own_h = textsize.size(p)[1]
-                    if _narrowed(p, w) and not by_letter(p):     # the layout narrowed (or widened) it: it wraps there
+                    if _narrowed(p, w) and not own_line(p):      # the layout narrowed (or widened) it: it wraps there
                         o["boxWidth"] = w
                         own_h = textsize.size({**p, "boxWidth": w})[1]
                     ah = min(h, own_h)           # stretched taller than its lines: its lines stay at the top
@@ -270,6 +272,21 @@ def by_letter(p: dict) -> bool:
     """A text the engine draws letter by letter (on a path, or its keys played letter by letter): it can't wrap, so
     the layout gives it the box of its own line (the engine's stage_type::by_letter)."""
     return bool(p.get("path")) or bool(p.get("letterDelay", 0))
+
+
+def own_line(p: dict) -> bool:
+    """A text the layout doesn't wrap: drawn letter by letter, or a counter (its number changes every frame, so its
+    room is the widest number it shows: counting_size)."""
+    return by_letter(p) or bool(p.get("counter"))
+
+
+def counting_size(item: dict, p: dict) -> tuple[float, float]:
+    """A counter's room in a layout: the widest (and tallest) of the numbers it shows (its still `count` and every
+    key's), each measured by the engine as drawn (prefix, digits, thousands mark, suffix), so the row or column
+    around it stays still while it counts."""
+    values = {float(p.get("count", 0.0)), *(float(k["v"]) for k in keys_of(item, "count") if "v" in k)}
+    got = textsize.sizes([{**p, "count": v} for v in sorted(values)])
+    return max(w for w, _ in got), max(h for _, h in got)
 
 
 def _narrowed(p: dict, w: float) -> bool:

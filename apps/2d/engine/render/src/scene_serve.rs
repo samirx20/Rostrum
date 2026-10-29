@@ -254,7 +254,20 @@ fn markup_seen(scene: &Scene, t: f64, frame_at: Option<(f64, f64)>, alpha: bool)
 
 /// The comp evaluated at `t` with its motion effects (crate::motion `Plan`), and its stage pieces.
 fn content<'a>(scene: &'a Scene, plan: &'a crate::motion::Plan, t: f64, alpha: bool) -> Result<(eval::Item<'a>, Vec<String>), String> {
+    content_focused(scene, plan, t, alpha, &[])
+}
+
+/// `content`, the frame's depth-of-field fields set to `focus` (none: as at `t`).
+fn content_focused<'a>(scene: &'a Scene, plan: &'a crate::motion::Plan, t: f64, alpha: bool, focus: &[(&str, Option<Value>)]) -> Result<(eval::Item<'a>, Vec<String>), String> {
     let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
+    if let Some(cam) = comp.layers.iter_mut().find(|l| l.kind == "camera") {
+        for (f, v) in focus {
+            match v {
+                Some(v) => cam.props.insert((*f).into(), v.clone()),
+                None => cam.props.remove(*f),
+            };
+        }
+    }
     plan.apply(&scene.comp, &mut comp);
     if alpha {
         comp.props.insert("background".into(), Value::String("transparent".into()));
@@ -395,9 +408,16 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         let t0 = Instant::now();
         let plan = crate::motion::Plan::of(&scene.comp)?;
         let (centre, centre_pieces) = crate::scene::eval::shutter_at(t, t, || content(scene, &plan, t, alpha))?;
+        // The frame's focus as at the frame's own time in every sub-frame (as a grouped sub-frame keeps its group's,
+        // `markup_seen`): a rack focus no longer changes each depth layer's blur between sub-frames, so a layer that
+        // doesn't move is one piece, painted and blurred once a frame (B1). A focus pull within one shutter opening
+        // is a fraction of a px of blur.
+        let focus: Vec<(&str, Option<Value>)> = centre.layers.iter().find(|l| l.kind == "camera")
+            .map(|c| ["dof", "focus", "focusBlur"].into_iter().map(|f| (f, c.props.get(f).cloned())).collect())
+            .unwrap_or_default();
         let mut items = Vec::with_capacity(n);
         for &ts in &times {
-            let (comp, mk) = crate::scene::eval::shutter_at(t, ts, || content(scene, &plan, ts, alpha))?;
+            let (comp, mk) = crate::scene::eval::shutter_at(t, ts, || content_focused(scene, &plan, ts, alpha, &focus))?;
             items.push(comp);
             samples.push(mk);
         }

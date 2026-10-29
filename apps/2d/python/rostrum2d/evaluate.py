@@ -2,13 +2,44 @@
 the 2D field default. The key evaluator and easing table are shared: rostrum_core.keys."""
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 from rostrum_core.keys import animated, keys_of, track_value
+from rostrum_core.marker_times import seconds
 
 from . import fields as F, widthprofile
+
+_MARKS: ContextVar = ContextVar("rostrum2d_script_marks", default=None)
+
+
+@contextmanager
+def script_marks(times):
+    """While a script runs, its own reads (a group's fit, a layout, tap, measure(at=) ...) see keys timed on a marker
+    ("#s2+0.7") at that marker's moment: `times()` gives the markers in force ({name: seconds}, the project's and the
+    ones the script made so far). A script counts every time in composition seconds, so the key's seconds are the
+    marker's plus the offset. Outside a script the app places marker keys first (retime.py)."""
+    token = _MARKS.set(times)
+    try:
+        yield
+    finally:
+        _MARKS.reset(token)
+
+
+def placed(keys: list[dict]) -> list[dict]:
+    """`keys` with marker times as composition seconds while a script runs (script_marks), sorted; as is otherwise.
+    A marker that isn't there fails naming the key and the markers that exist."""
+    marks = _MARKS.get()
+    if marks is None or not any(isinstance(k["t"], str) for k in keys):
+        return keys
+    now = marks()
+    out = [{**k, "t": seconds(k["t"], now, k.get("id", "key"))} if isinstance(k["t"], str) else k for k in keys]
+    return sorted(out, key=lambda k: k["t"])
 
 
 def _track(prop: str, keys: list[dict], t: float):
     """A track's value at t: shared evaluation, but a width profile blends here (the engine's rule, widthprofile.py)."""
+    keys = placed(keys)
     return widthprofile.track(keys, t) if prop == "widthProfile" else track_value(keys, t)
 
 

@@ -78,17 +78,18 @@ def export(scene: dict, s: dict, target: Path, progress, engine_factory, on_stop
 
 
 def _runs(todo: list[int], cuts) -> list[list[int]]:
-    """The segments to draw, in runs of neighbours, each run one engine request (one export start-up, one read-back)
-    then split at the segment cuts. The engine draws a long request in its own parts (engine_export.PART_FRAMES) and
-    joins them; a part boundary is a segment cut too when PART_FRAMES is a whole number of segments, else runs stop
-    at PART_FRAMES. A first export of a 68 s film: 7 requests of 10 s took 79 s, one whole request 62 s."""
+    """The segments to draw, in runs of neighbours, each run one engine request then split at the segment cuts and kept
+    in the cache at once. A run is at most one engine part (engine_export.PART_FRAMES, a whole number of segments), so a
+    stopped or failed export keeps every run it finished and the next export draws only the rest: as one request for
+    the whole film, a stop at frame 309 of 900 lost all 309 (Undertow, 2026-10-29). The engine draws a longer request
+    in parts of this size anyway (one engine request each), so a run adds only its own read-back check and split."""
     from rostrum2d.engine_export import PART_FRAMES
     seg = cuts[0][1] - cuts[0][0] if cuts else 1
-    most = None if seg and PART_FRAMES % seg == 0 else PART_FRAMES
+    most = max(seg, PART_FRAMES // max(seg, 1) * seg)
     runs: list[list[int]] = []
     for i in todo:
         r = runs[-1] if runs else None
-        if r and r[-1] == i - 1 and (most is None or cuts[i][1] - cuts[r[0]][0] <= most):
+        if r and r[-1] == i - 1 and cuts[i][1] - cuts[r[0]][0] <= most:
             r.append(i)
         else:
             runs.append([i])

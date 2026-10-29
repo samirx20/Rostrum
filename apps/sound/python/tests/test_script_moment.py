@@ -51,3 +51,12 @@ def test_wrong_arguments_name_the_right_form():
         run_source(SRC + "m.rest('bed', before=0.4)", "t.py")
     with pytest.raises(RostrumError, match="ring="):
         run_source(SRC + "m.strike(bed, 'C4')", "t.py")
+
+
+def test_a_moment_at_its_own_marker_uses_the_marker_already_there():
+    src = SRC.replace('m = moment("hit", at=31.5)', 'marker("hit", at=31.5)\nm = moment("hit", at="#hit")')
+    tree = run_source(src, "t.py")
+    assert [m["at"] for m in tree["markers"] if m["name"] == "hit"] == [31.5]          # one marker, not a second time
+    assert (31.5, "crash") in {(_secs(h["at"]), h["drum"]) for h in tree["tracks"][1]["hits"]}
+    with pytest.raises(RostrumError, match="not there yet"):
+        run_source(SRC.replace('moment("hit", at=31.5)', 'moment("hit", at="#hit")'), "t.py")

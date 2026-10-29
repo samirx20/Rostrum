@@ -29,7 +29,7 @@ GROUPS = [
     ("run_open_project", "The person's projects.",
      {"open": "run_open_project", "recent": "inspect_recent_projects"}, "open"),
     ("render_export", "Export a composition. An mp4 returns at once with a job id (inspect_job follows it; `wait_s` waits in "
-     "the call) and redraws only what changed since the last export; other formats wait for their file. `notes: true` adds what the checks measured.",
+     "the call) and redraws only what changed since the last export (a stopped export keeps the pieces it finished); other formats wait for their file. `notes: true` adds what the checks measured.",
      {"file": "render_export", "video": "render_video"}, "file"),
 ]
 

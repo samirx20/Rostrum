@@ -125,8 +125,9 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
 
 ## 11. For agents: music and sound
 
-Sound is made in **RostrumSound**, never in 2D: its own MCP server (`rostrum-sound`) opened on the **same project
-folder** (its `run_open_project`). Read its guides `start-here` and `scoring-motion` there. What it makes plays here
+Sound is made in **RostrumSound**, never in 2D: its own MCP server (`rostrum-sound`) on the **same project
+folder**. Started together for one agent, the two servers open the same folder by themselves (the newest folder either
+opened); after `run_open_project` in one, call it with the same folder in the other. Read its guides `start-here` and `scoring-motion` there. What it makes plays here
 with the picture and goes under an mp4 export (`render_export` with `what: "video"`, `sound`, on by default when the project has sound).
 Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), never copied times. From 2D:
 

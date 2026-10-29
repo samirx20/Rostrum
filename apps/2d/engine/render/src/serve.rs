@@ -546,6 +546,11 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         let own = s.next_pieces.take();
         let cuts = std::mem::take(&mut s.sample_pieces);
         let bases = std::mem::take(&mut s.sample_bases);
+        // Not grouped (the layers' own moves need every sub-frame): all of them still share one base, the middle one, so
+        // a layer only the frame moves (a depth layer under a pan, with its depth-of-field blur) is painted once a frame
+        // and slid, as in a group; what moves on its own is drawn per sub-frame as before (B1). Exact as a group is: the
+        // slid piece's markup is the base's but for its frame matrix (still_runs.rs `moving_runs`).
+        let bases = if bases.is_empty() && samples.len() >= 2 && cuts.len() == samples.len() { vec![samples.len() / 2; samples.len()] } else { bases };
         let runs = crate::still_runs::of(&cuts);
         let pieces = cuts.first().map_or(0, Vec::len);
         let grouped = bases.len() == samples.len() && cuts.len() == samples.len();
@@ -563,7 +568,19 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
                 // Another sample of the group whose base is drawn: its moved layers' pictures moved, its other pieces
                 // as the page shows them (the same text as the sample it was last staged from), nothing staged.
                 if grouped && bases[i] != i && group == Some(bases[i]) {
-                    if let Some(plan) = moved_plan(&stage_kids(s), &cuts, &runs, &keep, i, bases[i], applied, view) {
+                    let mut plan = moved_plan(&stage_kids(s), &cuts, &runs, &keep, i, bases[i], applied, view);
+                    // A piece neither kept nor as the page holds it (one that moves but can't be slid: a glow, a blend):
+                    // this sample is staged (only its changed pieces, mostly as text edits: restage.rs) and that piece
+                    // drawn anew, the kept pictures still slid. It used to draw the whole sample, every layer and its
+                    // depth-of-field blur, in every sub-frame of the group (Undertow r2: its glowing water at depth 0 did so in
+                    // every drop frame, which took 5-35 s each).
+                    if plan.is_none() && !keep.is_empty() {
+                        s.next_pieces = cuts.get(i).cloned();
+                        timed(s, Some(samples[i]), false, false)?;
+                        applied = Some(i);
+                        plan = moved_plan(&stage_kids(s), &cuts, &runs, &keep, i, bases[i], applied, view);
+                    }
+                    if let Some(plan) = plan {
                         blitz_paint::set_plan(plan);
                         timed(s, None, true, false)?;
                         s.painter.accumulate(nth == 0, k)?;

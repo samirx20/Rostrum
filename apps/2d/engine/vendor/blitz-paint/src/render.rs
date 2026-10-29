@@ -611,12 +611,22 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                     // shadows to its own box. Leaf elements keep the tight box (cheap layers for text spans).
                     // Rostrum patch (H27): the layer covers where the subtree paints (ink.rs), not the whole frame,
                     // when that can be known; a few device pixels wider, so its clip's edge never meets an edge it holds.
+                    // Rostrum patch (B1): a layer whose filter only blurs follows turned children too (a Gaussian blur
+                    // reads nothing past the ink it spreads), and an element that draws nothing in its own box (the
+                    // frame's full-frame wrapper round each layer under depth of field) adds no box: its layer covers
+                    // where its subtree draws, so a small, far-off or off-frame layer no longer gets a frame-sized layer
+                    // and blur (Undertow: ~150 such layers, ~2 s a frame; × every motion-blur sub-frame).
                     if effect && !should_clip && has_element_children {
-                        return match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale, expansion == Rect::ZERO && filter.is_none()) {
+                        let follow = match &filter {
+                            None => expansion == Rect::ZERO,
+                            Some(f) => expansion == f.expansion_rect() && crate::filters::blurs_only(f),
+                        };
+                        let own_box = !crate::ink::draws_nothing_itself(node, &styles);
+                        return match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale, follow) {
                             Some(ink) => {
                                 let grow = crate::ink::device_px(cx.transform, 2.0);
                                 let ink = Rect::new(ink.x0 + expansion.x0, ink.y0 + expansion.y0, ink.x1 + expansion.x1, ink.y1 + expansion.y1);
-                                clip.union(ink).inflate(grow, grow)
+                                (if own_box { clip.union(ink) } else { ink }).inflate(grow, grow)
                             }
                             None => Rect::new(-1e7, -1e7, 1e7, 1e7),
                         };
