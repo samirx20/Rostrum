@@ -32,6 +32,10 @@ effects), sections, markers and a master. You build it from ONE Python script an
   Then keep writing in bars. `marker("cut", at=12.4, shared=True)` publishes it so 2D follows it.
 - **A build into a moment:** `build_to("#hit", over=beats(8), parts=[cymbal_roll(drums), crescendo(strings, ["D3", "A3"])])`
   writes plain notes you can edit.
+- **Keep a part moving:** `strings.shape("vol", 0.4, 1.0, over=(bar(1), "#climax"), curve="late")` plays it softer to
+  louder (loud sample layers come in on the way up, held chords swell); `"bright"` opens a lowpass, `"art"` switches
+  articulation. A build that goes flat before its climax is a fault; a part that never changes in a build is a warning
+  (`inspect_guide 'writing-music'` › Keep it moving).
 - **A moment that must read** (a hit out of silence, a band that really stops, a drop that is a gap): `moment("hit", at="#hit")`
   rests before it, stops the band and strikes its layers; its checks join the faults (`inspect_guide 'script'` › Moments that read).
 
