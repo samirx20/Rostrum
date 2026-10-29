@@ -27,14 +27,17 @@ pub struct Pixels {
     pub index: u32,
     /// `raw` already went through the output step (`converted`): the encoder's bytes as they are.
     pub ready: bool,
+    /// The same picture as the frame before it (serve.rs `repeat`): `raw` is empty and the encoder gets that frame's
+    /// bytes again (or, one that takes repeats, a mark: `Sink::start`).
+    pub repeat: bool,
 }
 
 impl Pixels {
     /// The frame put through the output step now, on this thread (an export's drawing workers do it side by side,
     /// sink_turn.rs, instead of the one writer thread): the same bytes the writer would make.
     pub fn converted(self) -> Pixels {
-        let (spec, width, deep, index) = (self.spec, self.width, self.deep, self.index);
-        Pixels { raw: self.bytes(), spec, width, deep, index, ready: true }
+        let (spec, width, deep, index, repeat) = (self.spec, self.width, self.deep, self.index, self.repeat);
+        Pixels { raw: self.bytes(), spec, width, deep, index, ready: true, repeat }
     }
 
     fn bytes(self) -> Vec<u8> {
@@ -74,8 +77,10 @@ struct Encoder {
 }
 
 impl Sink {
-    pub fn start(program: &str, args: &[String]) -> Result<Sink, String> {
-        Ok(Sink::of(To::Encoder(Encoder::start(program, args)?)))
+    /// `repeats`: the encoder takes repeated frames as marks (encode_mp4.rs `--tagged`): each frame comes after a byte,
+    /// 0 for a picture that follows, 1 for the picture before it again; else a repeat is written whole.
+    pub fn start(program: &str, args: &[String], repeats: bool) -> Result<Sink, String> {
+        Ok(Sink::of(To::Encoder(Encoder::start(program, args, repeats)?)))
     }
 
     /// A worker's sink: its frames go to `turn`'s encoder when their turn comes.
@@ -102,8 +107,10 @@ impl Sink {
             To::Turn(t) => t.push(pixels),
             #[cfg(test)]
             To::Kept(k) => {
-                let index = pixels.index;
-                k.lock().unwrap().push((index, pixels.bytes()));
+                let (index, repeat) = (pixels.index, pixels.repeat);
+                let mut k = k.lock().unwrap();
+                let bytes = if repeat { k.last().map(|l| l.1.clone()).ok_or("a repeat with no frame before it")? } else { pixels.bytes() };
+                k.push((index, bytes));
                 Ok(())
             }
         }
@@ -120,14 +127,16 @@ impl Sink {
     }
 
     /// The encoder it used, as encode_mp4.rs names it on stderr ("encode-mp4: encoder <name> (graphics card)" or
-    /// "(processor: …)"): {name, gpu}; None from an encoder that doesn't say (FFmpeg, pictures) and from a worker's turn.
+    /// "(processor: …)"): {name, gpu, steps: where its time went, when it has finished}; None from an encoder that doesn't say (FFmpeg, pictures) and from a worker's turn.
     pub fn encoder(&self) -> Option<serde_json::Value> {
         let To::Encoder(e) = &self.to else { return None };
         let said = e.said.lock().unwrap();
         let line = said.lines().find_map(|l| l.strip_prefix("encode-mp4: encoder "))?;
         let gpu = line.ends_with("(graphics card)");
         let name = line.rsplit_once(" (").map_or(line, |(n, _)| n);
-        Some(serde_json::json!({ "name": name, "gpu": gpu }))
+        // Where its time went, once it has finished ("2040 frames; waiting for frames … s, converting … s, encoder … s").
+        let steps = said.lines().find_map(|l| l.strip_prefix("encode-mp4: ").filter(|l| l.contains(" frames; ")));
+        Some(serde_json::json!({ "name": name, "gpu": gpu, "steps": steps }))
     }
 
     /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
@@ -142,7 +151,7 @@ impl Sink {
 }
 
 impl Encoder {
-    fn start(program: &str, args: &[String]) -> Result<Encoder, String> {
+    fn start(program: &str, args: &[String], repeats: bool) -> Result<Encoder, String> {
         let mut cmd = Command::new(program);
         cmd.args(args).stdout(Stdio::null()).stderr(Stdio::piped());
         #[cfg(windows)]
@@ -172,8 +181,21 @@ impl Encoder {
         });
         let (tx, rx) = sync_channel::<Pixels>(2);
         let writer = std::thread::spawn(move || {
+            let mut last: Vec<u8> = vec![];
             for frame in rx {
-                stdin.write_all(&frame.bytes()).map_err(|e| e.to_string())?;
+                if frame.repeat {
+                    if last.is_empty() {
+                        return Err("a repeated frame with no frame before it".to_string());
+                    }
+                    let mark: &[u8] = if repeats { &[1] } else { &last };
+                    stdin.write_all(mark).map_err(|e| e.to_string())?;
+                    continue;
+                }
+                last = frame.bytes();
+                if repeats {
+                    stdin.write_all(&[0]).map_err(|e| e.to_string())?;
+                }
+                stdin.write_all(&last).map_err(|e| e.to_string())?;
             }
             Ok(())
         });

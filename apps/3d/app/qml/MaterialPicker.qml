@@ -10,7 +10,14 @@ MaterialPopup {
     id: picker
     width: 300
     property bool faces: false        // Edit mesh: the picked faces take the material (meshEdit), not the selected item
-    function give(id) { picker.close(); faces ? meshEdit.setFaceMaterial(id) : backend.mats.assign(id) }
+    property string collection: ""    // a collection chip's Give material: every member takes it (collection.material)
+    readonly property bool projectOnly: faces || collection !== ""     // no "Start from" (it gives to the selection)
+    function give(id) {
+        picker.close()
+        if (faces) meshEdit.setFaceMaterial(id)
+        else if (collection !== "") backend.collectionMaterial(collection, id)
+        else backend.mats.assign(id)
+    }
     readonly property int tile: (width - 2 * padding) / 3     // three across: "Polished metal" reads whole
     readonly property int ballSize: Theme.row
     readonly property int tileHeight: ballSize + Theme.rowDense + Theme.gap
@@ -63,12 +70,12 @@ MaterialPopup {
                                    onDragEnded: picker.close() }
                 }
             }
-            Item { width: 1; height: Theme.gap; visible: backend.mats.project.length > 0 && !picker.faces }
-            Text { visible: !picker.faces; height: picker.faces ? 0 : Theme.rowDense; verticalAlignment: Text.AlignVCenter
+            Item { width: 1; height: Theme.gap; visible: backend.mats.project.length > 0 && !picker.projectOnly }
+            Text { visible: !picker.projectOnly; height: picker.projectOnly ? 0 : Theme.rowDense; verticalAlignment: Text.AlignVCenter
                    text: "Start from"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
             Flow {
                 id: starts
-                width: col.width; visible: !picker.faces; height: picker.faces ? 0 : implicitHeight
+                width: col.width; visible: !picker.projectOnly; height: picker.projectOnly ? 0 : implicitHeight
                 Repeater {
                     model: backend.mats.starts
                     delegate: Rectangle {

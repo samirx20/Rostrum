@@ -4,7 +4,9 @@ import RostrumKit
 // Collections (PR1, screen3d/bridge_shot_only.py): a row under the scene list's rows, there only once the scene has a
 // collection (right-click items › New collection makes one). Left, in the names column: "Collections". Right: a chip
 // per collection, "Props · 3". A click picks its items; a right-click opens what would change something now: Hide, Show,
-// Hide / Show in the shown shot only (2+ shots), Add selected (picked items not in it), Delete. A double-click renames it.
+// Hide / Show in the shown shot only (2+ shots), Add selected (picked items not in it), Give material… (the project's
+// materials; every member that can wear one takes it), Delete. A double-click renames it. While a light's "Pick what it
+// lights" is on, a click on a chip adds the collection to what the light lights (a second click takes it out).
 Item {
     id: row
     objectName: "collectionRow"
@@ -77,10 +79,16 @@ Item {
             if (row.manyShots && c.canHideShot) e.push({ value: "hideShot", label: "Hide in " + shot + " only" })
             if (row.manyShots && c.canShowShot) e.push({ value: "showShot", label: "Show in " + shot + " only" })
             if (backend.selection.some(i => c.ids.indexOf(i) < 0)) e.push({ value: "add", label: "Add selected" })
+            if (c.wearers > 0 && backend.mats.project.length > 0) e.push({ value: "material", label: "Give material…" })
             e.push({ value: "delete", label: "Delete collection" })
             entries = e
             openFrom(chip, "left")
         }
-        onPicked: (v) => backend.collectionDo(target, v)
+        onPicked: (v) => {
+            if (v !== "material") return backend.collectionDo(target, v)
+            matPicker.collection = target
+            matPicker.openFrom(Array.from(chips.children).find(c => c.objectName === "collection:" + target) || row)
+        }
     }
+    MaterialPicker { id: matPicker; objectName: "collectionMaterialPicker" }
 }

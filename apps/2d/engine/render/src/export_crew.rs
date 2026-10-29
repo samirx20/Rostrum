@@ -12,6 +12,7 @@
 //! the export with the first failure, naming the frame; nothing is left running.
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, sync_channel, Receiver};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -34,6 +35,19 @@ mod tests;
 pub const STEPS: [&str; 11] = ["evalMs", "decodeMs", "diffMs", "layoutMs", "paintMs", "stillMs", "recordMs", "gpuMs", "readMs", "convertMs", "encodeWaitMs"];
 /// Frames whose markup may be built ahead of the one a worker draws.
 const AHEAD: usize = 2;
+/// How many frames back a stage's print is kept (`Shared::prints`): a frame whose previous print is gone is drawn.
+const PRINTS_KEPT: u64 = 64;
+
+/// What an export's workers share: the next frame to claim, the first failure, and each frame's stage print
+/// (scene_serve.rs `Staged::print`) by its number, so a frame whose stage is its previous frame's is repeated in the
+/// encoder, not drawn: a still stretch costs its stages and nothing else.
+struct Shared {
+    claim: AtomicU64,
+    failed: Mutex<Option<String>>,
+    prints: Mutex<HashMap<u64, u128>>,
+    /// Microseconds the drawing workers took to start (their sessions made: page, fonts, GL context), summed.
+    start_us: AtomicU64,
+}
 /// One drawn frame: its number in the export, ms, the STEPS (ms), motion-blur samples and still pieces.
 pub struct Row {
     pub i: u64,
@@ -41,6 +55,8 @@ pub struct Row {
     pub steps: Vec<f64>,
     pub samples: u64,
     pub still: u64,
+    /// The same picture as the frame before: repeated in the encoder, not drawn.
+    pub repeat: bool,
 }
 
 /// An export's frames: `n` from `start` at `fps`.
@@ -61,7 +77,8 @@ impl Span {
 }
 
 /// Draws every frame of `span` with `workers` workers; the rows in frame order and the layers' timings.
-pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs), String> {
+/// Also the seconds the extra workers took to start, summed.
+pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64), String> {
     let html = crate::scene_serve::shell_of(held.scene()?, s.width, s.height)?;
     let like = s.like();
     let turn = match s.sink.take() {
@@ -77,10 +94,9 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     };
     let per = budget(s.width, s.height, workers);
     s.painter.set_budget(per);
-    let failed = Mutex::new(None::<String>);
-    let claim = AtomicU64::new(0);
+    let shared = Shared { claim: AtomicU64::new(0), failed: Mutex::new(None), prints: Mutex::new(HashMap::new()), start_us: AtomicU64::new(0) };
     let fail = |e: &str| {
-        failed.lock().unwrap().get_or_insert_with(|| e.to_string());
+        shared.failed.lock().unwrap().get_or_insert_with(|| e.to_string());
         if let Some(t) = &turn {
             t.stop(e);
         }
@@ -97,13 +113,15 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
         let (tx, rx) = channel::<Row>();
         let crew: Vec<_> = (1..workers)
             .map(|w| {
-                let (tx, turn, html, like, fail, failed, claim) = (tx.clone(), turn.clone(), &html, &like, &fail, &failed, &claim);
+                let (tx, turn, html, like, fail, shared) = (tx.clone(), turn.clone(), &html, &like, &fail, &shared);
                 sc.spawn(move || {
                     let r = catch_unwind(AssertUnwindSafe(|| {
+                        let started = Instant::now();
                         let mut ws = serve::twin(like, html).map_err(|e| format!("export: starting drawing worker {w}: {e}"))?;
+                        shared.start_us.fetch_add(started.elapsed().as_micros() as u64, Ordering::Relaxed);
                         ws.painter.set_budget(per);
                         ws.sink = turn.map(Sink::turn);
-                        let r = share(held, &mut ws, req, span, claim, failed, &mut |row| drop(tx.send(row)));
+                        let r = share(held, &mut ws, req, span, shared, &mut |row| drop(tx.send(row)));
                         settle(&mut ws, r)
                     }))
                     .unwrap_or_else(|_| Err(format!("export: drawing worker {w} panicked")));
@@ -115,7 +133,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
             })
             .collect();
         drop(tx);
-        let mine = share(held, s, req, span, &claim, &failed, &mut |row| {
+        let mine = share(held, s, req, span, &shared, &mut |row| {
             note(row, &mut rows);
             while let Ok(r) = rx.try_recv() {
                 note(r, &mut rows);
@@ -138,7 +156,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     });
     s.painter.set_budget(crate::painter::gpu_budget(s.width, s.height));
     s.sink = None; // this thread's turn; the encoder comes back below
-    let failure = failed.into_inner().unwrap();
+    let failure = shared.failed.into_inner().unwrap();
     if let Some(t) = turn {
         let sink = Turn::into_sink(t)?;
         // A failed export's encoder is stopped here (dropped), never finished: no partial file is reported as made.
@@ -151,7 +169,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     if rows.len() as u64 != span.n || rows.iter().enumerate().any(|(k, r)| r.i != k as u64) {
         return Err(format!("export: {} of {} frames were drawn", rows.len(), span.n));
     }
-    Ok((rows, costs))
+    Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6))
 }
 
 /// A worker's end: its frames in flight to the encoder, or dropped when it failed.
@@ -164,24 +182,29 @@ fn settle(s: &mut Session, r: Result<Costs, String>) -> Result<Costs, String> {
 }
 
 /// One worker: the frames its markup thread claims from `claim` (each the next no worker has), drawn on `s` in that order.
-fn share(held: &Held, s: &mut Session, req: &Value, span: Span, claim: &AtomicU64, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let scene = held.scene()?;
     std::thread::scope(|sc| {
         let (tx, rx) = sync_channel::<(u64, Result<Staged, String>)>(AHEAD);
         let builder = sc.spawn(move || {
             loop {
-                let i = claim.fetch_add(1, Ordering::Relaxed);
+                let i = shared.claim.fetch_add(1, Ordering::Relaxed);
                 if i >= span.n {
                     break;
                 }
                 let staged = stage_at(scene, span.time(i), req);
+                if let Ok(st) = &staged {
+                    let mut prints = shared.prints.lock().unwrap();
+                    prints.insert(i, st.print());
+                    prints.remove(&i.wrapping_sub(PRINTS_KEPT));
+                }
                 let bad = staged.is_err();
                 if tx.send((i, staged)).is_err() || bad {
                     break; // the drawing side stopped (its error is the export's), or this frame failed
                 }
             }
         });
-        let drawn = draw_frames(held, s, req, span, rx, failed, on_row);
+        let drawn = draw_frames(held, s, req, span, rx, shared, on_row);
         // `rx` is gone with draw_frames: a builder still working stops at its next frame.
         match builder.join() {
             Ok(()) => drawn,
@@ -195,10 +218,10 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, claim: &AtomicU6
 /// drew first: incremental layout gives a fresh layout's boxes (vendor/PATCHES.md J1; incremental_tests.rs). Laying every
 /// export frame out whole cost Night Bloom ~40 % more layout (calm 4-5 s: 256 vs 147 ms a frame per worker).
 #[allow(clippy::too_many_arguments)]
-fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let mut costs = Costs::default();
     loop {
-        if let Some(e) = failed.lock().unwrap().as_ref() {
+        if let Some(e) = shared.failed.lock().unwrap().as_ref() {
             return Err(format!("export stopped: {e}"));
         }
         let tf = Instant::now();
@@ -206,6 +229,17 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiv
         let Ok((i, staged)) = rx.recv() else { break };
         let t = span.time(i);
         let staged = staged.map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
+        // The same stage as the frame before (its print known): that picture again in the encoder, nothing drawn.
+        let same = i > 0 && req["images"].is_null() && {
+            let prints = shared.prints.lock().unwrap();
+            prints.get(&(i - 1)).is_some_and(|p| prints.get(&i) == Some(p))
+        };
+        if same {
+            serve::repeat(s, span.index(i) as u32).map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
+            let took = tf.elapsed().as_secs_f64() * 1000.0;
+            on_row(Row { i, took, steps: vec![0.0; STEPS.len()], samples: 0, still: 0, repeat: true });
+            continue;
+        }
         let mut f = json!({ "t": t, "index": span.index(i), "alpha": req["alpha"].as_bool() == Some(true) });
         match req["images"].as_str() {
             Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", span.index(i)))),
@@ -223,7 +257,7 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiv
         let timing = &reply["timing"];
         let steps = STEPS.iter().map(|k| timing[*k].as_f64().unwrap_or(0.0)).collect();
         let (samples, still) = (timing["samples"].as_u64().unwrap_or(1), timing["stillPieces"].as_u64().unwrap_or(0));
-        on_row(Row { i, took, steps, samples, still });
+        on_row(Row { i, took, steps, samples, still, repeat: false });
     }
     Ok(costs)
 }

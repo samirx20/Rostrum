@@ -81,9 +81,15 @@ class ShotOnlyMixin:
         rows = super()._rows()
         if not self._sel or not self.doc.has(self._sel):
             return rows
-        type_, own, shot = self.doc.item(self._sel)["type"], self._own(self._sel), self.shotOnlyName
+        type_ = self.doc.item(self._sel)["type"]
         if self._only and self._can_only():
             rows = [r for r in rows if r.get("row") != "param" or L.overridable(type_, r["id"])]
+        return self.mark_shot_own(self._sel, rows)
+
+    def mark_shot_own(self, item_id, rows):
+        """Rows of `item_id` (an item, or the material rows: materials.py) whose value is the shown shot's own: no key
+        mark, and the way back (Use all shots, or a switch's "This shot" tag)."""
+        own, shot = self._own(item_id), self.shotOnlyName
         for r in rows:
             if r.get("row") == "param" and r["id"] in own:
                 r["anim"] = ""
@@ -98,8 +104,10 @@ class ShotOnlyMixin:
         if not action_id.startswith(CLEAR) or not self._sel:
             return False
         field = action_id[len(CLEAR):]
+        sel = [i for i in self._kit.selection if self.doc.has(i)]
+        mats = [m for i in sel if (m := self.shown_values(self.doc.item(i)).get("material")) and self.doc.has(m)]
         calls = [{"op": "shot.clear_override", "target": [self.shot_id], "args": {"item": i, "fields": [field]}}
-                 for i in self._kit.selection if field in self._own(i)]
+                 for i in dict.fromkeys(sel + mats) if field in self._own(i)]
         if calls:
             self._guard(lambda: self._done(self.doc.apply(calls, self.who, label="Use all-shots value"), ""))
         return True
@@ -113,6 +121,7 @@ class ShotOnlyMixin:
             shown = [self.doc.item(i).get("visible", True) for i in ids]
             here = [L.shown(self.doc.data, self.shot_id, self.doc.item(i)).get("visible", True) for i in ids]
             out.append({"id": c["id"], "label": K.label(c), "count": len(ids), "ids": ids,
+                        "wearers": sum(self.doc.item(i).get("type") in K.USERS for i in ids),
                         "canHide": any(shown), "canShow": not all(shown),           # in every shot
                         "canHideShot": any(here), "canShowShot": not all(here)})   # as the shown shot has them
         return out
@@ -128,7 +137,11 @@ class ShotOnlyMixin:
 
     @Slot(str)
     def selectCollection(self, coll_id):
-        """Pick a collection's members (screen state): its chip's click."""
+        """Pick a collection's members (screen state): its chip's click. While a light's "Pick what it lights" is on,
+        the click adds the collection to what it lights instead (a second click takes it out: place_light.py)."""
+        place = getattr(getattr(self, "viewport", None), "place", None)
+        if place is not None and place.wants_click():
+            return place.toggle(coll_id)
         ids = K.members(self.doc.data, self.doc.item(coll_id)) if self.doc.has(coll_id) else []
         if ids:
             self.selectMany(ids)
@@ -146,6 +159,12 @@ class ShotOnlyMixin:
         op, args = calls[what]
         call = {"op": op, "target": [coll_id], "args": args}
         self._guard(lambda: self._done(self.doc.apply([call], self.who, label=op), ""))
+
+    @Slot(str, str)
+    def collectionMaterial(self, coll_id, material_id):
+        """A chip's Give material…: every member that can wear one takes it (collection.material, one step)."""
+        call = {"op": "collection.material", "target": [coll_id], "args": {"material": material_id}}
+        self._guard(lambda: self._done(self.doc.apply([call], self.who, label="Give material"), ""))
 
     @Slot(str, str)
     def renameCollection(self, coll_id, name):

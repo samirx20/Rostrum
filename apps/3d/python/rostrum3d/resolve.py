@@ -4,7 +4,7 @@ from the shot's start. Frame n is at n / fps seconds; the one evaluator and easi
 """
 from __future__ import annotations
 
-from rostrum_core.keys import keys_of
+from rostrum_core.keys import keys_of, layers
 
 from . import aim, fields as F, follow, mirror, rigs
 
@@ -19,6 +19,7 @@ class Frames:
     def __init__(self, data: dict, frames: range, fps: float, folder=None):
         self.frames, self.fps, self.items, self.parent, self.folder = frames, fps, {}, {}, folder
         self.data = data                                       # the document (clay_detail reads its shots)
+        self.stack = layers.stack_of(data)                     # its animation layers, bottom first
         stack = [(i, None) for i in data.get("items", [])]
         while stack:
             item, parent = stack.pop()
@@ -64,7 +65,9 @@ class Frames:
         for prop in F.KEYED_TOGGLES & v.keys():
             v[prop] = bool(v[prop])                          # a still Visible left as 1.0 / 0.0 by key.clear
         for prop in {k["prop"] for k in item.get("keys", [])}:
-            v[prop] = F.key_value_at(item["type"], prop, keys_of(item, prop), t)
+            read = lambda keys, at, p=prop: F.key_value_at(item["type"], p, keys, at)   # noqa: E731
+            base = read(keys, t) if (keys := keys_of(item, prop)) else v[prop]
+            v[prop] = layers.value(item, prop, t, self.stack, base, read)
         if item["type"] == "rig":
             v.update(rigs.transform(v, t))
         elif item["type"] == "light" and v["kind"] == "dome":     # a dome only turns around up (light_fields.py)

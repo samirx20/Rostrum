@@ -143,7 +143,7 @@ def look_review(ctx, args):
     edge; an old heading still faintly showing behind a new one; a set of parts (a chart's bars, a list's rows) not shown while
     the rest of its group is; a plain card opening empty; a character's pose barely changing for 6 s or more; an arm held nearly straight for 4 s or more;
     a character's arms or legs thin next to its body; framing held
-    10 s or more (no camera move or cut); a stretch where nothing moves; a subject cut by the edge; a title, or any text line half the frame wide (a credit), inside the edge's safe margin;
+    10 s or more (no cut; says the camera's travel in px / zoom % / degrees, or that it never moves); a stretch where nothing moves; a subject cut by the edge; a title, or any text line half the frame wide (a credit), inside the edge's safe margin;
     a stray small dot that later grows; a layer showing outside the screen it sits in; a lock-up whose parts touch; a washed-out stretch;
     a frame nearly empty mid-film (under 10 % covered between 15 % and 85 % of the film); opening shots that look alike (the same layers
     on the same ground, about as big); the last picture held unchanged for over a fifth of the film; a text partly crossed (10-85 %

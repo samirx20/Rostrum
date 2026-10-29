@@ -3,7 +3,7 @@
     select <id> | tool move|pen|draw | time <s> | set <param> <json value> | scrub <param> <v> <v> …
     animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px; in an auto layout it
     changes the layer's slot: the same drag slots, so <dx> <dy> moves the pointer)
-    curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
+    curves on|off|all|mine | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | bardrag <layer> <move|start|end> <from s> <to s> (a layer bar on the timeline: pointer pressed at
     <from>, let go at <to>; <to> may be #marker_name, _ for spaces: the dragged edge lands on it and the layer is tied) | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     front | back | forward | backward | delete (the selected layer(s): Ctrl+Shift+] / Ctrl+Shift+[ / Ctrl+] / Ctrl+[ / Delete) |

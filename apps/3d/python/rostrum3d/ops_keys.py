@@ -6,7 +6,7 @@ value or ease is `key.set` (kind.py).
 from __future__ import annotations
 
 from rostrum_core.errors import codes
-from rostrum_core.keys import register_key_ops
+from rostrum_core.keys import register_key_ops, register_layer_ops
 
 from . import fields as F
 from .kind import REGISTRY as R
@@ -50,4 +50,6 @@ def _check_still(ctx, owner: dict, prop: str, args: dict):
 
 
 put_key = register_key_ops(R, owners=F.KEYED, check_key=_check_key, check_still=_check_still,
-                           prop_help="The field to animate (x, ry, intensity, color …; visible: v 1 shows, 0 hides, held until the next key)")
+                           prop_help="The field to animate (x, ry, intensity, color …; visible: v 1 shows, 0 hides, held until the next key)",
+                           layers=True)
+register_layer_ops(R)            # animlayer.add / set / remove / move (rostrum_core.keys.layers)

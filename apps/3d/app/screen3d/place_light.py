@@ -3,8 +3,9 @@
 - **Place by highlight:** Alt+click a surface with a light selected: `light.place_highlight` moves and aims it so its
   highlight lands on the spot, seen from the viewport's camera. Right after Lights › Soft light (or any light) the next
   plain click does it too, at 4 × the item's size with the starting brightness (`brightness`).
-- **Lights only:** "Pick what it lights" (right-click on a light): each click on an item adds it to the light's
-  `lightsOnly`, a second click takes it out; Esc, or selecting something else, ends it.
+- **Lights only:** "Pick what it lights" (right-click on a light): each click on an item, or on a collection's chip under
+  the scene list, adds it to the light's `lightsOnly`, a second click takes it out; Esc, or selecting something else,
+  ends it.
 
 The spot's surface direction comes from two more picks a few pixels to the right and below (highlight.normal_of): the
 engine's pick answers a point, the same for the screen and for agents' `place_highlight`. Picks run on the viewport's
@@ -15,6 +16,8 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Signal
 
 from rostrum3d import aim, highlight as H, through
+
+from . import outline
 
 STEP = 3                                  # device pixels to the two neighbour picks
 
@@ -45,7 +48,9 @@ class PlaceLight(QObject):
             return "Click where its highlight should land  ·  Alt+click again later to move it"
         if self.mode == "link":
             on = self.b.doc.item(self.light).get("lightsOnly", "").split()
-            return f"Lights only: {', '.join(on) or 'everything'}  ·  click items to add or take out  ·  Esc to finish"
+            names = [outline.label_of(self.b.doc.item(i)) if self.b.doc.has(i) else i for i in on]
+            return (f"Lights only: {', '.join(names) or 'everything'}  ·  click items or collections to add or take "
+                    "out  ·  Esc to finish")
         return ""
 
     def wants_click(self) -> bool:
@@ -114,6 +119,10 @@ class PlaceLight(QObject):
         self.b._guard(lambda: self.b._done(self.b.doc.apply(
             [{"op": "light.place_highlight", "target": [light], "args": args}], self.b.who, label="Place highlight"), ""))
         self.b.say("")
+
+    def toggle(self, item):
+        """A collection chip's click while linking: the collection in or out of what the light lights."""
+        self._toggle(self.light, item)
 
     def _toggle(self, light, item):
         if item == light or not self.b.doc.has(item):

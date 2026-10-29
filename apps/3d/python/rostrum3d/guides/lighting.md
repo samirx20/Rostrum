@@ -76,7 +76,7 @@ A strip reflected in a curved, polished edge becomes a thin line of light that f
 
 ## Light linking: lighting only some items
 
-On the screen: right-click a light › **Pick what it lights**, then click items in the viewport: each click adds an item, a second click takes it out; the line at the bottom names them. Esc (or selecting something else) finishes.
+On the screen: right-click a light › **Pick what it lights**, then click items in the viewport, or a collection's chip under the scene list: each click adds it, a second click takes it out; the line at the bottom names them. Esc (or selecting something else) finishes.
 
 **`lightsOnly`**: item ids separated by spaces (`"bottle label"`); the light then lights only those items and what is inside them (a group's or an import's children). `""` lights everything. Use it to put a highlight on the product without lighting the floor, or to give one part its own rim. Every id must be a real item or a **collection** (a named set, `collection.add`): a collection lights all its members, including ones that join it later (a collection with a material rule: every item using that material). A wrong id is an error, never a light quietly lighting everything. **Cycles only** (with the patched plug-in): the quick view lights every item with every light, and its reply names the linked lights (`notInQuickView`). The saved `.usda` carries it as UsdLux light linking, which other USD programs read.
 

@@ -1,15 +1,20 @@
 import QtQuick
 import RostrumKit
 
-// The timeline's Curves view: the value curves of the selected layer's animated fields over time, on the same time
-// scale as the ruler (so the playhead and the full width stay). Left: a legend naming each curve in its colour (click =
-// show / hide). Drag a key: time and value (key.set). Drag a round handle: the key's Bézier ease (key.handles; a named
-// ease becomes custom). Handles show only for the selected key's stretches and only where the ease has them.
+// The kit's curve view, the timeline's Curves (LayerTimeline's `curves` slot; the model: backend.curves, a
+// rostrum_gui/curve_view.py CurveView): the value curves of the picked items' animated number fields over time, on the
+// same time scale as the ruler (so the playhead and the full width stay); nothing picked, or All curves chosen: every
+// animated item's. Each curve is fitted to its own value range, so every curve always fills the view. Left: the legend,
+// grouped under each item's name (click a curve = show / hide it, click an item = all of its), and Picked | All
+// curves where that would show more. Drag a key: time and value (key.set). Drag a round handle: the key's Bézier ease (a
+// named ease becomes custom). Handles show only on both sides of the picked key and only where the ease has them.
+// Right-click a key: the key's Ease list (Smooth, Linear, Hold …: the tangent kinds; backend.keyBar).
 // One MouseArea does the hit-testing, so a drag survives the screen redrawing from its own changes.
 // The Repeaters count (curves, keys, handles) and each delegate reads its entry: over the lists themselves every drag
 // step made a new list, so every legend row, key and label was destroyed and made again (milliseconds per pointer move).
 Item {
     id: ed
+    objectName: "curveEditor"
     property Item ruler
     property int labelWidth: 236
     readonly property var fs: visible ? backend.curves.fields : []    // hidden (Curves off): reads nothing, makes nothing
@@ -22,8 +27,9 @@ Item {
     function tOf(x) { return ruler.tOf(x - 8) }
     function vOf(f, y) { return f.hi - (y - padY) / plotH * (f.hi - f.lo) }
     function near(x, y, t, v, f, r) { return Math.hypot(x - px(t), y - py(f, v)) <= r }
-    readonly property var none: ({ id: "", label: "", color: "transparent", shown: false, selected: false, lo: 0, hi: 1,
-                                   path: [], keys: [], stretches: [] })     // a delegate past the end of a shorter list
+    readonly property var none: ({ id: "", label: "", group: "", groupLabel: "", color: "transparent", shown: false,
+                                   selected: false, lo: 0, hi: 1, path: [], keys: [], stretches: [] })     // a delegate past the end of a shorter list
+    function heads(i) { return i === 0 || fs[i - 1].group !== fs[i].group }     // each item's name heads its curves
     function handlesOf(f) {
         const out = []
         for (const s of f.stretches) out.push({ h: s.h1 }, { h: s.h2 })
@@ -41,33 +47,63 @@ Item {
         return null
     }
 
-    Column {   // the legend: in the name column, on the layer rows' own grid (top, height, spacing, text x: LayerName)
-        x: Theme.gap; y: 0; width: ed.labelWidth - Theme.gap; spacing: 2
+    Segmented {   // the picked items' curves, or every animated item's: only where All would show more
+        id: which
+        objectName: "curvesWhich"
+        visible: backend.curves.canAll
+        x: Theme.gap * 2; y: 0; implicitHeight: 24
+        options: [{ value: "mine", label: "Picked" }, { value: "all", label: "All curves" }]
+        current: backend.curves.all ? "all" : "mine"
+        onPicked: (v) => backend.curves.setAll(v === "all")
+    }
+    Flickable {   // the legend: in the name column, on the layer rows' own grid (height, spacing, text x: LayerName); it scrolls
+        id: legend
+        objectName: "curveLegend"
+        x: Theme.gap; y: which.visible ? which.height + Theme.gap : 0; width: ed.labelWidth - Theme.gap; height: ed.height - y
+        contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+        Column {
+        id: list
+        width: parent.width; spacing: 2
         Repeater {
             model: ed.fs.length
             delegate: Item {
                 id: entry
                 required property int index
                 readonly property var modelData: ed.fs[index] || ed.none
-                width: parent.width; height: Theme.row
-                opacity: modelData.shown ? 1 : 0.4
-                Rectangle { x: Theme.gap + 3; anchors.verticalCenter: parent.verticalCenter; width: 12; height: 3; radius: 1.5
-                            color: entry.modelData.color }
-                Text {
-                    x: Theme.gap + 24; width: parent.width - x - 72; anchors.verticalCenter: parent.verticalCenter
-                    elide: Text.ElideRight; text: entry.modelData.label; font.family: uiFont; font.pixelSize: Theme.body
-                    color: Theme.fg; font.weight: entry.modelData.selected ? Font.DemiBold : Font.Normal   // its curve is drawn thicker
+                readonly property bool head: ed.heads(index)
+                width: parent.width; height: Theme.row + (head ? Theme.row : 0)
+                Item {   // the item's name over its curves: click = hide / show all of them
+                    visible: entry.head; width: parent.width; height: Theme.row
+                    Text {
+                        x: Theme.gap; width: parent.width - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight; text: entry.modelData.groupLabel; font.family: uiFont; font.pixelSize: Theme.label
+                        font.weight: Font.DemiBold; color: Theme.fg2
+                    }
+                    MouseArea { objectName: "curveGroup_" + entry.modelData.group; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: backend.curves.toggleGroup(entry.modelData.group) }
                 }
-                Text {
-                    anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-                    text: entry.modelData.keys.length ? ed.range(entry.modelData) : ""
-                    font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg2; font.features: { "tnum": 1 }
+                Item {
+                    y: entry.head ? Theme.row : 0; width: parent.width; height: Theme.row
+                    opacity: entry.modelData.shown ? 1 : 0.4
+                    Rectangle { x: Theme.gap + 3; anchors.verticalCenter: parent.verticalCenter; width: 12; height: 3; radius: 1.5
+                                color: entry.modelData.color }
+                    Text {
+                        x: Theme.gap + 24; width: parent.width - x - 72; anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight; text: entry.modelData.label; font.family: uiFont; font.pixelSize: Theme.body
+                        color: Theme.fg; font.weight: entry.modelData.selected ? Font.DemiBold : Font.Normal   // its curve is drawn thicker
+                    }
+                    Text {
+                        anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+                        text: entry.modelData.keys.length ? ed.range(entry.modelData) : ""
+                        font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg2; font.features: { "tnum": 1 }
+                    }
+                    Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: -1 }
+                                height: 1; color: Theme.border }      // a line between the curves' rows
+                    MouseArea { objectName: "curveField_" + entry.modelData.id; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: backend.curves.toggleField(entry.modelData.id) }
                 }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: -1 }
-                            height: 1; color: Theme.border }      // a line between the curves' rows
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.curves.toggleField(entry.modelData.id) }
             }
+        }
         }
     }
     function range(f) {                        // the keys' own lowest and highest value, as words
@@ -182,22 +218,29 @@ Item {
         }
         MouseArea {
             id: area
+            objectName: "curvePlot"
             property var grab: null
             anchors.fill: parent; hoverEnabled: true; preventStealing: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: grab ? Qt.ClosedHandCursor : ed.hit(mouseX, mouseY) ? Qt.OpenHandCursor : Qt.ArrowCursor
             onPressed: (m) => {
                 const h = ed.hit(m.x, m.y)
+                if (m.button === Qt.RightButton) {        // a key: its Ease list (the tangent kinds), as on the rows
+                    grab = null
+                    if (h && !h.handle) { const g = area.mapToItem(null, m.x, m.y); backend.curves.askKeyMenu(h.key, g.x, g.y) }
+                    return
+                }
                 if (!h) { grab = null; backend.setTime(ed.tOf(m.x)); return }
                 if (h.handle ? backend.curves.beginHandleDrag(h.key, h.which) : backend.curves.beginKeyDrag(h.key)) grab = h
             }
             onPositionChanged: (m) => {
-                if (!pressed) return
+                if (!pressed || (pressedButtons & Qt.RightButton)) return
                 if (!grab) { backend.setTime(ed.tOf(m.x)); return }
                 if (grab.handle) backend.curves.handleTo(ed.tOf(m.x), ed.vOf(grab.f, m.y))
                 else backend.curves.keyTo(ed.tOf(m.x), ed.vOf(grab.f, m.y),      // its time snaps within 6 px (time_snap.py; Ctrl: free)
                                           (m.modifiers & Qt.ControlModifier) ? 0 : ed.tOf(6) - ed.tOf(0))
             }
-            onReleased: { grab = null; backend.curves.endDrag() }
+            onReleased: (m) => { if (m.button !== Qt.RightButton) { grab = null; backend.curves.endDrag() } }
             onCanceled: { grab = null; backend.curves.endDrag() }
         }
     }

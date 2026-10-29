@@ -18,6 +18,7 @@ from ..tree import index
 from .easing import NAMES as EASES
 from .evaluate import key_value, keys_of, track_value
 from .fields import KEY_FIELDS
+from .layers import FIELD as LAYER_FIELD, layer_keys, stack_of
 from .marked import id_part, marked, order, same_time
 
 TIME = dict(min=0, max=36000, unit="s")                         # a moment to read or set a value at
@@ -53,36 +54,52 @@ def still_of(owner: dict, prop: str, value):
     return bool(value) if isinstance(owner.get(prop), bool) and not isinstance(value, (str, dict)) else value
 
 
-def key_id(owner: str, prop: str, t) -> str:
-    """`title.opacity.k1500` (1.5 s), `title.opacity.k_drop_p200` ("#drop+0.2"); before 0: `k-200`."""
-    return f"{owner}.{prop}.{id_part(t)}"
+def key_id(owner: str, prop: str, t, layer: str = "") -> str:
+    """`title.opacity.k1500` (1.5 s), `title.opacity.k_drop_p200` ("#drop+0.2"); before 0: `k-200`; on an animation
+    layer: `title.opacity.breath.k1500`."""
+    return f"{owner}.{prop}.{layer + '.' if layer else ''}{id_part(t)}"
+
+
+def checked_layer(ctx, args: dict) -> str:
+    """The `layer` a key goes on ("" = the Base), refused loudly when the document has no such layer."""
+    layer = args.get(LAYER_FIELD) or ""
+    if layer and layer not in {x["id"] for x in stack_of(ctx.doc)}:
+        ctx.fail(codes.NOT_FOUND, f'layer "{layer}"', "is not an animation layer of this document",
+                 [x["id"] for x in stack_of(ctx.doc)], hint="animlayer.add makes one; leave layer out for the Base.")
+    return layer
 
 
 def register_key_ops(registry, *, owners, check_key: Callable, check_still: Callable,
                      settable: Callable | None = None, value_params: list[Param] | None = None,
                      key_add_help: str = "From then on its keys alone decide its value.",
                      prop_help: str = "The field to animate (x, opacity, fill …)",
-                     field_sets: dict[str, list[str]] | None = None, value_now: Callable | None = None) -> Callable:
+                     field_sets: dict[str, list[str]] | None = None, value_now: Callable | None = None,
+                     layers: bool = False) -> Callable:
     """Register the four operations on `registry`; returns `put_key(ctx, owner_id, prop, t, args)` for ops that add
     keys too. `check_key(ctx, owner, prop, args)` -> (the key's value field 'v' | 'c' | 'd', the checked value);
     `check_still(ctx, owner, prop, args)` -> the checked value of a field with no keys (it also refuses a field
     that doesn't apply now); `settable(ctx, owner, prop)` refuses a field that can't change now. `key_add_help` and `prop_help` are the words
     each app uses in its operation descriptions. `field_sets` ({"pose": ["x", "y", …]}) lets key.add key a named set
     at once with each field's value now (`value_now(ctx, owner, prop, t)` -> {"v": 3.0}, or None for a field that
-    owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens)."""
+    owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens). `layers`:
+    the app has animation layers (layers.py): key.add takes `layer`, the layer a key goes on."""
     vals = value_params if value_params is not None else [V, C]
     settable = settable or (lambda ctx, owner, prop: None)
     PROP = Param.text("prop", label="Field", required=not field_sets, help=prop_help)   # key.add: or `fields`
     PROP_NEEDED = Param.text("prop", label="Field", required=True, help=prop_help)       # value.set, key.clear: always
     sets = [Param.choice("fields", list(field_sets), label="Fields", help="Key this set of fields with their values now "
                          "(instead of prop and a value): " + "; ".join(f"{k}: {', '.join(v)}" for k, v in field_sets.items()))]         if field_sets else []
+    on_layer = [Param.text(LAYER_FIELD, label="Layer", importance="deep", help="An animation layer's id: the key goes "
+                           "on that layer (add: an offset, replace: the value it moves toward); left out: the Base")] if layers else []
 
     def put_key(ctx, owner_id: str, prop: str, t: float, args: dict):
         """Add a key, or change the one already there (same field, same time)."""
         owner = ctx.item(owner_id)
         settable(ctx, owner, prop)
         field, value = check_key(ctx, owner, prop, args)
-        existing = next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
+        layer = checked_layer(ctx, args)
+        mine = layer_keys(owner, prop, layer) if layer else keys_of(owner, prop)
+        existing = next((k for k in mine if same_time(k["t"], t)), None)
         shape = checked_shape(ctx, args, args.get("ease", existing.get("ease", "smooth") if existing else "smooth"),
                               f"{ctx.where} › {owner_id}.{prop}")
         if existing:
@@ -94,17 +111,19 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
                 ctx.set(existing["id"], k, v)
             return
         taken = index(ctx.doc, ctx.kind.lists)
-        id_ = key_id(owner_id, prop, t)
+        id_ = key_id(owner_id, prop, t, layer)
         if id_ in taken:                       # a moved key kept this id: count past it
             id_ = ids.counted(taken, id_)
         after = sum(1 for k in owner.get("keys", []) if (k["prop"], order(k["t"])) < (prop, order(t)))
         ctx.insert(owner_id, "keys", {"id": id_, "type": "key", "prop": prop, "t": t, field: value,
                                       "ease": args.get("ease", "smooth"), **shape,
-                                      **({"from": args["from"]} if args.get("from") else {})}, after)
+                                      **({"from": args["from"]} if args.get("from") else {}),
+                                      **({LAYER_FIELD: layer} if layer else {})}, after)
 
     @registry.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). "
                         + key_add_help, target=owners, label="Add key",
-                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE, *SHAPE, FROM])
+                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE, *SHAPE, FROM,
+                                *on_layer])
     def key_add(ctx, targets, args):
         if "fields" in args:
             return _key_set(ctx, targets, args)
@@ -125,7 +144,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
             for prop in field_sets[args["fields"]]:
                 now = value_now(ctx, owner, prop, args["t"])
                 if now is not None:
-                    put_key(ctx, t, prop, args["t"], {**now, **({"ease": args["ease"]} if "ease" in args else {})})
+                    put_key(ctx, t, prop, args["t"], {**now, **{k: args[k] for k in ("ease", LAYER_FIELD) if k in args}})
                     keyed += 1
         if not keyed:
             ctx.fail(codes.BAD_ARGUMENT, f'fields "{args["fields"]}"', "has nothing these items can key now",
@@ -140,7 +159,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         for t in targets:
             loc = index(ctx.doc, ctx.kind.lists)[t]
             owner, key = ctx.item(loc.parent), loc.item
-            if len(keys_of(owner, key["prop"])) == 1:
+            if not key.get(LAYER_FIELD) and len(keys_of(owner, key["prop"])) == 1:
                 ctx.set(owner["id"], key["prop"], still_of(owner, key["prop"], key_value(key)))
             ctx.remove(t)
 

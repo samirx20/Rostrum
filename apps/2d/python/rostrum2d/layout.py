@@ -10,8 +10,9 @@ that doesn't move is one engine call per film.
 - Sizes are the layers' own boxes (w × h; a text's laid out by the engine), before scale and turn: animating scale is
   a pop that doesn't push the others; animating w or h re-flows them. `shiftX` / `shiftY` move a layer on top of its
   place without pushing the others.
-- Row / column: CSS flex; grid: CSS grid (`columns` equal columns or `columnsTemplate`); stack: every layer in one
-  cell, placed by justify (across) and align (down).
+- Row / column: CSS flex (justify along the line, align across it); grid: CSS grid (`columns` equal columns or
+  `columnsTemplate`); stack: every layer in one cell, placed by justify left to right and align top to bottom (the
+  axes of a row).
 - `sizeW` / `sizeH`: fixed (w / h), fit (a laid-out group follows what is inside it; with `hugPin` it grows from its
   top-left, as a design tool's frame: see `hugged`), fill (the room the parent layout leaves) or percent of it.
 - A layer outside its start..end, or hidden, takes no room (the row re-flows as layers come and go, as the script
