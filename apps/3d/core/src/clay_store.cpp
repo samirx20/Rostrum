@@ -126,6 +126,15 @@ struct Store::Impl {
     // `fine` is declared after everything its thread uses, so it is stopped first.
     std::unique_ptr<Volume> pv;
     size_t sent = 0, samples = 0;
+    int events = 0;  // the stroke's events so far (its first ones hand the catch-up only kFirstPush dabs each)
+    // the stroke's dabs not yet handed to the catch-up (held by the first events), and handing them all over, in order
+    size_t held() const { return dabs ? dabs->dabs().size() - sent : 0; }
+    void push_held() {
+      if (!fine || !dabs) return;
+      const std::vector<Step>& all = dabs->dabs();
+      fine->push(all.data() + sent, all.size() - sent);
+      sent = all.size();
+    }
     std::set<BlockKey> hidden, shown;
     std::optional<Affine> lastBlend;  // CL5, a posed clay: the blended bone move where the last ray met it
     std::unique_ptr<Catchup> fine;
@@ -772,13 +781,23 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
     const double v = env ? std::atof(env) : 0.0;
     return v > 0 ? v : 6.0;
   }();
-  constexpr size_t kFirstSamples = 2;
+  // 3d-dab-viewer: the first event's samples are up to 8 stored dabs on a Pull (kPullSplit each), and handing them
+  // all to the catch-up at once made its first dab (wide, half the cores) fight the preview's dab, the meshing and the
+  // draw: a Pull stroke's first dab took 65-75 ms. Over its first kSpreadEvents events the stroke hands the catch-up
+  // at most kFirstPush dabs an event; the rest wait here, in order, and go with the next events (all of them from then
+  // on, and at the end before the catch-up finishes). The same dabs in the same order: the same clay. The dabs held
+  // count in the catch-up's wait below, so the budget sees them. ROSTRUM3D_CLAY_SPREAD=0: all at once, as before.
+  constexpr size_t kFirstSamples = 2, kFirstPush = 4;  // (one Pull sample's pieces)
+  static const int kSpreadEvents = [] {
+    const char* v = std::getenv("ROSTRUM3D_CLAY_SPREAD");
+    return v && std::string(v) == "0" ? 0 : 3;
+  }();
   constexpr double kCatchupMs = 12.0, kBacklogMs = 50.0;
   std::vector<size_t> keep;
   const size_t n = samples.size();
   size_t most = l.sampleMs > 0 ? std::max<size_t>(1, size_t(kEventBudgetMs / l.sampleMs)) : std::min(n, kFirstSamples);
   if (l.fine) {
-    const double dabMs = l.fine->dab_ms(), backlog = l.fine->backlog_ms();
+    const double dabMs = l.fine->dab_ms(), backlog = l.fine->backlog_ms() + dabMs * double(l.held());
     if (dabMs > 0 && l.samples > 0) {
       const double perSample = dabMs * double(l.dabs->dabs().size()) / double(l.samples);
       const double room = kCatchupMs - std::max(0.0, backlog - Catchup::kWidenMs);
@@ -806,10 +825,14 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
     l.sampleMs = l.sampleMs > 0 ? 0.7 * l.sampleMs + 0.3 * per : per;
     l.samples += done;
   }
-  if (l.fine) {  // the new dabs, to the clay
-    const std::vector<Step>& all = l.dabs->dabs();
-    l.fine->push(all.data() + l.sent, all.size() - l.sent);
-    l.sent = all.size();
+  if (l.fine) {  // the new dabs, to the clay (on the first events at most kFirstPush, the oldest first)
+    if (l.events++ < kSpreadEvents) {
+      const size_t k = std::min(l.held(), kFirstPush);
+      l.fine->push(l.dabs->dabs().data() + l.sent, k);
+      l.sent += k;
+    } else {
+      l.push_held();
+    }
   }
   r.applyMs = ms_since(t0);
   const auto tm = std::chrono::steady_clock::now();
@@ -857,9 +880,10 @@ SculptReply Store::sculpt_end(const std::string& folder, const std::string& wher
   const auto t0 = std::chrono::steady_clock::now();
   Impl::Live& l = *s.live;
   Entry& e = s.entry(l.item, "sculpt.item");
-  const double waitBacklog = l.fine ? l.fine->backlog_ms() : 0.0;
+  const double waitBacklog = l.fine ? l.fine->backlog_ms() + l.fine->dab_ms() * double(l.held()) : 0.0;
   if (l.fine) {  // the dabs the clay hasn't caught up with yet (then the thread is joined: the clay is this one's again)
     try {
+      l.push_held();  // a short stroke's dabs the first events held
       l.fine->finish();
     } catch (...) {
       s.cancel_live();
@@ -1032,7 +1056,10 @@ ClayInfo Store::info(const std::string& item) const {
   Entry& e = p_->entry(item, "clay_info.item");
   // 3d-cl4: mid-stroke the clay catches up behind the preview (narrow while the brush moves): it is hashed once it
   // has every dab so far, so the hash is the clay the stroke has made, whatever the pace
-  if (p_->live && p_->live->item == item && p_->live->fine) p_->live->fine->drain();
+  if (p_->live && p_->live->item == item && p_->live->fine) {
+    p_->live->push_held();  // the dabs a stroke's first events held back are dabs so far too
+    p_->live->fine->drain();
+  }
   ClayInfo i;
   char hex[17];
   std::snprintf(hex, sizeof hex, "%016llx", static_cast<unsigned long long>(e.vol->hash()));
