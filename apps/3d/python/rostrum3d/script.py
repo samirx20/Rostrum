@@ -403,6 +403,7 @@ class Build:
         self.grounded = {}                                                 # id -> the offset from its base to its y (script_ground.py)
         self.given = {}                                                    # id -> the fields the script gave (a remade start item keeps the rest)
         self.framing, self.bright = {}, {}                                 # shot id -> frame= settings; light id -> (stops, at_distance)
+        self.bright_default = set()                                        # lights made with no strength: brightness=0 when aimed
         self.replace_lights = False                                        # light(..., replace_start_lights=True)
 
     def _found(self, id_: str, what: str) -> tuple[str, dict]:
@@ -529,6 +530,9 @@ class Build:
         it = self.add(type_, id_, values, into)
         if "brightness" in light:
             self.bright[it.id] = (float(light["brightness"]), light.get("at_distance"))
+        elif (type_ == "light" and it.id not in START_LIGHTS and not {"intensity", "exposure", "normalize"} & values.keys()
+              and values.get("kind", "rect") not in ("dome", "distant")):
+            self.bright_default.add(it.id)          # no strength given: lit as the start key (brightness=0) once it aims
         names = ops_import.part_names(parts)
         for path in parts:
             it.part(path, name=names[path])
@@ -539,6 +543,7 @@ class Build:
 
 
 ROOT_LISTS = ("items", "materials", "shots")
+START_LIGHTS = {"sky", "key_light", "rim_light"}  # the new scene's lights (start_scene.py): made again, they keep their own strength
 START_SCRIPT = "start.py"                     # the new scene's script (start_scene.py, mcp/server.py, files_3d.py)
 
 
@@ -608,6 +613,13 @@ def run_source(source: str, name: str, doc=None) -> dict:
                 script_ground.settle_clay(b, node)
         for light_id, (stops, far) in b.bright.items():
             script_shot.brightness(b, next(n for n in walk(b.root, KIND.lists) if n.get("id") == light_id), stops, far)
+        for light_id in b.bright_default - b.bright.keys():     # canary r8: a rect with no strength came out ~4 stops under the sky fill
+            node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == light_id), None)
+            if node is not None and node.get("aim", "none") != "none" and (node.get("intensity", 1.0), node.get("exposure", 0.0),
+                                                                     node.get("normalize", False)) == (1.0, 0.0, False):
+                script_shot.brightness(b, node, 0.0)
+                b.notes.append(f"{light_id}: no intensity or brightness given, so it lights its subject as the start key does "
+                               "(brightness=0); give brightness= in stops (−1 half, +1 twice) to change it")
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed: {e}", API) from e
     b.take_over(name)

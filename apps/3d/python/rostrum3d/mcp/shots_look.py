@@ -87,7 +87,7 @@ def look_shots(ctx, args):
                     tiles.append((png, f'{names[info["id"]]}  f{f}  {seconds(info, f):.2f} s'))
                     done += 1
                     job.progress(done, count * len(infos))
-                found += shot_faults.check(doc.data, info, frames, {f: Path(tmp) / f'{info["id"]}_f{f}.png' for f in frames}, ctx.app.folder)
+                found += shot_faults.check(doc.data, info, frames, {f: Path(tmp) / f'{info["id"]}_f{f}.png' for f in frames}, ctx.app.folder, renderer)
                 row = Path(tmp) / f'row_{info["id"]}.png'
                 sheet.contact_sheet(tiles, tile_w, len(tiles), row)
                 rows.append(row)

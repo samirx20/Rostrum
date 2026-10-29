@@ -11,7 +11,7 @@ from rostrum_core.mcp import Reply, sheet
 from rostrum_core.mcp.files import look_path
 from rostrum3d.compile import shot_info
 
-from . import draw, shot_faults
+from . import draw, picture_facts, shot_faults
 from .look import _settings
 from .shot import look_renderer, seconds, size_of
 
@@ -57,10 +57,12 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             draw.render(ctx.tool, f"frame {f} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=f,
                         width=w, height=h, png=str(pngs[f]), **_settings(renderer))
         sw, sh = sheet.contact_sheet([(p, f"f{f}   {seconds(info, f):.2f} s") for f, p in pngs.items()], TILE_W, min(3, len(frames)), dest)
-        found = shot_faults.check(doc.data, info, frames, pngs, ctx.app.folder)
+        found = shot_faults.check(doc.data, info, frames, pngs, ctx.app.folder, renderer)
     reply.summary += (f"\nLooked at {info['id']} through {info['camera']}: {len(frames)} frames, {frames[0]}–{frames[-1]} "
                       f"({seconds(info, frames[0]):.2f}–{seconds(info, frames[-1]):.2f} s), {renderer}, {sw}×{sh}.")
-    reply.data["look"] = {"shot": info["id"], "frames": frames, "renderer": renderer, "width": sw, "height": sh}
+    miss, miss_facts = picture_facts.storm_misses(doc.data, renderer)
+    reply.summary += miss
+    reply.data["look"] = {"shot": info["id"], "frames": frames, "renderer": renderer, "width": sw, "height": sh, **miss_facts}
     reply.files, reply.images, reply.faults = [*reply.files, dest], [*reply.images, dest], found
     reply.warnings += engine.take_notices()
     return reply

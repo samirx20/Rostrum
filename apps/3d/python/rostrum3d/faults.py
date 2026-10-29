@@ -9,7 +9,13 @@ as NOT DONE and hold back a final render the same way (round 4 of the 3D gaps: j
   cut_edge:<cloth|copies>  a cloth's simulated points, or falling copies where they land, on or past the frame edge (sim/sim_faults.py:
                         the shape boxes don't follow a simulation, so these replace shot_faults' entry of the same id);
   no_floor:<shot>       no ground or floor anywhere in the picture: whatever stands reads as hanging in a void (round 5: Hello r1);
-  backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py).
+  backdrop_edge:<dome>  a sky photo the camera sees shows past the floor, its room's edges across the shot (backdrop.py);
+  through_body:<clay>.<joint> / off_body:<item> / reads_still:<clay>.<joint>  a posed figure's part through another, a feature
+                        sliding off it, a keyed swing too small to see (pose_faults.py); on_rim:<item> a feature seen on the
+                        outline of the part it sits on, reading as beside it (pose_rim.py);
+  passes_through:<a>~<b>  two things not built as one sunk into each other deeper than 1 cm, by their real forms (contact_faults.py);
+  frozen_end:<shot>     the shot's last 2 s or more with nothing moving at all (still_faults.py; whole-shot checks only, never
+                        one frame's look or a still render).
 
 Read from the document as look_motion reads it (motion_track.Track, falls where the stored simulation has them), on about SAMPLES
 frames of the shot (look_frame: the frame and its neighbours): nothing is rendered.
@@ -21,7 +27,10 @@ import re
 from rostrum_core.mcp import faults as F
 
 from .backdrop import backdrop_edge
+from .contact_faults import contact_faults
 from .motion_track import Camera, Track
+from .pose_faults import pose_faults
+from .still_faults import frozen_end
 
 SAMPLES = 10            # frames looked at over a shot (look_frame: the frame and its neighbours)
 TOUCH_M = 0.005         # boxes closer than this touch
@@ -98,11 +107,16 @@ def doc_faults(data: dict, info: dict, folder=None, at: int | None = None, track
     from .mcp import motion_sim
     fs = samples(info, at)
     try:
+        sim = motion_sim.moves(data, info, folder)
         if track is None or not all(f in track.cams for f in fs):
-            track = Track(data, info, range(fs[0], fs[-1] + 1), folder, motion_sim.moves(data, info, folder))
+            track = Track(data, info, range(fs[0], fs[-1] + 1), folder, sim)
         found = _faults(track, info, fs, at)
     except Exception:  # noqa: BLE001
         return []
+    try:                                                   # a whole-shot fault: not on one frame's look or a still render
+        found += frozen_end(data, info, folder, sim, track.fr) if at is None else []
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from .sim.sim_faults import sim_faults
         found += sim_faults(data, info, folder, fs, at)
@@ -131,7 +145,15 @@ def _faults(track: Track, info: dict, fs: list[int], at: int | None) -> list[dic
     subj = [i for i in boxes if i not in back]
     check = [at] if at is not None else fs
     return _separations(track, info, boxes, subj, s0, check) + _leaving(track, info, boxes, subj, fs, check) + \
-        _no_floor(track, info, boxes, back, subj, check) + backdrop_edge(track, info, boxes, check)
+        _no_floor(track, info, boxes, back, subj, check) + backdrop_edge(track, info, boxes, check) + \
+        pose_faults(track, info, check) + _contacts(track, info, check)
+
+
+def _contacts(track, info, check) -> list[dict]:
+    try:
+        return contact_faults(track, info, check)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _separations(track, info, boxes, subj, s0, check) -> list[dict]:

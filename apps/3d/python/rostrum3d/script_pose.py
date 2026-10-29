@@ -24,7 +24,7 @@ def pose_at(b, node: dict, t, parts: dict, holds=None, ease: str = "smooth"):
     owner = f"{node['id']}.pose"
     if not isinstance(t, (int, float)):
         raise ValueError(f'{owner}: the first argument is the time in seconds (or a part name with {{seconds: target}}), '
-                         f'e.g. .pose(0.5, **{{"right hand": {{"up": 0.1}}}})')
+                         f'e.g. .pose(0.5, **{{"right hand": {{"up": 0.2, "out": -0.1}}}})')
     if not parts:
         raise ValueError(f'{owner}({t:g}): name the parts and where they go, e.g. .pose({t:g}, **{{"head": {{"forward": 0.02}}}})')
     t, f = float(t), round(float(t) * 1000)

@@ -196,7 +196,7 @@ def render_still(ctx, args):
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
                                  _cycles(args, renderer, s), ctx.app.folder, passes, step=drawn)
         png = next((f for f in files if f.suffix == ".png"), None)       # an EXR-only still: only the geometry is judged
-        found = shot_faults.check(doc.data, info, [frame], {frame: png} if png else {}, ctx.app.folder)
+        found = shot_faults.check(doc.data, info, [frame], {frame: png} if png else {}, ctx.app.folder, renderer)
         notes = shot_faults.deliver(found, args.get("keep"), ctx.tool, files)     # open faults: the files are held back as .NOT-DONE and this raises
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),

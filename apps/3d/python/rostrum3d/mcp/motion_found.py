@@ -1,6 +1,7 @@
 """look_motion's facts from a Track (rostrum3d/motion_track.py): per item its path, speed per frame, stops and sudden
 jumps (the arithmetic is shared with 2D: rostrum_core.motion.spans), and the findings: leaving the picture, and two
-shapes passing through each other (their oriented boxes overlap). Facts only, no scores."""
+shapes passing through each other (their exact forms overlap: contact_faults.depth, the passes_through fault's geometry; any
+other shape by its oriented box). Facts only, no scores."""
 from __future__ import annotations
 
 import itertools
@@ -78,8 +79,10 @@ def _near(a, b) -> bool:
     return all(min(p[k] for p in a[0]) <= max(p[k] for p in b[0]) and min(p[k] for p in b[0]) <= max(p[k] for p in a[0]) for k in range(3))
 
 
-def passing_through(rows: dict, moving: set, info: dict) -> list[dict]:
-    """Pairs of shown shapes, at least one of them moving, whose boxes overlap deeper than DEEP_M: both named, per span of frames."""
+def passing_through(rows: dict, moving: set, info: dict, fr=None) -> list[dict]:
+    """Pairs of shown shapes, at least one of them moving, that overlap deeper than DEEP_M: both named, per span of frames.
+    With the shot's Frames (`fr`), two fixed-form shapes (a ball, a box, a cone …) are measured by their exact forms."""
+    from ..contact_faults import depth, placed
     out = []
     shapes = [i for i in rows if any(x["solid"] for x in rows[i])]
     for a, b in itertools.combinations(shapes, 2):
@@ -88,7 +91,9 @@ def passing_through(rows: dict, moving: set, info: dict) -> list[dict]:
         hit = {}
         for x, y in zip(rows[a], rows[b]):
             if x["shown"] and y["shown"] and x["solid"] and y["solid"] and _near(x["solid"], y["solid"]):
-                if (d := _depth(x["solid"], y["solid"])) > DEEP_M:
+                forms = (placed(fr, a, x["frame"]), placed(fr, b, y["frame"])) if fr else (None, None)
+                d = depth(*forms)[0] if all(forms) else _depth(x["solid"], y["solid"])
+                if d > DEEP_M:
                     hit[x["frame"]] = d
         for f0, f1 in frame_spans(list(hit)):
             deep = max(hit[f] for f in range(f0, f1 + 1))
