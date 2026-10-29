@@ -16,7 +16,8 @@ Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery 
   the script, until the last touch-up. A track's `volume`, `pan`, `output`, a master target and every effect setting
   are script arguments too (`track(..., volume=0.8)`, `master(loudness=-16, maxLimit=4)`).
 - **A run that fails changes nothing** (no half-made track is left): the error names the script and the line; an unknown track
-  method lists what a track can do, an unknown name lists the script's names. A run that merged says so, even when a note ends
+  method lists what a track can do, an unknown name lists the script's names; both end with the closest real names
+  ("Did you mean drums?"), never applied for you. A run that merged says so, even when a note ends
   before it starts (a warning naming the note, see "Before the render"). Times can name the song's markers (`"#drop"`,
   made with `marker.add`) and the project's without the script restating them.
 

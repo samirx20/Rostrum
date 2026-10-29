@@ -32,7 +32,7 @@ import re
 import sys
 import threading
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, did_you_mean, nearest
 from rostrum_core.merge import check_output
 
 from . import expression as EX
@@ -101,7 +101,7 @@ def _methods(cls) -> list[str]:
     return sorted({*own, *script_ops.verbs()})          # plus the document's track operations (t.feel(...))
 
 
-def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:
+def _failure(e: Exception, name: str, names: list[str], scope: dict | None = None) -> RostrumError:
     """A script's Python error in plain words: where it happened and, when it helps, what would have worked."""
     where = _line(name)
     if isinstance(e, SyntaxError):
@@ -109,12 +109,15 @@ def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:
                             f"is not written correctly (Python could not read it): {e.msg}")
     if isinstance(e, NameError) and (m := re.match(r"name '(.+)' is not defined", str(e))):
         return RostrumError(codes.BAD_ARGUMENT, where, f'"{m[1]}"', "is not a name the script knows", names,
-                            "A track you made is the variable you stored it in.")
+                            did_you_mean(m[1], [*names, *(k for k in scope or {} if not k.startswith('_'))]) or "A track you made is the variable you stored it in.")
     if isinstance(e, AttributeError) and (m := re.match(r"'Track' object has no attribute '(.+)'", str(e))):
         voice_hint = (" Spoken lines are not written in a script: a script can make the voice track (`track('narrator', instrument='voice', voice='ryan')`), "
                       "and the lines are added with edit_document `line.add` (text, at); inspect_guide 'voice' has the whole call."
                       if m[1] in ("line", "say", "speak", "lines", "voice_line", "words", "text") else "")
-        return RostrumError(codes.BAD_ARGUMENT, where, f'track.{m[1]}', "is not something a track can do." + voice_hint, _methods(Track))
+        return RostrumError(codes.BAD_ARGUMENT, where, f'track.{m[1]}', "is not something a track can do." + voice_hint, _methods(Track),
+                            None if voice_hint else did_you_mean(m[1], _methods(Track)))
+    if near := nearest.script_hint(e, scope):                  # "did you mean …" for a wrong call, field or argument
+        return RostrumError(codes.BAD_ARGUMENT, where, "the script", "stopped: " + near)
     if isinstance(e, ZeroDivisionError):
         return RostrumError(codes.BAD_ARGUMENT, where, "the script", "divides by zero")
     detail = {KeyError: f"looked for {e} and it is not there", IndexError: f"asked for a list position that is not there ({e})"}
@@ -127,8 +130,9 @@ def run_source(source: str, name: str, doc=None) -> dict:
     song = Song()
     _asked.markers = []
     song.known = list(doc.data.get("markers", [])) if doc is not None else []
+    names = {**script_scope.scope(), **scope(song)}
     try:
-        exec(compile(source, name, "exec"), {**script_scope.scope(), **scope(song)})
+        exec(compile(source, name, "exec"), names)
         script_sync.check(song)            # every downbeat / land still lands on the finished tempo map
         script_ending.apply(song)          # ending(...): the parts land, what runs past is trimmed, the length set
         script_moment.apply(song)          # each moment's rest / stop / choke / swell / strike, on every note written
@@ -138,7 +142,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
     except RostrumError as e:
         raise e.within(_line(name)) from e
     except Exception as e:
-        raise _failure(e, name, sorted(scope(song))) from e
+        raise _failure(e, name, sorted(scope(song)), names) from e
     check_output(KIND, tree, f"script {name}")
     problems = KIND.check({**tree, "markers": song.marks()})
     if problems:
