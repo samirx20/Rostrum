@@ -80,6 +80,8 @@ def notes(build) -> list[str]:
             v = values.get(name)
             if p is None or (name not in keyed and (v == p.default or v is False or v in OFF)):
                 continue                                    # its default, or off (hugPin=False): nothing is lost
+            if name in ("sizeW", "sizeH") and v == "fixed":
+                continue                                    # w= / h= as given: a group's own size (a section's box) applies anywhere
             cond, reads = p.valid_when, refs(p.valid_when)
             if cond is None or any(kind == "fact" and f not in FACTS for kind, f in reads):
                 continue

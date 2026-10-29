@@ -63,6 +63,7 @@ def test_a_field_given_where_it_does_nothing_is_said_and_a_glow_colour_is_used(e
                        't.effect("glow", "kept", color="#ff8800", ownColor=True)\n')
     assert [n for n in tree.notes if "shiftY on phone" in n and "key y" in n]
     assert not [n for n in tree.notes if "s2" in n]                                   # in a column it moves it
+    assert not [n for n in tree.notes if "intro" in n]                                # a section's w / h is its box
     glows = {e["id"]: e for e in items["t"]["effects"]}
     assert glows["warm"]["ownColor"] is False and glows["warm"]["color"] == "#ff8800"
     assert glows["kept"]["ownColor"] is True and [n for n in tree.notes if n.startswith("color on kept")]
