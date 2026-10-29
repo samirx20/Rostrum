@@ -328,9 +328,12 @@ climax or lift are read as asked moments by `render_mix`'s check, which then say
 |---|---|---|
 | `m.rest(strings, basses, before=0.4)` | nothing starts in the 0.4 s before the moment; what is still sounding ends there | a breath, so the hit comes out of silence |
 | `m.stop(band, until=37.5, short=0.2, release=0.05)` | what starts on the moment (within 30 ms) plays, cut to `short` s if given; what rings across it ends at the moment (+ `release`); nothing starts again before `until` (default: the song's end) | a band stop, a drop that is a gap, an ending |
-| `m.choke(cymbals, after=0.25)` | what is sounding at the moment ends 0.25 s after it | a choked crash, the pedal lifted |
+| `m.choke(keys, after=0.25)` | notes sounding at the moment end 0.25 s after it | the pedal lifted, a held chord cut short |
+
 | `m.strike(brass, ["C2", "G2", "C3"], vel=1.0, ring=4.0)` | a note or chord on the moment, held `ring` s; on a kit `m.strike(drums, "crash")` (or a list of drums) adds hits | the layers of the hit itself |
 | `m.swell(strings, over=4.0, low=0.5)` | what starts in the 4 s before the moment plays from 0.5x its velocity up to full | a run-up the hit lands on |
+
+**How drum hits end.** A drum hit has no length: it rings as its sample was recorded (a crash for seconds). `stop` and `choke` shorten notes only; on a kit they drop hits that would start inside the stop, and the reply counts the hits they left ringing and says why. To end a hit sooner, write it shorter where it is struck: `drums.hit("crash", at=36.0, decay=0.3)` (ring time; a recorded kit's one-shot samples ring on whatever the decay), or put the cymbal on its own track and let a volume lane fall after the moment.
 
 The actions run when the script ends, in the order written, on every note the script wrote (written before or after the
 `moment` line). A cut keeps the note's own form: a length in beats stays in beats, seconds stay seconds, a tie ends at the

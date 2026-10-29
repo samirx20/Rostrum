@@ -11,6 +11,12 @@ from .script_time import Beats
 
 AT_ONCE = 0.03          # a note starting this close to the moment is played *on* it
 SLIVER = 0.001
+HIT_RING = 6.0          # a drum hit struck this long before the moment may still ring into it (a crash, a ride bell)
+LEFT_RINGING = "drum hits left ringing"
+WHY_HITS = ("a drum hit has no length to cut: it rings as its sample was recorded, so stop's short / release and choke "
+            "leave hits as struck (they only drop hits that would start in the stop). To end one sooner: a shorter "
+            "ring time written on the hit itself (track.hit('crash', at, decay=0.3); a recorded kit's one-shot samples ring on), or the cymbal on its own "
+            "track with a volume lane falling after the moment")
 
 
 class Counts(dict):
@@ -62,6 +68,11 @@ def drop_hits(track, root, where, keep, counts):
     track.hits = kept
 
 
+def hits_ringing(track, root, where, struck, counts):
+    """Hits an end asked for would have shortened (`struck(start)`): kept as struck, counted, so the reply says why."""
+    counts.add(LEFT_RINGING, sum(1 for _, h, _ in track.hits if struck(times.seconds(h["at"], root, where))))
+
+
 def rest(track, at, before, root, where, counts):
     """Nothing starts in [at-before, at); what sounds into it ends at at-before."""
     gap = at - before
@@ -81,12 +92,14 @@ def stop(track, at, until, short, release, root, where, counts):
         return at + release if s < at and e > at + release else None
     edit(track, root, where, keep, end_at, counts)
     drop_hits(track, root, where, keep, counts)
+    hits_ringing(track, root, where, lambda s: (on(s) and short is not None) or at - HIT_RING <= s < at - AT_ONCE, counts)
 
 
 def choke(track, at, after, root, where, counts):
     """Notes sounding at the moment (started on it or before) end `after` seconds past it."""
     cut = at + after
     edit(track, root, where, lambda s: True, lambda s, e: cut if s <= at + AT_ONCE and e > cut else None, counts)
+    hits_ringing(track, root, where, lambda s: at - HIT_RING <= s <= min(at + AT_ONCE, cut), counts)
 
 
 def swell(track, at, over, low, root, where, counts):
