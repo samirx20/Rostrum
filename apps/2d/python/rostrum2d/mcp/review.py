@@ -2,7 +2,7 @@
 faint old headings, parts not drawn in yet, held poses and held framing, subjects cut by the edge, stray specks, layers outside their screen, crowded lock-ups, beats that never
 happened, a near-empty frame mid-film, look-alike opening shots, an end picture held too long, a text partly crossed by a layer
 in front (a panel's own background too), a text cut by the edge of the screen or box that clips it, texts on texts, a pointer on a label, a tiny end card, a device cut by the frame edge (and why: placed off the
-frame, or nibbled by a camera push-in), a character hidden behind the set or standing on a bare one. Layout faults name
+frame, or nibbled by a camera push-in), a character hidden behind the set or standing on a bare one, a layer its layout jumps in one frame. Layout faults name
 the layers and a fix. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score. The export
 reply ends with the top ones (`after_export`, through session_clock), so the next fix pass has a concrete target."""
 from __future__ import annotations
@@ -14,20 +14,20 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from . import edge_cut, look_empty, render
-from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_layout, review_paint_order, review_room, review_spill
+from . import review_beats, review_clip, review_cover, review_device, review_facts as rf, review_frame, review_jump, review_layout, review_paint_order, review_room, review_spill
 from .review_sample import Sampled
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 EVERY = look_empty.EVERY
-CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts, review_paint_order.facts)   # each (Sampled) -> faults: a new check registers here
+CHECKS = (review_frame.facts, review_cover.facts, review_layout.facts, review_clip.facts, review_device.facts, review_spill.facts, review_paint_order.facts, review_jump.facts)   # each (Sampled) -> faults: a new check registers here
 OPENING = 1.0             # a blank under this long at the very start or end is an opening or closing fade
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
         "text_crossed": 90, "text_clipped": 91, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
         "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
-        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "painted_over": 86, "small_text_edge": 28, "washed": 25}
+        "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "painted_over": 86, "layout_jump": 84, "small_text_edge": 28, "washed": 25}
 
 
 def _kind(r: dict, duration: float) -> str:
@@ -96,7 +96,7 @@ def doc_faults(doc_data: dict, comp: dict, beats: list[dict] | None, where: str,
 
 def tell(rows: list[dict], limit: int) -> str:
     if not rows:
-        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed, cut by its screen's edge or on another text, no pointer on a label, no device cut, no tiny end card, no character hidden or on a bare set, every declared beat happens on time."
+        return "No weak moment found: no blank, held or cut-off stretch, no faint leftover text, no stray speck, nothing outside its screen or crowding a lock-up, no text crossed, cut by its screen's edge or on another text, no pointer on a label, no device cut, no tiny end card, no character hidden or on a bare set, no layout jump, every declared beat happens on time."
     picked, more = few(rows, limit)
     shown = " ".join(f"{i}. {r['text']}." for i, r in enumerate(picked, 1))
     return f"Weakest moments, most visible first: {shown}{more and f' ({more})'}"
@@ -160,7 +160,8 @@ def look_review(ctx, args):
     where it is placed, or nibbled by a camera push-in while its sides show (with the camera key, the share of the film it is
     cut and a frame.fit fix; a deep push-in filling the picture is meant and only listed in data.info, with the screen texts it
     cuts); a character more than half hidden behind layers in front, or on a bare set (under 3 things or 15 % of the frame
-    besides it and the background); and
+    besides it and the background); a layer an auto layout jumps a large share of the frame in one frame with no key
+    moving it (a sibling re-sized at once); and
     each declared beat (`beats`, or the ones last given to an export) that never happens or comes at the wrong time. Samples the whole film every 0.5 s in seconds. Facts, not taste: a held
     title or a planned pause may be meant. Use it after every export: fix the top one, export, review again."""
     doc, comp = doc_and_comp(ctx, args)

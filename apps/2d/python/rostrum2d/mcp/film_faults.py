@@ -26,7 +26,7 @@ NOT_FAULTS = ("empty_edge",)                         # a blank second at the ver
 # review's rows (a held framing, a held pose, a crowded lock-up ...) may be meant: named as advice, never refused.
 CLIENT_VISIBLE = ("empty", "sparse", "text_edge", "text_margin", "text_crossed", "text_clipped", "text_on_text", "ghost_text",
                   "pointer_on_text", "device_cut", "push_cut", "push_bars", "screen_spill", "outside", "speck", "end_small",
-                  "painted_over", "edge_cut", "rig_cut")
+                  "painted_over", "edge_cut", "rig_cut", "layout_jump")
 PASSING = ("edge_cut", "rig_cut")      # a subject cut by the edge counts only when it stays cut ...
 PASS_S = 2.0                           # ... this long or more (walking in or out of the picture takes about a second)
 SUBJECTS = ("group", "image", "video", "rig")   # ... and is a card, a picture, a clip or a character: a plain shape, path or
@@ -52,6 +52,7 @@ FIX = {
     "bare_set": "give the character a set: a background or props behind it",
     "speck": "keep the small layer hidden (opacity 0) until it grows, or start it at its full size",
     "outside": "keep the layer inside its screen: make it inside the screen's container, or shrink it",
+    "layout_jump": "key the size change that re-flows the layout over time (not on a hold), or animate with opacity / scale / shiftX / shiftY, which keep every slot where it is",
     "screen_spill": "make the layer inside the device's screen (its container) or shrink it to fit the screen",
     "crowded": "space the lock-up's parts apart: a bigger gap= in their row / column, or move them apart",
     "text_crossed": "move the text or the layer crossing it so they no longer overlap (the row says where)",
