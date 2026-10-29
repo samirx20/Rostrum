@@ -1,5 +1,6 @@
 """render_audition: hear a stretch of the song (any bars, or a marker ± seconds) in about a second without a full
-render (hear.py), with its picture and notes on request; or hear a Library entry (an instrument, a drum kit, a sound
+render (hear.py), with its numbers (hear_measure.py: loudness and bands per step, hits, each part's level and
+starts, what is written there), its picture and notes on request; or hear a Library entry (an instrument, a drum kit, a sound
 file) through the engine, on the track's own notes when one is given. The document is not touched; the WAV is kept by
 content."""
 from __future__ import annotations
@@ -7,7 +8,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from .. import audition, hear, master_memo
+from .. import audition, hear, hear_measure, master_memo, sounding
 from ..doc import markers
 from .range_target import _seconds
 
@@ -21,13 +22,16 @@ TIME = "seconds (12.5), {\"bar\": 9}, {\"beat\": 32} or a marker (\"#chorus\", \
 def _song_stretch(ctx, doc, args) -> Reply:
     """The song from `from` to `to` (or `around` an `at`), as written now."""
     d = doc.data
+    moment = None
     with markers.project(getattr(doc, "folder", None)):
         if "at" in args:
-            a, b = hear.window(_seconds(d, args["at"], "render_audition › at"), None, float(args.get("around", 2.0)))
+            moment = _seconds(d, args["at"], "render_audition › at")
+            a, b = hear.window(moment, None, float(args.get("around", 2.0)))
         else:
             a = _seconds(d, args.get("from", 0), "render_audition › from")
             b = _seconds(d, args["to"], "render_audition › to") if "to" in args else None
             a, b = hear.window(a, b, None)
+        written = {"over": sounding.over(d, a, b), "at": sounding.at(d, moment if moment is not None else a)} if args.get("measure", True) else None
     if b <= a or b - a > hear.MOST_S:
         raise RostrumError(codes.BAD_ARGUMENT, "render_audition", f"from {a:.2f} s to {b:.2f} s",
                            f"is not a stretch of 0 to {hear.MOST_S:g} s", hint="For a longer part: render_mix with from / to.")
@@ -38,7 +42,10 @@ def _song_stretch(ctx, doc, args) -> Reply:
     said = (f"Heard {r['from_s']:.2f}-{r['to_s']:.2f} s" + (f" (solo {', '.join(solo)})" if solo else "")
             + f": {r.get('lufs', -70):.1f} LUFS, true peak {r.get('truePeak', -120):.1f} dBTP. {r['file']}" + (" (from the cache)" if r["cached"] else "")
             + (" Level: the song's master from before your latest change; the next listen has it measured again." if r.get("mastered") == "earlier" else ""))
-    data = {k: v for k, v in r.items() if k != "series"}
+    data = {k: v for k, v in r.items() if k not in ("series", "tracks")}
+    if args.get("measure", True):
+        data["measure"] = {**hear_measure.measure(r["file"], r, args.get("step")), "written": written}
+        said += "\n" + hear_measure.lines(data["measure"], written)
     if args.get("look"):
         png = str(ctx.app.state.look_dir(doc.item_id) / "audition.png")
         hear.picture(png, r["file"], r, doc.item_id)
@@ -64,10 +71,12 @@ def register(tools: Tools):
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard in the stretch."},
         "master": {"type": "boolean", "default": True, "description": "False: the stretch before the master stage. True: mastered, its loudness target measured on the stretch alone (so a quiet stretch is raised as a whole song would not be)."},
         "look": {"type": "boolean", "default": False, "description": "Also a picture of the stretch: wave, loudness over time, spectrum over time."},
+        "measure": {"type": "boolean", "default": True, "description": "The stretch as numbers (song seconds), for checking a moment without hearing it: loudness (LUFS) per step; energy per band per step (sub <60 Hz, bass 60-250, lowMid 250-1k, mid 1-4k, high 4-16k, dB); the mix's hits (time, peak dBFS) and the loudest; each part alone before the master (LUFS, peak, when it first / last sounds, where its sounds start, its bands); what is written there (notes per track, lowest-highest, first-last) and sounding at `at` (or the start), with the chord. A start in the stretch's first 20 ms is not counted (the cut is there). Costs tens of milliseconds; false leaves it out."},
+        "step": {"type": "number", "minimum": 0.1, "description": "Seconds per loudness / bands row; default 0.5 s up to an 8 s stretch, 1 s up to 20 s, else 2 s or more."},
         "notes": {"type": "boolean", "default": False, "description": "Also the listening notes inside the stretch: the song's asked moments (markers named hit, stop, drop, climax ...) measured, a true peak over the ceiling, clipped samples. Notes to read, never a verdict."},
         "bars": {"type": "integer", "default": audition.BARS, "description": "With only `track` or `entry`: how many bars of the track's notes to play."}}})
     def render_audition(ctx, args):
-        """Hear any moment in about a second, without a full render: a stretch of the song as written now (`from` / `to`, or `at` ± `around`; `solo` / `mute`), sounding exactly as that stretch of the full render_mix does (the song's own master and level; until the song's first render the first stretch takes a full-song pass), rendered alone (unchanged tracks from the render cache, a changed one only around the stretch) and kept by content, so the same stretch again is instant. `look` adds its picture, `notes` the listening notes inside it. Or try a sound: `entry` plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or a file as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; nothing in the song changes."""
+        """Hear any moment in about a second, without a full render: a stretch of the song as written now (`from` / `to`, or `at` ± `around`; `solo` / `mute`), sounding exactly as that stretch of the full render_mix does (the song's own master and level; until the song's first render the first stretch takes a full-song pass), rendered alone (unchanged tracks from the render cache, a changed one only around the stretch) and kept by content, so the same stretch again is instant. The reply reads the moment as numbers (`measure`, on by default): loudness and bands per step, the mix's hits and the loudest, each part's level and starts, the notes written there and the chord at `at`; so a lift, a hit, a part masking 1-4 kHz or drums stopping can be checked without hearing. `look` adds its picture, `notes` the listening notes inside it. Or try a sound: `entry` plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or a file as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; nothing in the song changes."""
         track, entry = args.get("track"), args.get("entry")
         stretch = not entry and ("to" in args or "at" in args or not track)
         doc = ctx.document(args.get("item")) if track or not entry else None

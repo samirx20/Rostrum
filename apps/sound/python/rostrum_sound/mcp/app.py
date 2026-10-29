@@ -26,7 +26,7 @@ from . import script_render, tool_text
 GUIDES = Path(__file__).resolve().parents[3] / "guides"         # apps/sound/guides
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. Read inspect_guide 'start-here' first: write the whole piece as ONE "
                 "script in bars and run it with run_script; look_arrangement shows it without a render; render_audition hears any "
-                "stretch in about a second (look: true for its picture); judge it yourself, change the script and run it again under "
+                "stretch in about a second and reads it as numbers (loudness and bands per step, hits, each part's level; look: true for its picture); judge it yourself, change the script and run it again under "
                 "the same name; render_mix only to deliver (notes: true adds measurements, observations only). Make an asked moment read "
                 "with moment(name, at). The server starts on your own scratch song, never the person's (run_open_project lists theirs).")
 

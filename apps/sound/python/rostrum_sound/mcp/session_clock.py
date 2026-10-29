@@ -79,7 +79,7 @@ def fix_pass(clock: Clock | None, render_s: float | None = None) -> str:
     """The closing line of a render with notes: the quick tools for hearing a moment again, and the time left. Facts
     only: what to change, if anything, is the agent's call."""
     said = ("To hear one moment again without a full render: render_audition {at: \"#marker\"} or {from: {bar: n}, to: {bar: m}} "
-            "(about a second; look: true adds its picture).")
+            "(about a second, read as numbers; look: true adds its picture).")
     left = clock.left() if clock else None
     if left is None:
         return said

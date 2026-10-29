@@ -9,7 +9,7 @@ which `what`. Each tool's full words: `inspect_guide 'tools-in-detail'`.
 1. **Write the whole piece as one Python script** (tempo map, sections, markers for the sync points, every track's notes,
    dynamics and effects, the mix, the master target) and run it with `run_script`, **one `name` for the song**.
 2. **See and hear it.** `look_arrangement` draws the written song (no render); `render_audition` hears any stretch in about a second
-   (`{"from": {"bar": 9}, "to": {"bar": 11}}`, `solo` / `mute`, `look: true` for its picture, `notes: true` for measurements); judge it yourself.
+   (`{"from": {"bar": 9}, "to": {"bar": 11}}`, `solo` / `mute`; the reply reads it as numbers: loudness and bands per row, the mix's hits, each part's level and starts, what is written and sounding there; `look: true` for its picture, `notes: true` for the asked moments measured); judge it yourself.
    Measurements for the whole mix (loudness, the weakest asked moments, "tempo far from the brief's" with `expect`: `{"kind": "tempo", "bpm": 96}`) come with `render_mix` `notes: true`.
 3. **Edit the script and run it again under the same name.** A removed track, note, effect or marker disappears, a new
    tempo moves everything written in beats, nothing is copied. A **new name** that makes the same tracks is refused, naming the script to run under.
