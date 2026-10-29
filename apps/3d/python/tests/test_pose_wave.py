@@ -49,7 +49,7 @@ def test_a_swing_on_the_half_second_is_in_step_a_small_one_is_small_and_a_0_35_s
     step = _waves(_found(_wave(36, 0.5)))
     assert list(step) == ["wave_in_step:buddy.forearm.R"] and "every 1.00 s" in step["wave_in_step:buddy.forearm.R"]["what"], step
     small = _waves(_found(_wave(10, 0.35)))
-    assert list(small) == ["wave_small:buddy.forearm.R"] and "° more" in small["wave_small:buddy.forearm.R"]["fix"], small
+    assert list(small) == ["wave_small:buddy.forearm.R"], small  # observed, no fix given (no-gates rule)
     assert not _waves(_found(_wave(36, 0.35)))
 
 
