@@ -106,6 +106,14 @@ def test_bend_from_the_script_keys_that_joint_at_every_time():
             ops_pose.use_grid(None)
 
 
+def test_a_joint_bent_later_in_the_script_keeps_only_its_own_keys():
+    # gaps6 Hello r2: the other arm, bent after the wave was keyed, was pinned at rest on every wave key and stayed out
+    clay = _items(_posed('c.bend("arm.R", {0: (0, 0, 0), 0.5: (0, 0, -60), 1: (0, 0, -40), 1.5: (0, 0, -60)})\n'
+                         'c.bend("arm.L", {0: (0, 0, 0), 0.8: (0, 0, 60), 2: (0, 0, 60)})\n'))["buddy"]
+    arm = {b["joint"]: b for b, _ in skin.bones_of(clay)}["arm.L"]
+    assert sorted({k["t"] for k in arm["keys"]}) == [0.0, 0.8, 2.0]
+
+
 def _posed(lines: str):
     ops_pose.use_grid(lambda doc, id_, cells: _figure_grid(cells))
     try:

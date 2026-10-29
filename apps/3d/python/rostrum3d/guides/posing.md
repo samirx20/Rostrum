@@ -85,7 +85,8 @@ c.bend("arm.R", {0: (0, 0, 0), 0.8: (0, 0, -100)})          # or turn one joint 
 
 - `pose(seconds, **{part: target, …}, holds=, ease=)` moves each named part's end to its target at that time (the
   drag solve, `pose.drag`) and keys the joints that moved. Several parts in one call make one pose; a part not named
-  keeps its last pose. A **target** is a world point `(x, y, z)`, or `{"up": m, "out": m, "forward": m}`: metres
+  keeps its last pose. A joint has exactly the keys the script gives it (`pose` or `bend`, in any order): before its
+  first key it holds that one, after its last key the last. A **target** is a world point `(x, y, z)`, or `{"up": m, "out": m, "forward": m}`: metres
   from where that part is **at rest**, along the figure's own up, away from its middle (left / right parts only) and
   the way it faces; negative goes down / in / back. The older `pose("hand.L", {1: target, 2: target})` still works.
 - **Names:** `"hand.R"` (the joint names below), `"right hand"` / `"left foot"` (the figure's own sides: `.R` is

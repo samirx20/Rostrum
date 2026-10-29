@@ -21,6 +21,7 @@
 
 #include "clay_whole.h"
 #include "cycles_lights.h"
+#include "cycles_paths.h"
 #include "dome_cycles.h"
 #include "error.h"
 #include "light_to_color.h"
@@ -74,6 +75,7 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
   set("cycles:samples", VtValue(s.samples));
   set("cycles:integrator:use_denoise", VtValue(s.denoise));
   set("cycles:integrator:denoise_start_sample", VtValue(progressive ? 0 : s.samples));
+  for (const auto& [key, value] : cycles_paths()) set(key, value);  // bounces, glossy blur, clamp (cycles_paths.h)
   // our patch (-r3); off only for the Shadow pass (passes.h). A plug-in without it reports nothing: left alone then,
   // as setting an unknown key would start the Final look over on every step.
   if (!s.castShadows || !e.GetRendererSetting(TfToken("rostrum:castShadows")).IsEmpty())

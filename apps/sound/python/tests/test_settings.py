@@ -38,3 +38,14 @@ def test_engine_order(home, monkeypatch):
     monkeypatch.setenv("ROSTRUM_SOUND_ENGINE", str(home / "missing.exe"))
     with pytest.raises(RostrumError, match="missing.exe"):
         settings.engine_path()
+
+
+def test_dev_engine_runs_from_the_cache_not_target(home, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "local"))
+    monkeypatch.delenv("ROSTRUM_ENGINE_COPY", raising=False)
+    monkeypatch.setattr(settings, "DEV_BUILD", home / "target")
+    exe = home / "target" / "agent" / settings.EXE
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"x")
+    got = settings.engine_path()
+    assert got.is_file() and (home / "target") not in got.parents and "engine-cache" in str(got) and "sound-" in str(got)

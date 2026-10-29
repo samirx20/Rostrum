@@ -19,6 +19,7 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, builds, codes, did_you_mean, userhome
 from rostrum_core.cache import default_root
+from rostrum_core.engine_copy import run_exe
 from rostrum_core.storage import write_atomic
 
 from .settings_fields import DEFAULTS, FIELDS, MODELS, PROJECTS
@@ -124,6 +125,14 @@ def engine_candidates() -> list[Path]:
 
 
 def engine_path() -> Path:
+    """The engine program to start. A dev build under engine/target is started from a run copy (rostrum_core/
+    engine_copy.py), so a rebuild never fails with "file in use" while a server runs; an installed or chosen engine
+    outside the build folder runs as it is."""
+    p = _engine_found()
+    return run_exe(p, "sound", DEV_BUILD)
+
+
+def _engine_found() -> Path:
     found = engine_candidates()
     dev = [p for p in found if DEV_BUILD in p.parents]        # a chosen or installed engine wins; the dev builds: newest
     if (p := next((p for p in found if p.is_file() and p not in dev), None)) or (
