@@ -52,6 +52,16 @@ def has_graph(material: dict) -> bool:
     return bool(g.get("blocks") or g.get("wires"))
 
 
+BLOCK_W, GAP = 180, 60          # a block's width in the view (the kit's rostrum_gui.blocks.WIDTH) and the gap left of it
+
+
+def free_place(g: dict) -> tuple[int, int]:
+    """Where a block added with no place goes: left of the leftmost block, level with Surface (wires run left to
+    right), so it never lands on another one. The screen's + Add block and graph.add without x / y both use it."""
+    xs = [g["surface"].get("x", 0)] + [b.get("x", 0) for b in g["blocks"]]
+    return round(min(xs) - BLOCK_W - GAP), round(g["surface"].get("y", 0))
+
+
 def blocks_by_id(g: dict) -> dict:
     return {b["id"]: b for b in g["blocks"]}
 
@@ -149,6 +159,25 @@ def values(material: dict, block: dict) -> dict:
     return {**kind.defaults(), **block.get("values", {})}
 
 
+def showable(kind: B.Block) -> list[str]:
+    """The settings of a block that may be shown on the material (PR5): its own numbers, colours and choices; never
+    Surface's or a stylized block's (those are the material's own rows already) nor the Style chain."""
+    if kind.type == "surface" or kind.type in B.STYLIZED:
+        return []
+    return [i.name for i in kind.inputs if i.name != B.CHAIN]
+
+
+def shown(material: dict) -> list[tuple[dict, B.Block, str]]:
+    """The settings shown on the material (a block's `shown`, in block order then the block's own order): each
+    (block, its type, setting). A name the block's type no longer has is skipped (kept in the data)."""
+    out = []
+    for b in graph_of(material)["blocks"]:
+        kind = B.BY_TYPE[b["type"]]
+        names = set(b.get("shown") or ()) & set(showable(kind))
+        out += [(b, kind, n) for n in showable(kind) if n in names]
+    return out
+
+
 def style_chain(g: dict) -> list[str]:
     """The stylized blocks that are on: wired into Surface's Style, directly or through each other's Style."""
     into, on, port = wires_into(g), [], f"{SURFACE}.style"
@@ -239,6 +268,8 @@ def describe(material: dict, catalogue: bool = True) -> dict:
         row = _block_row(B.BY_TYPE[b["type"]], b["id"], b.get("x", 0), b.get("y", 0), values(material, b), into, True)
         if b["type"] in B.STYLIZED:
             row["on"] = b["id"] in on
+        if b.get("shown"):
+            row["shown"] = list(b["shown"])           # settings shown as rows on the material (graph.set show)
         rows.append(row)
     out = {"blocks": rows, "wires": [{"from": w["from"], "to": w["to"]} for w in g["wires"]]}
     return {**out, "catalogue": B.catalogue()} if catalogue else out
@@ -258,5 +289,5 @@ def text(material: dict) -> str:
         return ""
     d = describe(material, catalogue=False)
     rows = [f'{b["id"]} ({b["label"]}' + (f', {b["summary"]}' if b["summary"] else "") + (", on" if b.get("on") else "")
-            + ")" for b in d["blocks"][1:]]
+            + (f', shown on the material: {", ".join(b["shown"])}' if b.get("shown") else "") + ")" for b in d["blocks"][1:]]
     return "Blocks: " + "; ".join(rows) + ". Wires: " + "; ".join(f'{w["from"]} → {w["to"]}' for w in d["wires"]) + "."

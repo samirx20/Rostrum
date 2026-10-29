@@ -6,7 +6,7 @@ import RostrumKit
 // Flatten, Crease: two full rows of three) and Mask on a row of its own a little apart (it protects, it does not shape).
 // One choice across all of them: what a drag in the viewport does. Then the brush's rows, the clay's own fields drawn by
 // the kit's rows (clay.set, one undo step each): Size and Strength; then Layers once the clay has a sculpt layer
-// (ClayLayers.qml); then Steps, the clay's steps (ClaySteps.qml); then
+// (ClayLayers.qml); then Steps, the clay's steps (ClaySteps.qml); then Clean mesh (Faces, Make clean mesh: ClayClean.qml); then
 // the kit's More fold (closed at first, kept as left for the session) with Falloff, Spacing, Front faces only and
 // Mirror. Steps sits above the fold so a 900 px high window shows it without scrolling (3d-v4).
 // After a Draw, the drawn shape's Puff sits under the name until the next stroke (claystep.set puff on that step).
@@ -94,6 +94,8 @@ Item {
                 Item { width: 1; height: sculptLayers.visible ? panel.groupSpace : 0 }
                 ClaySteps { width: col.width; inner: col.width - Theme.keyGutter }   // the list ends where the fields do
                 Item { width: 1; height: panel.groupSpace }
+                ClayClean { id: cleanMesh; width: col.width; inner: col.width - Theme.keyGutter }   // Make clean mesh
+                Item { width: 1; height: panel.groupSpace }
                 Repeater {      // More, then Falloff, Spacing, Front faces only, Mirror behind it (clay_brush_qt.py)
                     objectName: "clayMore"
                     model: viewport.clay.brushObj.finer
@@ -118,5 +120,22 @@ Item {
     Timer { id: followEnd; interval: 400; onTriggered: panel.following = false }
     Connections { target: flick; function onContentHeightChanged() { if (panel.following) panel.showMore() } }
     function showMore() { flick.contentY = Math.max(0, flick.contentHeight - flick.height) }
+    // Clean mesh: its running bar or its failure line is always in view (at 900 high the group starts under the fold)
+    property bool cleanBusy: false          // scrolled once as it starts or fails, never again while it ticks
+    Connections {
+        target: viewport.clay.cleanObj
+        function onChanged() {
+            const job = viewport.clay.cleanObj, now = job.running || job.failure !== ""
+            if (now && !panel.cleanBusy) Qt.callLater(panel.show, cleanMesh)
+            panel.cleanBusy = now
+        }
+    }
+    function show(item) {
+        const y = item.mapToItem(col, 0, 0).y + Theme.pad
+        if (y + item.height > flick.contentY + flick.height)
+            flick.contentY = Math.min(Math.max(0, flick.contentHeight - flick.height), y + item.height - flick.height + Theme.pad)
+        else if (y < flick.contentY)
+            flick.contentY = Math.max(0, y - Theme.pad)
+    }
     EdgeFade { flick: flick; anchors.fill: flick }    // rows that don't fit scroll: a half-scrolled row fades
 }

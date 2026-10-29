@@ -4,7 +4,10 @@ every piece are written, at most `pad(size)` of them out: half the gap the core'
 (core unfold.cpp: xatlas padding = size / 256, 2..16 px), so a piece's bleed never reaches another piece.
 
 The pieces come from the item's own unfold: a mesh's `uvs` (one u, v per face corner, with its `faceCounts`) or a
-clay's surface (clay_paint.Surface.uv). A mesh on the shape's own surface (`uvs` []) has no pieces known here: no bleed.
+clay's surface (clay_paint.Surface.uv, laid into the picture by uv_raster: a clay's million triangles in well under a
+second; a clay is cut into very many small pieces, so without bleed nearly every texel of its paint sits next to a
+gap, and a renderer reading a Relief picture there sees steep false slopes: grain and rings in a flat raised area).
+A mesh on the shape's own surface (`uvs` []) has no pieces known here: no bleed.
 """
 from __future__ import annotations
 
@@ -14,7 +17,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-MOST_FACES = 60000                  # a surface with more pieces' triangles than this is drawn too slowly here: no bleed
+MOST_FACES = 60000                  # a mesh with more faces than this is drawn too slowly here: no bleed
 _LOCK = threading.RLock()
 _MASKS: OrderedDict = OrderedDict()
 
@@ -39,7 +42,7 @@ def _polygons(item: dict, surface) -> list | None:
 def key(item: dict, surface, size: int) -> str:
     """What the pieces depend on ("" when none are known): in a painted picture's cache key."""
     if surface is not None:
-        return f"clay:{surface.key}:{size}" if len(surface.uv) <= MOST_FACES else ""
+        return f"clay:{surface.key}:{size}"
     if not item.get("uvs") or not item.get("faceCounts"):
         return ""
     h = hashlib.sha1(np.asarray(item["uvs"], np.float32).tobytes() + np.asarray(item["faceCounts"], np.int32).tobytes())
@@ -55,15 +58,19 @@ def pieces(item: dict, surface, size: int) -> np.ndarray | None:
         if k in _MASKS:
             _MASKS.move_to_end(k)
             return _MASKS[k]
-    polys = _polygons(item, surface)
-    if polys is None:
-        return None
-    from PIL import Image, ImageDraw
-    im = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(im)
-    for p in polys:
-        draw.polygon([(float(u) * size - 0.5, (1.0 - float(v)) * size - 0.5) for u, v in p], fill=255)
-    mask = np.asarray(im) > 0
+    if surface is not None:
+        from .uv_raster import Geo, raster
+        mask = raster(Geo.of_surface(surface), size)[0] >= 0
+    else:
+        polys = _polygons(item, surface)
+        if polys is None:
+            return None
+        from PIL import Image, ImageDraw
+        im = Image.new("L", (size, size), 0)
+        draw = ImageDraw.Draw(im)
+        for p in polys:
+            draw.polygon([(float(u) * size - 0.5, (1.0 - float(v)) * size - 0.5) for u, v in p], fill=255)
+        mask = np.asarray(im) > 0
     with _LOCK:
         _MASKS[k] = mask
         while len(_MASKS) > 4:

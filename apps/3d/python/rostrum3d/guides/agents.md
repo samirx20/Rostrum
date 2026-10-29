@@ -291,7 +291,9 @@ The time left is a number to use, not a reason to stop early.
 - **Paint on a model.** A mesh: `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height (Relief),
   metal, glow) and `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the
   `uv` under a pixel. A clay: no unfold; `stroke.add` with `anchors` (from `look_at`'s `local` and `localNormal`) and
-  `reach` (metres), so the paint stays on its spots when the clay is reshaped. Fine detail on clay: a Relief layer.
+  `reach` (metres), so the paint stays on its spots when the clay is reshaped. Fine detail on clay: a Relief layer;
+  a whole picture as relief in one call: `paint.stamp` (guide `painting`). Wear and dust: a layer with `fill` +
+  `fillColor` and `shapeMask` (`edges`, `cavities`, `up`, `thin`; `maskSpread`, `maskInvert`) via `paint.set`.
   From the shot instead: `stroke.add` with `viewPoints` in a `look_frame` picture's px plus the camera fields from
   `look_at`'s `view`, one per item the path crosses, in one call list. Check with `inspect_paint_strokes` and
   `look_frame what "coverage"`. Guide `painting`.

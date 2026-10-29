@@ -74,6 +74,10 @@ class Core {
   void check_frame(int frame, const char* where) const;
   // the built mesh of a top-level `mesh` or `combine` item (geometry, unfold); loud about anything else
   PXR_NS::UsdGeomMesh built_mesh(const std::string& id, const char* request) const;
+  // geometry_request.cpp (v1.33): a top-level clay's prim path ("" when `id` is none), its welded surface as drawn
+  PXR_NS::SdfPath clay_path(const std::string& id) const;
+  void clay_whole(const std::string& id, const PXR_NS::SdfPath& clay, PXR_NS::VtVec3fArray& pts,
+                  PXR_NS::VtIntArray& counts, PXR_NS::VtIntArray& indices);
   // after a scene: each copies item seen by a camera keeps only the copies it sees (copies_request.cpp); its info
   PXR_NS::JsObject seen_test(double* ms);
   // a pick that hit a copy: `out` names the copies item, the copy and its source; false when it is no copy
