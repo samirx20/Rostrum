@@ -30,8 +30,8 @@ from .project_tool import open_documents, start_choice, with_no_project_sentence
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
-                "Read inspect_guide 'start-here' first: it gives the loop (one script, run_script with look, fix, re-run under "
-                "the same name, render_export), the core verbs and the five core tools. "
+                "Read inspect_guide 'start-here' first: it gives the loop (one script, run_script, look_frame at the seconds "
+                "you care about, judge it yourself, change, re-run under the same name, render_export once), the core verbs and the five core tools. "
                 "The server starts on your own project (the first reply says which), never the person's work; "
                 "run_open_project lists theirs (what \"recent\") and switches. Every reply ends with a clock line.")
 

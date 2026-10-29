@@ -56,7 +56,7 @@ def clipped(s: Sampled) -> list[dict]:
         share, side = max((at[i] for i in range(a, b + 1)), key=lambda r: r[0])
         out.append({"kind": "text_clipped", "start": t0, "end": t1, "id": tid, "ids": [tid, g], "cut_pct": round(100 * share),
                     "text": f'{t0:g}–{t1:g} s: text "{tid}" is cut by the {side} edge of "{g}" ({100 * share:.0f} % of its letters '
-                            f'outside): lay the screen out (column / row inside "{g}") so the text wraps in its room, or move it in'})
+                            f'outside)'})
     return out
 
 

@@ -71,7 +71,7 @@ def checked(job, frames: int, mp4: Path, shown: Path, data: dict, comp: dict, st
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder; only the mp4 is written there unless `with_project` is true). Default: only the project's renders folder."},
                                             "overwrite": {"type": "boolean", "description": "Accepted so a call with it works; has no effect. A project render always goes to a new version folder, and a `path` copy always replaces the file already there."},
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."},
-                                            "keep": {**faults.KEEP["keep"], "description": "The whole film is a final: refused while a fault is open (the files kept as <name>.NOT-DONE.mp4). Explain each fault you leave on purpose, {fault_id: \"why\"}, the why quoting the brief's words that ask for it (brief(\"...\") in the script)."}}})
+                                            **faults.NOTES}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It waits for its job in this call (wait_s,
     default 120 s) and answers with the finished file; past that it answers with the job id:
@@ -79,11 +79,9 @@ def render_video(ctx, args):
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
-    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file (blank, washed-out and unchanged stretches: `quiet_stretches`; subjects cut by the frame edge: `edge_cuts`) and ends with the time left and the film's weakest moments with times, ranked (look_review): fix the top one and export again.
-    `beats`: the brief's timed beats, kept for the session; every export then names one that never happens or comes too soon.
-    Faults first, as render_export's file formats: the reply opens NOT DONE: with each fault and its fix, or DONE:; the whole
-    film is a final, refused while a fault is open (kept as <name>.NOT-DONE.mp4) unless `keep` explains each by quoting the
-    brief; a part (start / end) is a preview, never refused."""
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It always writes what was asked. With `notes: true` it also checks the finished file (blank, washed-out and unchanged
+    stretches: `quiet_stretches`; subjects cut by the frame edge: `edge_cuts`) and runs look_frame what "review"'s checks,
+    ending with what they measured: notes, never a verdict."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
@@ -103,6 +101,7 @@ def render_video(ctx, args):
             out = copy_to
     whole = start <= 0 and end >= duration - 1e-9        # the whole film is a deliverable: a 3D layer not rendered yet refuses (scene.describe)
     scene = render.scene_of(doc, comp["id"], None if whole else (start, end))     # the job gets a copy of the scene, never the document
+    noting = faults.asked(args)
     data = copy.deepcopy(doc.data)
     comp_now = next(c for c in data["comps"] if c["id"] == comp["id"])
 
@@ -122,10 +121,10 @@ def render_video(ctx, args):
                 tmp.replace(copy_to)
                 files.append(copy_to)
                 beside = args.get("with_project") and project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
-        quiet, cuts = checked(job, info["frames"], files[0], files[-1], data, comp_now, start, end)    # delivered first
-        found, notes = film_faults.of_export(data, comp_now, start, end, ctx.tool, [dict(q) for q in quiet[1]], cuts[1])
-        if whole:                   # a final: open faults hold every file back as <name>.NOT-DONE.mp4 and this raises
-            notes += film_faults.deliver(found, args.get("keep"), data, ctx.tool, files)
+        found, notes, quiet, cuts = None, [], ([], []), ([], [])
+        if noting:                  # checks only when asked: the file stands under its name either way
+            quiet, cuts = checked(job, info["frames"], files[0], files[-1], data, comp_now, start, end)
+            found, notes = film_faults.of_export(data, comp_now, start, end, ctx.tool, [dict(q) for q in quiet[1]], cuts[1])
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to and beside else ""
         took = info["timing"]["totalS"]
         video = files[-1] if len(files) > 1 else files[0]           # the deliverable: the copy asked for, else the render
@@ -139,7 +138,8 @@ def render_video(ctx, args):
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
-                      "timing": info["timing"], "workers": info.get("workers"), "quiet_stretches": quiet[1], "edge_cuts": cuts[1]}, files,
+                      "timing": info["timing"], "workers": info.get("workers")}
+                     | ({"quiet_stretches": quiet[1], "edge_cuts": cuts[1]} if noting else {}), files,
                      warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w] + notes, faults=found)
 
-    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}")
+    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}|{noting}")

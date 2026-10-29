@@ -76,6 +76,5 @@ def facts(s: Sampled) -> list[dict]:
             out.append({"kind": "layout_jump", "start": round(t0, 2), "end": round(t1, 2), "id": lid, "ids": [lid],
                         "text": f'{t0:g}–{t1:g} s: "{lid}" jumps {share} % of the frame in one frame, moved by its '
                                 f'layout ({"/".join(n["within"][-1:]) or "its box"}), not by a key: something in the layout '
-                                f'changed size or left at once; key that change over time (ease it), or keep the sizes '
-                                f'still and animate with opacity / scale / shiftX / shiftY, which never move the others'})
+                                f'changed size, came or left at once'})
     return out

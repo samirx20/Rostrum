@@ -158,17 +158,18 @@ def for_script(build) -> dict:
         return made
 
     def card(id, x=None, y=None, w=None, h=None, title=None, detail=None, value=None, fill=None, color=None, muted=None,
-             radius=None, shadow=True, pad=None, size=None, apart=False):
+             radius=None, shadow=True, pad=None, size=None, apart=False, min_h=None):
         """A rounded card (`<id>_bg`, filling the card) with an optional title and detail at its top and a big value
         at its bottom (`<id>_body`, a padded column: make more of the card's layers inside `with layer("<id>_body")`);
-        `shadow` adds a soft drop shadow. h is its least height: it grows to fit its words (left out, it fits them);
-        their size comes from the room it is made in (unit), never from h."""
+        `shadow` adds a soft drop shadow. h is exact (words that don't fit spill, and show so); left out, it fits its
+        words; `min_h` instead: at least that tall, growing to fit them. Their size comes from the room it is made in
+        (unit), never from h."""
         fill, color, muted = colours(paper=fill, ink=color, muted=muted)
         u = unit()
         pad = pad if pad is not None else 20 * u
         size = size or 22 * u
-        least = {"minH": float(h)} if isinstance(h, (int, float)) else {}
-        g = block("stack", id, x, y, w, None if least else h, apart, align="stretch", justify="start", **least)
+        least = {"minH": float(min_h)} if min_h is not None and h is None else {}
+        g = block("stack", id, x, y, w, h, apart, align="stretch", justify="start", **least)
         with g:
             bg = L("shape", f"{id}_bg", w="fill", h="fill", radius=24 * u if radius is None else radius, fill=fill)
             if shadow:

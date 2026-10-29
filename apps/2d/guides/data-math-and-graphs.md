@@ -52,8 +52,7 @@ shape("dot", shape="ellipse", w=26, h=26, fill="#ffffff", ridePath="wave", rideA
 
 - **Draw on:** key `trimEnd` 0 → 1 (`trimStart` takes it off again). **A dot riding the curve:** `ridePath` + `rideAt="end"`
   follows the drawn tip; `rideAt="along"` and keying `rideAlong` 0 → 1 moves it on its own clock. Leave its `x`, `y`
-  out: the path places it, and an `x`, `y` given is an offset from there (`y=-30` floats it above the line; a big one is
-  refused). It shows from frame 0 at the curve's start; give it `start=` the draw-on's
+  out: the path places it, and an `x`, `y` given is an offset from there (`y=-30` floats it above the line). It shows from frame 0 at the curve's start; give it `start=` the draw-on's
   first key time (here `start=0.3`) if it should appear with the line.
 - **Gaps:** `1/x`, `tan`, `log` break; `curve_points` leaves a `None` there and the line lifts. Pass `ylim=(lo, hi)` so a
   value shooting off to infinity becomes a gap instead of a near-vertical line.

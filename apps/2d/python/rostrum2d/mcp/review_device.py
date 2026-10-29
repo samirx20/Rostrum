@@ -93,25 +93,19 @@ def facts(s: Sampled) -> list[dict]:
         share = f'cut in {c["film_pct"]} % of the film'
         if how == "placed":
             text = (f'{spans}: device "{did}" runs off the {edges} edge where it is placed, camera aside (up to {pct} % of it '
-                    f'outside, {share}): move or scale it into the frame')
+                    f'outside, {share})')
         elif how == "push":
             key = _camera_key(s.comp, c["start"])
-            at = f'at={key if key is not None else c["start"]:g}, '
-            onto = f', or push further onto the part: frame().fit(["{c["part"]}"], {at}pad=0.04)' if c["part"] else ""
             text = (f'{spans}: camera push-ins cut device "{did}" at the {edges} edge (up to {pct} % of it outside while its sides '
-                    f'still show, {share}): even when the push is meant, a device sliced at the top or bottom with its sides in view '
-                    f'reads to a client as a framing mistake; a meant close-up fills the frame with one part. Longest at {c["start"]:g} s'
-                    f'{f" (frame key at {key:g} s)" if key is not None else ""}: show it whole with frame().fit(["{did}"], {at}pad=0.06){onto}')
+                    f'still show, {share}). Longest at {c["start"]:g} s'
+                    f'{f" (frame key at {key:g} s)" if key is not None else ""}')
         elif how == "bars":
             key = _camera_key(s.comp, c["start"])
-            at = f'at={key if key is not None else c["start"]:g}, '
-            onto = f'frame().fit(["{c["part"]}"], {at}pad=0.04)' if c["part"] else f'a tighter frame().fit onto one part ({at[:-2]})'
             text = (f'{spans}: push-ins fill the picture with device "{did}" but its body still shows at the side of the frame '
-                    f'(dark bars beside the screen, {pct} % of it outside, {share}): reads as a broken frame. Push in until the '
-                    f'screen fills the width, {onto}, or pull back to show it whole: frame().fit(["{did}"], {at}pad=0.06)')
+                    f'(dark bars beside the screen, {pct} % of it outside, {share})' + (f'; frame key at {key:g} s' if key is not None else ''))
         else:
             text = (f'{spans}: deep push-ins into device "{did}" (up to {pct} % of it outside, it fills most of the picture): '
-                    f'a meant close-up past its edge, not a fault')
+                    f'it shows past its edges')
         out.append({"kind": {"placed": "device_cut", "push": "push_cut", "bars": "push_bars", "deep": "push_in"}[how], "start": c["start"],
                     "end": c["end"], "id": did, "ids": [did] + ([c["part"]] if c["part"] else []), "out_pct": pct,
                     "spans": [(x["start"], x["end"]) for x in cs], "film_pct": c["film_pct"], "info": how == "deep", "text": text})

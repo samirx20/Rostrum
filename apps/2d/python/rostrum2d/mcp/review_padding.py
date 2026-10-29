@@ -56,6 +56,6 @@ def facts(s: Sampled) -> list[dict]:
         side, px, need = min((at[i] for i in range(a, b + 1)), key=lambda r: r[1])
         where = f"runs {-px:.0f} px past" if px < 0 else f"comes {px:.0f} px from"
         out.append({"kind": "text_tight", "start": t0, "end": t1, "id": tid, "ids": [tid, pid], "px": round(px),
-                    "text": f'{t0:g}–{t1:g} s: text "{tid}" {where} the {side} edge of "{pid}" behind it (no padding): give '
-                            f'it {need:.0f} px or more of room there: a smaller size, fewer words, or a bigger "{pid}"'})
+                    "text": f'{t0:g}–{t1:g} s: text "{tid}" {where} the {side} edge of "{pid}" behind it (no padding; '
+                            f'{need:.0f} px would clear it)'})
     return out

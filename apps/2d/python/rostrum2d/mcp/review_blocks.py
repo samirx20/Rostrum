@@ -9,7 +9,6 @@ from rostrum2d import boxes
 from .geometry import _apply, _invert, _mul, drawn_box
 
 SHOWS = 0.1               # opacity from which a layer draws something (review_sample.SEEN)
-GAP = 16                  # the gap suggested between a block and the one above it (px)
 
 
 def shows(n: dict) -> bool:
@@ -37,19 +36,18 @@ def parent_px(n: dict, x: float, y: float) -> tuple[float, float]:
 
 
 def below(nodes: list[dict], a: str, b: str, axis: str = "y") -> str:
-    """'place <lower> below <upper> (<upper> ends at y = …): set y = …' for two sibling blocks (axis "x": right of),
-    the numbers in the moved one's parent px from where the other really ends (its drawn extent, not its written h)."""
+    """'<upper> ends at y = … (<lower> starts at y = …)' for two sibling blocks (axis "x": left / right), the numbers in
+    the lower one's parent px from where the other really ends (its drawn extent, not its written h): a measurement."""
     by = {n["id"]: n for n in nodes}
     ea, eb = extent(nodes, a), extent(nodes, b)
     if not ea or not eb or a not in by or b not in by:
-        return f'move "{b}" off "{a}"'
+        return f'"{b}" and "{a}" overlap'
     k = 0 if axis == "x" else 1
     (first, ef), (second, es) = sorted(((a, ea), (b, eb)), key=lambda r: r[1][k])
     n = by[second]
     end = parent_px(n, *((ef[2], es[1]) if k == 0 else (es[0], ef[3])))[k]
     start = parent_px(n, es[0], es[1])[k]
-    to = float(n["props"].get(axis, 0.0)) + end - start + GAP
+    at = float(n["props"].get(axis, 0.0))
     where = f'"{n["within"][-1]}" px' if n["within"] else "the composition's px"
-    side, stack = ("right of", "row") if k == 0 else ("below", "column")
-    return (f'place "{second}" {side} "{first}" ("{first}" ends at {axis} = {end:.0f} in {where}): set "{second}" '
-            f'{axis} = {to:.0f}, or put the blocks in a {stack}(gap={GAP}) so they can never overlap')
+    return (f'"{first}" ends at {axis} = {end:.0f} in {where}, {end - start:.0f} px past where "{second}" starts '
+            f'("{second}" {axis} = {at:.0f})')

@@ -142,7 +142,7 @@ def _block(n: dict, o: dict) -> tuple[str, str]:
 
 
 def _fix(by: dict, a: str, b: str) -> str:
-    """'place <lower> below <upper> (…ends at y = …): set y = …' in the px the script types (review_blocks.below)."""
+    """Where the upper block ends and how far past the lower one's start, in the px the script types (review_blocks.below)."""
     return review_blocks.below(list(by.values()), a, b)
 
 
@@ -205,8 +205,7 @@ def overlaps(s: Sampled) -> list[dict]:
     def pointer_line(key, t0, t1, share, _):
         return {"kind": "pointer_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "cover_pct": round(100 * share),
                 "text": f'{t0:g}–{t1:g} s: pointer "{key[1]}" rests on the letters of label "{key[0]}" ({100 * share:.0f} % of '
-                        f'its box): move it on after '
-                        f'the tap (the next tap() or a key on its x / y), or land beside the label: tap(..., spot="beside")'}
+                        f'its box)'}
 
     def by_any(blocks):        # the blocks' nodes at the last frame they both show (for the fix's numbers)
         for t, nodes in reversed(s.frames):
@@ -245,13 +244,12 @@ def end_card(s: Sampled) -> list[dict]:
     if mark_share >= END_MARK and lockup >= END_LOCKUP:
         return []
     t0 = s.times[held[0]]
-    grow = max(1.5, (3 * (END_MARK / max(mark_share, 1e-6) if mark_share < END_MARK else END_LOCKUP / max(lockup, 1e-6))) ** 0.5)
     what = (f'its mark "{mark["id"]}" fills {100 * mark_share:.1f} % of the frame' if mark and mark_share < END_MARK else
             f'everything on it fits in {100 * lockup:.0f} % of the frame')
     return [{"kind": "end_small", "start": t0, "end": s.duration, "id": mark["id"] if mark else content[0]["id"],
              "ids": [n["id"] for n in content], "mark_pct": round(100 * mark_share, 1), "lockup_pct": round(100 * lockup, 1),
-             "text": f'{t0:g} s to the end: the end card is tiny on an empty frame: {what}; scale the lock-up up about '
-                     f'{grow:.1f}x, to ~{min(50, 100 * (y1 - y0) / s.H * grow):.0f} % of the frame height'}]
+             "text": f'{t0:g} s to the end: the end card is small on an empty frame: {what}, '
+                     f'{100 * (y1 - y0) / s.H:.0f} % of the frame height'}]
 
 
 CHECKS = (overlaps, end_card)

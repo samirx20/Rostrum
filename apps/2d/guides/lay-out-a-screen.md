@@ -104,10 +104,9 @@ with grid("kpis", x=120, y=120, w=1680, columns=4, gap=24):
 `span=4` lets the chart take the whole grid row. Animate a laid-out layer with `scale`, `opacity`, `shiftX` or
 `shiftY` (they don't push the others); key its `w` / `h` and the others move to make room.
 
-A layer keeps its slot for the layout's whole life, as CSS keeps one under opacity and transform: before its `start`,
-after its `end`, faded out, scaled to 0 or shifted, it still takes its room, so cards that come in one by one land in
-their final places and the row never re-centres or jumps as they arrive. Only `hidden=True` frees a slot (and `apart=True`
-takes the layer out of the flow). Layers that take turns in one place belong in a `stack`. The review names a layer its
-layout jumps in one frame with no key moving it (`layout_jump`).
+A layer outside its `start`..`end` takes no room in its row, column or grid: the row re-flows as layers come and go.
+For cards that arrive one by one without re-flow, show them from the start and key `opacity` or `scale` from 0 (these,
+and `shiftX` / `shiftY`, keep their slot), or put them in a `stack`. `hidden=True` frees a slot and `apart=True` takes
+the layer out of the flow. The checks note a layer its layout jumps in one frame with no key moving it (`layout_jump`).
 
 Check what the layout did with `look_frame` `what: "layout"` (each layer's place and size at a time) and `look_frame`.

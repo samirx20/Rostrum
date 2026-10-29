@@ -130,7 +130,7 @@ def facts(comp: dict, times: list[float], step: float) -> list[dict]:
         runs = _runs(times, [t in set(ts) for t in times], step, step)
         out.append({"kind": "outside", "start": runs[0][0], "end": runs[-1][1], "id": lid, "spans": [r[:2] for r in runs],
                     "text": f'{", ".join(_span(a, b) for a, b, _, _ in runs)}: "{lid}" shows outside "{name}", where it sits the '
-                            f'rest of the time, so it floats off it; fade it out inside, or move it in before it shows'})
+                            f'rest of the time'})
     for lid, rows in dots.items():
         if size.get(lid, 0.0) < SPECK_GROW * max(r[1] for r in rows):
             continue

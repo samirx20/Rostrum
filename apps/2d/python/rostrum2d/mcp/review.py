@@ -1,10 +1,10 @@
-"""review: the film's weakest moments, ranked, as located faults with times: blank stretches, titles at the frame edge,
+"""review: what the checks measure in the film, ranked, each located with times: blank stretches, titles at the frame edge,
 faint old headings, parts not drawn in yet, held poses and held framing, subjects cut by the edge, stray specks, layers outside their screen, crowded lock-ups, beats that never
 happened, a near-empty frame mid-film, look-alike opening shots, an end picture held too long, a text partly crossed by a layer
 in front (a panel's own background too), a text cut by the edge of the screen or box that clips it, texts on texts, a pointer on a label, a tiny end card, a device cut by the frame edge (and why: placed off the
-frame, or nibbled by a camera push-in), a character hidden behind the set or standing on a bare one, a layer its layout jumps in one frame. Layout faults name
-the layers and a fix. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score. The export
-reply ends with the top ones (`after_export`, through session_clock), so the next fix pass has a concrete target."""
+frame, or nibbled by a camera push-in), a character hidden behind the set or standing on a bare one, a layer its layout jumps in one frame. Rows name
+the layers and the numbers. Facts from the document (review_facts) and from small pictures (look_empty), never a taste score
+and never a verdict: run_script look, render_export and render_video give them as notes only when asked (`notes: true`)."""
 from __future__ import annotations
 
 import tempfile
@@ -126,18 +126,6 @@ def few(rows: list[dict], limit: int) -> tuple[list[dict], str]:
     return picked, ("and " + ", ".join(left) + " in data") if left else ""
 
 
-def after_export(doc_data: dict, comp: dict, quiet: list[dict], cuts: list[dict], limit: int = 3, beats: list[dict] | None = None) -> str:
-    """The export reply's last part: the top weakest moments from the checks the export already ran plus the document's
-    facts and the declared beats (None: never declared, so ask for them), phrased as the next fix pass."""
-    faults, _ = doc_faults(doc_data, comp, beats, "review")
-    rows = ranked([dict(q) for q in quiet] + _cuts(cuts) + faults, comp.get("duration", 5.0))
-    ask = (' No beats declared: give the brief\'s timed beats as `beats` on the next export ([{"at": 24, "to": 28, '
-           '"expect": "lamp reveals"}]) and each export checks they come on time.') if beats is None else ""
-    if not rows:
-        return "Review: no weak moment found (blank, held, cut-off, faint leftovers). Look at the sheet to judge the rest." + ask
-    return tell(rows, limit) + " Fix the top one, then export again (look_frame what \"review\" re-checks in seconds)." + ask
-
-
 BEATS = {"type": "array", "items": {"type": "object", "required": ["at", "expect"], "properties": {
     "at": {"type": "number", "minimum": 0}, "to": {"type": "number", "minimum": 0},
     "expect": {"type": "string", "description": " | ".join(review_beats.BEAT_KINDS)}}},
@@ -149,9 +137,9 @@ BEATS = {"type": "array", "items": {"type": "object", "required": ["at", "expect
 @tools.tool("look_review", {"properties": {**ITEM_COMP,
                                       "video": {"type": "string", "description": "An exported mp4 to read the pictures from (absolute path); faster than drawing. Default: small pictures drawn from the composition now."},
                                       "beats": BEATS,
-                                      "limit": {"type": "integer", "minimum": 1, "maximum": 30, "default": 6, "description": "How many weakest moments to name. Default 6."}}})
+                                      "limit": {"type": "integer", "minimum": 1, "maximum": 30, "default": 6, "description": "How many rows to write out in the summary (all are in the data). Default 6."}}})
 def look_review(ctx, args):
-    """The film's weakest moments, ranked, each a located fault with times: a near-empty stretch; a title touching the frame
+    """What the checks measure in the film, ranked, each located with times (notes you asked for, never a verdict): a near-empty stretch; a title touching the frame
     edge; an old heading still faintly showing behind a new one; a set of parts (a chart's bars, a list's rows) not shown while
     the rest of its group is; a plain card opening empty; a character's pose barely changing for 6 s or more; an arm held nearly straight for 4 s or more;
     a character's arms or legs thin next to its body; framing held
@@ -168,7 +156,7 @@ def look_review(ctx, args):
     besides it and the background); a layer an auto layout jumps a large share of the frame in one frame with no key
     moving it (a sibling re-sized at once); and
     each declared beat (`beats`, or the ones last given to an export) that never happens or comes at the wrong time. Samples the whole film every 0.5 s in seconds. Facts, not taste: a held
-    title or a planned pause may be meant. Use it after every export: fix the top one, export, review again."""
+    title or a planned pause may be meant: you judge."""
     doc, comp = doc_and_comp(ctx, args)
     limit, beats = args.get("limit", 6), args.get("beats") or []
     faults, notes = doc_faults(doc.data, comp, beats, ctx.tool)       # beats fail loudly here, before any job

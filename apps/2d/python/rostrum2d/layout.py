@@ -14,10 +14,9 @@ that doesn't move is one engine call per film.
   cell, placed by justify (across) and align (down).
 - `sizeW` / `sizeH`: fixed (w / h), fit (a laid-out group follows what is inside it; with `hugPin` it grows from its
   top-left, as a design tool's frame: see `hugged`), fill (the room the parent layout leaves) or percent of it.
-- A slot is kept, as CSS keeps one under opacity and transform: a layer takes its room for the layout's whole life,
-  before its start, after its end, faded out, scaled to 0 or shifted by keys, so a row whose cards come in one by one
-  never re-centres or jumps as they arrive or leave. Only a layer hidden on purpose (`hidden`) takes no room; a layer
-  `layoutApart` keeps its own x, y (an absolute box). Layers that take turns in one place go in a stack (one cell).
+- A layer outside its start..end, or hidden, takes no room (the row re-flows as layers come and go, as the script
+  wrote them); faded out, scaled to 0 or shifted by keys it keeps its slot, as CSS keeps one under opacity and
+  transform. A layer `layoutApart` keeps its own x, y (an absolute box).
 - Layers are placed by their anchor: x = slot left + anchorX × w + shiftX (a group's layers live in its px from its
   top-left). A text the layout makes narrower (or wider) than its one line gets that `boxWidth`, so it wraps where the
   layout did.
@@ -47,16 +46,14 @@ def laid_out(item: dict) -> bool:
     return has_layout(item) or any(laid_out(c) for c in item.get("layers", ()))
 
 
-def takes_room(c: dict, p: dict) -> bool:
-    """It holds a slot in its parent's layout: everything but a camera or a layer hidden on purpose. Its start..end,
-    opacity, scale and shifts never free its slot (the module's rule: a layout doesn't jump as layers come and go)."""
-    return c["type"] != "camera" and not p.get("hidden")
+def showing(c: dict, p: dict, t: float) -> bool:
+    return c["type"] != "camera" and not p.get("hidden") and p["start"] <= t < p["end"]
 
 
 def members(group: dict, t: float, p_of=None) -> list[dict]:
-    """The layers of a laid-out group that take a slot at t, in slot order (not cameras, not hidden, not set apart)."""
+    """The layers of a laid-out group that take a slot at t, in slot order (not cameras, not set apart, showing)."""
     p_of = p_of or (lambda c: resolve(c, t))
-    return [c for c in group.get("layers", []) if takes_room(c, p_of(c)) and not p_of(c).get("layoutApart")]
+    return [c for c in group.get("layers", []) if showing(c, p_of(c), t) and not p_of(c).get("layoutApart")]
 
 
 def lay_out(trees: list[dict], per_request: int = 0) -> list[dict[str, tuple]]:
@@ -145,7 +142,7 @@ class Plan:
             elif mode == "fixed" or parent is None:
                 style["width" if axis == "W" else "height"] = p[field]
         self._child_style(group, p, parent, style)
-        kids = [c for c in group.get("layers", []) if takes_room(c, self.p_of(c))         # a text set apart takes
+        kids = [c for c in group.get("layers", []) if showing(c, self.p_of(c), self.t)       # a text set apart takes
                 and not (c["type"] == "text" and self.p_of(c).get("layoutApart"))]             # no room, has nothing to lay out
         return {"id": group["id"], "kind": "box", "style": style, "children": [self._node(c, group) for c in kids]}
 

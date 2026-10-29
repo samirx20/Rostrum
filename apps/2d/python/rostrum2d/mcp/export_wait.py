@@ -1,5 +1,5 @@
 """render_export (what "file" and "video") waits for their own job in the same call (`wait_s`), so the finished reply (the file, its
-checks, the weakest moments) comes back without polling. In the benchmark one agent spent 22 calls on inspect_job for its
+checks it was asked for) comes back without polling. In the benchmark one agent spent 22 calls on inspect_job for its
 renders. A failed or stopped job is an error here, as inspect_job's is (jobs.outcome); past `wait_s` the reply is the job's
 progress and its id, never a success."""
 from __future__ import annotations

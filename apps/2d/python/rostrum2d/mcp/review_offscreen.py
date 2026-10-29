@@ -55,6 +55,5 @@ def facts(s: Sampled) -> list[dict]:
         where = f'"{within[k][-1]}" px' if within[k] else "the composition's px"
         out.append({"kind": "off_screen", "start": t0, "end": t1, "id": k, "ids": [k],
                     "text": f'{t0:g}–{t1:g} s: "{k}" is never on screen: it shows the whole time entirely outside the '
-                            f'{s.W} × {s.H} picture (it sits at x {x0:.0f}…{x1:.0f}, y {y0:.0f}…{y1:.0f} in the picture): '
-                            f'move it into the frame (its x / y are in {where}) or take it out if it is not meant to show'})
+                            f'{s.W} × {s.H} picture (it sits at x {x0:.0f}…{x1:.0f}, y {y0:.0f}…{y1:.0f} in the picture; its x / y are in {where})'})
     return out

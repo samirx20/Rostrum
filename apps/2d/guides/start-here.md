@@ -7,18 +7,14 @@ working on one page; the topic guides at the end hold the detail.
 ## The loop
 
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
-2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet and
-   the film's weakest moments. It opens `NOT DONE:` with the faults by kind (the first three of each kind with what,
-   when and the fix, the rest counted; every id is in `data.faults`), or `DONE:`.
-3. **Read the faults.** Each one names a layer and a time.
-4. **Fix the script**, not the document: change the lines the fault points at.
+2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet.
+   Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
+3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself.
+4. **Change the script**, not the document.
 5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
    by hand stays. A new name adds a second copy of everything.
-6. **Deliver** with `render_export {"what": "video"}`: it waits for the file and replies with its checks. A final
-   (mp4, prores4444, webm or gif of the whole film) is **refused while a fault is open**: the file is kept as
-   `<name>.NOT-DONE.mp4`. Fix the fault, or keep one you leave on purpose with `keep: {"text_edge:title": "why"}`,
-   the why quoting the brief: put the brief's own words at the top of the script with `brief("...")`.
-   A part of the film (`start` / `end`), a png, lottie or motion is a preview and is never refused.
+6. **Export once** with `render_export {"what": "video"}`: it waits for the file and always writes what you asked
+   under the name you gave. `notes: true` adds what the checks measured; they are observations, never required.
 
 Every reply ends with a clock line. Use the time to look and refine in passes; `inspect_project` with
 `what: "session"` lists what you have not checked yet.
@@ -73,7 +69,7 @@ text("tag", body="v2", size=36, anchor="bottom-left", x=80, y=1000, start=after(
 ## The five core tools
 
 - `run_script`: build or change the whole film from your script; `look: true` checks it in the same reply.
-- `look_frame`: see one moment, or `what: "sheet"` (a contact sheet), `"review"` (the weakest moments), `"diagnose"`
+- `look_frame`: see one moment, or `what: "sheet"` (a contact sheet), `"review"` (the checks' measurements), `"diagnose"`
   (what is broken), `"world"`, `"in_frame"`, `"empty"`.
 - `look_motion`: what moves and when, read from the keys (no picture).
 - `inspect_guide`: these guides; `{"topic": "script-reference"}`, and `section` for one part of a long one.

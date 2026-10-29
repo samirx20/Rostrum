@@ -110,8 +110,7 @@ sizes, colours and timing are yours.
     at the end of the script: the upper part 0.26 × the width of the biggest shape bound to the bone it hangs from (or
     the nearest bone above with one; a leg 0.3 ×; legs on a bare hip use the body the arms found), the forearm or calf
     0.85 × that, the hand 1.05 × (a foot 0.8 ×). A 250 px wide body gets 65 px arms. Nothing bound: 0.4 × the upper
-    length. Arms under about a fifth of the body's width read as noodles in a small still: `run_script`'s reply and
-    `look_frame` with `what: "review"` name a character whose arms or legs are under 0.7 × that default width, with the numbers.
+    length. Arms under about a fifth of the body's width read as noodles in a small still: `look_frame` with `what: "review"` (and `run_script`'s notes) name a character whose arms or legs are under 0.7 × that default width, with the numbers.
   - **Hands.** `hand="mitten"` (the default) is an oval palm `widths[2]` wide and at least 1.25 × that long with a thumb
     toward the body, one outlined path (`<id>_hand`) you can edit or swap like any layer; `hand="ball"` is a plain circle
     (a robot's or puppet's hand). A hand of your own: bind it to `arm.end` and hide the made one.

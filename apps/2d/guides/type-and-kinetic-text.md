@@ -186,7 +186,7 @@ over both.
 
 ## Check loop (every pass)
 
-1. `run_script` (same `name`, explicit ids) with `look: true` (or the landing times): a contact sheet and the weakest moments come back in the reply.
+1. `run_script` (same `name`, explicit ids) with `look: true` (or the landing times): a contact sheet comes back in the reply (`notes: true` adds the checks' measurements).
 2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
 3. `look_frame` at the landing times and at a hold (`width=1920` for type edges).
 4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).

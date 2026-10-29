@@ -470,14 +470,8 @@ class Build:
             for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
                 if xy not in values:
                     values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
-        if values.get("ridePath"):         # rides a path: the path places it, its own x / y are an offset (as layer.ride sets)
-            values = {**values, "x": values.get("x", 0.0), "y": values.get("y", 0.0)}
-            off, size = math.hypot(float(values["x"]), float(values["y"])), max(float(values.get("w", 0) or 0), float(values.get("h", 0) or 0), 40.0)
-            if off > 2 * size:
-                raise ValueError(f'{id or type_} rides the path "{values["ridePath"]}": the path places it, and its x / y '
-                                 f'({values["x"]:g}, {values["y"]:g}) would be added to that place as an offset, {off:.0f} px '
-                                 f'off the line. Leave x / y out (it then sits on the line), or give a small offset '
-                                 f'(x=0, y=-30 floats it above).')
+        if values.get("ridePath"):         # rides a path: the path places it, its own x / y are an offset (as layer.ride
+            values = {**values, "x": values.get("x", 0.0), "y": values.get("y", 0.0)}     # sets), 0 when the script gave none
         pointed = type_ == "group" and bool({"x", "y"} & values.keys()) and not ({"w", "h", "layout"} & values.keys())             and not script_layout.in_layout(self) and not ({"anchorX", "anchorY", "origin", "anchor"} & values.keys())
         values = script_layout.centre(self, type_, values)           # no x / y: the parent's centre
         if type_ == "group":        # a script's hugging group grows around its anchor; keeping top-left is the canvas's
@@ -548,8 +542,8 @@ def _held_ids(doc, name: str) -> set[str]:
 
 
 def _brief(b: "Build", words) -> None:
-    """brief("..."): the brief's own words, stored on the document (doc.data["brief"]); a kept fault quotes them
-    (rostrum_core.mcp.brief_keep, render_export's keep)."""
+    """brief("..."): the brief's own words, stored on the document (doc.data["brief"]) for the person and the
+    notes; it changes nothing in an export."""
     if not isinstance(words, str) or not words.strip():
         raise ValueError('brief(...) takes the brief\'s own words as one text: brief("A 20 s launch film for ...")')
     b.root["brief"] = words.strip()

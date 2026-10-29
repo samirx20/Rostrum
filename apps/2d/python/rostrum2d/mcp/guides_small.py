@@ -112,7 +112,7 @@ def tool_reference(tools) -> str:
     then export's and run_script's arguments, in A's own words (descriptions and argument schemas): B knows what A knows."""
     by_name = {t.name: t for t in (tools.all() if hasattr(tools, "all") else tools)}
     out = ["# Tool reference: every check of `look`, every `do` of `run_script`, `export` and `run_script`\n",
-           "`look` with no `check` gives a contact sheet and the film's weakest moments. With `check` it runs one of "
+           "`look` with no `check` gives a contact sheet. With `check` it runs one of "
            "the checks below with that check's own arguments, e.g. `look {\"check\": \"look_motion\", \"what\": \"curve\", "
            "\"id\": \"title\", \"field\": \"y\"}`. `run_script` with `do` (and no script) makes one direct change with "
            "that change's own arguments, e.g. `run_script {\"do\": \"edit_markers\", \"ops\": [...]}`.\n"]

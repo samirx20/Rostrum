@@ -79,8 +79,8 @@ GROUP = [
     *_size("W", ["fixed", "fit", "fill", "percent"], "fit", _GROUP_SIZED),
     *_size("H", ["fixed", "fit", "fill", "percent"], "fit", _GROUP_SIZED),
     _n("minH", "Least height", 0.0, {"all": [ON, IS("sizeH", "fit")]}, imp="deep",
-       help="A group fitting its content is never shorter than this (a card keeps its height and grows when its "
-            "words need more); 0: no floor"),
+       help="A group fitting its content is never shorter than this, and grows when its content needs more "
+            "(card(min_h=)); 0: no floor"),
     _t("hugPin", "Keep top-left fixed", True, FIT,
        help="A group that fits its content grows right and down from its top-left (left of a row, top of a column), "
             "as a design tool's frame does; off, it grows around its anchor. An anchor you moved off the middle "

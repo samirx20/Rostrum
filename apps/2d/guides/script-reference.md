@@ -168,8 +168,7 @@ Everything a script can call, by job. The details and techniques are in the topi
 
 ### The scene and its layers
 
-- `brief("the brief's own words")`: stores the brief on the document. A final export with a fault you leave on purpose
-  passes only when `keep` quotes it (guide `exporting` › Agents: a final is checked).
+- `brief("the brief's own words")`: stores the brief's words on the document, for the person and for notes. It changes nothing in an export.
 - `comp(id, width=, height=, fps=, duration=, background=)`: the scene. A script starts with it.
 - `shape(id, **fields)`, `text(id, **fields)`, `image(id, **fields)`, `path(id, **fields)`, `group(id, **fields)`: the
   layers. Layers made inside `with group(...):` go in it, and their `x`, `y` are then in the group's box.

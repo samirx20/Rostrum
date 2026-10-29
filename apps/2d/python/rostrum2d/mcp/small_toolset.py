@@ -26,8 +26,8 @@ DOES = ["edit_document", "run_brush", "run_import", "edit_markers", "edit_sound_
         "edit_undo", "run_stop"]
 
 INSTRUCTIONS = ("rostrum-2d makes motion graphics, from one Python script. Four tools: run_script (build or rebuild the whole "
-                "film from one script; `project` opens or makes the project folder; `look` sends back stills and the film's "
-                "weakest moments in the same reply), look (stills + faults; `check` runs one detailed check), export (the MP4) "
+                "film from one script; `project` opens or makes the project folder; `look` sends back stills in the same reply), "
+                "look (stills; `check` runs one detailed check), export (the MP4) "
                 "and read_guide (the how-to guides: read 'start-here' first; `search` finds the sections about some words). "
                 "Everything else (brushes, painting, bones, lip sync, markers, cameras, text, effects, imports) is a function "
                 "inside the script. Write the film as one script, look, edit, re-run under the same name. Every reply ends "
@@ -109,13 +109,12 @@ def _look(full: Tools, clock):
 
     schema = {"properties": {
         "check": {"type": "string", "enum": CHECKS, "description": "A detailed check, with its own arguments beside it "
-                  "(read_guide 'tool-reference' lists each one's arguments). Without it: a contact sheet + the weakest moments."},
+                  "(read_guide 'tool-reference' lists each one's arguments). Without it: a contact sheet."},
         "times": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 12}],
                   "description": "Plain look: the seconds to show (or true: 6 moments spread over the film)."}},
         "additionalProperties": True}
-    text = ("See the film: with no `check`, one contact sheet (`times`, default 6 moments spread over it) and the film's weakest "
-            "moments (named faults with times and the fix). With `check` one detailed check and its own arguments: "
-            "look_frame (a frame, sheet, the world, what is in frame, rig, empty spans, review: the faults alone, diagnose, "
+    text = ("See the film: with no `check`, one contact sheet (`times`, default 6 moments spread over it) . With `check` one detailed check and its own arguments: "
+            "look_frame (a frame, sheet, the world, what is in frame, rig, empty spans, review: what the checks measure, diagnose, "
             "layout, swaps), look_motion (moves, paths, curves, keys), look_at (what is at a point), look_drawing / "
             "look_painting (paint, coverage, strokes landed), inspect_item / inspect_project / inspect_markers / inspect_sounds / "
             "inspect_fonts / inspect_table / inspect_job / inspect_operations / inspect_history. "
