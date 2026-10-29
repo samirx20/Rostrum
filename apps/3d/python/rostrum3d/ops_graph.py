@@ -46,7 +46,7 @@ def _one(ctx, targets):
 
 @R.operation("graph.add", "Add a block to a material's Blocks view (its graph): `type` one of image, noise, pattern, mix, ramp, "
              "curve, colourAdjust, bevel, occlusion, lines, lightToColour, halftone; optional `id` (else <type>_<n>), "
-             "`x`, `y` and `values` ({setting: value}, the type's settings: graph.describe's catalogue). A Lines, "
+             "`x`, `y` (left out: left of the leftmost block, level with Surface) and `values` ({setting: value}, the type's settings: graph.describe's catalogue). A Lines, "
              "Light to colour or Halftone block's settings are the material's own fields; it switches on when wired "
              "into Surface's style (graph.connect). Returns the block.",
              target="material", label="Add block", importance="secondary",
@@ -64,7 +64,8 @@ def graph_add(ctx, targets, args):
     if type_ in B.STYLIZED and any(b["type"] == type_ for b in g["blocks"]):
         ctx.fail(codes.BAD_ARGUMENT, f'type "{type_}"', "is already in this material (one per material: its settings "
                  "are the material's own)", hint="Change the one there with graph.set.")
-    block = {"id": bid, "type": type_, "x": args.get("x", 0), "y": args.get("y", 0)}
+    fx, fy = G.free_place(g)                 # no place given: left of the leftmost block, never on top of one
+    block = {"id": bid, "type": type_, "x": args.get("x", fx), "y": args.get("y", fy)}
     vals = args.get("values") or {}
     if type_ in B.STYLIZED:
         _material_values(ctx, mid, vals, {i.name for i in B.BY_TYPE[type_].inputs if i.name != B.CHAIN})

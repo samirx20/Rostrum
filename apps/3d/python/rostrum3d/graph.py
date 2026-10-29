@@ -52,6 +52,16 @@ def has_graph(material: dict) -> bool:
     return bool(g.get("blocks") or g.get("wires"))
 
 
+BLOCK_W, GAP = 180, 60          # a block's width in the view (the kit's rostrum_gui.blocks.WIDTH) and the gap left of it
+
+
+def free_place(g: dict) -> tuple[int, int]:
+    """Where a block added with no place goes: left of the leftmost block, level with Surface (wires run left to
+    right), so it never lands on another one. The screen's + Add block and graph.add without x / y both use it."""
+    xs = [g["surface"].get("x", 0)] + [b.get("x", 0) for b in g["blocks"]]
+    return round(min(xs) - BLOCK_W - GAP), round(g["surface"].get("y", 0))
+
+
 def blocks_by_id(g: dict) -> dict:
     return {b["id"]: b for b in g["blocks"]}
 
