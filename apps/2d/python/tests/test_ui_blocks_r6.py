@@ -51,8 +51,8 @@ def test_chart_axis_ends_on_a_round_number_above_the_biggest_value_and_bars_scal
     got = items('chart([12, 37, 21], labels=["a", "b", "c"], id="c", w=600, h=300, x=100, y=100)\n')
     ticks = [float(got[f"c_y{i}"]["body"]) for i in range(10) if f"c_y{i}" in got]
     assert ticks[0] == 0 and ticks[-1] >= 37 and ticks[-1] in (40, 50)
-    h0, h1 = got["c_bar0"]["h"], got["c_bar1"]["h"]
-    assert h1 / h0 == pytest.approx(37 / 12) and h1 < 300
+    h0, h1 = got["c_bar0"]["pctH"], got["c_bar1"]["pctH"]          # shares of the plot, so a growing chart keeps them
+    assert got["c_bar1"]["sizeH"] == "percent" and h1 / h0 == pytest.approx(37 / 12) and h1 == pytest.approx(100 * 37 / ticks[-1])
 
 
 def test_chart_text_grows_with_the_room_it_is_made_in():
@@ -67,3 +67,18 @@ def test_chart_at_grows_bars_from_that_time():
     k0 = [k for k in got["c_bar0"]["keys"] if k["prop"] == "scaleY"]
     k1 = [k for k in got["c_bar1"]["keys"] if k["prop"] == "scaleY"]
     assert (k0[0]["t"], k0[0]["v"], k1[0]["t"]) == (1.5, 0.0, pytest.approx(1.6))
+
+
+def test_blocks_in_a_laptop_are_sized_for_a_laptop_screen_not_a_phone_blown_up():
+    got = items('with device("ph"):\n    nav_bar("T", id="pn")\n    card(id="pk", title="Total", value="1.2M")\n'
+                'with device("lap", kind="laptop"):\n    nav_bar("T", id="ln")\n    with row():\n        card(id="k", title="Total", value="1.2M", w="31%")\n')
+    phone, laptop = got["pn_title"]["size"], got["ln_title"]["size"]
+    assert laptop < 1.6 * phone                       # was ~2.8× (a 1100 px screen scaled as a 390 px phone)
+    assert got["k_value"]["size"] < 1.6 * got["pk_value"]["size"]   # in a row of the laptop too: the screen's unit
+
+
+def test_a_bar_chart_in_a_screen_takes_the_room_left_and_a_line_chart_keeps_its_height():
+    got = items('with device("lap", kind="laptop"):\n    with column(id="body"):\n        chart([1, 2], id="bc")\n'
+                'with device("lap2", kind="laptop"):\n    with column(id="body2"):\n        chart([1, 2], id="lc", kind="line")\n')
+    assert got["bc"].get("layoutGrow") == 1 and got["body"].get("layoutGrow") == 1
+    assert not got["lc"].get("layoutGrow") and not got["body2"].get("layoutGrow")

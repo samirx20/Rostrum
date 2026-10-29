@@ -86,8 +86,9 @@ orders by where each is seen (one that fades or scales in from 0 counts where it
 
 These script calls make a device and the usual parts of a screen as **plain groups of shapes and texts**, with ids made
 from the block's id (`trips_r0_title`, `pay_label`), so each part is moved, keyed, restyled or taken apart afterwards
-like anything you made by hand. Every colour and size is a parameter; the defaults are only a neutral start (drawn
-for a 390 px wide screen and scaled to the screen they are made in).
+like anything you made by hand. Every colour and size is a parameter; the defaults are only a neutral start, sized for
+the screen they are made in: a phone's as for a 390 px screen, a laptop's or browser's as for a 960 px one (so a laptop
+reads as a laptop, not a phone blown up), elsewhere as is in a 390–1280 px container, larger or smaller outside that.
 
 **Placed by the box they are made in.** Each block is itself a small layout box, so it stretches with its parent:
 

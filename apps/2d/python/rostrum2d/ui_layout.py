@@ -18,6 +18,11 @@ SHAPES = {"phone": (430, 900), "laptop": (1240, 800), "browser": (1280, 800)}
 FIT = {"phone": 0.82, "laptop": 0.74, "browser": 0.74}
 INK, MUTED, LINE, PAPER, ACCENT = "#111827", "#6b7280", "#e5e7eb", "#ffffff", "#4f46e5"     # starting colours
 BASE_W = 390.0              # the width the blocks' starting sizes are drawn for; they scale with the parent's width
+# A device screen's blocks are sized for that kind of screen: a phone's 390 px, a laptop's or browser's 960 px (its
+# words then read as a laptop's do, not as a phone's blown up to the laptop's width). Outside a device, a container
+# 390-1280 px wide takes the starting sizes as they are; a narrower one shrinks them, a wider one grows them.
+DESIGN_W = {"phone": BASE_W, "laptop": 960.0, "browser": 960.0}
+WIDE_W = 1280.0
 
 
 class Rows(list):
@@ -55,6 +60,17 @@ def ground(build) -> str:
         if body is not None:
             return body.get("fill", "#0b0d12")
     return "#000000"
+
+
+def unit(build) -> float:
+    """How much the blocks' starting sizes (drawn for a 390 px phone screen) are scaled where they are made: by the
+    nearest device screen's width against its kind's width (DESIGN_W), else by the container's width (WIDE_W)."""
+    screens = getattr(build, "screens", {})
+    for node in reversed(build.holders):
+        if node["id"] in screens:
+            return float(node.get("w", 0)) / DESIGN_W[screens[node["id"]]]
+    pw = parent_size(build)[0]
+    return pw / min(max(pw, BASE_W), WIDE_W)
 
 
 def palette(build) -> dict:

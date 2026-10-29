@@ -18,7 +18,9 @@ apart like anything you made by hand. Every size and colour is a parameter; the 
 
 - Sizes come from the room the block is made in, so one call reads right in a phone, a laptop screen or a whole
   1920 x 1080 frame: a top-level lower third's name is 4.6 % of the picture's height; a chart's labels grow with its
-  width, more slowly (about 13 px in a phone, 19 on a laptop screen, 31 across a full frame), its default height is the smaller of 55 % of its width and half the room's height.
+  width, more slowly (about 13 px in a phone, 19 on a laptop screen, 31 across a full frame), its default height is the smaller of 55 % of its width and half the room's height, and a bar chart in a container (a
+  device's screen, a column) grows from there into the room left under it, its bars staying shares of the axis; a line
+  chart keeps that height (its line is drawn for one size), so give it `h=` to fill a screen.
   `size=` (and `role_size=`, `h=`, `radius=`, `width=` for the line, `pad=` for the bar) set them yourself.
 - Colours follow what the block sits on. A lower third's bar takes the ground's ink (dark on a light screen, light
   on a dark picture) and its words the other way: `bar`, `color` (name), `muted` (role), `accent` (a strip on the

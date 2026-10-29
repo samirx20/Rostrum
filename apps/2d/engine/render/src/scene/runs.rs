@@ -132,4 +132,34 @@ mod tests {
         assert!(m.starts_with("Make it <span style=\"color:"), "{m}");
         assert!(m.contains("font-weight:800;\">move</span> on cue"), "{m}");
     }
+
+    /// The width of `body` as measured (the box the stage lays it out in), with run 1 on `word` styled by `run`.
+    fn width(body: &str, word: &str, run: serde_json::Value, by_letter: bool) -> f64 {
+        let from = body.find(word).unwrap();
+        let mut t = json!({ "id": "t", "body": body, "font": "Roboto Flex", "size": 80, "weight": 400, "stretch": 100,
+                            "tracking": 0.0, "lineHeight": 1.2, "align": "left", "boxWidth": 0,
+                            "letterDelay": if by_letter { 0.05 } else { 0.0 },
+                            "run1From": from, "run1To": from + word.len(), "run1Color": "#ff0000" });
+        t.as_object_mut().unwrap().extend(run.as_object().unwrap().clone());
+        let got = super::super::measure::measure(&json!({ "items": [t] }), None).unwrap();
+        got["sizes"]["t"][0].as_f64().unwrap()
+    }
+
+    /// Span and letter-by-letter drawing place a run and the words after it alike: the line up to the run's end and
+    /// the whole line measure the same both ways (a heavier run's advances are used, spaces kept); a scaled run
+    /// (drawn letter by letter) widens the line by its own extra width, so the words after it move along.
+    #[test]
+    fn spans_and_letters_lay_a_run_out_alike() {
+        let heavy = json!({ "run1Weight": 900, "run1Scale": 1.0, "run1Opacity": 1.0 });
+        for body in ["Make it move", "Make it move on cue"] {
+            let (span, letters) = (width(body, "move", heavy.clone(), false), width(body, "move", heavy.clone(), true));
+            assert!((span - letters).abs() < 1.0, "{body:?}: spans {span:.1} px, letter by letter {letters:.1} px");
+        }
+        let plain = width("Make it move on cue", "move", json!({ "run1Weight": 0, "run1Scale": 1.0, "run1Opacity": 1.0 }), true);
+        let heavy_w = width("Make it move on cue", "move", heavy, true);
+        assert!(heavy_w > plain + 4.0, "a heavier run widens the line: {plain:.1} → {heavy_w:.1}");
+        let word = width("move", "move", json!({ "run1Weight": 0, "run1Scale": 1.0, "run1Opacity": 1.0 }), true);
+        let big = width("Make it move on cue", "move", json!({ "run1Weight": 0, "run1Scale": 1.5, "run1Opacity": 1.0 }), false);
+        assert!((big - (plain + 0.5 * word)).abs() < 1.0, "a 1.5× run widens the line by half its width: {plain:.1} + {:.1} ≠ {big:.1}", 0.5 * word);
+    }
 }

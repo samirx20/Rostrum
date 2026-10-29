@@ -13,9 +13,9 @@ line = text("line", body=["Ship it ", ("today", {"color": "#ffb020", "weight": 8
             size=72, color="#f2f2f2")
 ```
 
-A run's style takes `color`, `weight` (0 = the text's own), `scale` (about the run's own centre; the line keeps its
-room, so neighbours don't move: keep a lasting scale small, or the word reaches into the spaces beside it; a wrapped
-text, `boxWidth` set, draws its runs at scale 1) and `opacity`. A run with no colour takes the text's. Up to 4 runs per text; more than
+A run's style takes `color`, `weight` (0 = the text's own), `scale` (the word grows on its baseline and takes the room it
+needs: the words after it move along, and a centred line re-centres; a wrapped text, `boxWidth` set, draws its runs at
+scale 1) and `opacity`. A run with no colour takes the text's. Up to 4 runs per text; more than
 that is usually two lines, so make two texts in a `column`.
 
 ## Key a run
@@ -32,8 +32,8 @@ word.key("scale", {reveal: 1, reveal + 0.15: 1.15, reveal + 0.4: 1}, ease="easeO
 Common moves, all plain keys:
 
 - **Colour change on a cue**: key `color` from the text's colour to the new one at a marker.
-- **Emphasis**: a short `scale` bump, or `weight` from 400 to 800 on a variable font (weight changes the letters'
-  width, so the line re-flows: on a centred line the other words shift a little; key `scale` instead if they mustn't).
+- **Emphasis**: a short `scale` bump, or `weight` from 400 to 800 on a variable font. Both change the word's width, so
+  the line re-flows: the words after it (and, on a centred line, the whole line) shift to make room.
 - **Fade one word in last**: key the run's `opacity` from 0 while the rest is already there.
 
 ## Typing on with a styled word

@@ -202,10 +202,11 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
     `edit` (resolved in `scene/follow.rs`, the one place).
   - **Styled runs** (`scene/runs.rs`): up to 4 runs, `run<n>From` ≤ letter < `run<n>To` (letters of `body`, line breaks
     counted; used while To > From), each with `run<n>Color` (faded by `run<n>Opacity` and the fill opacity), `run<n>Weight`
-    (0 = the text's) and `run<n>Scale` (about the run's centre on its line; the line keeps its room), all keyable but
-    From / To. Drawn as spans in the one text box; a text with a scaled run on one line (no `boxWidth`) is drawn letter by
-    letter. Drawn letter by letter, a run's fields are read at the layer's time (not the letter's delayed one) and a
-    weighted run takes that weight's advances. A counting text shows no runs. `measure` does not read runs yet.
+    (0 = the text's) and `run<n>Scale` (each letter grows about its baseline point and its advance with it, so the text after the run moves
+    along), all keyable but From / To. Drawn as spans in the one text box; a text with a scaled run on one line (no
+    `boxWidth`) is drawn letter by letter. Drawn letter by letter, a run's fields are read at the layer's time (not the
+    letter's delayed one) and its letters take its weight's advances times its scale, so spans and letters lay a run
+    out alike. A counting text shows no runs. `measure` takes the run fields (left out: no runs).
   - **Letter by letter:** `letterDelay` s ≠ 0: each letter (`letterSplit` letters | words) plays the layer's own keys
     `letterDelay × its place` later; places follow `letterOrder` forward | backward | center | random (`letterSeed`, the
     same order on every machine). Keyed x / y move each letter from the layer's still x / y; keyed rotation, scale,

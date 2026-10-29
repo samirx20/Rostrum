@@ -88,17 +88,20 @@ pub fn place(it: &Item) -> R<Placed> {
     Ok(Placed { letters, w, h, line, baseline })
 }
 
-/// A run with its own weight (runs.rs) takes that weight's advances for its letters.
+/// A run's letters take its own advances (runs.rs): its weight's (0 = the text's), times its scale, so the letters
+/// after a heavier or bigger run move along with it, as the same runs drawn as spans do.
 fn weighted(it: &Item, lines: &[&str], starts: &[usize], measures: &mut [type_font::Measure]) -> R<()> {
     let runs = super::runs::read(&it.props);
-    for run in runs.iter().filter(|r| r.weight > 0.0) {
-        let mut heavy = it.clone();
-        heavy.props.insert("weight".into(), run.weight.into());
+    for run in runs.iter().filter(|r| r.weight > 0.0 || r.scale != 1.0) {
+        let mut own = it.clone();
+        if run.weight > 0.0 {
+            own.props.insert("weight".into(), run.weight.into());
+        }
         for (i, line) in lines.iter().enumerate() {
-            let m = type_font::measure(&heavy, line)?;
+            let m = if run.weight > 0.0 { type_font::measure(&own, line)? } else { type_font::measure(it, line)? };
             for (j, adv) in m.advances.iter().enumerate() {
                 if super::runs::at(&runs, starts[i] + j) == Some(run) {
-                    measures[i].advances[j] = *adv;
+                    measures[i].advances[j] = adv * run.scale.max(0.0);
                 }
             }
         }

@@ -35,7 +35,7 @@ def for_script(build) -> dict:
         if kind not in ("arrow", "touch"):
             raise ValueError(f'pointer {id}: kind "{kind}" is not one of arrow, touch')
         pw, ph = U.parent_size(build)
-        u = pw / U.BASE_W
+        u = U.unit(build)
         s = float(size or (34 if kind == "arrow" else 44) * u)
         x, y = float(pw * 0.78 if x is None else x), float(ph * 0.82 if y is None else y)
         over = {"apart": True} if in_layout(build) else {}       # over a container's layers, taking no room

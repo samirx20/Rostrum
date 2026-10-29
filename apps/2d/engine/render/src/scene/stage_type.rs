@@ -104,11 +104,10 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
         if let Some(r) = &run {
             s += &super::runs::css(r, eval::fill_opacity(own.as_ref().unwrap_or(&it.props)), color.is_some() || gradient.is_some());
             if r.scale != 1.0 {
-                // About the run's centre on this line: the letter moves out from it as it grows.
-                let mates = placed.letters.iter().filter(|m| m.y == l.y && (r.from..r.to).contains(&m.index));
-                let (lo, hi) = mates.fold((f64::MAX, f64::MIN), |(a, b), m| (a.min(m.x - m.advance / 2.0), b.max(m.x + m.advance / 2.0)));
-                let c = line / 2.0 - base;
-                tf.push(format!("translate({:.3}px, {c:.3}px) scale({:.5}) translate(0px, {:.3}px)", (l.x - (lo + hi) / 2.0) * (r.scale - 1.0), r.scale, -c));
+                // Its advance is already the run's scale times its own (letters.rs): the glyph, centred in it, grows
+                // about its baseline point.
+                s += "text-align:center;";
+                tf.push(format!("scale({:.5})", r.scale));
             }
         }
         if let Some(c) = color {

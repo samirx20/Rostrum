@@ -20,6 +20,17 @@ from .ui_layout import ACCENT
 from .ui_lower_third import when
 
 
+def room_down(build) -> None:
+    """The columns a growing chart is made in, up to the device screen (or a box of set height), grow too, so the chart
+    takes the room left under what is above it rather than the room its column fits."""
+    from .script import Item
+    screens, chain = getattr(build, "screens", {}), build.holders
+    for node, parent in zip(reversed(chain[1:]), reversed(chain[:-1])):
+        if node["id"] in screens or node.get("sizeH", "fit") != "fit" or parent.get("layout") != "column":
+            return
+        Item(build, node).set(layoutGrow=1)
+
+
 def room(build) -> tuple[float, float]:
     """The width and height a block made now gets: the nearest sized box (or the scene) less the padding of the
     containers on the way (a guess before the layout runs: in a row next to others, give the block its own w=)."""
@@ -56,6 +67,7 @@ def maker(build, block, auto, colours):
         rw, rh = room(build)
         cw = float(w) if isinstance(w, (int, float)) else rw - (0 if in_layout(build) and not apart else x or 0)
         s = float(size or 13 * (max(cw, 120) / U.BASE_W) ** 0.6)     # phone ~13 px, laptop screen ~19, full frame ~31
+        given_h = h
         h = float(h or min(cw * 0.55, rh * 0.5))
         steps = plot.nice_ticks(0, float(top or max(vals) or 1), ticks, extend=True)
         hi = float(steps[-1])
@@ -66,7 +78,12 @@ def maker(build, block, auto, colours):
         half = s * 0.6                              # a tick label's half height: the gridlines run that far in
         ph = max(h - head - foot - 2 * half, 1.0)   # the plot's own height, 0 .. hi
         made = U.Rows()
-        with block("column", id, x, y, w, h, apart) as made.group:
+        # A bar chart left without h= in a layout grows into the room left under what is above it (h is then its least
+        # height; its bars are shares of the plot). A line is drawn for one size when the script runs: it keeps h.
+        grows = {"grow": 1} if kind == "bar" and given_h is None and in_layout(build) and not apart else {}
+        if grows:
+            room_down(build)
+        with block("column", id, x, y, w, h, apart, **grows) as made.group:
             if title:
                 with L("group", f"{id}_head", layout="row", h=head, align="start", gap=s * 0.6, padding=0):
                     L("text", f"{id}_title", body=str(title), size=s * 1.5, color=ink, weight=680)
@@ -84,7 +101,7 @@ def maker(build, block, auto, colours):
                         with L("group", f"{id}_bars", layout="row", w="fill", h="fill", align="stretch", padding=0):
                             for i, v in enumerate(vals):
                                 with L("group", f"{id}_slot{i}", layout="column", grow=1, align="center", justify="end", padding=0):
-                                    made.append(L("shape", f"{id}_bar{i}", w=f"{round((1 - gap) * 100, 4)}%", h=max(ph * v / hi, 0.0),
+                                    made.append(L("shape", f"{id}_bar{i}", w=f"{round((1 - gap) * 100, 4)}%", h=f"{round(max(v / hi, 0.0) * 100, 4)}%",
                                                   origin="bottom-center", radius=s * 0.35 if radius is None else radius, fill=color))
                     else:
                         pw = max(cw - yw - s * 0.7, 1.0)    # the plot's width as made now (the line is drawn in it)

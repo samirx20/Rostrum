@@ -37,6 +37,7 @@ def _fields(n: int) -> list:
 
 
 FIELDS = [p for n in range(1, COUNT + 1) for p in _fields(n)]
+MEASURED = tuple(f"run{n}{f}" for n in range(1, COUNT + 1) for f in ("From", "To", "Weight", "Scale"))   # what changes the box
 STILL = {f"run{n}{end}" for n in range(1, COUNT + 1) for end in ("From", "To")}
 
 

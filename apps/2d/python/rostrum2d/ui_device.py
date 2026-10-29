@@ -51,6 +51,7 @@ def maker(build, box, words):
             look = {"bg": screen, "radius": sr} if screen else {}
             scr = L("group", f"{id}_screen", **{"x": sx, "y": sy, "w": sw, "h": sh, "origin": "top-left", "layout": "column",
                                               "padding": 0, "gap": 0, "align": "stretch", "overflow": overflow, **look, **layout})
+            build.screens = {**getattr(build, "screens", {}), scr.id: kind}      # its blocks' sizes (ui_layout.unit)
             if sr and overflow == "hidden":
                 scr.mask(f"{id}_screen_round", x=0, y=0, w=sw, h=sh, radius=sr)
             if kind == "phone":
