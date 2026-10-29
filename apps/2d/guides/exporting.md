@@ -50,7 +50,8 @@ Only the settings that apply to the chosen format are shown.
 3. Click **Show in folder** to open where it went. The top bar's chip says **Exported Main.mp4 ▾** too, until your next change: click it for **Play** and **Show in folder** after the panel is closed.
 4. If something goes wrong the panel and the top bar say so in red, in plain words: what could not be saved and why, such as "Couldn't save the file: this computer won't let Rostrum write to …. Pick another folder." (the full technical line goes to the console, for agents and logs). Nothing is reported as done unless the file was made.
 5. A scene with nothing showing (no layer, or every layer hidden; the frame alone draws nothing) is not exported: the panel says "There is nothing to export yet: the scene has no layers showing. Add one first." and no file is made. Agents get the same refusal from `render_export`.
-6. **Ctrl+Shift+E** exports again with the last settings without opening the panel. Before your first export in this window there are no last settings: the top bar says "Nothing exported yet — Ctrl+E to export".
+6. Your Export button always exports: the fault check below is for agents only.
+7. **Ctrl+Shift+E** exports again with the last settings without opening the panel. Before your first export in this window there are no last settings: the top bar says "Nothing exported yet — Ctrl+E to export".
 
 ## 6. How long it takes
 
@@ -58,12 +59,39 @@ Only the settings that apply to the chosen format are shown.
 2. What makes an export slow is work repeated in every frame: **motion blur** draws each frame several times (its **Samples**), and big blurs, glows and depth of field over the whole picture cost the most. A 28-second film full of glowing, blurred flowers with 4 samples takes several minutes.
 3. The export never lowers quality to go faster: the file shows exactly what the canvas shows.
 4. Agents: the result of `render_export` with `what: "video"` lists where the time went (`timing`: drawing, layout, encoding) and how many workers drew (`workers`). It (and plain `render_export`'s for an mp4) also checks the finished file for **blank, washed-out and unchanged stretches** and for subjects cut by the frame edge (about every half second, a few seconds of work) and names them with times and numbers, for example "12–13.4 s: near-empty, at most 2 % of the frame differs from its background (the last frame: the ending)"; the same check on any composition or mp4 is `look_frame` `what: "empty"` (`start`, `end`, `every`, `min_still`, `video`). It reports facts, not faults: a held title or a planned quiet beat is yours to judge; look at a named time with `look_frame`. To look at the finished film itself, not the composition: `look_frame` `what: "sheet"` with `video` = the mp4's path (the export's `video`), `start` / `end` / `count` (or `times: [..]`) in the film's seconds; its tiles are the file's own frames. The reply ends with the next step: the minutes left (when the session has a budget) and the film's top three weakest moments from `look_frame` `what: "review"` (blank stretches, text cut by the edge, faint leftover headings, parts not drawn in yet, held poses and framing, and the brief's beats you gave as `beats` on this or an earlier export, named when one never happens or comes at the wrong time; with none given, it asks for them), to fix and export again to the same name and, when the video is silent, how to put music under it from RostrumSound (`run_open_project` on the same folder, `run_script`, `run_set_main_mix`; the next export carries the mix).
-5. An export never waits forever. If one frame takes over 2 minutes (the drawing engine stuck), the export stops, the
-   engine is ended, and the error names the frame, such as "stuck at frame 183 (6.10 s)". Look at that moment with
-   `look_frame`. Drawing a single picture has the same limit.
+5. An export never waits forever, and a crash doesn't lose it. If the drawing engine stops, or one frame takes over
+   2 minutes (stuck), the engine is started again and the export goes on from the 10-second part it was on: the parts
+   already drawn are kept (a stuck frame gets twice as long the second time). After two restarts the export stops and
+   the error names the frame, such as "stuck at frame 183 (6.10 s)". Look at that moment with `look_frame`. Drawing a
+   single picture has a 2-minute limit too. The progress shows frames done of all and the time left at the pace of the
+   last 30 frames, so a slow ending shows as it comes.
 6. Agents: `inspect_job` shows frames done of total and how long since the last one (`last_step_s_ago`), so a slow frame
    is visible while it runs. `run_stop` stops a render at once, even mid-frame, and works on a render another session
    or server started (that program stops it within a few seconds); `inspect_job` with no id lists those too. The app
    holds no lock between programs: a render that ended or was stopped leaves nothing that blocks the next one.
 
 Next: [first-animation.md](first-animation.md), [files.md](files.md).
+
+## Agents: a final is checked
+
+`render_export` checks a film export for the same faults `run_script` with `look` names (text cut by the edge, a
+blank stretch, a device off the frame, …) and its reply opens `NOT DONE:` with each fault and its fix, or `DONE:`.
+A fault is what a client sees as broken: a text cut by the frame edge or too near it, crossed by a layer (a ring or a
+stroked line counts where its outline runs through the letters, not its whole box), on another
+text or cut by its box; a faint old heading behind a new one; a pointer on a label; a device, a group (a card), a
+picture or a character cut by the edge for 2 s or more (passing in or out is not; a plain shape bleeding off the edge
+is scenery); a blank or near-empty stretch mid-film; a layer hanging
+off its screen or outside it; a parked dot; a tiny end card; a painted patch shown in front of a shape it should be
+behind. The rest of the weakest moments (a held framing or pose, a crowded lock-up, alike openings …) may be meant:
+they are listed as "worth a look", never refused.
+
+- **A final** is mp4, prores4444, webm or gif of the whole composition (no `start` / `end`). With a fault open it is
+  refused: the file is kept as `<name>.NOT-DONE<ext>` (look at it, it is not delivered) and nothing is written under
+  the asked-for name.
+- **A preview** is anything less: a part (`start` / `end`), a png (one picture with `time`, or a sequence), lottie,
+  motion. Its faults are named (film formats) but it is never refused.
+- **Fix** each fault in the script and export again, or **keep** the ones the brief asks for:
+  `keep: {"text_edge:title": "the brief says \"cropped by the right edge on purpose\""}`. The why must quote the brief
+  stored with `brief("...")` in the script (its words in quotes, or three or more of them in a row), and the quoted
+  words must ask for that kind of fault (a crop or bleed for a cut, an overlap for texts on each other, blank or
+  negative space for an empty stretch); a why that does not is refused and the fault's fix says why. Ids are the ones the reply names (`kind:layer`, or `kind@seconds`).

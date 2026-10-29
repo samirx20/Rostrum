@@ -48,3 +48,12 @@ def test_delivery_refuses_open_faults_and_passes_when_each_is_explained(tmp_path
     assert not out.exists() and (tmp_path / "mix.NOT-DONE.wav").exists()
     kept = rt.call("render_mix", {"wait": 10, "keep": {"loudness": "the client asked for -17 for this cut"}}, Who.agent("t"))[0]
     assert kept["ok"] and out.exists() and kept["summary"].startswith("DONE:") and "Kept on purpose: loudness" in kept["summary"]
+
+
+def test_a_thousand_faults_of_one_kind_make_a_short_headline_and_every_id_still_keeps():
+    from rostrum_core.mcp.faults import apply_keep, headline
+    many = [fault(f"text_on_text:t{i}", "two texts sit on each other", "move one", "1 s") for i in range(1000)]
+    many.append(fault("end_small@9", "the end card is tiny", "scale it up"))
+    line = headline(many)
+    assert len(line) < 2500 and "1001 faults of 2 kinds" in line and "and 997 more text_on_text" in line and "[end_small@9]" in line
+    assert apply_keep(many, {"text_on_text:t999": "meant"}) == [] and many[999]["kept"] == "meant"

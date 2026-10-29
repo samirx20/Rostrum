@@ -116,9 +116,12 @@ def prepare(build, type_: str, id_, values: dict) -> dict:
     if inside and type_ == "text" and "align" not in out:
         out["align"] = "left"                  # a text in a box reads from its slot's left edge, as on a web page
     if inside and not out.get("layoutApart") and {"x", "y"} & set(out):
-        raise ValueError(f"{where}: x= / y= inside a container: the layout places this layer. Leave x / y out (use "
-                         "align, justify, gap, margin; shift_x= / shift_y= to move it off its place without pushing the "
-                         "others), or give apart=True to place it by its own x / y (it then takes no room)")
+        h = build.holders[-1]
+        name = f'{type_} "{id_}"' if id_ else f"this {type_}"
+        call = "" if type_ == "group" else f' ({type_}({f"{chr(34)}{id_}{chr(34)}, " if id_ else ""}…, apart=True))'
+        raise ValueError(f'{name} has x / y inside {h["layout"]} "{h.get("id", "")}", which places its layers for you: add '
+                         f'apart=True to its call to place it by hand{call}, it then takes no room; or leave x / y out '
+                         f'(shift_x= / shift_y= nudge it off its slot)')
     return out
 
 

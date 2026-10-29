@@ -251,7 +251,8 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, up
                version=migrations.FORMAT, migrations=migrations.STEPS,
                new=lambda: {"id": "root", "type": "doc", "comps": [], "paintings": []})
 
-rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers, seamless=paintings.seamless_canvas)
+rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers, seamless=paintings.seamless_canvas,
+                       stroke_fields=paint_fields.STROKE)
 from .modules import OPS  # noqa: E402
 OPS.load()  # noqa: E402  (they register on REGISTRY: rostrum2d/modules.py)
 from . import text_styles  # noqa: E402  (loaded by OPS; used below)

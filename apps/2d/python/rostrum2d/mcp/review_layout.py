@@ -6,17 +6,25 @@ from __future__ import annotations
 
 import re
 
+from . import outline
 from .geometry import covers, drawn_box
 from .review_cover import _in_front, _over, _related
 from .review_sample import Sampled, runs
 
-PARTIAL = (0.1, 0.85)     # a layer in front painting over this share of a text's box crosses it (more: the text is hidden)
+PARTIAL = (0.1, 0.85)     # a layer in front painting over this share of one of a text's lines crosses it (over more of
+                          # its whole box: the text is hidden)
 HIDDEN = 0.85             # a text this much under opaque layers in front is hidden, not crossed
 OPAQUE = 0.6              # a layer in front this opaque or more hides what is under it
 CROSS_S = 1.0             # a crossing this long or longer (shorter: a wipe or a morph passing over)
+LINE_SEEN, LINE_S = 0.3, 0.5   # a hollow layer's outline (a ring, a frame, a stroked path) this opaque, running through a
+THROUGH = 0.3                  # text's letters (this share of their height or width) this long, crosses it: a line
+                               # through letters shows in any still, faint or passing (a wipe's panel does not)
 ON_TEXT_S = 0.5           # two texts overlapping this long or longer ...
-SWAP_S, SWAP_SAME = 1.0, 0.6   # ... texts this much on the same spot overlapping under SWAP_S: a cross-fade swap
+SWAP_S, SWAP_SAME = 1.0, 0.6   # ... texts this much on the same spot overlapping under SWAP_S: a cross-fade swap ...
+SWAP_DIM = 0.5            # ... while one of them is always under this opacity; both clearer at once is a double exposure
+                          # a still catches ("two titles print on top of each other in a scrambled jumble": faults-zero judges)
 ON_TEXT = 0.1             # two texts overlapping by this share of the smaller one's box
+TOUCH_H, TOUCH_W = 0.2, 0.25   # ... or two lines' whole boxes overlapping this share of the smaller's height, across this of its width
 POINTER = re.compile(r"(^|[_\-\s])(cursor|pointer|mouse|finger|hand)s?($|[_\-\s\d])", re.I)
 POINTER_ON, POINTER_S = 0.2, 1.5    # a pointer resting over this share of a showing text's box this long (a tap's landing on a
                                     # button's centre covers its label briefly, as a real click does: not a fault)
@@ -44,6 +52,15 @@ def _box(s: Sampled, n: dict, by: dict) -> tuple | None:
     return (x0, y0, x1, y1) if x1 - x0 > 2 and y1 - y0 > 2 else None
 
 
+def _lines(n: dict, box) -> list[tuple]:
+    """A text's box cut into its lines (size x lineHeight each): a panel over one line of two crosses that line's words,
+    however small a share of the whole box it is."""
+    p = n["props"]
+    k = max(1, round(n["size"][1] / max(p.get("size", 0) * p.get("lineHeight", 1.2), 1.0)))
+    x0, y0, x1, y1 = box
+    return [(x0, y0 + (y1 - y0) * i / k, x1, y0 + (y1 - y0) * (i + 1) / k) for i in range(k)]
+
+
 def _glyphs(box) -> tuple:
     """A text's box without its line spacing (GLYPHS of its height, centred): where its letters are."""
     x0, y0, x1, y1 = box
@@ -65,6 +82,35 @@ def _texts(s: Sampled, nodes: list[dict], by: dict):
                  and o["props"].get("blend", "normal") == "normal" and o["opacity"] >= OPAQUE]      # a full-frame cover hides too
         if _share(front, box) < HIDDEN:
             yield k, n, box, front
+
+
+def _on_text(a, b, path_a=None, path_b=None) -> float:
+    """How much two texts' letters sit on each other (a share of the smaller one), 0 when they don't: their letter boxes
+    (_glyphs) overlapping ON_TEXT of the smaller one, or two lines whose whole boxes overlap TOUCH_H of the smaller one's
+    height across TOUCH_W of its width (one line printed into the other's letters: the descenders and caps touch)."""
+    if path_a or path_b:            # a text on a path: its letters run along the path's line, not over the arc's box
+        return 0.0 if path_a and path_b else _through(path_a or path_b, _glyphs(b if path_a else a), 0.0)
+    ga, gb = _glyphs(a), _glyphs(b)
+    w, h = min(ga[2], gb[2]) - max(ga[0], gb[0]), min(ga[3], gb[3]) - max(ga[1], gb[1])
+    small = min((ga[2] - ga[0]) * (ga[3] - ga[1]), (gb[2] - gb[0]) * (gb[3] - gb[1]))
+    if w > 0 and h > 0 and w * h >= ON_TEXT * small:
+        return w * h / small
+    w, h = min(a[2], b[2]) - max(a[0], b[0]), min(a[3], b[3]) - max(a[1], b[1])
+    if w >= TOUCH_W * min(a[2] - a[0], b[2] - b[0]) and h >= TOUCH_H * min(a[3] - a[1], b[3] - b[1]):
+        return w * h / min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
+    return 0.0
+
+
+def _through(o: dict, glyphs, pad: float | None = None) -> float:
+    """How far o's outline runs inside a text's letters: the span of its centre line there, as a share of their height or
+    width (the larger); 0 when it only grazes their edge."""
+    x0, y0, x1, y1 = glyphs
+    pad = outline.width(o) / 2 if pad is None else pad
+    inside = [(x, y) for x, y in outline.points(o) if x0 + pad < x < x1 - pad and y0 + pad < y < y1 - pad]
+    if len(inside) < 2:
+        return 0.0
+    xs, ys = [x for x, _ in inside], [y for _, y in inside]
+    return max((max(ys) - min(ys)) / max(y1 - y0, 1.0), (max(xs) - min(xs)) / max(x1 - x0, 1.0))
 
 
 def _block(n: dict, o: dict) -> tuple[str, str]:
@@ -102,29 +148,30 @@ def _named(s: Sampled, hits: dict, least: float, line) -> list[dict]:
 
 def overlaps(s: Sampled) -> list[dict]:
     """Texts partly crossed by a layer in front (PARTIAL of their box), texts on texts, pointers on texts."""
-    crossed, on_text, pointed = {}, {}, {}
+    crossed, lined, on_text, pointed = {}, {}, {}, {}
     for i, (t, nodes) in enumerate(s.frames):
         by = {n["id"]: n for n in nodes}
         texts = list(_texts(s, nodes, by))
         for k, n, box, front in texts:
+            for o in nodes[k + 1:]:              # an outline drawn through the letters (its band, not its box)
+                if (outline.hollow(o) and o["opacity"] >= LINE_SEEN and _in_front(s, o) and not _related(n, o)
+                        and not POINTER.search(o["id"]) and (share := _through(o, _glyphs(box))) >= THROUGH):
+                    lined.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
             for o in front:
-                if not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
+                if outline.hollow(o) or not _in_front(s, o) or o["type"] == "group" and not o["paint"] or _frosted(o) or POINTER.search(o["id"]) or any(POINTER.search(w) for w in o["within"]):
                     continue
-                share = _over(o, box)
-                if PARTIAL[0] <= share <= PARTIAL[1]:
+                share = max(_over(o, line) for line in _lines(n, box))     # a wrapped text: the line it cuts
+                if share >= PARTIAL[0] and _over(o, box) <= PARTIAL[1]:
                     crossed.setdefault((n["id"], o["id"]), {})[i] = (share, _block(n, o))
             tips = [o for o in nodes[k + 1:] if s.seen(o) and (POINTER.search(o["id"]) or POINTER.search(o["name"] or "")
                                                                or any(POINTER.search(w) for w in o["within"]))]
             if tips and (share := _share(tips, box)) >= POINTER_ON:
                 tip = next((w for w in tips[0]["within"] if POINTER.search(w)), tips[0]["id"])
                 pointed.setdefault((n["id"], tip), {})[i] = (share, None)
-        glyphs = [(n, _glyphs(box)) for _, n, box, _ in texts]
-        for x, (n, a) in enumerate(glyphs):
-            for m, b in glyphs[x + 1:]:
-                w, h = min(a[2], b[2]) - max(a[0], b[0]), min(a[3], b[3]) - max(a[1], b[1])
-                small = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
-                if w > 0 and h > 0 and w * h >= ON_TEXT * small:
-                    on_text.setdefault((n["id"], m["id"]), {})[i] = (w * h / small, _block(n, m))
+        for x, (_, n, a, _) in enumerate(texts):
+            for _, m, b, _ in texts[x + 1:]:
+                if share := _on_text(a, b, *(by.get(t["layer"].get("pathLayer")) for t in (n, m))):
+                    on_text.setdefault((n["id"], m["id"]), {})[i] = (share, _block(n, m), min(n["opacity"], m["opacity"]))
 
     def crossed_line(key, t0, t1, share, blocks):
         tid, lid = key
@@ -132,10 +179,17 @@ def overlaps(s: Sampled) -> list[dict]:
                 "text": f'{t0:g}–{t1:g} s: "{lid}" is drawn over part of text "{tid}" ({100 * share:.0f} % of its box): '
                         f'{_fix(by_any(blocks), *blocks)}'}
 
+    def through_line(key, t0, t1, share, blocks):
+        tid, lid = key
+        return {"kind": "text_crossed", "start": t0, "end": t1, "id": tid, "ids": [tid, lid], "cover_pct": round(100 * share),
+                "text": f'{t0:g}–{t1:g} s: the outline of "{lid}" runs through the letters of text "{tid}": keep it clear of '
+                        f'the words: smaller or bigger, moved aside, or drawn under the text (listed before it)'}
+
     def on_text_line(key, t0, t1, share, blocks):
         return {"kind": "text_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "overlap_pct": round(100 * share),
                 "text": f'{t0:g}–{t1:g} s: texts "{key[0]}" and "{key[1]}" sit on top of each other ({100 * share:.0f} % of the '
-                        f'smaller one): {_fix(by_any(blocks), *blocks)}'}
+                        f'smaller one): ' + (f'fade one out before the other comes in, so they never show clearly together'
+                                             if share >= SWAP_SAME else _fix(by_any(blocks), *blocks))}
 
     def pointer_line(key, t0, t1, share, _):
         return {"kind": "pointer_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "cover_pct": round(100 * share),
@@ -149,10 +203,11 @@ def overlaps(s: Sampled) -> list[dict]:
                 return by
         return {}
 
-    def swap(key, at):          # two texts on the same spot: a cross-fade swap is fine under SWAP_S
-        return SWAP_S if max(v[0] for v in at.values()) >= SWAP_SAME else ON_TEXT_S
+    def swap(key, at):          # two texts on the same spot: a cross-fade swap is fine under SWAP_S, if one is always faint
+        crossfade = max(v[0] for v in at.values()) >= SWAP_SAME and all(v[2] < SWAP_DIM for v in at.values())
+        return SWAP_S if crossfade else ON_TEXT_S
 
-    return (_named(s, crossed, lambda k, a: CROSS_S, crossed_line) + _named(s, on_text, swap, on_text_line)
+    return (_named(s, crossed, lambda k, a: CROSS_S, crossed_line) + _named(s, lined, lambda k, a: LINE_S, through_line) + _named(s, on_text, swap, on_text_line)
             + _named(s, pointed, lambda k, a: POINTER_S, pointer_line))
 
 

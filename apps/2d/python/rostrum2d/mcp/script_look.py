@@ -11,10 +11,9 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, sheet
-from rostrum_core.mcp.faults import fault
 from rostrum_core.mcp.files import look_path
 
-from . import edge_cut, look_empty, render, review
+from . import film_faults, look_empty, render, review
 from .look import SHEET_WIDTH
 from .pick import doc_and_comp
 
@@ -58,9 +57,7 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     reply.warnings += past
     every = look_empty.EVERY
     samples = [min(round(i * every, 4), (round(duration * fps) - 1) / fps) for i in range(int(duration / every + 1e-9))]
-    faults, notes = review.doc_faults(doc.data, comp, None, ctx.tool)
-    rigs, more = edge_cut.rig_boxes(doc.data, comp, samples)
-    cuts = review._cuts(edge_cut.scan(comp, samples, rigs, every))
+    found, measured, notes = film_faults.collect(doc.data, comp, samples, ctx.tool)
     frames = sorted({round(t * fps) for t in times + samples})
     scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps), frames)
     cols = 3 if len(times) in (5, 6, 9) else min(4, len(times))
@@ -76,11 +73,11 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             render.small_stills(ctx.tool, scene, tiny, look_empty.SAMPLE_W, lambda d, n: step(len(tiles) + d, n))
             w, h = sheet.contact_sheet([(png, f"{t:.2f} s   f{round(t * fps)}") for t, png in tiles], tile_w, cols, dest)
             pixels = look_empty.scan_pngs(tiny, every, duration)
-        rows = review.ranked(pixels + cuts + faults, duration)
+        rows = review.ranked(pixels + found, duration)
         return Reply("", {"times": times, "sheet": str(dest), "width": w, "height": h, "comp": comp["id"],
-                          "faults": [{k: r[k] for k in ("kind", "start", "end", "text", "id", "ids") if k in r} for r in rows],
-                          "info": [r["text"] for r in review.info(faults)]},
-                     [dest], [dest], scene.get("warnings", []) + notes + more)
+                          "faults": [{k: r[k] for k in ("kind", "rank_kind", "start", "end", "text", "id", "ids", "fix") if k in r} for r in rows],
+                          "info": [r["text"] for r in measured]},
+                     [dest], [dest], scene.get("warnings", []) + notes)
 
     got = ctx.long(f'run_script look {comp["id"]}', job_fn)
     reply.warnings += [w for w in got.warnings if w not in reply.warnings]
@@ -90,9 +87,10 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
         return reply
     seen = got.data["result"]
     rows = seen["faults"]
+    picked, more = review.few(rows, FAULTS)          # at most 3 of a kind written out, the rest counted per kind
     said = (f'\nLook at {comp["id"]}: contact sheet of {len(times)} moments ({", ".join(f"{t:g}" for t in times)} s), {seen["width"]}×{seen["height"]}. '
-            + (f"Weakest moments, most visible first ({len(rows)}):\n" + "\n".join(map(_line, rows[:FAULTS]))
-               + (f"\n({len(rows) - FAULTS} more in data.look.faults.)" if len(rows) > FAULTS else "")
+            + (f"Weakest moments, most visible first ({len(rows)}):\n" + "\n".join(map(_line, picked))
+               + (f"\n({more}.look.faults.)" if more else "")
                + "\nLayout faults (a device cut, a layer hanging off its device's screen, a text crossed or cut by its screen's edge, a pointer on a label, a tiny end card) come first and name the fix. "
                  "Fix in the script and re-run it under the same name with look." if rows else
                "No weak moment found (blank, held, cut-off, faint leftovers, stray specks, crowded lock-ups, texts crossed, cut by a screen's edge or on texts, "
@@ -101,5 +99,5 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
     reply.data["look"] = seen
     reply.files += got.files
     reply.images += got.images
-    reply.faults = [fault(f'{r["kind"]}:{r["id"]}' if r.get("id") else r["kind"], r["text"], "change it in the script and re-run under the same name", f'{r["start"]:g} s' if "start" in r else None) for r in rows]   # faults first (shared faults.py)
+    reply.faults = film_faults.as_faults(rows)       # faults first (shared faults.py); render_export gates on the same ones
     return reply

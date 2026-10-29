@@ -85,7 +85,11 @@ each top-level layer that blends normally is painted once per group and its pict
 sub-frames (staging, layout and painting skipped). A whip pan needing 128 steps whose layers need 16 paints 16 times,
 not 128. The picture is the same up to resampling (a picture moved by a fraction of a px is sampled smoothly) and the
 few px a move uncovers at the frame's edge, which take the picture's edge px. Layers with a blend mode, glow or frosted
-glass are still drawn each sub-frame. A request's own `shutterSamples` never groups.
+glass are still drawn each sub-frame. A request's own `shutterSamples` never groups. Top-level layers in a row that
+the frame moves alike in every sub-frame of the group (the same depth) share one kept picture (`still_runs.rs`
+`moving_runs`): 200 bubbles at five depths keep five pictures, not 200 (each a whole frame on the graphics card, laid
+over every sub-frame: the Undertow whip pan took 31 s a frame that way). At most `KEPT_BYTES` (serve.rs, 768 MB) of pictures are kept at once; past
+it the group's other moving layers are drawn each sub-frame.
 
 **Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
 the comp's values for that one frame, and its `shutterSamples` is then the exact count, not adapted (1 sample = no blur:
