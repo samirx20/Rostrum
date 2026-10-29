@@ -87,7 +87,7 @@ fn a_gradient_of_no_size_in_a_tilted_flipped_group_exports() {
 fn a_still_frame_is_the_frame_before_again_and_the_same_picture() {
     let mut s0 = item("s0", "shape", json!({ "x": 40.0, "y": 60.0, "w": 60.0, "h": 40.0, "fill": "#ff3300" }));
     s0["anim"] = json!({ "x": [{ "t": 0.0, "v": 40.0 }, { "t": 0.3, "v": 160.0 }] });
-    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 1.0, "background": "#101418" }));
+    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 1.0, "background": "#101418", "shutterSamples": 1.0 }));
     comp["layers"] = json!([s0, item("s1", "shape", json!({ "x": 200.0, "y": 160.0, "w": 80.0, "h": 50.0, "fill": "#33ccff" }))]);
     let (mut held, mut session) = (Held::default(), None);
     load(&mut held, &mut session, &mut None, &json!({ "scene": { "format": FORMAT, "version": VERSION, "comp": comp }, "cpu": true })).unwrap();
