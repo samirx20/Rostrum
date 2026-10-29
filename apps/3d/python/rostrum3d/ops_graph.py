@@ -46,7 +46,7 @@ def _one(ctx, targets):
 
 @R.operation("graph.add", "Add a block to a material's Blocks view (its graph): `type` one of image, noise, pattern, mix, ramp, "
              "curve, colourAdjust, bevel, occlusion, lines, lightToColour, halftone; optional `id` (else <type>_<n>), "
-             "`x`, `y` and `values` ({setting: value}, the type's settings: graph.describe's catalogue). A Lines, "
+             "`x`, `y` (left out: left of the leftmost block, level with Surface) and `values` ({setting: value}, the type's settings: graph.describe's catalogue). A Lines, "
              "Light to colour or Halftone block's settings are the material's own fields; it switches on when wired "
              "into Surface's style (graph.connect). Returns the block.",
              target="material", label="Add block", importance="secondary",
@@ -64,7 +64,8 @@ def graph_add(ctx, targets, args):
     if type_ in B.STYLIZED and any(b["type"] == type_ for b in g["blocks"]):
         ctx.fail(codes.BAD_ARGUMENT, f'type "{type_}"', "is already in this material (one per material: its settings "
                  "are the material's own)", hint="Change the one there with graph.set.")
-    block = {"id": bid, "type": type_, "x": args.get("x", 0), "y": args.get("y", 0)}
+    fx, fy = G.free_place(g)                 # no place given: left of the leftmost block, never on top of one
+    block = {"id": bid, "type": type_, "x": args.get("x", fx), "y": args.get("y", fy)}
     vals = args.get("values") or {}
     if type_ in B.STYLIZED:
         _material_values(ctx, mid, vals, {i.name for i in B.BY_TYPE[type_].inputs if i.name != B.CHAIN})
@@ -97,10 +98,18 @@ def graph_connect(ctx, targets, args):
     return {"from": args["from"], "to": args["to"]}
 
 
+SHOW = [Param.list("show", "text", label="Show on the material",
+                   help="Settings of this block to show as plain rows in the material's own settings (e.g. a Noise's "
+                        "scale), so it can be changed without opening the blocks"),
+        Param.list("hide", "text", label="Hide from the material", help="Settings shown there to take away again")]
+
+
 @R.operation("graph.set", "Change a block: `block` its id, then `values` ({setting: value}) and / or `x`, `y` (its "
              'place in the view). `block: "surface"` changes the material\'s own fields (as material.set) or Surface\'s '
-             "place.", target="material", label="Change block", importance="secondary",
-             params=[Param.text("block", label="Block", required=True), VALUES, *XY])
+             "place. `show` / `hide` [settings]: a block's settings shown as plain rows in the material's own settings "
+             '("Noise · Scale"), so a person or agent changes them there without opening the blocks.',
+             target="material", label="Change block", importance="secondary",
+             params=[Param.text("block", label="Block", required=True), VALUES, *XY, *SHOW])
 def graph_set(ctx, targets, args):
     mid, mat = _one(ctx, targets)
     g, bid = G.graph_of(mat), args["block"]
@@ -123,7 +132,20 @@ def graph_set(ctx, targets, args):
                                **{k: G.check_value(kind.type, k, v, ctx.where) for k, v in vals.items()}}
         except G.GraphError as e:
             _fail(ctx, e)
-    if "x" in args or "y" in args or (vals and kind.type not in ("surface", *B.STYLIZED)):
+    if args.get("show") or args.get("hide"):
+        can = G.showable(kind)
+        for name in [*args.get("show", []), *args.get("hide", [])]:
+            if name not in can:
+                ctx.fail(codes.BAD_ARGUMENT, f'"{name}"', f"is not a setting {kind.label} can show on the material",
+                         can, hint="Surface's and stylized blocks' settings are the material's own rows already."
+                         if not can else None)
+        now = [n for n in can if n in set(place.get("shown") or ()) | set(args.get("show", []))
+               and n not in set(args.get("hide", []))]
+        if now:
+            place["shown"] = now
+        else:
+            place.pop("shown", None)
+    if "x" in args or "y" in args or args.get("show") or args.get("hide") or             (vals and kind.type not in ("surface", *B.STYLIZED)):
         ctx.set(mid, G.FIELD, g)
     return {"block": bid}
 

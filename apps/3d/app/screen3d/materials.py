@@ -29,7 +29,7 @@ from rostrum_gui import rows, sections
 from rostrum_gui.edits import Scrub
 from rostrum_gui.model import RowsModel
 
-from . import material_live, outline, route
+from . import material_live, outline, route, shown_blocks
 
 
 
@@ -42,6 +42,7 @@ class Materials3D(QObject):
         self.b, self.balls = bridge, balls
         self._open, self._scrub, self._mat = {}, None, ""
         self._live = None                               # a live drag (material_live.Drag): the view only, until the release
+        self._held = None                               # a shown block setting's drag: [row id, value], written at the release
         self.model = RowsModel(rows.ROLES, self)       # the secondary rows, under the item's own
         self.headModel = RowsModel(rows.ROLES, self)   # the primary ones, over them
         bridge.outlineChanged.connect(self._refresh)
@@ -164,6 +165,7 @@ class Materials3D(QObject):
                                                                 False, opened=self._open))
             top = [r for r in out if r["row"] == "param" and r.get("in") == ""]      # the essentials: primary params and their group's rest
             rest = [r for r in out if r not in top]
+            top += shown_blocks.rows_for(mat, self.b.facts_of(mat))                  # block settings shown on it (PR5)
             for model, part in ((self.headModel, top), (self.model, rest)):
                 model.reset(part) if new else model.update(part)
         self.rowsChanged.emit()
@@ -183,6 +185,9 @@ class Materials3D(QObject):
         self._own_first()
         if not self._mat:
             return False
+        if shown_blocks.is_shown(param):
+            call, label = shown_blocks.call_for(self.b.doc.item(self._mat), param, value)
+            return self._run(call, label)
         return self._run(self.b.edit_call(self._mat, param, value), f"Material: {param}")
 
     @Slot(str)
@@ -190,6 +195,9 @@ class Materials3D(QObject):
         self.endScrub()
         self._own_first()
         if not self._mat:
+            return
+        if shown_blocks.is_shown(param):            # a shown block setting: written once at the release
+            self._held = [param, None]
             return
         if material_live.ok(self.b, param):        # drawn live in the window's view, written once at the release
             mat = self.b.doc.item(self._mat)
@@ -200,6 +208,11 @@ class Materials3D(QObject):
 
     @Slot(str, "QVariant")
     def scrub(self, param, value):
+        if shown_blocks.is_shown(param):
+            if self._held is None or self._held[0] != param:
+                self.beginScrub(param)
+            self._held[1] = value
+            return
         if self._live is not None and self._live.param == param:
             return self._live.send(value)
         if self._scrub is None or self._scrub.name != param:
@@ -226,6 +239,9 @@ class Materials3D(QObject):
 
     @Slot()
     def endScrub(self):
+        held, self._held = self._held, None
+        if held is not None and held[1] is not None:
+            self.setValue(held[0], held[1])
         if self._live is not None:
             return self._live_end(cancel=False)
         s, self._scrub = self._scrub, None
@@ -234,6 +250,7 @@ class Materials3D(QObject):
 
     @Slot()
     def cancelScrub(self):
+        self._held = None
         if self._live is not None:
             return self._live_end(cancel=True)
         s, self._scrub = self._scrub, None

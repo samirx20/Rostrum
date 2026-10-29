@@ -1,7 +1,8 @@
 """Automatic unfolding (SPEC §5): `mesh.unfold` lays a mesh's surface flat into its square paint picture, so it can be
 painted. The core does it (xatlas, the `unfold` request, ENGINE_CONTRACT.md § 1) on the mesh exactly as it draws it;
 the answer is stored as data on the item (`uvs`, one (u, v) per face corner): analysed once, stored, never redone
-by a render. One operation, one undo step.
+by a render. One operation, one undo step. The built mesh those corners belong to is kept in the shared cache beside
+it (paint_masks.keep_geometry), for the automatic masks (Edges, Facing up …).
 
 Like mesh.edit it needs the engine: the app and the MCP server hand theirs over through ops_mesh.use_engine; without
 one it fails loudly. A shape changed after unfolding no longer matches its `uvs` and the core says so: unfold again.
@@ -27,12 +28,14 @@ def use_engine(engine, folder=None):
         scene = C.describe(doc, shots[0]["id"], folder)
         _drop_uvs(scene["items"], id_)               # unfold the shape as made, whatever it was unfolded to before
         engine.ensure_scene(scene)
-        return engine.unfold(id_, size)
+        reply = engine.unfold(id_, size)
+        # the built mesh those corners belong to, kept for the paint layers' automatic masks (paint_masks.py)
+        return {**reply, "geometry": engine.geometry(id_)}
     _UNFOLD = unfold if engine is not None else None
 
 
 def use_unfold(fn):
-    """Tests: any (doc, id, size) -> {"uvs": […]} function."""
+    """Tests: any (doc, id, size) -> {"uvs": […], "geometry"?: {points, faceCounts, faceIndices}} function."""
     global _UNFOLD
     _UNFOLD = fn
 
@@ -63,6 +66,9 @@ def mesh_unfold(ctx, targets, args):
         except Exception as e:  # noqa: BLE001  any engine failure is this operation's, named
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f"could not be unfolded: {e}")
         ctx.set(t, "uvs", reply["uvs"])
+        if reply.get("geometry"):
+            from .paint_masks import keep_geometry
+            keep_geometry(reply["uvs"], reply["geometry"])
         out[t] = {"pieces": reply.get("charts"), "covered": reply.get("used"), "split faces": reply.get("split")}
     return {"unfolded": out}
 

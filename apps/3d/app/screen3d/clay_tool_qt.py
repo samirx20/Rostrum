@@ -34,6 +34,7 @@ from rostrum_gui.gui_filter import GuiFilter
 from . import clay_ring as R
 from .clay_brush_qt import ClayBrush
 from .clay_layers_qt import ClayLayers
+from .clean_mesh_qt import CleanMesh
 from .clay_steps_qt import ClaySteps
 from .clay_draw_qt import ClayDraw
 from .clay_stroke import WORDS, ClayStroke
@@ -134,6 +135,7 @@ class ClayTool(ClayStroke, QObject):
         self.drawer = ClayDraw(self)
         self.steps = ClaySteps(self)                                         # the Steps list and Puff (ClaySteps.qml)
         self.layers = ClayLayers(self)                                       # sculpt layers (ClayLayers.qml)
+        self.clean = CleanMesh(self)                                         # Make clean mesh (ClayClean.qml)
         self.sculpted.connect(self._on_sculpted)
         self.hovered.connect(self._on_hover)
         self.lumped.connect(self._on_lump)
@@ -159,6 +161,7 @@ class ClayTool(ClayStroke, QObject):
     drawObj = Property(QObject, lambda s: s.drawer, constant=True)        # Draw and Spin (ClayDraw.qml)
     stepsObj = Property(QObject, lambda s: s.steps, constant=True)        # Steps list, Puff (ClaySteps.qml)
     layersObj = Property(QObject, lambda s: s.layers, constant=True)      # sculpt layers (ClayLayers.qml)
+    cleanObj = Property(QObject, lambda s: s.clean, constant=True)        # Make clean mesh (ClayClean.qml)
     # a left drag on the viewport draws (Draw, Spin): never turns the view
     draws = Property(bool, lambda s: s._on and s._make in ("draw", "spin"), notify=changed)
     # a left drag on the viewport goes to the brush (else it falls through: Lump's click, the view's turn)

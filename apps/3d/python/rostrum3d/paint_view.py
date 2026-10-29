@@ -23,6 +23,8 @@ from collections import OrderedDict
 
 import numpy as np
 
+from .stamp_turn import angle_of
+
 VIEW_KEYS = ("eye", "target", "fov", "frame", "width", "height")
 JUMP, JUMP_PX = 3.0, 4.0           # a seam: a canvas step over JUMP × (screen step × scale) + JUMP_PX
 HOLES = 1                          # projection: then fill holes up to this many texels across
@@ -209,31 +211,35 @@ def runs(stroke: dict, pic, item_id: str, size: int) -> list[dict]:
             screen = np.linalg.norm(s[k, :2] - s[k - 1, :2])
             cut_here = np.linalg.norm(spot[k] - spot[k - 1]) > JUMP * screen * max(scale[k], scale[k - 1]) + JUMP_PX
             if cut_here:
-                out.append(_run(stroke, s, spot, across, start, k))
+                out.append(_run(stroke, s, spot, across, start, k, jac))
                 start = k
                 continue
         if cut:
             if start is not None:
-                out.append(_run(stroke, s, spot, across, start, k))
+                out.append(_run(stroke, s, spot, across, start, k, jac))
             start = None
         elif start is None:
             start = k
     return out
 
 
-def _run(stroke, s, spot, across, i, j) -> dict:
+def _run(stroke, s, spot, across, i, j, jac) -> dict:
     pts = [[round(float(spot[q, 0]), 2), round(float(spot[q, 1]), 2), round(float(s[q, 2]), 4)] for q in range(i, j)]
     if len(pts) == 1:                                    # a click: one dab
         pts.append([pts[0][0] + 0.01, *pts[0][1:]])
     size = max(0.5, float(stroke["size"]) * float(np.median(across[i:j])))
-    return {"points": pts, "size": round(size, 3), "screen": s[i:j, :2]}
+    # the screen's up at the run's start, in canvas px (a stamp stands its picture along it: stamp_turn.py)
+    return {"points": pts, "size": round(size, 3), "screen": s[i:j, :2], "up": -jac[i, :, 1]}
 
 
 def lay(stroke: dict, pic, item_id: str, size: int) -> list[dict]:
     """One view stroke → the kit's strokes on `item_id`'s canvas (one per run), its view fields left out; the first
-    keeps the stroke's id. [] when the camera sees none of the path on the item."""
+    keeps the stroke's id. [] when the camera sees none of the path on the item. A stamp (`stampTurn`) stands upright
+    as the screen saw it: its angle from the screen's up there (stamp_turn.angle_of)."""
     base = {k: v for k, v in stroke.items() if not k.startswith("view")}
-    return [{**base, "id": stroke["id"] if k == 0 else f'{stroke["id"]}.{k}', "size": r["size"], "points": r["points"]}
+    turn = stroke.get("stampTurn")
+    return [{**base, "id": stroke["id"] if k == 0 else f'{stroke["id"]}.{k}', "size": r["size"], "points": r["points"],
+             **({"angle": angle_of(r["up"], turn)} if turn is not None else {})}
             for k, r in enumerate(runs(stroke, pic, item_id, size))]
 
 

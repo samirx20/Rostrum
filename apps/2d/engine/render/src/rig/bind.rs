@@ -32,7 +32,7 @@ fn rigid(layer: &mut Item, d: Aff) {
     let (x, y) = d.apply((layer.num("x"), layer.num("y")));
     let (rotation, scale) = (layer.num("rotation") + d.turn(), layer.num("scale") * d.uniform_scale());
     for (f, v) in [("x", x), ("y", y), ("rotation", rotation), ("scale", scale)] {
-        layer.props.insert(f.into(), Value::from(v));
+        layer.props.to_mut().insert(f.into(), Value::from(v));
     }
 }
 
@@ -75,7 +75,7 @@ fn bend(layer: &mut Item, pose: &Pose, b1: usize, b2: usize, grid: usize, soft: 
             let _ = write!(pts, "{}{:.3} {:.3}", if pts.is_empty() { "" } else { " " }, moved.0, moved.1);
         }
     }
-    layer.props.insert("warp".into(), json!({ "x": rx, "y": ry, "w": rw, "h": rh, "cols": n, "rows": n, "pts": pts }));
+    layer.props.to_mut().insert("warp".into(), json!({ "x": rx, "y": ry, "w": rw, "h": rh, "cols": n, "rows": n, "pts": pts }));
 }
 
 /// The stage's part of a bent layer: (style for its outer box, the filter's markup), both empty without a warp.

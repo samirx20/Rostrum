@@ -301,8 +301,10 @@ pub trait PaintScene: RenderContext {
 
     /// Rostrum patch (streak blur): kept picture `k` averaged over `moves` (each as `draw_cached_moved`'s `m`, 1..=128
     /// of them) in one draw, the streak a layer leaves moving through the shutter, only over `rect` (x0, y0, x1, y1 in
-    /// the canvas's device px) when given; false when it has none or can't.
-    fn draw_cached_streak(&mut self, _k: usize, _moves: &[[f64; 6]], _rect: Option<[f32; 4]>) -> bool {
+    /// the canvas's device px) when given, laid on with `blend` (the layer's own: only a mode that averages exactly,
+    /// normal, plus, screen or multiply, gives the average of the layer laid on at each move); false when it has none
+    /// or can't.
+    fn draw_cached_streak(&mut self, _k: usize, _moves: &[[f64; 6]], _rect: Option<[f32; 4]>, _blend: BlendMode) -> bool {
         false
     }
 

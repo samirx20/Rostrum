@@ -39,19 +39,27 @@ pub struct Streak {
     pub reach: Option<[f64; 4]>,
     /// Where its picture is: its padded boxes at the frame's time (page px).
     pub ink: [f64; 4],
-    /// It blends with what is under it (a blend mode, a glow, frosted glass: still_runs.rs `regroups`), so it isn't
-    /// laid over as one picture: it is painted at each of its moves, as laid out at the frame's time (blurred.rs).
+    /// It blends with what is under it in a way an average of it doesn't give (a blend mode other than add, screen and
+    /// multiply, frosted glass: still_runs.rs `keeps`), so it isn't laid on as one picture: it is painted at each of its
+    /// moves, as laid out at the frame's time (blurred.rs).
     pub blends: bool,
+    /// Its picture is laid on with a blend of its own (add, screen, multiply): a streak of its own, never one with its
+    /// neighbours'.
+    pub alone: bool,
+    /// A group whose children each move their own way (bubbles rising in a group the frame pans past): each child's
+    /// element id and moves (page px, as `moves`). The group is drawn as laid out at the frame's time, each child moved
+    /// to each sub-frame, and averaged (blurred.rs): its sub-frames without a stage or layout of their own.
+    pub parts: Vec<(String, Moves)>,
 }
 
 /// For each stage piece of `centre` (piece 0 the background, then one per drawn top-level layer: stage.rs `parts`):
 /// its moves when it only moves, None when it is the same in every sub-frame (it moves under HOLD_PX) or must be staged
 /// per sub-frame. `items` are the sub-frames' evaluated comps; `streakable(p)` says piece p may be drawn as a kept
-/// picture (still_runs.rs `regroups`; else it `blends`); `spread(p)` how far piece p's blurs and shadows reach past its boxes (its own px: `pad`).
+/// picture (`l` its layer: still_runs.rs `keeps`; else it `blends`); `spread(p)` how far piece p's blurs and shadows reach past its boxes (its own px: `pad`).
 /// `shares(id)`: the sub-frames' layer `id` has `centre`'s own children, effects, masks and stops (eval.rs
 /// `at_reusing`), so only its own fields are compared.
 /// Also returns which pieces are staged per sub-frame. Empty when the sub-frames don't draw the same layers.
-pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, spread: impl Fn(usize) -> f64, shares: impl Fn(&str) -> bool) -> (Vec<Option<Streak>>, Vec<bool>) {
+pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize, &Item) -> bool, spread: impl Fn(usize) -> f64, shares: impl Fn(&str) -> bool) -> (Vec<Option<Streak>>, Vec<bool>) {
     let rigid = |a: &Item, b: &Item| if shares(a.id) { same_own(a, b, true) } else { same_but_place(a, b, true) };
     let drawn = |c: &'_ Item| -> Vec<String> { super::hold::drawn(c).iter().map(|l| l.id.to_string()).collect() };
     let ids = drawn(centre);
@@ -65,6 +73,29 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
     let mut staged = vec![false];
     for (k, l) in super::hold::drawn(centre).into_iter().enumerate() {
         let m = subs.iter().all(|s| rigid(l, s[k])).then(|| moved(cv.as_ref(), l, &views, |i| Some(subs[i][k]))).flatten();
+        // Not one picture moved: a group whose children only move, each its own way, is drawn child by child.
+        let parts = if m.is_none() && crate::scene::matte::of(l, centre).is_none() { split(cv.as_ref(), l, &views, |i| subs[i][k]) } else { None };
+        if let Some(parts) = parts {
+            let own = moved(cv.as_ref(), l, &views, |i| Some(subs[i][k]));
+            let still = parts.iter().zip(&l.layers).all(|((_, pm), c)| part_still(c, cv.as_ref(), l, pm));
+            match own {
+                Some(own) if !still => {
+                    let parts = parts.into_iter().map(|(id, pm)| (id, pm.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect())).collect();
+                    let ink = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
+                    out.push(Some(Streak { moves: own.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach: None, ink, blends: true, alone: true, parts }));
+                    staged.push(false);
+                }
+                Some(_) => {
+                    out.push(None);
+                    staged.push(false);
+                }
+                None => {
+                    out.push(None);
+                    staged.push(true);
+                }
+            }
+            continue;
+        }
         // A matted layer moves as one picture when its matte is the same picture moved alike (a frame's move over a title
         // and the water that reveals it); else it is staged.
         let m = match crate::scene::matte::of(l, centre) {
@@ -86,7 +117,7 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
                     Some((r, i)) => (Some(r), i),
                     None => (None, [f64::MIN, f64::MIN, f64::MAX, f64::MAX]),
                 };
-                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, blends: !streakable(k + 1) }));
+                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, blends: !streakable(k + 1, l), alone: l.props.get("blend").and_then(serde_json::Value::as_str).is_some_and(|b| b != "normal"), parts: vec![] }));
                 staged.push(false);
             }
             _ => {
@@ -103,6 +134,32 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize) -> bool, 
 fn moved<'i, 'a: 'i>(cv: Option<&View>, l: &Item, views: &[Option<View>], at: impl Fn(usize) -> Option<&'i Item<'a>>) -> Option<Vec<Aff>> {
     let from = placed(cv, l).inverse()?;
     views.iter().enumerate().map(|(i, v)| Some(placed(v.as_ref(), at(i)?) * from)).collect()
+}
+
+/// A group `l` (`at(i)`: it in sub-frame i) the same in every sub-frame but for its own place and its children's, each
+/// child the same but for its own place: each child's id and where it goes in each sub-frame (page px, from its place at
+/// the frame's time through the group's and the frame's). None for anything else.
+fn split<'i, 'a: 'i>(cv: Option<&View>, l: &Item, views: &[Option<View>], at: impl Fn(usize) -> &'i Item<'a>) -> Option<Vec<(String, Vec<Aff>)>> {
+    let all = |x: &[Item], y: &[Item], top: bool| x.len() == y.len() && x.iter().zip(y).all(|(p, q)| same_but_place(p, q, top));
+    let alike = |b: &Item| same_own(l, b, true) && all(&l.effects, &b.effects, false) && all(&l.masks, &b.masks, false) && all(&l.stops, &b.stops, false) && all(&l.layers, &b.layers, true);
+    if l.kind != "group" || l.layers.is_empty() || !(0..views.len()).all(|i| alike(at(i))) {
+        return None;
+    }
+    let page = |v: Option<&View>, g: &Item, c: &Item| v.map_or(Aff::ID, |v| v.map(g)) * super::steps::local(g) * super::steps::local(c);
+    l.layers.iter().enumerate().map(|(j, c)| {
+        let from = page(cv, l, c).inverse()?;
+        Some((c.id.to_string(), views.iter().enumerate().map(|(i, v)| page(v.as_ref(), at(i), &at(i).layers[j]) * from).collect()))
+    }).collect()
+}
+
+/// Every corner of child `c` of group `g` (and its children) stays within HOLD_PX of its place under each of its moves.
+fn part_still(c: &Item, view: Option<&View>, g: &Item, moves: &[Aff]) -> bool {
+    let mut corners = std::collections::HashMap::new();
+    super::steps::corners(c, view.map_or(Aff::ID, |v| v.map(g)) * super::steps::local(g), &mut corners);
+    moves.iter().all(|m| corners.values().all(|&p| {
+        let q = m.apply(p);
+        (q.0 - p.0).hypot(q.1 - p.1) <= HOLD_PX
+    }))
 }
 
 /// Two moves within a ten-thousandth in turn and scale and HOLD_PX in place: the same move.
@@ -131,9 +188,16 @@ fn still(l: &Item, view: Option<&View>, moves: &[Aff]) -> bool {
 }
 
 /// How far a piece's own blurs, shadows and strokes reach past its boxes (its own px, generously; `reach` scales it as the
-/// layer is on screen): three times each blur and shadow number, once each stroke or border number, read from its markup.
+/// layer is on screen): three times each blur and shadow number and each glow's radius, once each stroke or border
+/// number, read from its markup.
 pub fn pad(piece: &str) -> f64 {
     let mut pad = 0.0;
+    // A glow drawn from the layer's own picture (stage.rs `data-glow="radius strength;…"`).
+    for (at, _) in piece.match_indices("data-glow=\"") {
+        let rest = &piece[at + 11..];
+        let glows = &rest[..rest.find('"').unwrap_or(rest.len())];
+        pad += 3.0 * glows.split(';').filter_map(|g| g.split_ascii_whitespace().next()?.parse::<f64>().ok()).map(f64::abs).sum::<f64>();
+    }
     for (key, k) in [("blur(", 3.0), ("shadow(", 3.0), ("shadow:", 3.0), ("stroke-width", 1.0), ("border", 1.0)] {
         for (at, _) in piece.match_indices(key) {
             let rest = &piece[at + key.len()..];
@@ -183,7 +247,8 @@ fn same_own(a: &Item, b: &Item, top: bool) -> bool {
         return false;
     }
     let warped = top && ["tiltX", "tiltY"].iter().any(|f| a.props.get(*f).and_then(serde_json::Value::as_f64).unwrap_or(0.0) != 0.0);
-    let props = a.props.iter().all(|(k, v)| {
+    // The scene's own fields, borrowed by both (eval.rs `props_at`: nothing keyed): the same, without a look at each.
+    let props = std::ptr::eq(&*a.props, &*b.props) || a.props.iter().all(|(k, v)| {
         let Some(w) = b.props.get(k) else { return false };
         if top && PLACE.contains(&k.as_str()) && !(warped && k != "x" && k != "y") {
             return true;
@@ -259,5 +324,6 @@ mod tests {
     fn a_pieces_blurs_and_shadows_pad_its_reach() {
         let p = r#"<div style="filter:blur(4px);"><div style="box-shadow:2px -3px 5px rgba(0,0,0,0.5);stroke-width:6"></div></div>"#;
         assert_eq!(super::pad(p), 12.0 + 3.0 * (2.0 + 3.0 + 5.0 + 0.5) + 6.0);
+        assert_eq!(super::pad(r#"<div data-glow="8 1;20 0.5" style=""></div>"#), 3.0 * 28.0, "a glow reaches three times its radius");
     }
 }

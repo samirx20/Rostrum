@@ -114,6 +114,46 @@ def clay_reach(size_px: float, mpp_canvas: float | None, mpp_screen: float | Non
     return round(max(1e-5, size_px / 2 * (mpp_canvas or mpp_screen or GUESS_MPP)), 6)
 
 
+# --- Stamp (an "alpha"): on a Relief layer a click lays one whole picture (rostrum3d.ops_paint_stamp, paint.stamp)
+HOWS = [{"value": "stroke", "label": "Brush"}, {"value": "stamp", "label": "Stamp"}]
+STAMP_CHANNEL = "height"                 # Stamp is offered while the active layer paints Relief
+
+
+def start_stamp() -> dict:
+    """The stamp's own settings (the size is the brush's): the first built-in tip picture, half depth, no turn."""
+    from rostrum3d.ops_paint_stamp import DEPTH, TURN
+    first = next(p for p in BRUSH if p.name == "texture").choices()
+    return {"texture": next((c["value"] for c in first if c["value"] != "none"), "none"),
+            "depth": DEPTH.default, "turn": TURN.default}
+
+
+def clay_stamp_reach(size_px: float, distance, pose) -> float:
+    """A clay stamp's reach (metres): its Size in screen px at the click (the pick's distance through the view the
+    press was in), as a mesh's or a From-the-view stamp's Size is; GUESS_MPP a px when either is missing."""
+    from rostrum3d.stamp_view import metres_per_screen_px
+    mps = metres_per_screen_px(distance, pose["fov"], pose["height"]) if distance and pose else GUESS_MPP
+    return round(max(1e-5, size_px / 2 * mps), 6)
+
+
+def stamp_calls(item: dict, layer: str, stamp: dict, anchors: list, reach: float) -> list[dict]:
+    """One click's stamp on a clay as one call, at its anchor (the picture's width 2 × reach, metres). A mesh's is
+    kept as clicked in the view (view_stamp_calls), so it stands upright as seen."""
+    return [{"op": "paint.stamp", "target": [item["id"]],
+             "args": {"picture": stamp["texture"], "depth": stamp["depth"], "turn": stamp["turn"], "layer": layer,
+                      "at": list(anchors[0][:6]), "size": round(2 * reach, 6)}}]
+
+
+def view_stamp_calls(items: list[str], paint_item: str, active: str, stamp: dict, size_px: float,
+                     view: dict) -> list[dict]:
+    """A Stamp click kept as clicked in the view (From the view, or on a mesh): one paint.stamp per item under it (the painted item on its active layer; another
+    on its top Relief layer, made when it has none), at the click's px of that view (size in screen px)."""
+    cam = {k: view[k] for k in ("eye", "target", "fov", "frame", "width", "height")}
+    base = {"picture": stamp["texture"], "depth": stamp["depth"], "turn": stamp["turn"], "size": float(size_px),
+            "viewPoint": list(view["points"][0][:2]), **cam}
+    return [{"op": "paint.stamp", "target": [i], "args": {**base, **({"layer": active} if i == paint_item and active
+                                                                       else {})}} for i in items]
+
+
 # --- From the view (brief 21b): the drag is stored as drawn (screen points of the view it was drawn in) on each
 # paintable item it crosses; the canvas lays it when it is made (rostrum3d.paint_view), so it stays editable.
 WHERE = [{"value": "surface", "label": "On the surface"}, {"value": "view", "label": "From the view"}]

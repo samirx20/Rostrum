@@ -13,6 +13,19 @@ pub fn regroups(piece: &str) -> bool {
     blends_plainly && !["backdrop-filter", "data-shutter-held", "data-tap", "data-glow", "mix-blend-mode=", "mix-blend-mode :"].iter().any(|k| piece.contains(k))
 }
 
+/// A motion-blurred frame may paint the piece once into a picture of its own and streak that picture (blurred.rs), laid
+/// on with its layer's own blend `blend` (CSS): when it regroups, or when that blend averages exactly (the average of
+/// the layer laid on at each move is the average picture laid on once: normal, plus-lighter, screen and multiply are
+/// linear in the layer's picture) and nothing in it reads what is under it (frosted glass), is drawn apart (held,
+/// tapped) or glows from its own picture (`data-glow`: kept, its glow came out up to 33/255 off the painted steps on
+/// Undertow's title). Blends inside the layer stay inside it: its element is a stacking context (it is always moved
+/// by a transform), an isolated group for them (blitz-paint blend.rs).
+pub fn keeps(piece: &str, blend: &str) -> bool {
+    regroups(piece)
+        || matches!(blend, "normal" | "plus-lighter" | "screen" | "multiply")
+            && !["backdrop-filter", "data-shutter-held", "data-tap", "data-glow"].iter().any(|k| piece.contains(k))
+}
+
 /// The move that carries the picture drawn through matrix `from` to where matrix `to` draws it, in device px of a
 /// view at `scale` whose top-left is page px (x0, y0): V · to · from⁻¹ · V⁻¹.
 pub fn delta(to: [f64; 6], from: [f64; 6], view: (f32, f32, f32)) -> Option<[f64; 6]> {
@@ -33,6 +46,16 @@ mod tests {
         assert!(!super::regroups("<div style=\"mix-blend-mode:normal;\"><div style=\"mix-blend-mode:plus-lighter;\"></div></div>"), "a glow copy");
         assert!(!super::regroups("<div data-glow=\"8 1\" style=\"\"></div>"));
         assert!(!super::regroups("<div style=\"backdrop-filter:blur(4px);\"></div>"));
+    }
+
+    #[test]
+    fn add_screen_and_multiply_layers_streak_as_one_picture() {
+        let add = "<div style=\"transform:translate(-50%, -50%);mix-blend-mode:plus-lighter;\"></div>";
+        assert!(!super::regroups(add));
+        assert!(super::keeps(add, "plus-lighter") && super::keeps(add, "multiply"));
+        assert!(!super::keeps(add, "overlay"), "an overlay's average isn't the average laid on");
+        assert!(!super::keeps("<div data-glow=\"8 1\" style=\"\"></div>", "normal"));
+        assert!(!super::keeps("<div style=\"backdrop-filter:blur(4px);\"></div>", "normal"));
     }
 
     #[test]

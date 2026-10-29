@@ -36,7 +36,7 @@ pub fn as_path<'a>(it: &Item<'a>) -> R<Item<'a>> {
     let (d, open) = outline(it)?;
     let mut p = it.clone();
     p.kind = "path";
-    let mut set = |f: &str, v: Value| { p.props.insert(f.into(), v); };
+    let mut set = |f: &str, v: Value| { p.props.to_mut().insert(f.into(), v); };
     set("d", d.0.trim_end().into());
     for (f, v) in [("fillRule", "nonzero"), ("cap", "butt"), ("join", "miter"), ("widthProfile", ""), ("taperAlong", "line")] {
         set(f, v.into());

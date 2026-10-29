@@ -3,6 +3,8 @@
 //! p = ease_a((t − a.t) / (b.t − a.t)) and the value is a + (b − a)·p (bent by spatial handles: `between`); before the first key and after the last the
 //! value holds. Colours mix in linear light; a path's shape blends point by point (morph.rs). A layer outside start ≤ t < end is left out.
 
+use std::borrow::Cow;
+
 use serde_json::{Map, Value};
 
 use super::fields::Role;
@@ -16,7 +18,9 @@ pub struct Item<'a> {
     pub node: &'a Node,
     pub t: f64,
     pub kind: &'static str,
-    pub props: Map<String, Value>,
+    /// Borrowed from the scene while no key, picture or follow changes them (most layers): an evaluation, a copy and a
+    /// comparison of an item then cost no copy of its fields (`same_props`).
+    pub props: Cow<'a, Map<String, Value>>,
     pub effects: Vec<Item<'a>>,
     pub masks: Vec<Item<'a>>,
     pub layers: Vec<Item<'a>>,
@@ -97,31 +101,31 @@ fn eval_with<'a>(node: &'a Node, t: f64, all: bool, fps: f64, layer: &dyn Fn(usi
 }
 
 /// A node's own fields at `t` as `eval` gives them: `props_at`, and which picture it shows.
-fn own_props(node: &Node, t: f64, fps: f64) -> Map<String, Value> {
+fn own_props(node: &Node, t: f64, fps: f64) -> Cow<'_, Map<String, Value>> {
     let mut props = props_at(node, t);
     // Which picture shows (a drawing's frame, paint, grain's and rough's frame, a video's frame) decides what is drawn, so it is
     // read at the frame's own time even in a motion-blur sub-frame (`content_time`).
     let tc = content_time(t);
     if node.kind == "drawing" {
-        props.insert("src".into(), Value::from(drawing_src(&node.frames, tc, fps)));
+        props.to_mut().insert("src".into(), Value::from(drawing_src(&node.frames, tc, fps)));
         if let Some(c) = shown(&node.frames, tc, fps).and_then(|f| f.2) {
-            props.insert("crop".into(), Value::from(c.to_vec()));     // where its ink-only picture lies (stage.rs)
+            props.to_mut().insert("crop".into(), Value::from(c.to_vec()));     // where its ink-only picture lies (stage.rs)
         }
     }
     if !node.paint.is_empty() {
         // Paint on an element (stage_paint.rs): the picture showing now ("" before its first drawing).
-        props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, tc, fps)));
-        props.insert("paintInside".into(), Value::from(node.paint_inside));
+        props.to_mut().insert("paintSrc".into(), Value::from(drawing_src(&node.paint, tc, fps)));
+        props.to_mut().insert("paintInside".into(), Value::from(node.paint_inside));
     }
     if !node.fill_frames.is_empty() {
         // A painted fill (stage_raster.rs): the painting's drawing showing now is the fill's picture.
-        props.insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, tc, fps)));
+        props.to_mut().insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, tc, fps)));
     }
     if node.kind == "grain" || node.kind == "rough" {
-        props.insert("frame".into(), Value::from((tc * fps + 1e-6).floor()));
+        props.to_mut().insert("frame".into(), Value::from((tc * fps + 1e-6).floor()));
     }
     if node.kind == "video" {
-        props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, tc, fps)));
+        props.to_mut().insert("picture".into(), Value::from(super::stage_fx::video_picture(node, tc, fps)));
     }
     props
 }
@@ -179,7 +183,10 @@ fn retimed<'a>(it: &Item<'a>, t: f64) -> Item<'a> {
 /// shown text in `body`). While a motion-blurred frame's sub-frames are built (`shutter_at`), a field that decides
 /// what is drawn (fields.rs `content`: a counter's number) is read at the frame's own time, so the sub-frames agree
 /// on it and only movement blurs (as in After Effects); every other field is read on its own side of a jump.
-pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
+pub fn props_at(node: &Node, t: f64) -> Cow<'_, Map<String, Value>> {
+    if node.anim.is_empty() && node.kind != "text" {
+        return Cow::Borrowed(&node.props);
+    }
     let mut props = node.props.clone();
     let offset = OFFSET.with(|c| c.get());
     for (field, keys) in &node.anim {
@@ -193,7 +200,7 @@ pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
     if node.kind == "text" {
         super::counter::apply(&mut props);      // a counting text shows its number now (counter.rs)
     }
-    props
+    Cow::Owned(props)
 }
 
 thread_local! {

@@ -131,6 +131,26 @@ How to: a wrinkle across a forehead.
    larger Size, and drag along just above the line.
 5. Shift+F (Final): the wrinkle catches the light. Too deep: undo, lower Opacity, paint again.
 
+A whole picture pressed in at once (a logo, rivets, scales): on the Relief layer click **Stamp**, pick or load the
+picture, set Size, Depth and Turn, and click on the clay (guide `painting`, "Stamping a picture").
+
+## Make a clean mesh
+
+A clay's surface is fine, uneven triangles: right for sculpting, awkward for export, rigging in another program or
+editing as a mesh. **Make clean mesh** rebuilds it as an even mesh of four-sided faces that follow the shape
+(Instant Meshes), added as a new mesh beside the clay.
+
+1. With the Clay tool on and the clay selected, find **Clean mesh** under Steps.
+2. Set **Faces**: about how many faces the mesh gets (4000 to start; 1000 is a low, light mesh, 20 000 keeps finer
+   sculpted detail).
+3. Click **Make clean mesh**. The row becomes a bar saying what it does and for how long (a few seconds for a
+   typical clay); **Cancel** stops it, and nothing changes.
+4. It lands as one undo step: a new mesh named "<clay> mesh" in the clay's place, with its material, selected; the
+   clay is hidden (Visible off), not removed, so you can sculpt it further and make a new mesh again.
+
+What it takes: the clay as it shows now, its layers at their Amounts and its pose included. Paint is not carried
+over (paint the mesh). The same clay and Faces again is instant: the rebuild is kept.
+
 ## Posing
 
 Any clay can bend: select it, click **Pose** on the tool rail and drag a hand (holds keep the feet still). The joints
@@ -169,6 +189,10 @@ under it, so positions are heights above the ground), then `c.lump((0, 0.175, 0)
 Every piece blends into one surface, so nothing floats or drifts apart, and the joints (`body`, `chest`, `head`,
 `arm.R` …) are found from that one shape for `c.bend` / `c.pose` (guides `posing`, `script`). Separate clays or
 meshes for limbs only touch, with a hard line, and don't bend together.
+
+A clean mesh for export: `edit_document` with `clay.clean_mesh {target: [clay], faces: 4000}` (it waits for the
+rebuild, a few seconds; the reply names the new mesh, its faces and points; the clay is hidden). Look at it with
+`look_frame` before exporting.
 
 The Clay tool makes the same operations an agent calls (guides `agents` and `script`):
 

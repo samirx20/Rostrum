@@ -4,7 +4,8 @@ import RostrumKit
 // The right panel while a material's blocks are open (BlocksPanel.qml) and a block is picked in the view: that block's
 // settings (backend.blocks.rows, screen3d/blocks_qt.py), in place of the item's own (hidden meanwhile). Surface = the material's own rows (as
 // under its item); any other block = its type's settings (Noise: Scale, Detail, Roughness, Distortion). A setting a wire
-// feeds says so under its field. No ‹ here: the block view's own ‹ Back (and Esc) closes both.
+// feeds says so under its field. Under them, Show on material ▾ (PR5): the block's settings with ✓ on those shown as
+// plain rows in the material's own settings (graph.set show / hide). No ‹ here: the block view's own ‹ Back (and Esc) closes both.
 Rectangle {
     id: panel
     objectName: "blockSettings"
@@ -29,6 +30,16 @@ Rectangle {
             Repeater {
                 model: panel.bk.rows
                 delegate: InspectorRow { width: panel.w; bridge: panel.bk; instant: panel.bk.rows.instant }
+            }
+            Item { width: 1; height: showOn.visible ? Theme.gap : 0 }
+            RowButton {     // PR5: put this block's settings on the material's own panel (✓ = shown there)
+                id: showOn
+                objectName: "blockShowOn"
+                readonly property var entries: { panel.bk.selected; return panel.bk.showMenu }
+                visible: entries.length > 0
+                text: "Show on material"
+                menu: entries
+                onChosen: (v) => panel.bk.toggleShown(v)
             }
         }
     }

@@ -254,10 +254,13 @@ pass on the graphics card, however many steps the frame takes. Layers at one dep
 and so do moving layers far enough apart that their streaks never cross. A layer seen through a matte is one streak too
 when the matte moves with it (a pan over a title and the water that reveals it).
 A layer that runs past the edge of the frame streaks what lies past it too, in the same single paint, unless it moves
-more than about 128 px while the shutter is open. A layer that only moves but blends (a glow, a blend mode other than
-Normal, frosted glass), or that runs far past the edge that fast, is redrawn at each step without a new layout. A fade or a colour change within one step is taken at the
-frame's time. Only a layer whose shape changes while the shutter is open (a path changing shape, letters playing their
-keys, a layer whose matte changes or slides across it, a group whose children move) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
+more than about 128 px while the shutter is open. A layer on Add, Screen or Multiply streaks the same way, laid on
+with its blend. A layer that only moves but blends otherwise (a glow, another blend mode, frosted glass), or that runs
+far past the edge that fast, is redrawn at each step without a new layout; so is a group whose children each move their
+own way (bubbles rising in a group the frame pans past), each child moved to its place at that step. A fade or a colour
+change within one step is taken at the frame's time. Only a layer whose shape changes while the shutter is open (a path
+changing shape, letters playing their keys, a layer whose matte changes or slides across it, a group whose children
+change more than their place) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
 `shutterSamples` does not make fast moves smoother (they get their steps anyway); it only makes the layers that change
 slower. Keep 8 unless steps show inside a layer, and look at a few frames before exporting the whole film.
 

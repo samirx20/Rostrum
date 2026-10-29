@@ -293,7 +293,7 @@ impl SkiaScenePainter<'_> {
     }
 
     /// Rostrum patch (motion-blur buckets): kept picture `k` moved by `m` (as `draw_cached_moved`), over `area` only.
-    fn draw_moved_over(&mut self, k: usize, m: [f64; 6], area: skia_safe::Rect) -> bool {
+    fn draw_moved_over(&mut self, k: usize, m: [f64; 6], area: skia_safe::Rect, blend: peniko::BlendMode) -> bool {
         let Some(image) = self.cache.cached.get(k).cloned() else { return false };
         let [a, b, c, d, e, f] = m.map(|v| v as f32);
         let at = self.cache.cached_origin(k);
@@ -302,6 +302,7 @@ impl SkiaScenePainter<'_> {
         let Some(shader) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&local)) else { return false };
         let mut paint = Paint::default();
         paint.set_shader(shader);
+        paint.set_blend_mode(sk_peniko::blend_mode_from(blend));
         self.fill_device(area, &paint);
         true
     }
@@ -966,19 +967,19 @@ impl PaintScene for SkiaScenePainter<'_> {
     /// edges it is stretched (clamped), so a few px the move uncovers at the frame's edge are its edge px, not a gap.
     fn draw_cached_moved(&mut self, k: usize, m: [f64; 6]) -> bool {
         let Some(area) = self.streak_area(None) else { return true };
-        self.draw_moved_over(k, m, area)
+        self.draw_moved_over(k, m, area, peniko::BlendMode::default())
     }
 
     /// Rostrum patch (streak blur): kept picture `k` averaged over `moves` (each as `draw_cached_moved`'s, premultiplied,
     /// sampled smoothly and stretched past its edges) by one runtime shader, in place of a copy drawn per move; only
     /// over `rect` (device px as the canvas's own rect, origin included) when given, nothing when it misses the canvas.
-    fn draw_cached_streak(&mut self, k: usize, moves: &[[f64; 6]], rect: Option<[f32; 4]>) -> bool {
+    fn draw_cached_streak(&mut self, k: usize, moves: &[[f64; 6]], rect: Option<[f32; 4]>, blend: peniko::BlendMode) -> bool {
         if moves.is_empty() || moves.len() > STREAK_MOVES {
             return false;
         }
         let Some(area) = self.streak_area(rect) else { return true };
         match moves {
-            [m] => return self.draw_moved_over(k, *m, area),
+            [m] => return self.draw_moved_over(k, *m, area, blend),
             _ if moves.len() > STREAK_MOVES => return false,
             _ => {}
         }
@@ -1006,6 +1007,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         let Some(shader) = effect.make_shader(skia_safe::Data::new_copy(&data), &children, None) else { return false };
         let mut paint = Paint::default();
         paint.set_shader(shader);
+        paint.set_blend_mode(sk_peniko::blend_mode_from(blend));
         self.fill_device(area, &paint);
         true
     }

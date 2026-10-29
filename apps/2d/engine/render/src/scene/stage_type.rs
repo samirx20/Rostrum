@@ -45,12 +45,12 @@ pub fn container<'a>(it: &Item<'a>) -> Item<'a> {
     let taken = |f: &str| super::follow::window(it).is_some() && super::follow::TAKEN.contains(&f);
     for f in ["x", "y"] {
         if keyed(it, f) && !taken(f) {
-            base.props.insert(f.into(), it.node.props[f].clone());
+            base.props.to_mut().insert(f.into(), it.node.props[f].clone());
         }
     }
     for (f, neutral) in PLAYED {
         if keyed(it, f) && !taken(f) {
-            base.props.insert((*f).into(), Value::from(*neutral));
+            base.props.to_mut().insert((*f).into(), Value::from(*neutral));
         }
     }
     base

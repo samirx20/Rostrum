@@ -6,7 +6,9 @@ import RostrumKit
 // item it crosses), the kit's bar settings (tip, size, colour, opacity) as the kit's own rows, and Paints (what the active layer paints:
 // Colour, Roughness, Relief, Metal, Glow); then Paint layers, top first, + for a new one; each row: its eye, its name
 // (click: paint on it), what it paints. A drag on the viewport paints on the active layer, one undo step per stroke.
-// Only what applies now is shown: Paints only with a layer to set it on. B or Esc leaves.
+// Only what applies now is shown: Paints only with a layer to set it on; Brush | Stamp only on a Relief layer (Stamp:
+// the rows become Picture (+ Load picture…), Size, Depth, Turn, and a click lays the whole picture once). Under Paints,
+// the chosen layer's Fill (and its colour) and Mask (Spread, Invert only while one is chosen). B or Esc leaves.
 Item {
     Flickable {
         id: flick
@@ -32,6 +34,12 @@ Item {
                 options: paintMode.wheres; current: paintMode.where
                 onPicked: (v) => paintMode.setWhere(v)
             }
+            Segmented {   // on a Relief layer: brush strokes, or Stamp (one click lays one whole picture)
+                objectName: "paintHow"; width: parent.width
+                visible: paintMode.canStamp
+                options: paintMode.hows; current: paintMode.how
+                onPicked: (v) => paintMode.setHow(v)
+            }
             Repeater {   // Brush: the kit's rows (InspectorRow talks to paintMode.brushObj as its bridge)
                 model: paintMode.brushObj.rows
                 delegate: InspectorRow { width: col.width; bridge: paintMode.brushObj; instant: paintMode.brushObj.rows.instant }
@@ -44,6 +52,10 @@ Item {
                 ChoiceField { objectName: "paintChannel"; width: parent.width - 72 - Theme.grid
                               options: paintMode.channels; current: paintMode.activeChannel
                               onPicked: (v) => paintMode.setChannel(v) }
+            }
+            Repeater {   // the chosen layer's Fill (+ its colour) and Mask (+ Spread, Invert while one is chosen)
+                model: paintMode.activeChannel !== "" ? paintMode.layerRowsObj.rows : null
+                delegate: InspectorRow { width: col.width; bridge: paintMode.layerRowsObj; instant: paintMode.layerRowsObj.rows.instant }
             }
 
             Item { width: 1; height: Theme.grid }
