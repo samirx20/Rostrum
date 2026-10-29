@@ -167,3 +167,27 @@ def test_a_view_stamp_on_a_clay_lands_whole_and_upright_as_seen(tmp_path):
     top = (np.abs(mid[:, 0]) < 0.034) & (mid[:, 1] > 0.006) & (mid[:, 1] < 0.034)
     bottom = (np.abs(mid[:, 0]) < 0.034) & (mid[:, 1] < -0.006) & (mid[:, 1] > -0.034)
     assert top.sum() > 30 and (px[top] > 0.9).all() and (px[bottom] < 0.05).all()
+
+
+def test_a_raised_area_on_a_clay_has_no_false_slopes_at_its_pieces_edges(tmp_path, monkeypatch):
+    """The bug it guards: a real clay (a million triangles) was too big to have its pieces' edges bled, so in its Relief
+    picture every raised texel sat next to flat grey across a piece's edge, and the render showed grain and rings
+    inside a flat stamp. Every clay is bled now, however many triangles (here: the limit set below this one's)."""
+    from rostrum3d import paint_bleed, paint_scene
+    monkeypatch.setattr(paint_bleed, "MOST_FACES", 100)
+    surface = _scattered_plane(tmp_path)
+    d = _doc(tmp_path)
+    Image.fromarray(np.full((64, 64), 255, np.uint8)).save(tmp_path / "white.png")
+    d.apply({"op": "paint.stamp", "target": ["head"], "args": {"picture": "white.png", "at": [0, 0, 0, 0, 0, 1],
+                                                               "size": 0.08, "depth": 1}}, SAM)
+    item = {**d.item("head"), "paintSize": 512}
+    held, splats, keys = paint_scene._laid({"item": item}, surface, {})
+    pieces = paint_bleed.pieces(item, surface, 512)
+    assert pieces is not None
+    png = paint_scene._picture(held, "height", held["paints"], 512, ("value", [0.5]), surface.key, None, splats,
+                               {"projected": keys, "bleed": paint_bleed.key(item, surface, 512)}, pieces)
+    rel = np.asarray(Image.open(png))
+    raised = pieces & (rel == 255)
+    assert raised.sum() > 100
+    for shift in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+        assert not (raised & (np.roll(rel, shift, (0, 1)) == 128)).any()   # no flat texel right next to a raised one
