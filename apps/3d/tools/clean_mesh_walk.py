@@ -1,6 +1,6 @@
 # PR4 walk: Make a clean mesh by real input in the real 3D window (behind the person's work, never focused). Bridge
 # calls only read state. The sample scene; Q, Lump on the ground (a clay), one Add stroke; then:
-#   1. the Clay panel's Clean mesh group shows; Faces typed 2000 .................................................. "1-*"
+#   1. the Clay panel's Clean mesh group shows; Faces typed (a new count each run) .................................................. "1-*"
 #   2. Make clean mesh clicked, Cancel clicked at once: nothing added, the clay still shown .......................... "2-*"
 #   3. Make clean mesh again: the bar shows while it runs, then a new mesh of four-sided faces is selected, the clay
 #      hidden, one undo step ................................................................................ "3-*"
@@ -34,6 +34,7 @@ from screen3d.sample import SOURCE  # noqa: E402
 import main as app3d  # noqa: E402
 
 W.OUT = OUT
+FACES = 1500 + int(time.time()) % 1000      # a count not asked before, so the first Make really rebuilds (not the cache)
 
 
 def snap(screen, name):
@@ -83,11 +84,11 @@ def main():
         W.click(win, faces)
         W.pump(0.3)
         QTest.keyClick(win, "a", Qt.ControlModifier)
-        for ch in "2000":
+        for ch in str(FACES):
             QTest.keyClick(win, ch)
         QTest.keyClick(win, Qt.Key_Return)
         W.pump(0.4)
-        W.check(v.clay.cleanObj.faces == 2000, f"Faces typed 2000 ({v.clay.cleanObj.faces})")
+        W.check(v.clay.cleanObj.faces == FACES, f"Faces typed {FACES} ({v.clay.cleanObj.faces})")
         snap(screen, "1-group")
 
         # 2. Make, then Cancel at once
@@ -121,7 +122,8 @@ def main():
             m = made[-1]
             sides = set(m["faceCounts"])
             W.check(sides == {4}, f"every face has four sides ({sorted(sides)}), {len(m['faceCounts'])} faces in {took:.1f} s")
-            W.check(1000 <= len(m["faceCounts"]) <= 4000, f"about the Faces asked for (2000): {len(m['faceCounts'])}")
+            W.check(FACES / 2 <= len(m["faceCounts"]) <= FACES * 2,
+                    f"about the Faces asked for ({FACES}): {len(m['faceCounts'])}")
             W.check(screen.bridge.selection == [m["id"]] or m["id"] in str(screen.bridge.selection),
                     f"the new mesh is selected ({screen.bridge.selection})")
         W.check(doc.item(clay_id).get("visible") is False, "the clay is hidden")
