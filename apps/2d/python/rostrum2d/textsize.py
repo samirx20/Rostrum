@@ -63,6 +63,16 @@ def engine():
 
 
 
+def lent() -> bool:
+    """An engine is registered with `use` on this thread."""
+    return bool(getattr(_local, "engines", []))
+
+
+def started() -> bool:
+    """This module's own measuring engine is running."""
+    return _own is not None
+
+
 def warm() -> None:
     """Start this module's own measuring engine now, on a thread of its own: an engine takes over a second to give its
     first answer, and the screen's first boxes (while its window loads) would otherwise wait for it on the GUI thread.
