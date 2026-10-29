@@ -106,3 +106,17 @@ def test_a_card_hanging_off_a_device_screen_is_named_once():
         d = run(src.format(clip))
         faults, _ = review.doc_faults(d.data, d.data["comps"][0], None, "t")
         assert [f["id"] for f in faults if f["kind"] == "screen_spill"] == named
+
+
+def test_a_card_given_too_small_an_h_for_its_words_is_named_with_the_h_that_fits():
+    """Gemini Argon r2: card(h=190) whose two-line value ran under the panel below it and the look said nothing. A
+    laid-out group with a fixed h its words run out of is a text_spill naming the h that fits; left out, h hugs."""
+    from rostrum2d.mcp import review
+    src = ('comp("main", width=1920, height=1080, fps=30, duration=2)\ncard("tele", x=200, y=200, w=420{}, size=24, '
+           'title="Grasp", detail="Error 0.02 mm", value="TARGET ACQUIRED")\n')
+    for h, named in ((", h=90", ["tele"]), ("", [])):
+        d = run(src.format(h))
+        rows = [f for f in review.doc_faults(d.data, d.data["comps"][0], None, "t")[0] if f["kind"] == "text_spill"]
+        assert [f["id"] for f in rows] == named
+        if rows:
+            assert "h=90 is too small" in rows[0]["text"] and "or leave h out so it fits its text" in rows[0]["text"]

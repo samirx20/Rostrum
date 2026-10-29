@@ -23,13 +23,17 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
   `bg="#hex"` and `radius` (its own background), `overflow="hidden"` (cut what runs past its edge; visible at first).
 - Sizes, on a box and on a shape or image: `w=` / `h=` take px (`320`), a share of the parent box (`"50%"`), `"fill"`
   (the room the parent leaves) or, on a box, `"fit"` (hug what is inside; the default).
+- **Leave a box's or a card's `h` out** unless the design needs that exact height: left out, it grows to fit its words,
+  as a web page's box does. A fixed `h` (or `w`) too small for its words lets them run out past its edge, under the next
+  block; the look names it (`text_spill`) with the h that fits: make it taller, or leave `h` out.
 - Words a layer takes inside a box: `grow=1` (takes the room left along the line), `shrink=0` (never squeezed),
   `align_self=`, `margin=`, `span=2` (grid columns), `shift_x=` / `shift_y=` (moved off its place without pushing the
   others; key `shiftX` / `shiftY` for a slide-in).
 - A text in a box reads from its slot's left edge (`align="left"`) and wraps at the slot's width; give `align="center"`
   or `"right"` for another.
-- **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Give `apart=True` to place a
-  layer by its own x / y (it then takes no room): a badge on a card, a pointer over a screen. A box made outside any
+- **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Add `apart=True` to the
+  call to place a layer by hand at its own x / y (`shape("badge", x=300, y=-10, w=24, h=24, apart=True)`; it then takes
+  no room): a badge on a card, a pointer over a screen. Or leave x / y out and let the box place it. A box made outside any
   box is placed by its `x`, `y` (its top-left); with no `x`, `y` it sits centred in its parent (the frame's middle).
 - `anchor="center"` (or `"top-left"`, `"top"`, `"left"`, `"bottom-center"` … any corner or side, or a pair `(0, 1)`;
   `origin=` is the same word) on any layer is the point its `x`, `y` place and its pivot for scale and turn:

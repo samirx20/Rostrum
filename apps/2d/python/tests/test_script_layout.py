@@ -45,7 +45,8 @@ with column("menu", x=100, y=80, padding=24, gap=16, w=520, bg="#111827", radius
 
 
 def test_x_y_in_a_container_fail_unless_apart_and_child_words_need_a_container():
-    with pytest.raises(Exception, match="apart=True"):
+    with pytest.raises(Exception, match=r'shape "s" has x / y inside column "c", which places its layers for you: add '
+                                         r'apart=True to its call to place it by hand \(shape\("s", …, apart=True\)\)'):
         items('with column("c"):\n    shape("s", x=10, y=20, w=5, h=5)\n')
     d = items('with column("c"):\n    shape("badge", x=10, y=20, w=5, h=5, apart=True)\n')
     assert (d["badge"]["layoutApart"], d["badge"]["x"], d["badge"]["y"]) == (True, 10, 20)

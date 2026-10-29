@@ -25,7 +25,7 @@ OPENING = 1.0             # a blank under this long at the very start or end is 
 # The order faults are named in: what a viewer sees as broken first, then what reads as lifeless, then what may be meant.
 RANK = {"empty": 100, "text_edge": 90, "ghost_text": 85, "beat_missing": 80, "beat_wrong_time": 78, "set_hidden": 70, "block": 65, "pose_held": 60, "arms_straight": 58, "limbs_thin": 57,
         "speck": 88, "outside": 75, "crowded": 45, "text_margin": 42,
-        "text_crossed": 90, "text_clipped": 91, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
+        "text_crossed": 90, "text_clipped": 91, "text_spill": 90, "sparse": 82, "rig_hidden": 72, "end_held": 54, "alike_open": 52, "bare_set": 44,
         "device_cut": 92, "screen_spill": 91, "push_bars": 92, "push_cut": 91, "text_on_text": 89, "pointer_on_text": 87, "end_small": 85,
         "framing_held": 55, "still": 50, "rig_cut": 48, "empty_edge": 40, "edge_cut": 30, "painted_over": 86, "layout_jump": 84, "small_text_edge": 28, "washed": 25}
 

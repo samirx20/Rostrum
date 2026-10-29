@@ -24,7 +24,7 @@ FILMS = ("mp4", "prores4444", "webm", "gif")       # the formats a film is deliv
 NOT_FAULTS = ("empty_edge",)                         # a blank second at the very start or end: an opening / closing fade
 # What a client sees as broken (the judging rules' fault pass): these are faults, and they hold a final back. The rest of
 # review's rows (a held framing, a held pose, a crowded lock-up ...) may be meant: named as advice, never refused.
-CLIENT_VISIBLE = ("empty", "sparse", "text_edge", "text_margin", "text_crossed", "text_clipped", "text_on_text", "ghost_text",
+CLIENT_VISIBLE = ("empty", "sparse", "text_edge", "text_margin", "text_crossed", "text_clipped", "text_spill", "text_on_text", "ghost_text",
                   "pointer_on_text", "device_cut", "push_cut", "push_bars", "screen_spill", "outside", "speck", "end_small",
                   "painted_over", "edge_cut", "rig_cut", "layout_jump")
 PASSING = ("edge_cut", "rig_cut")      # a subject cut by the edge counts only when it stays cut ...
@@ -57,6 +57,7 @@ FIX = {
     "crowded": "space the lock-up's parts apart: a bigger gap= in their row / column, or move them apart",
     "text_crossed": "move the text or the layer crossing it so they no longer overlap (the row says where)",
     "text_clipped": "make the text fit its box: a smaller size, a wider box, or fewer words",
+    "text_spill": "make the group the text runs out of bigger (the row gives the size) or leave its w / h out so it fits its text",
     "text_on_text": "move one text off the other, or fade the first out before the second shows",
     "pointer_on_text": "aim the pointer beside the label (tap(spot=)) or move it away after the tap",
     "end_small": "scale the end card's mark / lock-up up so it reads in the frame",
@@ -77,7 +78,7 @@ _OVER = ["overlap", "overlapping", "layered", "on top of", "superimposed", "doub
          "through the text", "over the text", "behind the text", "crossing"]
 for _k in ("edge_cut", "rig_cut", "device_cut", "push_cut", "push_bars", "text_edge", "text_margin"):
     register(_k, _CROP, "a crop at the frame edge")
-for _k in ("text_crossed", "text_on_text", "pointer_on_text", "painted_over", "ghost_text", "text_clipped"):
+for _k in ("text_crossed", "text_on_text", "pointer_on_text", "painted_over", "ghost_text", "text_clipped", "text_spill"):
     register(_k, _OVER, "things laid over each other")
 for _k in ("empty", "sparse"):
     register(_k, ["black", "blank", "empty", "negative space", "minimal", "fade to black", "darkness", "void", "pause"],
