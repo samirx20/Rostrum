@@ -41,7 +41,7 @@ import ast
 import copy
 import math
 
-from rostrum_core import ids
+from rostrum_core import ids, nearest
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
@@ -115,9 +115,10 @@ class Item:
                 value = script_ground.key_value(self._b, self.node, prop, p.check(value, where))
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
                  ("c" if p.type == "color" else "v"): value, "ease": e}
-            if set(own) - set(CURVE):
-                raise ValueError(f'{where}: {", ".join(sorted(set(own) - set(CURVE)))} is not a key setting; '
-                                 f'a key takes v, ease and {", ".join(CURVE)}')
+            if wrong := sorted(set(own) - set(CURVE)):
+                near = nearest.did_you_mean(wrong[0], ["v", "ease", *CURVE])
+                raise ValueError(f'{where}: {", ".join(wrong)} is not a key setting; '
+                                 f'a key takes v, ease and {", ".join(CURVE)}' + (f". {near}" if near else ""))
             build.fill(k, own, where)                      # checked, and loud when a setting doesn't fit the ease
             self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
         if self.id in self._b.grounded and prop != "y":    # a turn or a size keyed: its base measured again
@@ -605,8 +606,13 @@ def run_source(source: str, name: str, doc=None) -> dict:
     except Exception as e:
         import traceback
         line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")
+        if isinstance(e, RostrumError) and e.hint:                  # its own "did you mean": its names, not the script list
+            raise RostrumError(e.code, "", f'script "{name}"', f"failed{line}: {e.where + ': ' if e.where else ''}"
+                               f"{' '.join(w for w in (e.subject, e.problem) if w)}", e.accepted, e.hint) from e
+        if near := nearest.script_hint(e, scope):                   # a wrong name, call or argument: the closest real ones
+            raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {near}") from e
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
-                           API) from e
+                           () if "Did you mean" in str(e) else API) from e
     try:
         for clay_id in b.figures:
             node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == clay_id), None)
