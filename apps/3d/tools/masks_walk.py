@@ -19,7 +19,7 @@ sys.argv = sys.argv[:1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import clay_walk as W  # noqa: E402  (puts this checkout's code first; its real-input helpers)
 
-from PySide6.QtCore import QPoint, Qt  # noqa: E402
+from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_core import Document  # noqa: E402
 from rostrum3d import KIND  # noqa: E402
@@ -84,7 +84,7 @@ def main():
         W.pump(90, screen.ready, "the first picture")
         vp = W.find(root, "viewport3d")
         W.pump(30, lambda: v._r.idle() and not v._next.isActive(), "the first settled picture")
-        at = vp.mapToScene(vp.width() * 0.5, vp.height() * 0.55).toPoint()
+        at = vp.mapToScene(QPointF(vp.width() * 0.5, vp.height() * 0.55)).toPoint()
 
         # 1. select, B, +
         QTest.mouseMove(win, at)

@@ -28,6 +28,7 @@ def sphere(doc, id_, n=40):
 def cache(tmp_path, monkeypatch):
     c = Cache(tmp_path / "cache")
     monkeypatch.setattr(remesh, "CACHE", c)
+    remesh._LAST.clear()
     ops_mesh.use_geometry(sphere)
     yield c
     ops_mesh.use_geometry(None)

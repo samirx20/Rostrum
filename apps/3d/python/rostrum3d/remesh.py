@@ -38,12 +38,21 @@ class Cancelled(RemeshError):
     pass
 
 
+_LAST: dict = {}        # {"key": (clay id, the document's hash), "raw": …}: the window's job and the operation after it
+
+
 def surface(doc: dict, clay_id: str) -> dict:
-    """The clay's surface as drawn: {"points", "faceCounts", "faceIndices"} from the engine (geometry, v1.33)."""
+    """The clay's surface as drawn: {"points", "faceCounts", "faceIndices"} from the engine (geometry, v1.33). The
+    last one is kept while the document is exactly the same, so the window's job and the clay.clean_mesh it calls
+    when done read a clay of a million triangles from the engine once, not twice."""
     from . import ops_mesh
     if ops_mesh._GEOMETRY is None:
         raise RemeshError("there is no engine to read the clay from (run it in the app or through the 3D MCP server)")
-    return ops_mesh._GEOMETRY(doc, clay_id)
+    key = (clay_id, hashlib.sha256(json.dumps(doc, sort_keys=True, default=str).encode()).hexdigest())
+    if _LAST.get("key") != key:
+        _LAST.clear()
+        _LAST.update(key=key, raw=ops_mesh._GEOMETRY(doc, clay_id))
+    return _LAST["raw"]
 
 
 def key_of(raw: dict, faces: int) -> str:

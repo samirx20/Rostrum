@@ -26,6 +26,7 @@ class CleanMesh(QObject):
         super().__init__(tool)
         self.t, self.b = tool, tool.b
         self._faces, self._line, self._failure = DEFAULT_FACES, "", ""
+        self.read_ms = 0.0
         self._thread, self._stop, self._proc, self._t0 = None, threading.Event(), None, 0.0
         self._said.connect(self._on_said)
         self._landed.connect(self._on_landed)
@@ -102,7 +103,9 @@ class CleanMesh(QObject):
         if self._stop.is_set():
             return self._landed.emit(clay_id, "")
         try:
+            t0 = time.perf_counter()
             raw = remesh.surface(self.b.doc.data, clay_id)          # the window's engine, on its own thread
+            self.read_ms = (time.perf_counter() - t0) * 1000         # for checks: how long the window waited
         except Exception as e:  # noqa: BLE001  the engine's own words
             return self._on_landed(clay_id, f"could not read the clay: {e}")
         faces = self._faces

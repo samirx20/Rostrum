@@ -26,7 +26,7 @@ import sculpt_layers_walk as L  # noqa: E402
 from PySide6.QtCore import QPointF, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_core import Document  # noqa: E402
-from rostrum3d import KIND  # noqa: E402
+from rostrum3d import KIND, remesh  # noqa: E402
 from rostrum3d.script import run_source  # noqa: E402
 from rostrum_gui.app import qt_app  # noqa: E402
 from screen3d.sample import SOURCE  # noqa: E402
@@ -112,6 +112,8 @@ def main():
         W.check(v.clay.cleanObj.running, "Make clean mesh: running at once")
         W.pump(120, lambda: not v.clay.cleanObj.running, "the clean mesh")
         took = time.perf_counter() - t0
+        print(f"reading the clay from the engine held the window {v.clay.cleanObj.read_ms:.0f} ms; "
+              f"{len(remesh._LAST.get('raw', {}).get('faceIndices', [])) // 3:,} triangles")
         made = meshes(doc)
         W.check(len(made) == before + 1, f"a new mesh was added ({len(made) - before})")
         W.check(v.clay.cleanObj.failure == "", f"no failure ({v.clay.cleanObj.failure or '-'})")
