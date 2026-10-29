@@ -733,7 +733,9 @@ pub(crate) fn play(s: &mut Session, tape: &anyrender::Tape, index: u32) -> Resul
     let t = Instant::now();
     let nv12 = s.sink.as_ref().ok_or("no encoder")?.wants_nv12();
     if s.painter.start_read(index, &s.color, s.deep, nv12)? {
-        while s.painter.reads_in_flight() > 1 {
+        // The card thread keeps more frames in flight than a drawing worker (one): it plays on while they come back.
+        let most = std::env::var("ROSTRUM2D_CARD_IN_FLIGHT").ok().and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(crate::gpu_output::SLOTS - 1).clamp(1, crate::gpu_output::SLOTS - 1);
+        while s.painter.reads_in_flight() > most {
             collect(s)?;
         }
     } else {

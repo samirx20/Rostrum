@@ -109,7 +109,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
         }
     };
     // One thread owns the graphics card (`own`): this one, while `workers` others lay frames out and keep their paint calls.
-    let card = turn.is_some() && s.painter.is_gpu() && std::env::var(CARD_VAR).map_or(true, |v| v.trim() != "0");
+    let card = turn.is_some() && s.painter.is_gpu() && std::env::var(CARD_VAR).is_ok_and(|v| v.trim() == "1");
     if let Some(t) = turn.as_ref().filter(|_| card) {
         t.free_this_thread();
     }
@@ -224,7 +224,10 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6, shared.made.load(Ordering::Relaxed), turn_s, card_v.unwrap_or(Value::Null)))
 }
 
-/// `ROSTRUM2D_EXPORT_CARD=0`: every worker paints its own frames on its own card connection (as before round 5).
+/// `ROSTRUM2D_EXPORT_CARD=1`: one thread owns the card (`own`). Off by default: measured on Haiku's, Opus's and a still
+/// film (2026-10-30, 1080p, 3 workers, two encoder lanes) it tied the workers' own connections at best (Haiku 10.3 vs
+/// 9.8 s, still 5.5 vs 5.6) and lost on Opus (9.5-11.3 vs 7.8-8.5): playing a frame's calls takes the card thread
+/// ~2.4 ms and reading it back as long, one frame after another, where three workers paint side by side.
 const CARD_VAR: &str = "ROSTRUM2D_EXPORT_CARD";
 
 /// What the card thread did (`own`): frames played, and ms spent playing their calls, flushing them to the card and
