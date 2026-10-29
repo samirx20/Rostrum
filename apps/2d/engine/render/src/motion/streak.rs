@@ -50,6 +50,12 @@ pub struct Streak {
     /// element id and moves (page px, as `moves`). The group is drawn as laid out at the frame's time, each child moved
     /// to each sub-frame, and averaged (blurred.rs): its sub-frames without a stage or layout of their own.
     pub parts: Vec<(String, Moves)>,
+    /// Such a group laid on as one kept picture, each child's own streak over it (its moves and reach, page px): when
+    /// no child's streak reads another's picture and none reads past the kept picture (blurred.rs `measured`). Empty:
+    /// drawn at each move.
+    pub subs: Vec<(Moves, [f64; 4])>,
+    /// Such a group may be laid on as one kept picture (still_runs.rs `keeps`).
+    pub keeps: bool,
 }
 
 /// For each stage piece of `centre` (piece 0 the background, then one per drawn top-level layer: stage.rs `parts`):
@@ -82,7 +88,7 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize, &Item) ->
                 Some(own) if !still => {
                     let parts = parts.into_iter().map(|(id, pm)| (id, pm.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect())).collect();
                     let ink = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
-                    out.push(Some(Streak { moves: own.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach: None, ink, blends: true, alone: true, parts }));
+                    out.push(Some(Streak { moves: own.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach: None, ink, blends: true, alone: true, parts, subs: vec![], keeps: streakable(k + 1, l) }));
                     staged.push(false);
                 }
                 Some(_) => {
@@ -113,11 +119,12 @@ pub fn moves(centre: &Item, items: &[Item], streakable: impl Fn(usize, &Item) ->
                 staged.push(false);
             }
             Some(m) => {
-                let (reach, ink) = match reach(l, cv.as_ref(), &m, spread(k + 1)) {
+                let pad = grown(l, cv.as_ref(), spread(k + 1));
+                let (reach, ink) = match reach(l, cv.as_ref(), &m, pad) {
                     Some((r, i)) => (Some(r), i),
                     None => (None, [f64::MIN, f64::MIN, f64::MAX, f64::MAX]),
                 };
-                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, blends: !streakable(k + 1, l), alone: l.props.get("blend").and_then(serde_json::Value::as_str).is_some_and(|b| b != "normal"), parts: vec![] }));
+                out.push(Some(Streak { moves: m.iter().map(|a| [a.a, a.b, a.c, a.d, a.e, a.f]).collect(), reach, ink, blends: !streakable(k + 1, l), alone: l.props.get("blend").and_then(serde_json::Value::as_str).is_some_and(|b| b != "normal"), parts: vec![], subs: vec![], keeps: true }));
                 staged.push(false);
             }
             _ => {
@@ -209,10 +216,15 @@ pub fn pad(piece: &str) -> f64 {
     pad
 }
 
+/// `pad` (a piece's own px) as far as it reaches on screen (page px): times the most the layer or any of its children is
+/// stretched there, and 2 px more.
+fn grown(l: &Item, view: Option<&View>, pad: f64) -> f64 {
+    pad * super::steps::widest(l, view.map_or(Aff::ID, |v| v.map(l))).max(1.0) + 2.0
+}
+
 /// The page px rectangles of the layer's picture under any of `moves` (its reach) and of the picture itself (its boxes'
-/// corners, its own and its children's, as steps.rs measures them, `pad` further out, times the most any of them is
-/// stretched on screen). None when a part of it has no
-/// box (a path, a picture without a size).
+/// corners, its own and its children's, as steps.rs measures them, `pad` page px further out: `grown`). None when a part
+/// of it has no box (a path, a text, a picture without a size): blurred.rs measures those on the frame's layout.
 fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64; 4], [f64; 4])> {
     fn boxed(it: &Item) -> bool {
         (it.props.contains_key("w") || it.kind == "group") && it.kind != "path" && it.layers.iter().all(boxed)
@@ -224,12 +236,16 @@ fn reach(l: &Item, view: Option<&View>, moves: &[Aff], pad: f64) -> Option<([f64
     super::steps::corners(l, view.map_or(Aff::ID, |v| v.map(l)), &mut corners);
     let bound = |pts: &mut dyn Iterator<Item = Pt>| pts.fold([f64::MAX, f64::MAX, f64::MIN, f64::MIN], |r, p| [r[0].min(p.0), r[1].min(p.1), r[2].max(p.0), r[3].max(p.1)]);
     let b = bound(&mut corners.into_values());
-    // The markup's numbers are the layer's own px: scaled up (its scale, its groups', the frame's zoom) they reach further.
-    let pad = pad * super::steps::widest(l, view.map_or(Aff::ID, |v| v.map(l))).max(1.0) + 2.0;
-    let (x0, y0, x1, y1) = (b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad);
-    let ink = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)];
-    let r = bound(&mut moves.iter().flat_map(|m| ink.map(|p| m.apply(p))));
-    r.iter().all(|v| v.is_finite()).then_some((r, [x0, y0, x1, y1]))
+    swept([b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad], moves)
+}
+
+/// The page px rectangle a picture at `ink` (page px) covers under any of `moves`, and `ink`: a streak's (reach, ink).
+/// None when not finite.
+pub fn swept(ink: [f64; 4], moves: &[Aff]) -> Option<([f64; 4], [f64; 4])> {
+    let [x0, y0, x1, y1] = ink;
+    let corners = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)];
+    let r = moves.iter().flat_map(|m| corners.map(|p| m.apply(p))).fold([f64::MAX, f64::MAX, f64::MIN, f64::MIN], |r, p| [r[0].min(p.0), r[1].min(p.1), r[2].max(p.0), r[3].max(p.1)]);
+    (r.iter().chain(&ink).all(|v| v.is_finite()) && !moves.is_empty()).then_some((r, ink))
 }
 
 /// `b` is `a` but for its placing fields (`top`), its colours and fades (`TONE`) and numbers within HOLD_PX: the same
