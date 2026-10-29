@@ -49,9 +49,12 @@ def test_texts_on_texts_but_not_a_short_cross_fade_swap():
     a = 'text("a", body="Total", size=24, x=160, y=80)\n'
     rows = review_layout.overlaps(_sampled(a + 'text("b", body="$46.60", size=24, x=170, y=92)\n'))
     assert [r["kind"] for r in rows] == ["text_on_text"] and rows[0]["ids"] == ["a", "b"]
-    swap = ('text("a", body="Send", size=24, x=160, y=90, end=3.4)\n'
+    swap = ('a = text("a", body="Send", size=24, x=160, y=90)\na.key("opacity", {2.6: 1, 3.4: 0})\n'
+            'b = text("b", body="Sent", size=24, x=160, y=90)\nb.key("opacity", {2.6: 0, 3.4: 1})\n')
+    assert review_layout.overlaps(_sampled(swap)) == []      # a cross-fade: one of them is always faint
+    both = ('text("a", body="Send", size=24, x=160, y=90, end=3.4)\n'
             'text("b", body="Sent", size=24, x=160, y=90, start=2.6)\n')
-    assert review_layout.overlaps(_sampled(swap)) == []
+    assert [r["kind"] for r in review_layout.overlaps(_sampled(both))] == ["text_on_text"]   # both clear: a jumble in a still
 
 
 def test_a_cursor_on_a_label():
@@ -126,3 +129,4 @@ def test_a_panel_over_the_last_line_of_a_wrapped_text_crosses_it():
     rows = review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top))))
     assert [(r["kind"], r["ids"]) for r in rows] == [("text_crossed", ["value", "panel"])]
     assert review_layout.overlaps(_sampled(value + panel.format(h=2 * (130 - top - 12)))) == []      # clear of it
+

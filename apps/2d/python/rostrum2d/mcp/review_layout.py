@@ -20,7 +20,9 @@ LINE_SEEN, LINE_S = 0.3, 0.5   # a hollow layer's outline (a ring, a frame, a st
 THROUGH = 0.3                  # text's letters (this share of their height or width) this long, crosses it: a line
                                # through letters shows in any still, faint or passing (a wipe's panel does not)
 ON_TEXT_S = 0.5           # two texts overlapping this long or longer ...
-SWAP_S, SWAP_SAME = 1.0, 0.6   # ... texts this much on the same spot overlapping under SWAP_S: a cross-fade swap
+SWAP_S, SWAP_SAME = 1.0, 0.6   # ... texts this much on the same spot overlapping under SWAP_S: a cross-fade swap ...
+SWAP_DIM = 0.5            # ... while one of them is always under this opacity; both clearer at once is a double exposure
+                          # a still catches ("two titles print on top of each other in a scrambled jumble": faults-zero judges)
 ON_TEXT = 0.1             # two texts overlapping by this share of the smaller one's box
 TOUCH_H, TOUCH_W = 0.2, 0.25   # ... or two lines' whole boxes overlapping this share of the smaller's height, across this of its width
 POINTER = re.compile(r"(^|[_\-\s])(cursor|pointer|mouse|finger|hand)s?($|[_\-\s\d])", re.I)
@@ -169,7 +171,7 @@ def overlaps(s: Sampled) -> list[dict]:
         for x, (_, n, a, _) in enumerate(texts):
             for _, m, b, _ in texts[x + 1:]:
                 if share := _on_text(a, b, *(by.get(t["layer"].get("pathLayer")) for t in (n, m))):
-                    on_text.setdefault((n["id"], m["id"]), {})[i] = (share, _block(n, m))
+                    on_text.setdefault((n["id"], m["id"]), {})[i] = (share, _block(n, m), min(n["opacity"], m["opacity"]))
 
     def crossed_line(key, t0, t1, share, blocks):
         tid, lid = key
@@ -186,7 +188,8 @@ def overlaps(s: Sampled) -> list[dict]:
     def on_text_line(key, t0, t1, share, blocks):
         return {"kind": "text_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "overlap_pct": round(100 * share),
                 "text": f'{t0:g}–{t1:g} s: texts "{key[0]}" and "{key[1]}" sit on top of each other ({100 * share:.0f} % of the '
-                        f'smaller one): {_fix(by_any(blocks), *blocks)}'}
+                        f'smaller one): ' + (f'fade one out before the other comes in, so they never show clearly together'
+                                             if share >= SWAP_SAME else _fix(by_any(blocks), *blocks))}
 
     def pointer_line(key, t0, t1, share, _):
         return {"kind": "pointer_on_text", "start": t0, "end": t1, "id": key[0], "ids": list(key), "cover_pct": round(100 * share),
@@ -200,8 +203,9 @@ def overlaps(s: Sampled) -> list[dict]:
                 return by
         return {}
 
-    def swap(key, at):          # two texts on the same spot: a cross-fade swap is fine under SWAP_S
-        return SWAP_S if max(v[0] for v in at.values()) >= SWAP_SAME else ON_TEXT_S
+    def swap(key, at):          # two texts on the same spot: a cross-fade swap is fine under SWAP_S, if one is always faint
+        crossfade = max(v[0] for v in at.values()) >= SWAP_SAME and all(v[2] < SWAP_DIM for v in at.values())
+        return SWAP_S if crossfade else ON_TEXT_S
 
     return (_named(s, crossed, lambda k, a: CROSS_S, crossed_line) + _named(s, lined, lambda k, a: LINE_S, through_line) + _named(s, on_text, swap, on_text_line)
             + _named(s, pointed, lambda k, a: POINTER_S, pointer_line))
