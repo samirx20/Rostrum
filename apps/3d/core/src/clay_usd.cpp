@@ -15,11 +15,14 @@
 #include <cfloat>
 #include <chrono>
 #include <cstring>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "clay_preview.h"
+#include "clay_slots.h"
 #include "clay_whole.h"
 #include "error.h"
 
@@ -48,21 +51,12 @@ void drop_st(const SdfLayerHandle& layer, const SdfPath& prim) {
     layer->GetPrimAtPath(prim)->RemoveProperty(a);
 }
 
-VtVec3fArray extent_of(const VtVec3fArray& pts) {
+VtVec3fArray extent_of(const VtVec3fArray& pts, const GfVec3f& at) {
   GfVec3f lo(FLT_MAX), hi(-FLT_MAX);
   for (const GfVec3f& p : pts)
     for (int c = 0; c < 3; ++c) lo[c] = std::min(lo[c], p[c]), hi[c] = std::max(hi[c], p[c]);
-  if (pts.empty()) lo = hi = GfVec3f(0.0f);
+  if (pts.empty()) lo = hi = at;
   return VtVec3fArray{lo, hi};
-}
-
-// CL5: a skinned block's surface as drawn (its points, normals, extent)
-void write_surface(const SdfLayerHandle& layer, const SdfPath& prim, VtVec3fArray pts, VtVec3fArray nrm,
-                   VtVec3fArray extent) {
-  const TfToken& dflt = SdfFieldKeys->Default;
-  layer->SetField(prim.AppendProperty(TfToken("points")), dflt, VtValue::Take(pts));
-  if (!nrm.empty()) layer->SetField(prim.AppendProperty(TfToken("normals")), dflt, VtValue::Take(nrm));
-  layer->SetField(prim.AppendProperty(TfToken("extent")), dflt, VtValue::Take(extent));
 }
 
 void check(const TfErrorMark& mark, const std::string& where) {
@@ -97,6 +91,51 @@ struct Blocks::Impl {
   std::optional<SdfChangeBlock> changes;
   std::map<SdfPath, std::unique_ptr<Skinning>> skins;  // CL5: the skinned clays' rest surfaces and weights
   std::set<SdfPath> stale;  // CL6: clays whose Cycles whole no longer matches their blocks (clay_whole.h)
+  std::map<SdfPath, Slot> slots;  // 3d-dab-viewer: each block prim's own surface and its slot (clay_slots.h)
+  Slot* slot_of(const SdfPath& prim) {
+    auto it = slots.find(prim);
+    return it == slots.end() ? nullptr : &it->second;
+  }
+  const Slot* slot_of(const SdfPath& prim) const {
+    auto it = slots.find(prim);
+    return it == slots.end() ? nullptr : &it->second;
+  }
+  // the slot drawn with `pts`, `nrm` (one per vertex of its surface: at rest or posed): the corners, padded to the
+  // slot's size (grown first if the surface no longer fits: then the face lists too), and the extent of the surface
+  void draw(const SdfPath& prim, Slot& sl, VtVec3fArray pts, VtVec3fArray nrm) {
+    const TfToken& dflt = SdfFieldKeys->Default;
+    const auto attr = [&](const char* name) { return prim.AppendProperty(TfToken(name)); };
+    const size_t nt = sl.triangles();
+    if (!slots_on()) {  // as before: shared points, sized to the surface (an emptied block: one triangle of no area)
+      const bool none = nt == 0;
+      layer->SetField(attr("faceVertexCounts"), dflt, VtValue(VtIntArray(none ? 1 : nt, 3)));
+      layer->SetField(attr("faceVertexIndices"), dflt, VtValue(none ? VtIntArray{0, 1, 2} : sl.indices));
+      layer->SetField(attr("points"), dflt, VtValue(none ? VtVec3fArray(3, sl.at) : pts));
+      layer->SetField(attr("normals"), dflt, VtValue(none ? VtVec3fArray(3, GfVec3f(0, 0, 1)) : nrm));
+      layer->SetField(attr("extent"), dflt, VtValue(extent_of(pts, sl.at)));
+      sl.cap = none ? 1 : nt;
+      sl.shownPoints = std::move(pts);
+      sl.shownNormals = std::move(nrm);
+      return;
+    }
+    if (nt > sl.cap || sl.cap == 0) {
+      sl.cap = slot_capacity(nt, is_preview_key(key_of(prim)));
+      layer->SetField(attr("faceVertexCounts"), dflt, VtValue(slot_counts(sl.cap)));
+      layer->SetField(attr("faceVertexIndices"), dflt, VtValue(slot_indices(sl.cap)));
+    }
+    if (nrm.size() != pts.size()) nrm = VtVec3fArray(pts.size(), GfVec3f(0, 0, 1));
+    const GfVec3f pad = nt ? pts.cdata()[sl.indices.cdata()[0]] : sl.at;  // (cdata: no copy-on-write detach)
+    layer->SetField(attr("points"), dflt, VtValue(slot_corners(pts, sl.indices, sl.cap, pad)));
+    layer->SetField(attr("normals"), dflt, VtValue(slot_corners(nrm, sl.indices, sl.cap, GfVec3f(0, 0, 1))));
+    layer->SetField(attr("extent"), dflt, VtValue(extent_of(pts, sl.at)));
+    sl.shownPoints = std::move(pts);
+    sl.shownNormals = std::move(nrm);
+  }
+  static BlockKey key_of(const SdfPath& prim) {
+    BlockKey k{0, 0, 0};
+    block_key_of(prim.GetName(), k);
+    return k;
+  }
   Skinning* skin_of(const SdfPath& clay) const {
     auto it = skins.find(clay);
     return it == skins.end() ? nullptr : it->second.get();
@@ -139,29 +178,27 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   p_->stale.insert(clay);
   if (exists) drop_st(layer, path);
   Skinning* skin = p_->skin_of(clay);
+  const SdfPath shadePath = attr(kShade), colorPath = attr(kDisplayColor);
+  const auto drop_mask = [&] {
+    if (!layer->HasSpec(shadePath)) return;
+    SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
+    for (const SdfPath& q : {shadePath, colorPath})
+      if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(q)) prim->RemoveProperty(a);
+  };
   if (m.empty()) {
     if (skin) skin->drop(key);
     // An emptied block keeps its prim (3d-v4): a prim removed or added makes Storm rebuild its draw batches
     // (rebuildBatches; 15-25 ms when a stroke's preview took 8 fine blocks down for each of its own), and the same
-    // block is often filled again soon (the fine blocks come back at the stroke's end). It holds one triangle of no
-    // area, which draws nothing: with no points at all Storm asked GL for buffers of size 0 (GL_INVALID_VALUE, and
-    // the view was refused)
+    // block is often filled again soon (the fine blocks come back at the stroke's end). It keeps its slot too, every
+    // triangle on one point where the block was (no area: nothing draws; clay_slots.h), so bounds and framing don't
+    // move and the refill goes where it was
     if (!exists) return;
-    const TfToken& dflt = SdfFieldKeys->Default;
-    GfVec3f at(0.0f);  // where the block was (its old extent's corner), so bounds and framing don't move
-    const VtValue was = layer->GetField(attr("extent"), dflt);
-    if (was.IsHolding<VtVec3fArray>() && !was.UncheckedGet<VtVec3fArray>().empty())
-      at = was.UncheckedGet<VtVec3fArray>()[0];
-    layer->SetField(attr("points"), dflt, VtValue(VtVec3fArray{at, at, at}));
-    layer->SetField(attr("normals"), dflt, VtValue(VtVec3fArray(3, GfVec3f(0, 0, 1))));
-    layer->SetField(attr("faceVertexCounts"), dflt, VtValue(VtIntArray{3}));
-    layer->SetField(attr("faceVertexIndices"), dflt, VtValue(VtIntArray{0, 1, 2}));
-    layer->SetField(attr("extent"), dflt, VtValue(VtVec3fArray{at, at}));
-    if (layer->HasSpec(attr(kShade))) {
-      SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
-      for (const SdfPath& q : {attr(kShade), attr(kDisplayColor)})
-        if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(q)) prim->RemoveProperty(a);
-    }
+    Slot& sl = p_->slots[path];
+    if (!sl.points.empty()) sl.at = sl.points.cdata()[sl.indices.empty() ? 0 : size_t(sl.indices.cdata()[0])];
+    sl.points = sl.normals = VtVec3fArray();
+    sl.indices = VtIntArray();
+    p_->draw(path, sl, VtVec3fArray(), VtVec3fArray());
+    drop_mask();
     check(mark, "emptying " + path.GetString());
     return;
   }
@@ -180,27 +217,22 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
     SdfAttributeSpec::New(prim, "doubleSided", SdfValueTypeNames->Bool, SdfVariabilityUniform)
         ->SetDefaultValue(VtValue(false));
     have.insert(key);
+    p_->slots.erase(path);  // (a clay removed and made again: a fresh prim, a fresh slot)
   }
   const size_t nv = m.points.size() / 3, nt = m.triangles();
-  VtVec3fArray pts(nv), nrm(nv);
-  std::memcpy(pts.data(), m.points.data(), nv * sizeof(GfVec3f));
-  std::memcpy(nrm.data(), m.normals.data(), std::min(m.normals.size() / 3, nv) * sizeof(GfVec3f));
-  VtIntArray idx(nt * 3), counts(nt, 3);
-  std::memcpy(idx.data(), m.indices.data(), nt * 3 * sizeof(int32_t));
-  GfVec3f lo(FLT_MAX), hi(-FLT_MAX);
-  for (size_t i = 0; i < nv; ++i)
-    for (int c = 0; c < 3; ++c) lo[c] = std::min(lo[c], pts[i][c]), hi[c] = std::max(hi[c], pts[i][c]);
-  VtVec3fArray extent{lo, hi};
-  if (skin && skin->keep(key, pts, nrm, idx))  // CL5: the rest surface kept, the posed one written
+  Slot& sl = p_->slots[path];
+  sl.points = VtVec3fArray(nv);
+  sl.normals = VtVec3fArray(nv, GfVec3f(0, 0, 1));
+  std::memcpy(sl.points.data(), m.points.data(), nv * sizeof(GfVec3f));
+  std::memcpy(sl.normals.data(), m.normals.data(), std::min(m.normals.size() / 3, nv) * sizeof(GfVec3f));
+  sl.indices = VtIntArray(nt * 3);
+  std::memcpy(sl.indices.data(), m.indices.data(), nt * 3 * sizeof(int32_t));
+  VtVec3fArray pts = sl.points, nrm = sl.normals, extent;
+  if (skin && skin->keep(key, sl.points, sl.normals, sl.indices))  // CL5: the rest surface kept, the posed one drawn
     skin->posed_surface(key, pts, nrm, extent);
-  const TfToken& dflt = SdfFieldKeys->Default;
-  layer->SetField(attr("points"), dflt, VtValue::Take(pts));
-  layer->SetField(attr("normals"), dflt, VtValue::Take(nrm));
-  layer->SetField(attr("faceVertexCounts"), dflt, VtValue::Take(counts));
-  layer->SetField(attr("faceVertexIndices"), dflt, VtValue::Take(idx));
-  layer->SetField(attr("extent"), dflt, VtValue::Take(extent));
+  p_->draw(path, sl, std::move(pts), std::move(nrm));
 
-  const SdfPath shadePath = attr(kShade), colorPath = attr(kDisplayColor);
+  const TfToken& dflt = SdfFieldKeys->Default;
   if (m.mask.size() == nv) {
     if (!layer->HasSpec(shadePath)) {
       SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
@@ -212,16 +244,20 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
     VtFloatArray shade(nv);
     VtVec3fArray color(nv);
     for (size_t i = 0; i < nv; ++i) {
-      const float s = 1.0f - kMaskDarken * std::clamp(m.mask[i], 0.0f, 1.0f);
-      shade[i] = s;
-      color[i] = GfVec3f(kNoMaterialGrey * s);
+      const float sh = 1.0f - kMaskDarken * std::clamp(m.mask[i], 0.0f, 1.0f);
+      shade[i] = sh;
+      color[i] = GfVec3f(kNoMaterialGrey * sh);
     }
-    layer->SetField(shadePath, dflt, VtValue::Take(shade));
-    layer->SetField(colorPath, dflt, VtValue::Take(color));
-  } else if (layer->HasSpec(shadePath)) {  // the mask left this block: back to the plain clay
-    SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
-    for (const SdfPath& q : {shadePath, colorPath})
-      if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(q)) prim->RemoveProperty(a);
+    // per corner, as the points (the padding unshaded)
+    if (!slots_on()) {
+      layer->SetField(shadePath, dflt, VtValue::Take(shade));
+      layer->SetField(colorPath, dflt, VtValue::Take(color));
+    } else {
+      layer->SetField(shadePath, dflt, VtValue(slot_corners(shade, sl.indices, sl.cap, 1.0f)));
+      layer->SetField(colorPath, dflt, VtValue(slot_corners(color, sl.indices, sl.cap, GfVec3f(kNoMaterialGrey))));
+    }
+  } else {  // the mask left this block: back to the plain clay
+    drop_mask();
   }
   check(mark, "writing " + path.GetString());
 }
@@ -250,6 +286,8 @@ void Blocks::remove_all(const SdfPath& clay, std::set<BlockKey>& have) {
     else layer->RemoveRootPrim(spec);
   }
   have.clear();
+  for (auto it = p_->slots.begin(); it != p_->slots.end();)
+    it = it->first.GetParentPath() == clay ? p_->slots.erase(it) : std::next(it);
   p_->stale.insert(clay);  // its wholes went with the clay's spec; none is made again until it has blocks
   if (Skinning* skin = p_->skin_of(clay)) skin->clear();
   check(mark, "removing the blocks of " + clay.GetString());
@@ -257,21 +295,12 @@ void Blocks::remove_all(const SdfPath& clay, std::set<BlockKey>& have) {
 
 bool Blocks::get(const SdfPath& clay, const BlockKey& key, VtVec3fArray& points, VtVec3fArray& normals,
                  VtIntArray& indices) const {
-  const SdfLayerHandle layer = p_->layer;
-  const SdfPath path = clay.AppendChild(block_name(key));
-  if (const Skinning* skin = p_->skin_of(clay); skin && skin->rest(key, points, normals, indices)) {  // CL5: at rest
-    if (indices.size() == 3 && points.size() == 3 && points[0] == points[1] && points[1] == points[2]) return false;
-    return !indices.empty();
-  }
-  const TfToken& dflt = SdfFieldKeys->Default;
-  const VtValue p = layer->GetField(path.AppendProperty(TfToken("points")), dflt);
-  const VtValue n = layer->GetField(path.AppendProperty(TfToken("normals")), dflt);
-  const VtValue i = layer->GetField(path.AppendProperty(TfToken("faceVertexIndices")), dflt);
-  if (!p.IsHolding<VtVec3fArray>() || !n.IsHolding<VtVec3fArray>() || !i.IsHolding<VtIntArray>()) return false;
-  points = p.UncheckedGet<VtVec3fArray>();
-  normals = n.UncheckedGet<VtVec3fArray>();
-  indices = i.UncheckedGet<VtIntArray>();
-  // an emptied block (set): one triangle of no area, its 3 points the same
+  const Slot* sl = p_->slot_of(clay.AppendChild(block_name(key)));
+  if (!sl) return false;
+  points = sl->points;  // at rest (a skinned clay's slot keeps its rest surface)
+  normals = sl->normals;
+  indices = sl->indices;
+  // a block kept ready (the store's ring): one triangle of no area, its 3 points the same
   if (indices.size() == 3 && points.size() == 3 && points[0] == points[1] && points[1] == points[2]) return false;
   return !indices.empty();
 }
@@ -293,35 +322,19 @@ void Blocks::set_skin(const SdfPath& clay, std::shared_ptr<const SkinRig> rig, c
   if (!rig) {  // no bones any more: every block at rest again
     if (old && old->posed())
       for (const BlockKey& k : old->keys()) {
-        VtVec3fArray pts, nrm;
-        VtIntArray idx;
-        old->rest(k, pts, nrm, idx);
-        VtVec3fArray extent = extent_of(pts);
-        write_surface(layer, clay.AppendChild(block_name(k)), std::move(pts), std::move(nrm), std::move(extent));
+        const SdfPath path = clay.AppendChild(block_name(k));
+        if (Slot* sl = p_->slot_of(path)) p_->draw(path, *sl, sl->points, sl->normals);
       }
     check(mark, "putting the blocks of " + clay.GetString() + " back at rest");
     return;
   }
   auto skin = std::make_unique<Skinning>(std::move(rig));  // every bone at rest
-  const TfToken& dflt = SdfFieldKeys->Default;
   for (const BlockKey& k : have) {
-    VtVec3fArray pts, nrm;
-    VtIntArray idx;
-    if (!old || !old->rest(k, pts, nrm, idx)) {  // as written (no skin: at rest)
-      const SdfPath path = clay.AppendChild(block_name(k));
-      const VtValue p = layer->GetField(path.AppendProperty(TfToken("points")), dflt);
-      const VtValue n = layer->GetField(path.AppendProperty(TfToken("normals")), dflt);
-      const VtValue i = layer->GetField(path.AppendProperty(TfToken("faceVertexIndices")), dflt);
-      if (!p.IsHolding<VtVec3fArray>() || !i.IsHolding<VtIntArray>()) continue;
-      pts = p.UncheckedGet<VtVec3fArray>();
-      idx = i.UncheckedGet<VtIntArray>();
-      if (n.IsHolding<VtVec3fArray>()) nrm = n.UncheckedGet<VtVec3fArray>();
-    }
-    if (skin->keep(k, pts, nrm, idx) && old && old->posed()) {
-      VtVec3fArray extent;
-      skin->posed_surface(k, pts, nrm, extent);
-      write_surface(layer, clay.AppendChild(block_name(k)), std::move(pts), std::move(nrm), std::move(extent));
-    }
+    const SdfPath path = clay.AppendChild(block_name(k));
+    Slot* sl = p_->slot_of(path);
+    if (!sl) continue;
+    if (skin->keep(k, sl->points, sl->normals, sl->indices) && old && old->posed())
+      p_->draw(path, *sl, sl->points, sl->normals);  // drawn posed by the old bones: at rest again (the new are)
   }
   p_->skins[clay] = std::move(skin);
   check(mark, "giving the blocks of " + clay.GetString() + " their bones");
@@ -339,9 +352,11 @@ int Blocks::pose(const SdfPath& clay, const std::vector<BoneMove>& moves, double
   const auto t1 = Clock::now();
   if (!moved.empty()) p_->stale.insert(clay);
   for (const BlockKey& k : moved) {  // the writes, one after another, in the caller's change block
+    const SdfPath path = clay.AppendChild(block_name(k));
+    Slot* sl = p_->slot_of(path);
     VtVec3fArray pts, nrm, extent;
-    skin->posed_surface(k, pts, nrm, extent);
-    write_surface(p_->layer, clay.AppendChild(block_name(k)), std::move(pts), std::move(nrm), std::move(extent));
+    if (!sl || !skin->posed_surface(k, pts, nrm, extent)) continue;
+    p_->draw(path, *sl, std::move(pts), std::move(nrm));
   }
   check(mark, "posing the blocks of " + clay.GetString());
   if (usdMs) *usdMs += ms(t1);
@@ -365,7 +380,8 @@ void Blocks::set_st(const SdfPath& clay, const BlockKey& key, VtVec2fArray st) {
     SdfAttributeSpec::New(prim, kSt, SdfValueTypeNames->TexCoord2fArray)
         ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->faceVarying));
   }
-  layer->SetField(stPath, SdfFieldKeys->Default, VtValue::Take(st));
+  const Slot* sl = p_->slot_of(path);
+  layer->SetField(stPath, SdfFieldKeys->Default, slots_on() ? VtValue(slot_padded(st, sl ? sl->cap : st.size() / 3)) : VtValue(st));
   p_->stale.insert(clay);
   check(mark, "writing the unfolding of " + path.GetString());
 }
@@ -386,20 +402,17 @@ void Blocks::make_whole(const SdfPath& clay, const std::set<BlockKey>& have, con
   const TfToken& dflt = SdfFieldKeys->Default;
   std::vector<SurfaceBlock> plain, painted;
   std::vector<VtVec2fArray> st;
-  for (const BlockKey& k : have) {  // the prims as written: posed for a skinned clay, so the whole is posed too
+  for (const BlockKey& k : have) {  // the blocks as drawn: posed for a skinned clay, so the whole is posed too
     const SdfPath path = clay.AppendChild(block_name(k));
-    const VtValue p = layer->GetField(path.AppendProperty(TfToken("points")), dflt);
-    const VtValue n = layer->GetField(path.AppendProperty(TfToken("normals")), dflt);
-    const VtValue i = layer->GetField(path.AppendProperty(TfToken("faceVertexIndices")), dflt);
-    if (!p.IsHolding<VtVec3fArray>() || !i.IsHolding<VtIntArray>()) continue;
-    SurfaceBlock b{k, p.UncheckedGet<VtVec3fArray>(), {}, i.UncheckedGet<VtIntArray>()};
-    if (n.IsHolding<VtVec3fArray>()) b.normals = n.UncheckedGet<VtVec3fArray>();
-    if (b.indices.empty()) continue;
+    const Slot* sl = p_->slot_of(path);
+    if (!sl || sl->indices.empty() || sl->shownPoints.size() != sl->points.size()) continue;
+    SurfaceBlock b{k, sl->shownPoints, sl->shownNormals, sl->indices};
     if (b.indices.size() == 3 && b.points.size() == 3 && b.points[0] == b.points[1] && b.points[1] == b.points[2])
-      continue;  // an emptied block (set)
+      continue;  // a block kept ready (one triangle of no area)
     const VtValue s = layer->GetField(path.AppendProperty(TfToken(kSt)), dflt);
-    if (s.IsHolding<VtVec2fArray>() && s.UncheckedGet<VtVec2fArray>().size() == b.indices.size()) {
-      st.push_back(s.UncheckedGet<VtVec2fArray>());
+    if (s.IsHolding<VtVec2fArray>() && s.UncheckedGet<VtVec2fArray>().size() >= b.indices.size()) {
+      const VtVec2fArray& all = s.UncheckedGet<VtVec2fArray>();  // padded to the slot: the surface's corners first
+      st.emplace_back(all.cbegin(), all.cbegin() + b.indices.size());
       painted.push_back(std::move(b));
     } else {
       plain.push_back(std::move(b));
