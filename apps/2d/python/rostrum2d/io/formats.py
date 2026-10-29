@@ -88,8 +88,12 @@ def _mp4(out, w, h, fps, depth, first, rate):
     # no drawing, read-back or pipe; engine export_crew.rs).
     # --nv12 / nv12: the engine's drawing workers turn each frame into the encoder's NV12 side by side, and the pipe
     # carries 1.5 bytes a pixel instead of 4 (the encoder's one thread converting every frame was the export's narrowest step).
-    return {"program": exe, "args": ["encode-mp4", "--tagged", "--nv12", out, str(w), str(h), str(fps), str(rate.kbps), *q],
-            "repeat": True, "nv12": True}
+    # --keep= / keep: the engine keeps this encoder for its next export with the same settings (an export's 10 s parts,
+    # the next export): starting one costs 2-4 s (the graphics card's encoder), now paid once per engine; each export's
+    # file is saved whole as it ends. Files being written wait in Rostrum's cache, never in the person's folder.
+    keep = str(settings.cache_dir("2d-encoding"))
+    return {"program": exe, "args": ["encode-mp4", "--tagged", "--nv12", f"--keep={keep}", out, str(w), str(h), str(fps), str(rate.kbps), *q],
+            "repeat": True, "nv12": True, "keep": True}
 
 
 @functools.cache

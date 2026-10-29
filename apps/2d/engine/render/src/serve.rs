@@ -104,6 +104,10 @@ pub(crate) struct Session {
     pub(crate) shell: String,
     /// An export's extra drawing workers, kept between exports (export_pool.rs); they go with this session.
     pub(crate) pool: crate::export_pool::Pool,
+    /// The MP4 encoder kept between exports (encode_mp4.rs `--keep`; scene_export.rs) with the settings it was started
+    /// with, and the settings of the one taking this export's frames.
+    pub(crate) kept_encoder: Option<(String, Sink)>,
+    pub(crate) kept_key: Option<String>,
 }
 
 /// Opens a session in place of the running one (`session`), on the running one's GL context (painter.rs `into_gl`): one
@@ -160,7 +164,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default() }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None }, reply))
 }
 
 /// What a drawing worker's session copies from the export's (`twin`): size, depth, colour and what paints.
@@ -201,7 +205,7 @@ pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let painting = like.painting.clone();
-    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default() })
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_bases: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None })
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.

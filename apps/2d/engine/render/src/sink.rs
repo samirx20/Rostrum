@@ -84,10 +84,19 @@ enum To {
     Kept(Arc<Mutex<Vec<(u32, Vec<u8>)>>>),
 }
 
+/// What the frame writer thread sends the encoder: a frame, or (a kept encoder: encode_mp4.rs `--keep`) "save the frames
+/// so far as this file".
+enum Out {
+    Frame(Pixels),
+    Save(String),
+}
+
 struct Encoder {
-    tx: Option<SyncSender<Pixels>>,
+    tx: Option<SyncSender<Out>>,
     writer: Option<JoinHandle<Result<(), String>>>,
     child: Child,
+    /// Kept between exports (encode_mp4.rs `--keep=`): it saves each export's file and goes on (`Sink::save`).
+    kept: bool,
     /// The end of the encoder's stderr (what it says when it fails).
     said: Arc<Mutex<String>>,
     reader: Option<JoinHandle<()>>,
@@ -162,6 +171,32 @@ impl Sink {
         Some(serde_json::json!({ "name": name, "gpu": gpu, "steps": steps }))
     }
 
+    /// A kept encoder (`--keep`): the frames so far saved as `path`; it keeps running for the next export, its counts
+    /// starting again (`pushed`, `in_order` are each file's).
+    pub fn save(&mut self, path: &str) -> Result<(), String> {
+        match &mut self.to {
+            To::Encoder(e) if e.kept => e.save(path)?,
+            _ => return Err("save: not a kept encoder (--keep)".into()),
+        }
+        Ok(())
+    }
+
+    /// The next export's frames start here (a kept encoder): its counts start again.
+    pub fn begin_file(&mut self) {
+        (self.pushed, self.last, self.in_order) = (0, None, true);
+        if let To::Encoder(e) = &self.to {
+            // what it said about earlier files goes; which encoder it is stays (`encoder`)
+            let mut said = e.said.lock().unwrap();
+            *said = said.lines().filter(|l| l.starts_with("encode-mp4: encoder ") || l.starts_with("encode-mp4: started in")).map(|l| format!("{l}
+")).collect();
+        }
+    }
+
+    /// Whether this is a kept encoder (encode_mp4.rs `--keep`).
+    pub fn is_kept(&self) -> bool {
+        matches!(&self.to, To::Encoder(e) if e.kept)
+    }
+
     /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
     pub fn finish(&mut self) -> Result<i32, String> {
         match &mut self.to {
@@ -202,10 +237,20 @@ impl Encoder {
                 }
             }
         });
-        let (tx, rx) = sync_channel::<Pixels>(2);
+        let (tx, rx) = sync_channel::<Out>(2);
         let writer = std::thread::spawn(move || {
             let mut last: Vec<u8> = vec![];
-            for frame in rx {
+            for out in rx {
+                let frame = match out {
+                    Out::Frame(f) => f,
+                    Out::Save(path) => {
+                        let mut mark = vec![2u8];
+                        mark.extend((path.len() as u32).to_le_bytes());
+                        mark.extend(path.as_bytes());
+                        stdin.write_all(&mark).map_err(|e| e.to_string())?;
+                        continue;
+                    }
+                };
                 if frame.repeat {
                     if last.is_empty() {
                         return Err("a repeated frame with no frame before it".to_string());
@@ -222,7 +267,8 @@ impl Encoder {
             }
             Ok(())
         });
-        Ok(Encoder { tx: Some(tx), writer: Some(writer), child, said, reader: Some(reader) })
+        let kept = args.iter().any(|a| a.starts_with("--keep="));
+        Ok(Encoder { tx: Some(tx), writer: Some(writer), child, kept, said, reader: Some(reader) })
     }
 
     fn stopped(&mut self) -> String {
@@ -232,7 +278,11 @@ impl Encoder {
     }
 
     fn push(&mut self, pixels: Pixels) -> Result<(), String> {
-        let sent = self.tx.as_ref().ok_or("the encoder is finished")?.send(pixels);
+        self.send(Out::Frame(pixels))
+    }
+
+    fn send(&mut self, out: Out) -> Result<(), String> {
+        let sent = self.tx.as_ref().ok_or("the encoder is finished")?.send(out);
         if sent.is_err() {
             // The writer quit: the encoder closed its input.
             if let Some(w) = self.writer.take() {
@@ -243,6 +293,26 @@ impl Encoder {
                 let _ = r.join();
             }
             return Err(self.stopped());
+        }
+        Ok(())
+    }
+
+    /// A kept encoder (`--keep`): the frames so far saved as `path`, waited for until it says so; it goes on running.
+    fn save(&mut self, path: &str) -> Result<(), String> {
+        self.send(Out::Save(path.to_string()))?;
+        let done = format!(" {path}");
+        loop {
+            // its line for this file (the text since `begin_file` holds no other file's)
+            if self.said.lock().unwrap().lines().any(|l| l.starts_with("encode-mp4: saved ") && l.ends_with(&done)) {
+                break;
+            }
+            if self.child.try_wait().ok().flatten().is_some() {
+                if let Some(r) = self.reader.take() {
+                    let _ = r.join();
+                }
+                return Err(self.stopped());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(2));
         }
         Ok(())
     }
@@ -263,10 +333,22 @@ impl Encoder {
 }
 
 impl Drop for Encoder {
-    /// A render that ends without `finish` (an error, a closed host) stops its encoder.
+    /// A render that ends without `finish` (an error, a closed host) stops its encoder. A kept one that saved its last
+    /// file is told the frames are over first, so it removes its hidden files itself (a second at most).
     fn drop(&mut self) {
         if self.tx.is_some() {
             drop(self.tx.take());
+            if self.kept {
+                if let Some(w) = self.writer.take() {
+                    let _ = w.join();
+                }
+                for _ in 0..500 {
+                    if self.child.try_wait().ok().flatten().is_some() {
+                        return;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(2));
+                }
+            }
             let _ = self.child.kill();
             let _ = self.child.wait();
         }
