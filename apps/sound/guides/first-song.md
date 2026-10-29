@@ -215,8 +215,8 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   cut to picture. Playback and the playhead stop where the sound ends, with its tail; the ruler keeps
   room to write in. Agents: `doc.set` `length` with seconds, `{"beat": n}` or a marker `"#end"`) and **More**. With a set length, **Ring out** (right under **Length**, on at first) lets what still
   rings at the end (a held chord's release, a cymbal, an echo) die away before the song stops (agents: `doc.set` `ringOut`).
-  Switch it off to stop at the length; then **Soft end** appears below it (on at first) and fades the last tenth of a second so the stop has no
-  click; switch that off too for a dead stop (`endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
+  Switch it off to stop at the length; then **Soft end** appears below it (off at first); switch it on to fade the last tenth of a second (`endFade`). Off, the stop is
+  as written, with only a 10 ms ramp so it has no click. Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
   playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
   signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**

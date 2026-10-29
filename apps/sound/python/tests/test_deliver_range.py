@@ -36,7 +36,7 @@ def test_a_range_the_engine_rendered_is_not_cut_again_and_its_silent_end_goes(tm
     x = np.zeros((3 * rate, 2), "float32"); x[: rate, :] = 0.5                 # 1 s of sound, then 2 s of silence
     sf.write(str(mix), x, rate, subtype="FLOAT")
     r = {"file": str(mix), "stems": {}, "busStems": {}, "range": [10.0, 13.0], "seconds": 60.0}
-    out = deliver.deliver(tmp_path, r, {}, deliver.Options.read({"format": "wav32f", "sampleRate": rate, "from": 10, "to": 13}), "song")
+    out = deliver.deliver(tmp_path, r, {}, deliver.Options.read({"format": "wav32f", "sampleRate": rate, "from": 10, "to": 13, "trim": True}), "song")
     y, _ = sf.read(out["file"], dtype="float32")
     assert y[0, 0] == 0.5 and abs(out["seconds"] - (1.0 + deliver.TAIL)) < 1e-3 and out["trimmed"] is True
     assert out["range"] == [10.0, 10.0 + out["seconds"]] and out["songSeconds"] == 60.0

@@ -33,10 +33,10 @@ FIELDS = {
                      help="Sounds still ringing at the song's Length (a held chord's release, a cymbal, an echo) play on "
                           "until they die away, and the song ends there; a note held past the Length is let go at it. "
                           "Off: the song ends at its Length, cutting what still sounds."),
-        Param.toggle("endFade", group="Time", importance="secondary", label="Soft end", default=True,
+        Param.toggle("endFade", group="Time", importance="secondary", label="Soft end", default=False,
                      valid_when={"all": [{"not": IS("length", None)}, IS("ringOut", False)]},
-                     help="The song's last tenth of a second fades out, so notes still ringing at its Length stop softly "
-                          "instead of with a click. Off: the sound stops dead at the Length."),
+                     help="On: the song's last tenth of a second fades out, so notes still ringing at its Length stop softly. "
+                          "Off (the default): it stops at the Length, only a 10 ms ramp keeps the cut free of a click."),
         N("gridStart", 0, 600, "Time", "s", imp="deep", default=0, label="Bar 1 starts",
           help="The file time (seconds) where bar 1 / beat 0 begins; left out = 0. Music before it is a pickup, written "
                "in seconds. Moves the whole beat grid without changing the tempo (script: downbeat(bar(21), at=36.0))."),

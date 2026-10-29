@@ -1,14 +1,14 @@
 # Listening without ears: the look tools
 
-You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. Render first
-(`render_mix`, then `inspect_job` until it is done; or `run_script` with `look`, which writes, renders and checks in
+You cannot hear the render, so each look tool turns one aspect of it into numbers or a picture. To hear a moment without a render use `render_audition` (any bars or a marker ± seconds, about a second; `look: true` adds its wave, loudness and spectrum). For the whole file render first
+(`render_mix`, then `inspect_job` until it is done; or `run_script` with `look`, which writes and renders in
 one call); every look tool reads the last render unless you pass `wav`.
-Two read the document instead and need no render: `look_arrangement`, and `look_music` (`what: "harmony"`) on a song
+Two read the document instead and need no render: `look_arrangement` (about 0.05 s), and `look_music` (`what: "harmony"`) on a song
 with notes written.
 
 | Question | Tool | What to read |
 |---|---|---|
-| Is every part where I meant it, before rendering? Which tracks start on each marker? | `look_arrangement` | a picture of the written song (a row per track: notes by pitch, drum hits, clips; bars, sections, markers) and, per marker, the tracks that start on it and each track's nearest start in ms and beats. Reads the document, so no render is needed |
+| Is every part where I meant it, before rendering? Which tracks start on each marker? | `look_arrangement` | a picture of the written song (a row per track: notes by pitch, drum hits by drum, clips; each shaded and thickened by its level, velocity × the track's volume and its volume automation; the row's median level in dB and its highest and lowest note at the left; bar numbers along the top, sections, markers), each track's `level_db`, `level_db_range` and `register` in the data, and, per marker, the tracks that start on it and each track's nearest start in ms and beats. Reads the document, so no render is needed |
 | How loud is it, and does it build where it should? Where is the loudest moment? | `look_sound` (`what: "loudness"`) | integrated LUFS, true peak, the loudest moment and its time (`loudest`: the loudest 3 s and 0.4 s windows with where each starts and ends, and the highest sample with its time; the summary says them), the short-term curve (a sag or dip shows as a valley in the picture; each point is the 3 s ending there, so the curve peaks up to 3 s after the loud moment: read the time from `loudest`), clipped moments, the `ending` line (last 0.5 s level, still above -50 dBFS?, last 50 ms dropping faster than the fade = a cut, and the audible end: where the sound falls under -60 dBFS for good), the loudness of each section (`sections`, whole song only; `start` / `end` measure one stretch), where the limiter worked and which tracks drove it, and the room for speech (`speech_room`: how many dB a voice at the mix's loudness stands over the music in 1–4 kHz; aim for +6 dB or more under a voice-over) |
 | The render landed under the loudness target: what exactly do I change? | `edit_loudness` (a job; it re-renders offline to search) | the exact edits, ready for `edit_document`: `keep_balance` (the `maxLimit` that reaches the target, no track moves), `tame_peaks` (a gentle compressor on the most peaked track, threshold and makeup measured: the target inside the master's `maxLimit`, balance kept) and `trim_track` (the smallest cut of the most peaked track that reaches it inside the master's `maxLimit`), and when it needs over ~3 dB of limiting `lift_quiet` (the quiet passages ridden up on the master's volume lane, measured); `{"apply": "best"}` makes the one it names best |
 | Is one track buried or too loud? | `look_sound` (`what: "levels"`) | each stem's LUFS, dB under the loudest / the mix, and the track's volume in dB (move a track N dB: volume + N); flags (a float stem over 0 dBFS is held, not clipped) |
@@ -67,9 +67,9 @@ The render reads the ending as one fault, `bad_ending`, naming every way it fail
 
 "No faults found" means none of these, not that the music is good.
 
-`render_mix` runs the same check on every finished mix: its reply lists the three weakest moments against the asked
+With `notes: true`, `render_mix` runs the same check on the finished mix: its reply lists the three weakest moments against the asked
 ones (`expect`, or the song's markers named hit, stop, drums out, drums back, climax or lift), one line each with the
-time, the measured numbers and the first fix (`data.weakest`). Name the moments as markers once and every render is
+time and the measured numbers (`data.weakest`). Name the moments as markers once and every render is
 checked. A line that says "comes across" is a margin, not a fault. A missing moment comes first, then a silent start or
 a bent tempo (heard from the first second), then the weakest moments, then the other whole-piece faults.
 
@@ -77,7 +77,7 @@ The quickest loop is one call: write the whole piece as one script and run it wi
 arguments: `{"look": {"name": "cue", "expect": [{"at": 31.5, "kind": "stop"}, {"kind": "tempo", "bpm": 132}]}}`).
 The script merges, the mix renders and the reply is the script's line followed by render_mix's whole listening summary
 (loudness, the weakest moments with their fixes, the files; `data.render`). Edit the script and run it again under the
-same `name` with `look` until the list is clean. Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`), and any open fault is listed in the reply as a note for you to read. `keep: {id: "why"}` only marks a note as left on purpose (any why, no brief quote needed); it is stored, never refused. `brief("...")` in the script stores the brief's own words on the song, which the notes use. To clear a note, fix the script, or move the moment itself (`moment(name, at=...)` or `expect`) when the brief allows another time. A failing script renders nothing; a render over 150 s answers its
+same `name` with `look` until the list is clean. Checks are measurements given on request: `render_mix` with `notes: true` (in `run_script`: `look: {"notes": true}`) ends its reply with `Notes (n): [id] what was measured (when) | ...`: observations, never instructions and never a gate; the reply has no header and without `notes` no check runs. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`). `brief("...")` in the script stores the brief's own words on the song, which the notes read. There is no `keep`: a note you disagree with needs no answer. A failing script renders nothing; a render over 150 s answers its
 job id for `inspect_job`.
 
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a

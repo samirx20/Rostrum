@@ -3,7 +3,13 @@
 An agent cannot hear, so the `look_*` and `inspect_*` tools turn a render into numbers and pictures. This page is the
 order to use them in when checking a whole mix; the table of every tool and what to read is inspect_guide `listening`.
 
+## Hear a moment first
+
+`render_audition` plays any stretch (`{"at": "#hit", "around": 2}`, or `from` / `to` in bars; `solo` / `mute`; `look: true` for its wave, loudness and spectrum) in about a second, no full render. Change the script and play it again. The rest of this page checks the whole file.
+
 ## Render first
+
+`render_mix` with `notes: true` adds the closing `Notes (n)` line of measurements.
 
 `render_mix` with `stems: true`, then `inspect_job` until done. Every look tool reads the last render unless you pass
 `wav`; the ones that compare tracks (`look_sound` (`what: "levels"`), `look_sound` (`what: "clash"`), `look_sound` (`what: "low_end"`)) need the stems.
@@ -11,9 +17,9 @@ order to use them in when checking a whole mix; the table of every tool and what
 ## A pass from the outside in
 
 1. **Overall:** `look_sound` (`what: "loudness"`) with the brief's moments as `expect` (`[{"at": 31.5, "kind": "hit"}, {"at": 38, "kind": "climax"}]`). Its summary starts with the
-   **faults** a listener would hear, each with its time, the number and what to change (a weak hit "1.0x a normal note, bright attack 1.0x" with the fix that number points to, a blurred
+   **faults**, measurements with their time and number (a weak hit "1.0x a normal note, bright attack 1.0x", a blurred
    stop or a band that keeps playing through it, drums dropping early or still heard in the drop's gap, a climax that holds only 2 s or a stronger attack just before it, a build already at the ceiling before the hit, one harmony held for 19 s, a dull top end or one that does not grow into the climax, a near-mono mix, dead air at the end, a hit the
-   limiter squashed 4.7 dB): fix those first (the table is in inspect_guide `listening`, *Faults*). Integrated loudness and true peak against the delivery target; the short-term curve
+   limiter squashed 4.7 dB): judge which matter for this piece (the table is in inspect_guide `listening`, *Faults*). Integrated loudness and true peak against the delivery target; the short-term curve
    shows whether the loud and quiet parts are where the piece needs them, and the summary names the loudest moment and
    its time (the loudest 3 s and 0.4 s, and the highest sample): check that the climax is where you meant; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
    (the engine's own gain curve, the worst moments with the dB reduced) and, with stems, names the tracks that drove each

@@ -1,53 +1,225 @@
 """The arrangement picture: one row per track across time (notes as bars placed by pitch inside the row, drum hits
-as ticks, clips as boxes, spoken lines as flags), bar lines, sections shaded and named, markers as labelled lines."""
+as ticks, one lane per drum, clips as boxes, spoken lines as flags). Shade and thickness show each note's written
+level (velocity × the fader, its automation included); the left column names the track, its median level and the
+range it spans (highest note at the row's top edge, lowest at the bottom, or its drums by lane). Along the top:
+sections, markers (their lines drawn under the parts) and bar numbers; seconds along the bottom.
+
+Drawn with Pillow (already loaded by the MCP layer), not matplotlib: the first look in a fresh server is under a second.
+"""
 from __future__ import annotations
 
-from ..listen.plot import pyplot
+from PIL import Image, ImageDraw, ImageFont
+
+from .arrangement import db, levels
 from .draw_clash import PALETTE
+
+W, GUTTER, PAD = 1600, 176, 12
+BG, GRID, TEXT, DIM, MARK = (255, 255, 255), (226, 229, 236), (40, 44, 52), (120, 126, 140), (209, 54, 47)
+SECTION = [(238, 241, 246), (246, 247, 250)]
+LO_DB, HI_DB = -30.0, 6.0          # the shade scale: -30 dB and quieter palest, +6 dB and louder full colour
+_FONTS: dict[int, ImageFont.FreeTypeFont] = {}
+
+
+def _font(size: int):
+    if size not in _FONTS:
+        _FONTS[size] = ImageFont.load_default(size=size)
+    return _FONTS[size]
+
+
+def _rgb(hex_: str) -> tuple[int, int, int]:
+    return tuple(int(hex_[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def _amount(level: float) -> float:
+    """0 … 1 along the shade scale."""
+    return min(max((db(level) - LO_DB) / (HI_DB - LO_DB), 0.0), 1.0)
+
+
+def _shade(col, a: float):
+    k = 0.18 + 0.82 * a
+    return tuple(round(255 + (c - 255) * k) for c in col)
+
+
+def _db_text(v: float) -> str:
+    v = round(v)
+    return "0 dB" if v == 0 else f"{v:+d} dB"
+
+
+def _fit(text: str, font, width: float) -> str:
+    if font.getlength(text) <= width:
+        return text
+    while text and font.getlength(text + "…") > width:
+        text = text[:-1]
+    return text + "…" if text else ""
+
+
+def _lanes(items: list[tuple[float, float]], gap: float = 6) -> list[int]:
+    """A lane for each (left, right) span so labels in one lane never overlap (greedy, in order of left)."""
+    ends: list[float] = []
+    out = [0] * len(items)
+    for i in sorted(range(len(items)), key=lambda i: items[i][0]):
+        l, r = items[i]
+        lane = next((k for k, e in enumerate(ends) if l >= e + gap), len(ends))
+        if lane < len(ends):
+            ends[lane] = r
+        else:
+            ends.append(r)
+        out[i] = lane
+    return out
+
+
+def _step(span: float, px: float, min_px: float) -> float:
+    for s in (0.5, 1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600):
+        if s * px / span >= min_px:
+            return s
+    return 1200
 
 
 def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = None, title: str = "arrangement"):
     end = arr["end"] if end is None else end
+    end = end if end > start else start + 1.0
     rows = arr["tracks"]
-    plt = pyplot()
-    fig, ax = plt.subplots(figsize=(16, 1.2 + 0.9 * max(len(rows), 1)), dpi=100)
-    n = len(rows)
-    for name, s, e in arr["sections"]:
-        ax.axvspan(s, e, color="#eef1f6", zorder=0)
-        ax.text(s, n + 0.05, name, fontsize=9, color="#556", va="bottom")
-    for i, b in enumerate(arr["bars"]):
-        if start <= b <= end:
-            ax.axvline(b, color="#dde", lw=0.6, zorder=1)
-            ax.text(b, -0.08, str(i + 1), fontsize=7, color="#99a", ha="center", va="top")
+    n = max(len(rows), 1)
+    row_h = 84 if n <= 6 else max(52, min(84, 900 // n))
+    f9, f10, f11, f12, f14 = _font(10), _font(11), _font(12), _font(13), _font(16)
+    x0, x1 = GUTTER, W - PAD
+    X = lambda t: x0 + (t - start) * (x1 - x0) / (end - start)
+    inside = lambda t: start - 1e-9 <= t <= end + 1e-9
+
+    # top band: title, key line, sections, markers (as many lanes as their labels need), bar numbers
+    marks = [(name, at) for name, at in arr["markers"] if inside(at)]
+    mlabels = [f"{name} {at:.2f}s" for name, at in marks]
+    mspans = [(X(at) + 3, X(at) + 3 + f11.getlength(lab)) for (_, at), lab in zip(marks, mlabels)]
+    mlane = _lanes(mspans)
+    n_mlanes = max(mlane, default=-1) + 1
+    y_title = PAD
+    y_key = y_title + 22
+    y_sec = y_key + 22
+    y_mark = y_sec + 20
+    y_bar = y_mark + 16 * n_mlanes + 2
+    y_rows = y_bar + 18
+    y_axis = y_rows + row_h * len(rows)
+    H = y_axis + 30
+    img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+
+    d.text((PAD, y_title), title, fill=TEXT, font=f14)
+    d.text((PAD, y_key), "shade and thickness: each note's level (velocity x fader, automation included), "
+           f"pale {LO_DB:.0f} dB … full {HI_DB:+.0f} dB.  Left: median level in dB, highest note at the row's top, "
+           "lowest at its bottom.  Red: markers.", fill=DIM, font=f10)
+
+    # sections: shaded across the band and the rows, name at the start
+    for k, (name, s, e) in enumerate(arr["sections"]):
+        if e <= start or s >= end:
+            continue
+        a, b = X(max(s, start)), X(min(e, end))
+        d.rectangle([a, y_sec, b, y_axis], fill=SECTION[k % 2])
+        d.line([a, y_sec, a, y_axis], fill=(205, 210, 222))
+        d.text((a + 4, y_sec + 2), _fit(name, f11, b - a - 8), fill=(70, 76, 96), font=f11)
+
+    # bar lines and numbers (every bar, or every 2nd/4th … when they would crowd)
+    bars = arr["bars"]
+    vis = [(i + 1, b) for i, b in enumerate(bars) if inside(b)]
+    every = 1
+    if len(vis) > 1:
+        gap = (X(vis[-1][1]) - X(vis[0][1])) / (len(vis) - 1)
+        while gap * every < f9.getlength(str(len(bars))) + 10:
+            every *= 2
+    d.text((PAD, y_bar + 1), "bar", fill=DIM, font=f9)
+    for num, b in vis:
+        x = X(b)
+        d.line([x, y_bar + 14, x, y_axis], fill=GRID)
+        if (num - 1) % every == 0 and num <= arr.get("bar_count", len(bars)) + 1:
+            lab = str(num)
+            tx = min(max(x - f9.getlength(lab) / 2, x0), x1 - f9.getlength(lab))
+            d.text((tx, y_bar + 1), lab, fill=DIM, font=f9)
+
+    # markers: the line under the parts (a hit on the marker stays visible), the label in the top band
+    for (name, at), lab, lane in zip(marks, mlabels, mlane):
+        x = X(at)
+        d.line([x, y_mark + 16 * lane, x, y_axis], fill=MARK, width=2)
+        d.text((x + 3, y_mark + 16 * lane), _fit(lab, f11, x1 - x - 4), fill=MARK, font=f11)
+
+    # rows
     for r, t in enumerate(rows):
-        y0, col = n - 1 - r, PALETTE[r % len(PALETTE)]
-        ax.axhline(y0, color="#e4e6ea", lw=0.6)
-        ms = [m for _, _, m, _ in t["notes"]]
-        lo, hi = (min(ms), max(ms)) if ms else (0, 1)
-        span = max(hi - lo, 12)
-        for s, e, m, v in t["notes"]:
-            y = y0 + 0.1 + 0.75 * (m - lo) / span
-            ax.add_patch(plt.Rectangle((s, y), max(e - s, 0.02), 0.06, color=col, alpha=0.35 + 0.65 * min(v, 1), zorder=3))
-        drums = sorted({d for _, d in t["hits"]})
-        for s, d in t["hits"]:
-            y = y0 + 0.1 + 0.8 * (drums.index(d) + 0.5) / len(drums)
-            ax.plot([s, s], [y - 0.05, y + 0.05], color=col, lw=1.2, zorder=3)
-        for s, e in t["clips"]:
-            ax.add_patch(plt.Rectangle((s, y0 + 0.15), e - s, 0.7, fill=False, ec=col, lw=1.2, zorder=3))
+        col = _rgb(PALETTE[r % len(PALETTE)])
+        top, bot = y_rows + r * row_h, y_rows + (r + 1) * row_h
+        d.line([PAD, bot, x1, bot], fill=GRID)
+        lv = levels(t, arr.get("key"))
+        name = t["id"] + ("  (muted)" if t.get("mute") else "")
+        d.text((PAD, top + 4), _fit(name, f12, GUTTER - PAD - 40), fill=col, font=f12)
+        info = _db_text(lv["level_db"]) if lv["level_db"] is not None else "silent"
+        if t.get("automated"):
+            info += " (auto)"
+        d.text((PAD, top + 21), info, fill=TEXT, font=f10)
+        area_top, area_bot = top + 7, bot - 7
+
+        ms = [nt[2] for nt in t["notes"]]
+        if ms:
+            lo, hi = min(ms), max(ms)
+            span = max(hi - lo, 12)
+            pad_lo = lo - (span - (hi - lo)) / 2
+            Y = lambda m: area_bot - (m - pad_lo) / span * (area_bot - area_top)
+            reg = lv["register"]
+            hx = GUTTER - 6
+            d.text((hx - f10.getlength(reg["high"]), Y(hi) - 6), reg["high"], fill=DIM, font=f10)
+            if lo != hi:
+                d.text((hx - f10.getlength(reg["low"]), Y(lo) - 6), reg["low"], fill=DIM, font=f10)
+            for s, e, m, _v, level in t["notes"]:
+                if e < start or s > end:
+                    continue
+                a = _amount(level)
+                th = 1.5 + 3.5 * a
+                y = Y(m)
+                d.rectangle([max(X(s), x0), y - th / 2, max(min(X(e), x1) - 1, max(X(s), x0) + 1), y + th / 2],
+                            fill=_shade(col, a))
+
+        drums = lv["drums"]
+        if drums:
+            lane_h = (area_bot - area_top) / len(drums)
+            show = lane_h >= 10 and not ms
+            for k, dr in enumerate(drums):
+                if show:
+                    yc = area_top + lane_h * (k + 0.5)
+                    d.text((GUTTER - 6 - f9.getlength(_fit(dr, f9, 70)), yc - 6), _fit(dr, f9, 70), fill=DIM, font=f9)
+            if not show:
+                d.text((PAD, top + 36), _fit(", ".join(drums), f9, GUTTER - PAD - 6), fill=DIM, font=f9)
+            for s, dr, level in t["hits"]:
+                if not inside(s):
+                    continue
+                a = _amount(level)
+                yc = area_top + lane_h * (drums.index(dr) + 0.5)
+                hh = min(lane_h * 0.45, 2 + 5 * a)
+                x = X(s)
+                d.rectangle([x, yc - hh, x + (1 if a < 0.6 else 2) + 1, yc + hh], fill=_shade(col, a))
+
+        for s, e, level in t["clips"]:
+            if e < start or s > end:
+                continue
+            a = _amount(level)
+            d.rectangle([max(X(s), x0), top + 12, min(X(e), x1), bot - 12], fill=_shade(col, a * 0.35),
+                        outline=_shade(col, a), width=2)
         for s, text in t["lines"]:
-            ax.text(s, y0 + 0.5, "▸" + text, fontsize=7, color=col, va="center", zorder=3)
-        label = t["id"] + (f"  ({', '.join(drums)})" if drums and len(drums) <= 6 else "")
-        ax.text(start, y0 + 0.92, label, fontsize=9, color=col, va="top", fontweight="bold", zorder=4)
-    for name, at in arr["markers"]:
-        if start <= at <= end:
-            ax.axvline(at, color="#d1362f", lw=1.4, zorder=5)
-            ax.text(at, n + 0.05, f"{name} {at:.2f}s", fontsize=9, color="#d1362f", rotation=0, va="bottom", ha="left")
-    ax.set_xlim(start, end)
-    ax.set_ylim(-0.3, n + 0.5)
-    ax.set_yticks([])
-    ax.set_xlabel("seconds (bar numbers under the rows)")
-    ax.set_title(title, loc="left", pad=18)
-    fig.tight_layout()
-    fig.savefig(png)
-    plt.close(fig)
+            if not inside(s):
+                continue
+            x = X(s)
+            yc = (top + bot) / 2
+            d.polygon([(x, yc - 5), (x + 7, yc), (x, yc + 5)], fill=col)
+            d.text((x + 9, yc - 7), _fit(text, f10, x1 - x - 10), fill=col, font=f10)
+
+
+    # seconds along the bottom
+    d.line([x0, y_axis, x1, y_axis], fill=DIM)
+    st = _step(end - start, x1 - x0, 60)
+    t0 = (int(start / st) + (start % st > 1e-9)) * st
+    k = 0
+    while t0 + k * st <= end + 1e-9:
+        tt = t0 + k * st
+        x = X(tt)
+        lab = f"{tt:g}"
+        d.line([x, y_axis, x, y_axis + 4], fill=DIM)
+        d.text((min(max(x - f10.getlength(lab) / 2, x0), x1 - f10.getlength(lab)), y_axis + 6), lab, fill=DIM, font=f10)
+        k += 1
+    d.text((PAD, y_axis + 6), "seconds", fill=DIM, font=f10)
+    img.save(png, optimize=False, compress_level=3)
     return png

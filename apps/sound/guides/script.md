@@ -1,11 +1,9 @@
 # The Sound script API (run_script)
 
-**The whole piece is one script, under one name.** Write it, run it with `run_script` and `look: true` (it renders and listens), read the listening
-check in the reply (loudness, the weakest asked moments with their fixes, faults such as "leading silence", "tempo far from
-the brief's" and "stop lands soft"), edit the script and run it again under the same name. `edit_document` is for one-off
+**The whole piece is one script, under one name.** Write it, run it with `run_script`, see it with `look_arrangement` (no render), hear the moment you care about with `render_audition` (about a second; `{"at": "#chorus", "around": 2}`, `look: true` for its picture), judge it yourself, edit the script and run it again under the same name; `render_mix` is for delivering. `edit_document` is for one-off
 touch-ups. To make an asked moment read (a hit out of silence, a band that really stops, a drop that is a gap), see "Moments that read" below.
 
-Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`), and any open fault is listed in the reply as a note for you to read. `keep: {id: "why"}` only marks a note as left on purpose (any why, no brief quote needed); it is stored, never refused. `brief("...")` in the script stores the brief's own words on the song, which the notes use. To clear a note, fix the script, or move the moment itself (`moment(name, at=...)` or `expect`) when the brief allows another time.
+Checks are measurements given on request: `render_mix` with `notes: true` (in `run_script`: `look: {"notes": true}`) ends its reply with `Notes (n): [id] what was measured (when) | ...`: observations, never instructions and never a gate; the reply has no header and without `notes` no check runs. A delivery (`render_mix`, or `run_script` `look` with `folder`) is never refused: the file is always written where you ask (`folder`, `name`). `brief("...")` in the script stores the brief's own words on the song, which the notes read. There is no `keep`: a note you disagree with needs no answer.
 
 - **Same name = replace.** A track, note, hit, effect, automation lane, marker, section or tempo change you delete from the
   script is gone after the next run; a new tempo moves every beat-written time and keeps a person's edits; a changed value
@@ -24,7 +22,7 @@ Replies open `NOT DONE:` with each fault (id, when, fix) or `DONE:`. A delivery 
 **A script's shape** (a technique; every name is below):
 
 ```python
-brief("<the brief you were given, word for word>")      # 0. a kept fault quotes it (keep)
+brief("<the brief you were given, word for word>")      # 0. the notes read it
 tempo(96); key("F major"); length(bar(17))                 # 1. the song's map: tempo (changes), meter, key, length
 marker("lift", at=bar(9)); section("verse", bar(1), bar(9))  #    sync points as markers, sections as named spans
 CHANGES = {1: "F", 3: "Bb", 5: "Dm7", 7: "C"}              # 2. the music as data: bar -> chord, a dict you edit
@@ -81,7 +79,7 @@ so `length(bar(9))` is an 8-bar song: for N bars write `length(bar(N+1))`. The r
 the length worked out ("Song: 96 bpm, 4/4; 8 bars long (ends where bar 9 starts, 20.0 s)"), as does `inspect_item`
 on the song.
 
-Check what you wrote when the render's check names something: `look_arrangement` draws every track's notes and hits with the bars, sections
+Check what you wrote when the render's check names something: `look_arrangement` draws every track's notes and hits, shaded by level, with its range and level in dB, the numbered bars, sections
 and markers, and says which tracks start on each marker.
 
 ## Mix routing: buses, sends, ducks, dialogue
@@ -213,8 +211,8 @@ are set so the end can't be cut or left silent by accident (it sets the length o
   chord or parts stopping early); its fix is the one line to paste, filled in for your song (the kind the brief asks,
   `at` your end marker or the length), e.g. `ending("ring", at="#end")`: paste it, don't hand-write last bars
   (inspect_guide 'listening' has the numbers).
-  `ring_out(False)` (after `length`) stops the song at its length, its last 0.1 s smoothed (`ring_out(False,
-  soft_end=False)`: a dead stop): for a sound that has already died away there.
+  `ring_out(False)` (after `length`) stops the song at its length as written, on a 10 ms ramp so the cut has no click;
+  `ring_out(False, soft_end=True)` fades its last 0.1 s: for a sound that has already died away there.
 - **Ring out** (the song field `ringOut`, on in every new song): a sound still ringing at `length` plays on until it dies
   away (under -60 dBFS, at most 6 s more); a note held past `length` is let go at it, and a note that starts at or after
   `length` is not heard (both are warned, in `run_script` and `render_mix`). **The file `render_mix` delivers is exactly
@@ -227,15 +225,14 @@ are set so the end can't be cut or left silent by accident (it sets the length o
   with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is `ending(...)` (it sets the
   length past the tail), else `ringOut` on, a later `length`, or `master(fadeOut=...)`. The render also answers `ending` (`length`, the file's `end`, `levelAtLengthDb`, `cut`)
   and a warning when the ending is cut.
-- **Soft end.** Only with Ring out off; on by default (the song field `endFade`): anything sounding at `length` is faded over
-  its last 0.1 s so the file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
-  if it is off and sound still plays.
+- **Soft end.** Only with Ring out off; **off unless you ask** (the song field `endFade`, `ring_out(False, soft_end=True)`):
+  anything sounding at `length` is faded over its last 0.1 s. Off, the song stops at `length` as written, on a 10 ms ramp
+  (no click, no audible fade). `inspect_diagnose` names `hard-end` when sound still plays at the stop: an observation.
 - **Fade out.** For the music fading away, `ending("fade")`. `master(fadeOut=1.8)` is a short delivery fade: it fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
   where you want silence). On a held chord at the very end a 1.5 s fade measured: the last half second at -56 dB instead of -21 dB.
-- **`trim`.** With a `length` set, `render_mix` never cuts below it (trim has nothing to take off: the file is the length you asked
-  for). Without a `length` (or with `ring_past_length`), it trims the end only where the sound is below -80 dBFS; the reply says
-  `trimmed: false` when sound above that runs to the end. Trim removes silence; it does not fade anything. Pass `trim: false` to keep
-  the engine's full file.
+- **`trim`.** Off unless you pass `trim: true`: the file is the engine's whole length. With a `length` set the file is exactly that
+  long and trim has nothing to take off. Without a `length` (or with `ring_past_length`), `trim: true` cuts the end where the sound is below -80 dBFS
+  (plus 0.25 s); the reply says `trimmed: false` when sound above that runs to the end. Trim removes silence; it does not fade anything.
 
 ## Landing on a time: through the tempo, or in seconds
 

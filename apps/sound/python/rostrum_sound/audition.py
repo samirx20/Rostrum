@@ -56,6 +56,13 @@ def _kind(entry: dict) -> str:
           json.dumps(entry)[:80])
 
 
+def entry_of(track: dict) -> dict:
+    """The track's own sound as an entry: its instrument and that instrument's one field (a track keeps the fields of
+    instruments it played before, e.g. `kit` on a piano track; only the one it plays now is its sound)."""
+    inst = track.get("instrument")
+    return {"instrument": inst, **({inst: track[inst]} if track.get(inst) is not None else {})}
+
+
 def _own_notes(doc: dict, track: str, start: float, bars: int) -> list[dict]:
     """The track's notes (and hits) from `start` for `bars` bars, as seconds from 0: [{pitch|drum, at, dur, vel}]."""
     t = next((x for x in doc.get("tracks", []) if x["id"] == track), None)

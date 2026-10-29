@@ -1,6 +1,6 @@
 """A clock for the agent: every reply of the rostrum-sound server ends with one short line (how long the session has run, how
 many calls, what has changed since the last render, whether the last render was listened to), and a finished `render_mix`
-asks for a concrete fix pass and says how much time is left. Agents that cannot see the time stop after a fifth of it
+with notes names the quick tools and says how much time is left. Agents that cannot see the time stop after a fifth of it
 (the fair Sound benchmark: 3 of 15 minutes); this is the time and the facts, never a verdict. 2D's clock is the model
 (apps/2d/.../session_clock.py): its looks are pictures, Sound's are the listening tools.
 
@@ -53,7 +53,7 @@ class Clock:
                 self.render_s = result["renderSeconds"]
 
     def passes(self, render_s: float | None = None) -> int:
-        """How many more listen, fix and render passes the time left holds (0 with no budget)."""
+        """How many more renders the time left holds (0 with no budget)."""
         left = self.left()
         return 0 if left is None or left <= 0 else int(left // ((render_s or self.render_s or 30.0) + PASS_S))
 
@@ -68,7 +68,7 @@ class Clock:
             parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to listen and refine)" if left > 60 else "")
                          if left > 0 else f"your {self.budget_min:g} min are used")
             if self.passes() >= 1:
-                parts.append(f"enough for about {self.passes()} more pass{'es' * (self.passes() != 1)} of listen, fix and render")
+                parts.append(f"time for about {self.passes()} more render{'s' * (self.passes() != 1)}")
         return " · ".join(parts)
 
 
@@ -76,17 +76,18 @@ AGAIN = "and render_mix again to the same name"     # run_script's render says i
 
 
 def fix_pass(clock: Clock | None, render_s: float | None = None) -> str:
-    """What a finished render's reply asks next: a concrete fix pass, and the time left for it."""
-    said = ("Next, a fix pass: change the script for each weak moment above (look_music and look_sound show more: a chord "
-            "that blurs into the next, a held sound that stays flat, a stretch too loud or quiet for its place) " + AGAIN + ".")
+    """The closing line of a render with notes: the quick tools for hearing a moment again, and the time left. Facts
+    only: what to change, if anything, is the agent's call."""
+    said = ("To hear one moment again without a full render: render_audition {at: \"#marker\"} or {from: {bar: n}, to: {bar: m}} "
+            "(about a second; look: true adds its picture).")
     left = clock.left() if clock else None
     if left is None:
         return said
     if left <= 0:
         return said + f" Your {clock.budget_min:g} min are used."
     n = clock.passes(render_s)
-    return said + f" {said_time(left)} of your {clock.budget_min:g} min are left: " + (
-        f"enough for about {n} more pass{'es' * (n != 1)}." if n else "close to the end, so make the one fix that matters most.")
+    return said + f" {said_time(left)} of your {clock.budget_min:g} min are left" + (
+        f": time for about {n} more render{'s' * (n != 1)}." if n else ".")
 
 
 def _budget() -> float | None:

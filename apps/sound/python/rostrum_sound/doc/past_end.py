@@ -83,9 +83,9 @@ RINGING_S = 0.5      # a sound still held (or just struck) this close to the end
 
 
 def hard_end(data: dict) -> str:
-    """The song stops dead on sound: its soft end (`endFade`) is off and a note is still held, or a hit or clip still
+    """The song stops dead on sound: Ring out and its soft end (`endFade`) are off and a note is still held, or a hit or clip still
     sounds, in its last half second. "" when not (or when it ends after the last sound: no `length`)."""
-    if data.get("length") is None or data.get("ringOut") or data.get("endFade", True):
+    if data.get("length") is None or data.get("ringOut") or data.get("endFade"):
         return ""
     try:
         end = times.seconds(data["length"], data, "length")
