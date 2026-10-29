@@ -199,8 +199,8 @@ them like its own, in the same run (one undo step):
   intensity=8)` keeps its place and aim. A shot with no camera is seen through the default view, and the reply says so.
 
 The same goes for anything another script or a person made: **made again under its id**, this script replaces it (never a
-second copy). From then on the script owns them: a re-run under its name changes them again. A field a person changed since is held back as
-usual (`force` lets the script win).
+second copy). From then on the script owns them: a re-run under its name changes them again, and what the new scene or the other
+script had set is never held back. A field a person changed by hand is held back as usual (`force` lets the script win).
 
 ## Nesting
 

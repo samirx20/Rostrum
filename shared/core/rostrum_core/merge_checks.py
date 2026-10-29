@@ -84,12 +84,20 @@ def _up_to_date(doc, output: dict) -> dict:
     return up[0] if up else output
 
 
-def _own(c, who, name: str) -> bool:
+def _own(doc, c, who, name: str, id_: str) -> bool:
     """Change `c` is not another author's work: this script's own run, the same agent or script (never a person: their
-    own hand edits stay theirs), or an older file's upgrade."""
+    own hand edits stay theirs), an older file's upgrade, or the run of a script that has handed `id_` over (the new
+    scene's ground and sky, taken over by an agent's script: the starter's values are no one's edit to keep)."""
     if (c.who == who and who.kind != "person") or c.who == UPGRADE:
         return True
-    return any(k.get("op") == "run_script" and (k.get("args") or {}).get("script") == name for k in c.calls)
+    return any(k.get("op") == "run_script" and ((s := (k.get("args") or {}).get("script")) == name or _handed_over(doc, s, id_))
+               for k in c.calls)
+
+
+def _handed_over(doc, script, id_: str) -> bool:
+    """Script `script` ran before but no longer holds `id_` in its last output: another script took it over."""
+    base = doc.script_bases.get(script)
+    return base is not None and id_ not in index(base, doc.kind.lists)
 
 
 def _other_author(doc, hit: set, who, name: str):
@@ -97,6 +105,6 @@ def _other_author(doc, hit: set, who, name: str):
     another's: a value held back wrongly is reported and can be forced; a person's work wiped is lost."""
     for key in sorted(hit):
         c = doc.who_changed(*key[:2]) if len(key) > 1 else doc.who_changed(key[0])
-        if c is None or not _own(c, who, name):
+        if c is None or not _own(doc, c, who, name, key[0]):
             return key, c
     return None
