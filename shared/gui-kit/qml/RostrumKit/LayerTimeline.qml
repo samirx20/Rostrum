@@ -11,7 +11,7 @@ import RostrumKit
 // is one click away. The button in the bottom-right corner switches; the app remembers it per tool.
 Rectangle {
     id: tl
-    property int labelWidth: 240
+    property int labelWidth: layers ? 268 : 240     // + room for the layers button (⧉) when the app has animation layers
     Item { property bool menuAvoid: true; x: 0; y: 0; width: tl.labelWidth; height: tl.height }   // menus and flyouts keep off the names (MenuPlace.js)
     signal resized(real height)                 // the top edge dragged to this height (Main.qml clamps it)
     property bool compact: false
@@ -37,7 +37,15 @@ Rectangle {
     onRowsChanged: plug(rows, rowsBox, -1)          // under the fade and scroll bar that share its box
     onCurvesChanged: plug(curves, curvesBox, 0)
     onOverlayChanged: plug(overlay, overlayBox, 0)
-    onLayersChanged: if (layers) { layers.parent = playCell; layers.anchors.verticalCenter = playCell.verticalCenter }
+    // the layers button sits just left of Keys | Curves (or of the ruler while that is absent), never under it: the play
+    // cell (play, time, Add marker) grows to the right and a long time would reach a button laid inside it
+    onLayersChanged: if (layers) {
+        layers.parent = tl
+        layers.z = 1
+        layers.anchors.verticalCenter = keysCurves.verticalCenter
+        layers.anchors.right = Qt.binding(() => keysCurves.visible ? keysCurves.left : ruler.left)
+        layers.anchors.rightMargin = Qt.binding(() => keysCurves.visible ? Theme.grid : Theme.pad + 8)
+    }
     color: Theme.panel; radius: Theme.radiusPanel
 
     MouseArea {  // the top edge: in the gap above the timeline, so it never takes a click meant for the canvas
