@@ -9,6 +9,7 @@ from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
 from .clay_fields import CLAY, STEP as CLAYSTEP
+from .clay_layers import LAYER as CLAY_LAYER
 from .copies_fields import COPIES, EFFECTOR
 from .field_kit import CH, C, D, DOF, N, S, T, TRANSFORM, X, ANY
 from .light_fields import LIGHT
@@ -51,6 +52,7 @@ FIELDS: dict[str, list[Param]] = {
     "effector": EFFECTOR,               # changes the copies near an item (inside a copies item only)
     "clay": CLAY,                       # clay_fields.py: a lump to sculpt, its shape = its steps
     "claystep": CLAYSTEP,               # one piece or brush stroke of a clay, in order
+    "claylayer": CLAY_LAYER,            # a sculpt layer: a group of a clay's steps with an Amount (clay_layers.py)
     "light": LIGHT,                     # light_fields.py
     "camera": [
         N("focalLength", "Focal length", "Lens", 1, 2000, 0.1, "mm", default=50.0,

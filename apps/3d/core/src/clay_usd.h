@@ -52,6 +52,11 @@ class Blocks {
   void clear_st(const PXR_NS::SdfPath& clay, const BlockKey& key);                         // between begin() and end()
   void begin();
   void end();
+  // 3d-dab-viewer: a live stroke's preview parts are always drawn as fixed-size slots (clay_slots.h); a clay's
+  // full-detail blocks only when `on` (a clay that doesn't preview: its dabs re-write them). The others stay sized to
+  // their surface: a slot holds ~3x the points, and every block of a big clay as one cost graphics memory and
+  // stalled the window's frames
+  void set_slots(const PXR_NS::SdfPath& clay, bool on);
 
   // CL5. The clay's bones (null: none, its blocks written at rest again). A rig of the same rest only takes the new
   // pose table; a new rest re-weighs every block of `have` (their rest surfaces from the old skinning, else the

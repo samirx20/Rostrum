@@ -24,7 +24,7 @@ class Frames:
         while stack:
             item, parent = stack.pop()
             self.items[item["id"]], self.parent[item["id"]] = item, parent
-            stack += [(c, item["id"]) for c in item.get("children", [])]
+            stack += [(c, item["id"]) for c in item.get("children", []) + item.get("sculptLayers", [])]
         self._world, self._values, self._busy, self._step = {}, {}, set(), {}
         self.rides, self.riding = {}, set()                    # follow.ride's per-item moves, frame by frame
         self.carries = {}                                      # item -> frame -> the transform it rides on (follow)

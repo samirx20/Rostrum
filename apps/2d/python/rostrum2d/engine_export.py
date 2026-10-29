@@ -5,6 +5,10 @@ only the part it was on is drawn again: the finished parts are kept. After RESTA
 naming where it stopped. Formats with no single file (picture sequences, GIF) are one request, sent again whole after
 a restart. Undertow (2026-10-29): an engine that ended at frame 600 of 900 lost the whole export.
 
+A request with `saves` (export_cache.py's segments: the engine saves a finished file at each cut as it draws) is one
+request, never cut into parts: after a restart it is sent again from the first cut whose file is not there, the files
+before it kept.
+
 Progress is the whole export's (done, of all frames) with the time so far and an honest time left: the frames still to
 draw at the pace of the last PACE_FRAMES (a slow title at the end shows as it comes, not averaged away).
 """
@@ -38,7 +42,7 @@ def run(eng, req: dict, progress, send) -> dict:
             if out:                                 # each try its own file: a dead engine's encoder may still hold the last
                 out = _try_name(out, restarts)
                 tried.append(out)
-            sub = _part_request(req, start, fps, a, b, out) if out else req
+            sub = _part_request(req, start, fps, a, b, out) if out else _rest(req, start, fps, a) if a else req
             try:
                 # A frame that got stuck is given longer after each restart: slow but drawing is not stuck.
                 reply = send({"export": {**sub, "progress": True}}, engine.FRAME_LIMIT_S * (1 + restarts),
@@ -53,11 +57,19 @@ def run(eng, req: dict, progress, send) -> dict:
                     eng._restart()
                 except EngineError as again:
                     raise type(e)(f"{e}{_restarted(restarts - 1)}; starting it again failed: {again}") from again
+                if req.get("saves"):                # on from the first segment not saved whole
+                    a = _saved(req)
+                    parts[k] = (a, b, None)
+                    _log_line(f"2D export: {a} frames were saved in finished segments; drawing on from frame {a}")
+                    if a >= b:                      # every file was saved before it stopped: nothing left to draw
+                        replies.append({"ok": True, "frames": b, "timing": {}})
+                        k += 1
+                        continue
                 pace.back_to(a)
                 continue
-            if out and reply.get("frames") != b - a:
+            if (out or req.get("saves")) and reply.get("frames") != b - a:
                 raise EngineError(f"2D export: frames {a}-{b - 1} came back as {reply.get('frames')} frames, not {b - a}")
-            replies.append(reply)
+            replies.append({**reply, "frames": b} if req.get("saves") else reply)   # a resumed one: all its frames
             if out:
                 done_parts.append(out)
             k += 1
@@ -102,11 +114,29 @@ def _parts(req: dict, total: int) -> list[tuple[int, int, str | None]]:
     longer than a part and its encoder names the file once (so each part can name its own)."""
     file = req.get("file")
     args = (req.get("encode") or {}).get("args") or []
-    if not file or total <= PART_FRAMES or args.count(file) != 1:
+    if not file or total <= PART_FRAMES or args.count(file) != 1 or req.get("saves"):
         return [(0, total, None)]
     p = Path(file)
     return [(a, min(a + PART_FRAMES, total), str(p.with_name(f"{p.stem}.part{a // PART_FRAMES:03d}{p.suffix}")))
             for a in range(0, total, PART_FRAMES)]
+
+
+def _saved(req: dict) -> int:
+    """The frames in the request's saved files: up to the first cut whose file is not there (each is renamed into place
+    only when whole, so one there is finished)."""
+    done = 0
+    for s in req["saves"]:
+        if not Path(s["file"]).is_file():
+            break
+        done = s["end"]
+    return done
+
+
+def _rest(req: dict, start: float, fps: float, a: int) -> dict:
+    """A `saves` request from its frame `a` (a cut) on: the files still to save, their ends counted from there."""
+    sub = {**req, "start": start + a / fps, "saves": [{**s, "end": s["end"] - a} for s in req["saves"] if s["end"] > a]}
+    sub.pop("timingCsv", None)
+    return sub
 
 
 def _part_request(req: dict, start: float, fps: float, a: int, b: int, out: str) -> dict:

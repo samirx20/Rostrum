@@ -101,8 +101,10 @@ pub struct Painter {
     /// Of `last_read_ms`: the wait for the GPU to finish the frame (`read`; 0 when read in flight).
     pub last_gpu_ms: f64,
     pub last_convert_ms: f64,
-    /// Whether the last frame collected by `finish_read` came through the GPU's output step (the encoder's bytes).
+    /// Whether the last frame collected by `finish_read` came through the GPU's output step (the encoder's bytes), and
+    /// whether as NV12 (`start_read`'s `nv12`).
     pub last_read_ready: bool,
+    pub last_read_nv12: bool,
     /// The comp-cache buffers the last paint tapped (anyrender_skia `finish_taps`): how many, and the time reading them
     /// back (ms); `taps_written` the time it waited for them to be written.
     pub last_taps: usize,
@@ -353,12 +355,12 @@ impl Painter {
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_read_nv12: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_read_ready: false, last_read_nv12: false, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     /// Paints from now on the page's part `v` (ENGINE_CONTRACT.md § 1 `scale`, `view`): the whole comp at 1, a smaller
@@ -689,10 +691,13 @@ impl Painter {
 
     /// Starts reading the last picture (a frame, the motion-blur sum or a held paint) back for an encoder without
     /// waiting for it; `finish_read` collects it. On the GPU's exact output step when it can (gpu_output_queue.rs: the
-    /// encoder's bytes, `spec` and `deep`, read back ready), else as stored (readback.rs). False on the CPU or without
-    /// pixel buffers: use `read`.
-    pub fn start_read(&mut self, index: u32, spec: &crate::color::Spec, deep: bool) -> Result<bool, String> {
+    /// encoder's bytes, `spec` and `deep`, read back ready; NV12 when `nv12`, the encoder takes it and the frame can be:
+    /// 8-bit, even size), else as stored (readback.rs). False on the CPU or without pixel buffers: use `read`.
+    /// `ROSTRUM_NV12_CPU=1` keeps NV12 off the GPU (the frame comes as RGBA8 and sink.rs converts it): the check that
+    /// both give the same bytes (nv12_check.py).
+    pub fn start_read(&mut self, index: u32, spec: &crate::color::Spec, deep: bool, nv12: bool) -> Result<bool, String> {
         let (w, h) = (self.width, self.height);
+        let nv12 = nv12 && !deep && w % 2 == 0 && h % 2 == 0 && std::env::var("ROSTRUM_NV12_CPU").map_or(true, |v| v != "1");
         if let Some(codes) = crate::color::gpu_codes(spec, deep).filter(|_| self.gl.as_ref().is_some_and(|g| g.exact.is_ok())) {
             let tex = gpu::surfaces::get_backend_texture(self.last_surface(), skia_safe::surface::BackendHandleAccess::FlushRead)
                 .and_then(|t| t.gl_texture_info())
@@ -700,7 +705,7 @@ impl Painter {
             if let Some(tex) = tex {
                 let gl = self.gl.as_mut().unwrap();
                 gl.gr.flush_and_submit();
-                let started = gl.exact.as_mut().unwrap().queue_start(tex.id, (w, h), &codes, deep);
+                let started = gl.exact.as_mut().unwrap().queue_start(tex.id, (w, h), &codes, deep, nv12);
                 gl.gr.reset(None);
                 started?;
                 self.in_flight.push_back((index, Some((*spec, deep))));
@@ -736,28 +741,35 @@ impl Painter {
             let r = gl.readback.as_mut().ok_or("no readback in flight")?.finish_oldest();
             self.last_read_ms = t0.elapsed().as_secs_f64() * 1000.0;
             gpu_failed(self.gl.as_mut().unwrap())?;
-            self.last_read_ready = false;
+            (self.last_read_ready, self.last_read_nv12) = (false, false);
             return r.map(|(raw, _)| (raw, index, false));
         };
         let (w, bpp) = (self.width as usize, if deep { 8 } else { 4 });
-        let mut bytes = vec![0u8; w * self.height as usize * bpp];
-        let done = gl.exact.as_mut().map_err(|e| e.clone())?.queue_finish(&mut bytes);
+        let exact = gl.exact.as_mut().map_err(|e| e.clone())?;
+        let nv12 = exact.queue_next_nv12() == Some(true);
+        let mut bytes = vec![0u8; if nv12 { w * self.height as usize * 3 / 2 } else { w * self.height as usize * bpp }];
+        let done = exact.queue_finish(&mut bytes);
         gl.gr.reset(None);
         self.last_read_ms = t0.elapsed().as_secs_f64() * 1000.0;
         gpu_failed(gl)?;
-        // The pixels the table can't answer (a see-through edge), from the frame's halves there, as `output` would.
+        // The pixels the table can't answer (a see-through edge), from the frame's halves there, as `output` would; into
+        // NV12 by the GPU's formula (their rectangles are whole 2×2 blocks: BLOCK wide, BAND rows, the frame's size even).
         let t1 = std::time::Instant::now();
         for ([x0, y0, x1, _], raw) in &done?.cpu {
             let rw = (x1 - x0) as usize;
             let mut px = vec![0u8; raw.len() / 8 * bpp];
             crate::color::output_rect(&spec, raw, rw as u32, (*x0, *y0), deep, false, &mut px);
+            if nv12 {
+                crate::nv12::patch(&px, rw, (*x0 as usize, *y0 as usize), w, &mut bytes);
+                continue;
+            }
             for (k, row) in px.chunks_exact(rw * bpp).enumerate() {
                 let at = ((*y0 as usize + k) * w + *x0 as usize) * bpp;
                 bytes[at..at + row.len()].copy_from_slice(row);
             }
         }
         self.last_convert_ms = t1.elapsed().as_secs_f64() * 1000.0;
-        self.last_read_ready = true;
+        (self.last_read_ready, self.last_read_nv12) = (true, nv12);
         Ok((bytes, index, true))
     }
 

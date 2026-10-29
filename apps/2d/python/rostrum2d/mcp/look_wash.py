@@ -106,17 +106,32 @@ def _rows(layer: dict, frame: dict, washes: list, cw: float, ch: float) -> list[
     return rows
 
 
-def facts(comp: dict, t: float) -> list[dict]:
-    from rostrum_paint import canvas
-    rows, (cw, ch) = [], comp_size(comp)
+def _on_screen(comp: dict, t: float):
+    """(drawing layer, its frame shown at t, its washes) of each drawing on screen at t that has washes and is drawn whole."""
     for node in flatten(comp, t):
         layer = node.get("layer") or {}
         if layer.get("type") != "drawing" or not node.get("in_time", True):
             continue
         frame = D.frame_at(layer, node["frame"])
         washes = _washes(frame) if frame else []
-        if not washes or write_on.amount_at(layer, t) < 1:
-            continue
+        if washes and write_on.amount_at(layer, t) >= 1:
+            yield layer, frame, washes
+
+
+def masks(comp: dict, t: float) -> None:
+    """The paint masks `facts` reads at t, made now (the painting kit keeps them): a look starts this while it
+    describes and draws, since a new drawing's masks take ~1 s and need no picture."""
+    from rostrum_paint import compose
+    for layer, _, washes in _on_screen(comp, t):
+        w, h = D.canvas_size(layer)
+        for _, _, mask in washes:
+            compose.mask_array(mask, w, h)
+
+
+def facts(comp: dict, t: float) -> list[dict]:
+    from rostrum_paint import canvas
+    rows, (cw, ch) = [], comp_size(comp)
+    for layer, frame, washes in _on_screen(comp, t):
         w, h = D.canvas_size(layer)
         key = (layer["id"], canvas.content_key(frame, w, h), json.dumps(washes, sort_keys=True), w, h, cw, ch)
         if key not in _KEPT:

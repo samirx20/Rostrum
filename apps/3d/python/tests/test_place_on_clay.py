@@ -63,7 +63,7 @@ shot("s", camera=cam, fps=2, start=0, end=1.0)
     for spot, now_at, side in ((before[0], band, "L"), (before[1], copy, "R")):   # bends the clay (it stands at 0)
         i = nearest_bone(d.item("c"), spot)
         assert chain[i][0]["joint"] in (f"arm.{side}", f"forearm.{side}")
-        move = aim.compose(skin.transforms(chain, 1.0)[i], aim.invert(skin.transforms(chain)[i]))
+        move = aim.compose(skin.transforms(chain, 1.0, [])[i], aim.invert(skin.transforms(chain)[i]))
         assert math.dist(now_at, aim.point(move, spot)) < 1e-6
     d.undo(SAM)
     assert math.dist(aim.point(_Frames(d.data, range(0, 3), 2).world("band", 2), [0, 0, 0]), before[0]) < 1e-6

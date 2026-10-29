@@ -11,6 +11,7 @@ import dataclasses
 from rostrum_core import Param
 
 from .field_kit import ANY, CH, D, IS, N, S, SCULPTING, T, TRANSFORM, X
+from .clay_layers import NEXT_FIELD as SCULPT_ON, STEP as STEP_LAYER
 from .paint_fields import SIZE as PAINT_SIZE
 
 BRUSHES = ["add", "carve", "smooth", "pull", "flatten", "crease", "mask"]
@@ -68,6 +69,7 @@ CLAY = [
     dataclasses.replace(N("brushSpacing", "Spacing", "Brush", 0.05, 1, 0.01, "", S, SCULPTING, default=0.3,
                           help="How far apart the dabs of a stroke are, as a share of the brush's radius"),
                         display="percent"),
+    SCULPT_ON,                          # the sculpt layer the next stroke goes on (clay_layers.py)
     T("frontOnly", "Front faces only", "Brush", True, S, SCULPTING,
       help="On: a dab never reaches through a thin part to the clay's far side (it skips a surface facing away "
            "from the camera)"),
@@ -94,6 +96,7 @@ STEP = [
     X("name", "Name", "Step", "", S, help='A word for the step ("body", "nose"); optional. The Steps list shows it'),
     T("hidden", "Hidden", "Step", False, D,
       help="Left out of the clay's shape, kept: showing it again brings it back (the Steps list's eye)"),
+    STEP_LAYER,                         # its sculpt layer ("" = the Base; clay_layers.py)
     # a piece
     dataclasses.replace(CH("shape", SHAPES, "Shape", "Piece", "sphere", D, PIECE,
                            help="sphere / capsule (at, to, radius); outline: a drawn outline puffed up (plane, "

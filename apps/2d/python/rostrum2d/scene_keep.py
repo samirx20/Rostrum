@@ -48,15 +48,16 @@ class Keeper:
         self.reused = self.made = 0                 # the last call's counts (a timing line, tests)
 
     def describe(self, doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
-                 span: tuple[float, float] | None = None, later: list | None = None) -> dict:
-        """scene.describe's description of the same arguments, reusing what didn't change."""
+                 span: tuple[float, float] | None = None, later: list | None = None, drawn: set | None = None) -> dict:
+        """scene.describe's description of the same arguments, reusing what didn't change. `drawn`: the only frame
+        numbers the caller draws (scene.prepare): the description is exact at those."""
         context = (comp_id, None if folder is None else str(folder), span, later is None, dict(markers or {}))
         paintings = doc_data.get("paintings") or []      # (the list is new on every change; each painting isn't)
         if context != self._context or len(paintings) != len(self._paintings or ()) or any(
                 a is not b for a, b in zip(paintings, self._paintings or ())):
             self.forget()
             self._context, self._paintings = context, list(paintings)
-        comp, fps, baked, where = scene.prepare(doc_data, comp_id, markers, folder, span, later, self._timed)
+        comp, fps, baked, where = scene.prepare(doc_data, comp_id, markers, folder, span, later, self._timed, drawn=drawn)
         if (fps, where["until"]) != self._comp:      # every node's keys run to the composition's end
             self._kept, self._baked = {}, {}
         old = self._baked

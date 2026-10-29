@@ -3,6 +3,7 @@ then every live dab request is one record (ms on one clock, time.perf_counter):
   tMove   the first pointer move the request carries (Python, GUI thread)
   tSend   the request handed to the engine thread       tJob    the engine thread starts it
   tEng0/1 around the engine request (its reply: dabMs, drawMs, totalMs, perf: Storm's counters)
+  tAsked / tDab0 / tDab1 (the window's view) when the clay work was asked for early (absent: it ran in the request), began, ended
   tCopy0/1 the picture copied out of shared memory       serial  the picture's number
   tReady  the GUI thread told the picture is in          tSwap   the window's first frame shown after that
 In the window's own view (view_item.py) there is no picture copy: tRender0/1 are the render thread's dab + draw and

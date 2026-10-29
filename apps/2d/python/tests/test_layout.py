@@ -102,3 +102,26 @@ def test_old_hug_switches_become_size_modes():
     new, _ = migrations.size_modes(data, KIND.lists)
     g = new["comps"][0]["layers"][0]
     assert (g["sizeW"], g["sizeH"]) == ("fit", "fixed") and "hugWidth" not in g
+
+
+def test_a_look_solves_only_its_frames_and_the_film_after_it_is_the_whole_bake():
+    # A look's bake (layoutbake `frames`) is exact at its frames, and what it solved is kept: the export's whole bake
+    # afterwards must be the same keys as one made from nothing, or a film drawn after a look moves boxes silently.
+    src = 'with group("g", layout="row", gap=4):\n    shape("a", h=10, w=10).key("w", {0: 10, 1: 100})\n    shape("b", w=20, h=10)\n'
+    comp, eng = _comp(src), FakeEngine()
+    layout._answers.clear()
+    layoutbake._KEPT.clear()
+    with textsize.use(eng):
+        part = layoutbake.bake(comp, 10, frames={3, 4})
+        asked = sum(len(r) for r in eng.layouts)
+        after = layoutbake.bake(comp, 10)
+        layoutbake._KEPT.clear()
+        layout._answers.clear()
+        whole = layoutbake.bake(comp, 10)
+    from rostrum_core.keys import track_value
+    for item, fields in part.items():
+        for prop, keys in fields.items():
+            for t in (0.3, 0.4):
+                assert track_value(keys, t) == track_value(whole[item][prop], t)
+    assert {k["t"] for k in part["b"]["x"]} == {0.3, 0.4} and asked == 2
+    assert after == whole

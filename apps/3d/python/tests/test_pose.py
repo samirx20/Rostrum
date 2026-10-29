@@ -219,7 +219,7 @@ def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
     joints, parts = PJ.find_parts(_buddy(HANGING))
     clay = _clay(joints)
     clay["jointParts"] = PJ.pack_parts(parts)
-    core = skin.skin(clay, [0.0])
+    core = skin.skin(clay, [0.0], [])
     rest, P = core["rest"], core["parts"]
     names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
     arm = {names.index(n) for n in names if n.startswith(("arm.", "forearm.", "hand."))}
@@ -247,7 +247,7 @@ def test_an_arm_is_all_arm_from_its_joint_out():
     joints, parts = PJ.find_parts(_buddy(STRAIGHT))
     clay = _clay(joints)
     clay["jointParts"] = PJ.pack_parts(parts)
-    core = skin.skin(clay, [0.0])
+    core = skin.skin(clay, [0.0], [])
     rest, P = core["rest"], core["parts"]
     names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
     arm = {names.index(n) for n in names if n.endswith(".R") and n.startswith(("arm.", "forearm.", "hand."))}
@@ -263,7 +263,7 @@ def test_the_head_beside_a_raised_arm_keeps_none_of_the_arm():
     joints, parts = PJ.find_parts(_buddy(STRAIGHT))
     clay = _clay(joints)
     clay["jointParts"] = PJ.pack_parts(parts)
-    core = skin.skin(clay, [0.0])
+    core = skin.skin(clay, [0.0], [])
     rest, P = core["rest"], core["parts"]
     names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
     arm = {names.index(n) for n in names if n.endswith(".R") and n.startswith(("arm.", "forearm.", "hand."))}

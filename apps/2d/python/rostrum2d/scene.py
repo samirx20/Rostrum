@@ -232,10 +232,11 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
 
 
 def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: dict | None = None,
-            frames: list[int] | None = None) -> tuple:
+            frames: list[int] | None = None, drawn: set | None = None) -> tuple:
     """(the composition in composition seconds, its fps, the baked expression / layout keys, `where`): what every
     node is made from. `timed_memo`: retime.timed's, kept by scene_keep.Keeper. A plugin's items are left out here,
-    once for every path (rostrum_core.plugin_parts: kept in the file, never drawn)."""
+    once for every path (rostrum_core.plugin_parts: kept in the file, never drawn). `drawn`: the only frame numbers
+    that will be drawn (a look's): the auto layout is solved for those alone (layoutbake.bake's `frames`)."""
     from .kind import LISTS
     doc_data = plugin_parts.engine_tree(doc_data, LISTS)
     comps = doc_data.get("comps", [])
@@ -250,7 +251,7 @@ def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: d
     baked = exprbake.bake(comp, fps, markers, lambda: project_sound.beats(folder, comp.get("soundtrack", ""), comp.get("duration", 5.0)))
     for item_id, fields in layerbake.bake(doc_data, comp, fps, baked).items():    # animation layers over the Base
         baked.setdefault(item_id, {}).update(fields)
-    for item_id, fields in layoutbake.bake(comp, fps, baked).items():
+    for item_id, fields in layoutbake.bake(comp, fps, baked, drawn).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
              "later": later, "paintings": {p["id"]: p for p in doc_data.get("paintings", [])}, "spare": _spare(comp, doc_data)}

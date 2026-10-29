@@ -44,7 +44,7 @@ def _last_change(fr, ids, frames, end) -> tuple[int, str] | None:
     bones = {i: skin.bones_of(fr.items[i]) for i in ids if fr.items[i]["type"] == "clay" and fr.items[i].get("bones")}
 
     def pose(i, f):
-        return skin.transforms(bones[i], fr.held(i, f) / fr.fps)
+        return skin.transforms(bones[i], fr.held(i, f) / fr.fps, fr.stack)
 
     final = {i: (fr.world(i, end), {p: fr.values(i, end).get(p) for p in keyed[i]}, pose(i, end) if i in bones else None)
              for i in ids}

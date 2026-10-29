@@ -185,8 +185,8 @@ class ClayStroke:
                     link.drawn.emit({**v, "frame": out.get("frame")})
                 if rec is not None and v is not None and dab_trace.RECORDS is not None:
                     t = v.get("timing", {})
-                    rec.update({k: out.get(k) for k in ("dabMs", "dabs", "applyMs", "meshMs", "usdMs", "blocks",
-                                                        "frame", "tRender0", "tRender1")})
+                    rec.update({k: out[k] for k in ("dabMs", "dabs", "applyMs", "meshMs", "usdMs", "blocks", "frame",
+                                                    "tRender0", "tRender1", "tAsked", "tDab0", "tDab1") if k in out})
                     rec.update(tEng1=dab_trace.now(), drawMs=t.get("drawMs"), totalMs=t.get("totalMs"),
                                lightMs=t.get("lightMs"), stormMs=t.get("stormMs"), perf=v.get("perf"))
                     dab_trace.RECORDS.append(rec)

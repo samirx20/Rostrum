@@ -32,6 +32,8 @@ BLEND = Param.number("blend", label="Blend", min=0, max=100, unit="m",
 SYM = Param.choice("symmetry", SYMMETRY, label="Mirror", help="x = mirrored across the clay's X = 0; the clay's own "
                    "setting when left out")
 NAME = Param.text("name", label="Name", help='A word for the step ("body", "nose")')
+LAYER = Param.text("layer", label="Layer", help='The sculpt layer it goes on ("" = the Base); the clay sculptLayer '
+                   "when left out (claylayer.add)")
 
 
 def add_step(ctx, clay: str, values: dict) -> dict:
@@ -162,7 +164,7 @@ def clay_shape(ctx, targets, args):
                                   help="[ax, ay, az, nx, ny, nz, bx, by, bz] each, + [radiusScale, strengthScale] "
                                        "with a pen"),
                      Param.points("path", label="Path", min=3, max=3, help="[x, y, z] points"),
-                     V3("dir", "Direction", help="The way the rays point, e.g. [0, 0, -1]"), NAME])
+                     V3("dir", "Direction", help="The way the rays point, e.g. [0, 0, -1]"), NAME, LAYER])
 def clay_stroke(ctx, targets, args):
     path = [k for k in PATHS if args.get(k)]
     if len(path) != 1:

@@ -44,15 +44,29 @@ impl Pixels {
 
     /// The frame as the encoder takes it, made on this thread: converted, and into NV12 when it takes NV12 (`nv12`,
     /// encode_mp4.rs `--nv12`; nv12.rs, the same bytes the encoder made itself before). A repeat stays a mark.
+    /// `ROSTRUM_NV12_DUMP=<folder>`: each NV12 frame is also written there as <index>.nv12 (nv12_check.py compares the
+    /// GPU's with the CPU's).
     pub fn for_encoder(self, nv12: bool) -> Pixels {
         let px = self.converted();
-        if !nv12 || px.nv12 || px.repeat {
+        assert!(nv12 || !px.nv12, "an NV12 frame for an encoder taking RGBA");
+        if !nv12 || px.repeat {
             return px;
+        }
+        if px.nv12 {
+            return px.dumped();
         }
         let (w, h) = (px.width as usize, px.raw.len() / (px.width as usize * 4));
         let mut out = vec![0u8; w * h * 3 / 2];
         crate::nv12::from_rgba(&px.raw, w, h, &mut out);
-        Pixels { raw: out, nv12: true, ..px }
+        Pixels { raw: out, nv12: true, ..px }.dumped()
+    }
+
+    fn dumped(self) -> Pixels {
+        if let Some(dir) = std::env::var_os("ROSTRUM_NV12_DUMP") {
+            let path = std::path::Path::new(&dir).join(format!("{}.nv12", self.index));
+            std::fs::write(&path, &self.raw).unwrap_or_else(|e| panic!("ROSTRUM_NV12_DUMP: writing {}: {e}", path.display()));
+        }
+        self
     }
 
     fn bytes(self) -> Vec<u8> {
@@ -91,6 +105,10 @@ enum Out {
     Save(String),
 }
 
+/// Tests (`Sink::kept`): a save mark among the kept frames, its path as the bytes.
+#[cfg(test)]
+pub const SAVE_MARK: u32 = u32::MAX;
+
 struct Encoder {
     tx: Option<SyncSender<Out>>,
     writer: Option<JoinHandle<Result<(), String>>>,
@@ -99,6 +117,9 @@ struct Encoder {
     kept: bool,
     /// The end of the encoder's stderr (what it says when it fails).
     said: Arc<Mutex<String>>,
+    /// Each file a kept encoder has saved since `begin_file`, with its frame count ("encode-mp4: saved <n> <path>"), kept
+    /// apart from `said` (whose start is cut away on a long export: 33 files' lines are more than it holds).
+    saved: Arc<Mutex<Vec<(u32, String)>>>,
     reader: Option<JoinHandle<()>>,
 }
 
@@ -110,14 +131,15 @@ impl Sink {
         Ok(Sink { nv12, ..Sink::of(To::Encoder(Encoder::start(program, args, repeats)?)) })
     }
 
-    /// Whether its encoder takes NV12 (a worker's turn converts each frame before its turn: sink_turn.rs).
+    /// Whether its encoder takes NV12 (a worker's turn converts each frame before its turn: sink_turn.rs; frames read
+    /// back from the GPU come as NV12 already: painter.rs `start_read`).
     pub fn wants_nv12(&self) -> bool {
         self.nv12
     }
 
     /// A worker's sink: its frames go to `turn`'s encoder when their turn comes.
     pub fn turn(turn: Arc<Turn>) -> Sink {
-        Sink::of(To::Turn(turn))
+        Sink { nv12: turn.nv12(), ..Sink::of(To::Turn(turn)) }
     }
 
     /// Tests: a sink keeping each frame's encoder bytes, in order, in `into`.
@@ -174,17 +196,44 @@ impl Sink {
     /// A kept encoder (`--keep`): the frames so far saved as `path`; it keeps running for the next export, its counts
     /// starting again (`pushed`, `in_order` are each file's).
     pub fn save(&mut self, path: &str) -> Result<(), String> {
+        self.mark_save(path)?;
+        let n = self.pushed as u32;
+        self.wait_saved(&[(n, path.to_string())]).map(|_| ())
+    }
+
+    /// A kept encoder: "save the frames since the file before as `path`" queued after the frames so far, not waited for
+    /// (an export's segment cuts, sink_turn.rs: the drawing goes on while the encoder finishes that file).
+    pub fn mark_save(&mut self, path: &str) -> Result<(), String> {
         match &mut self.to {
-            To::Encoder(e) if e.kept => e.save(path)?,
-            _ => return Err("save: not a kept encoder (--keep)".into()),
+            To::Encoder(e) if e.kept => e.send(Out::Save(path.to_string())),
+            #[cfg(test)]
+            To::Kept(k) => {
+                k.lock().unwrap().push((SAVE_MARK, path.as_bytes().to_vec()));
+                Ok(())
+            }
+            _ => Err("save: not a kept encoder (--keep)".into()),
         }
-        Ok(())
+    }
+
+    /// Waits until the kept encoder has saved each of `files` (frames, path): its own count must be each one's. Returns
+    /// the seconds waited. An encoder that stopped first fails with what it said.
+    pub fn wait_saved(&mut self, files: &[(u32, String)]) -> Result<f64, String> {
+        let t0 = std::time::Instant::now();
+        let To::Encoder(e) = &mut self.to else { return Ok(0.0) };
+        for (want, path) in files {
+            let n = e.wait_saved(path)?;
+            if n != *want {
+                return Err(format!("the encoder saved {n} frames as {path}, not {want}"));
+            }
+        }
+        Ok(t0.elapsed().as_secs_f64())
     }
 
     /// The next export's frames start here (a kept encoder): its counts start again.
     pub fn begin_file(&mut self) {
         (self.pushed, self.last, self.in_order) = (0, None, true);
         if let To::Encoder(e) = &self.to {
+            e.saved.lock().unwrap().clear();
             // what it said about earlier files goes; which encoder it is stays (`encoder`)
             let mut said = e.said.lock().unwrap();
             *said = said.lines().filter(|l| l.starts_with("encode-mp4: encoder ") || l.starts_with("encode-mp4: started in")).map(|l| format!("{l}
@@ -221,15 +270,26 @@ impl Encoder {
         drop(cmd); // it holds a copy of the pipe's reading end: with it gone, a stopped encoder shows as a failed write
         let mut stderr = child.stderr.take().expect("piped stderr");
         let said = Arc::new(Mutex::new(String::new()));
-        let keep = said.clone();
+        let saved = Arc::new(Mutex::new(vec![]));
+        let (keep, files) = (said.clone(), saved.clone());
         let reader = std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
+            let mut line = String::new();
             while let Ok(n) = stderr.read(&mut buf) {
                 if n == 0 {
                     break;
                 }
+                let text = String::from_utf8_lossy(&buf[..n]);
+                // whole lines only: a "saved" line may come in two reads
+                line.push_str(&text);
+                while let Some(end) = line.find('\n') {
+                    let l: String = line.drain(..=end).collect();
+                    if let Some((n, path)) = l.trim_end().strip_prefix("encode-mp4: saved ").and_then(|r| r.split_once(' ')) {
+                        files.lock().unwrap().push((n.parse().unwrap_or(0), path.to_string()));
+                    }
+                }
                 let mut s = keep.lock().unwrap();
-                s.push_str(&String::from_utf8_lossy(&buf[..n]));
+                s.push_str(&text);
                 if s.len() > 8000 {
                     let cut = s.len() - 4000;
                     let cut = (cut..s.len()).find(|&i| s.is_char_boundary(i)).unwrap_or(s.len());
@@ -268,7 +328,7 @@ impl Encoder {
             Ok(())
         });
         let kept = args.iter().any(|a| a.starts_with("--keep="));
-        Ok(Encoder { tx: Some(tx), writer: Some(writer), child, kept, said, reader: Some(reader) })
+        Ok(Encoder { tx: Some(tx), writer: Some(writer), child, kept, said, saved, reader: Some(reader) })
     }
 
     fn stopped(&mut self) -> String {
@@ -297,14 +357,12 @@ impl Encoder {
         Ok(())
     }
 
-    /// A kept encoder (`--keep`): the frames so far saved as `path`, waited for until it says so; it goes on running.
-    fn save(&mut self, path: &str) -> Result<(), String> {
-        self.send(Out::Save(path.to_string()))?;
-        let done = format!(" {path}");
+    /// A kept encoder (`--keep`): waits until it says it saved `path` (a save mark sent before); the frames in it.
+    fn wait_saved(&mut self, path: &str) -> Result<u32, String> {
         loop {
-            // its line for this file (the text since `begin_file` holds no other file's)
-            if self.said.lock().unwrap().lines().any(|l| l.starts_with("encode-mp4: saved ") && l.ends_with(&done)) {
-                break;
+            // its line for this file (the list since `begin_file` holds no other export's)
+            if let Some((n, _)) = self.saved.lock().unwrap().iter().find(|(_, p)| p == path) {
+                return Ok(*n);
             }
             if self.child.try_wait().ok().flatten().is_some() {
                 if let Some(r) = self.reader.take() {
@@ -314,7 +372,6 @@ impl Encoder {
             }
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
-        Ok(())
     }
 
     fn finish(&mut self) -> Result<i32, String> {

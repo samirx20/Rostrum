@@ -701,7 +701,7 @@ def shown_name(joint: str, names: str = "plain") -> str:
 def steps_key(clay: dict, data: dict | None = None) -> str:
     """The clay's last step key (clay_scene.chain): what its shape is now."""
     from . import clay_scene
-    chain = clay_scene.chain(clay.get("steps", []), data)
+    chain = clay_scene.chain(clay.get("steps", []), data, clay)
     return chain[-1]["key"] if chain else ""
 
 

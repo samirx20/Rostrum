@@ -116,37 +116,50 @@ Item {
         x: ruler.x - 8; width: ruler.width + 16; height: parent.height; radius: Theme.radiusCtl; color: Theme.sunken
         clip: true
 
-        // a value label lies at the right edge; a key there (a curve that keys late) would sit on it: the label moves left of it
-        function clearOfKeys(x, y, w, h) {
-            for (const f of ed.shown) for (const k of f.keys) {
-                const kx = ed.px(k.t), ky = ed.py(f, k.v)
-                if (ky > y - 8 && ky < y + h + 8 && kx > x - 8 && kx < x + w + 8) x = Math.min(x, kx - w - 12)
-            }
-            return x
-        }
         Repeater {   // faint guides at the top, middle and bottom of the value range
             model: 3
             delegate: Rectangle { required property int index
                                   x: 0; width: plot.width; y: ed.padY + index * ed.plotH / 2; height: 1; color: Theme.border }
         }
-        Repeater {   // each curve's lowest and highest key value at the right edge, in the curve's own colour
-            model: ed.keyed.length
-            delegate: Item {
-                id: axis
-                required property int index       // each curve's labels stand one step further left: two curves' values at one height never overprint
-                readonly property var modelData: ed.keyed[index] || ed.none
-                readonly property var vs: modelData.keys.map(k => k.v)
-                Repeater {
-                    model: 2
-                    delegate: Text {
-                        required property int index
-                        readonly property real modelData: index === 0 ? Math.max(...axis.vs) : Math.min(...axis.vs)
-                        y: ed.py(axis.modelData, modelData) - height - 3
-                        x: plot.clearOfKeys(plot.width - width - 10 - axis.index * 36, y, width, height)   // at the right edge, never on a key
-                        text: Math.round(modelData * 100) / 100; font.family: uiFont; font.pixelSize: Theme.label
-                        color: axis.modelData.color; opacity: 0.8; font.features: { "tnum": 1 }
+        // each curve's lowest and highest key value at the right edge, just above its line, in the curve's colour. They are
+        // laid out together: one that would meet another (curves ending at one height) takes the next row inwards (below
+        // the line near the top, above it near the bottom), and none sits on a key
+        FontMetrics { id: labelFont; font.family: uiFont; font.pixelSize: Theme.label }
+        function clash(a, b) { return a.y < b.y + b.h + 2 && b.y < a.y + a.h + 2 && a.x < b.x + b.w + 8 && b.x < a.x + a.w + 8 }
+        function clearOfKeys(r) {
+            for (const f of ed.shown) for (const k of f.keys) {
+                const kx = ed.px(k.t), ky = ed.py(f, k.v)
+                if (ky > r.y - 8 && ky < r.y + r.h + 8 && kx > r.x - 8 && kx < r.x + r.w + 8) r.x = Math.min(r.x, kx - r.w - 12)
+            }
+        }
+        readonly property var ends: {
+            const out = []
+            for (const f of ed.keyed) {
+                const vs = f.keys.map(k => k.v), hi = Math.max(...vs), lo = Math.min(...vs)
+                for (const v of hi === lo ? [hi] : [hi, lo]) {
+                    const text = String(Math.round(v * 100) / 100), w = labelFont.advanceWidth(text) + 2, h = labelFont.height
+                    const line = ed.py(f, v), down = line < height / 2
+                    const r = { x: width - w - 10, y: line - h - 3, w: w, h: h, text: text, color: f.color }
+                    clearOfKeys(r)
+                    for (let o, n = 0; n < 12 && (o = out.find(o => clash(r, o))); n++) {   // the next free row inwards
+                        r.x = width - w - 10
+                        r.y = down ? Math.max(o.y + o.h + 2, line + 3) : o.y - h - 2
+                        clearOfKeys(r)
                     }
+                    for (let o; (o = out.find(o => clash(r, o)));) r.x = o.x - r.w - 8   // a crowded plot: left of the rest
+                    out.push(r)
                 }
+            }
+            return out
+        }
+        Repeater {
+            model: plot.ends.length
+            delegate: Text {
+                required property int index
+                readonly property var modelData: plot.ends[index] || ({ x: 0, y: 0, text: "", color: "transparent" })
+                x: modelData.x; y: modelData.y
+                text: modelData.text; font.family: uiFont; font.pixelSize: Theme.label
+                color: modelData.color; opacity: 0.8; font.features: { "tnum": 1 }
             }
         }
         Canvas {

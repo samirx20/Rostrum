@@ -28,6 +28,7 @@ use crate::sink::Sink;
 use crate::sink_turn::Turn;
 use crate::export_pool;
 use crate::export_workers::budget;
+use crate::slide::Slides;
 
 #[cfg(test)]
 #[path = "export_crew_tests.rs"]
@@ -88,13 +89,15 @@ impl Span {
 
 /// Draws every frame of `span` with `workers` workers; the rows in frame order and the layers' timings.
 /// Also the seconds the extra workers took to start, summed, how many of them made their session now, and the
-/// encoder's turn's seconds (sink_turn.rs `spent`).
-pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64, u64, [f64; 3]), String> {
+/// encoder's turn's seconds (sink_turn.rs `spent`). `saves`: the segment files the encoder saves, by the export position
+/// each ends at (scene_export.rs `saves`).
+#[allow(clippy::too_many_arguments)]
+pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, saves: HashMap<usize, String>, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64, u64, [f64; 3]), String> {
     let html = crate::scene_serve::shell_of(held.scene()?, s.width, s.height)?;
     let like = s.like();
     let turn = match s.sink.take() {
         Some(sink) if req["images"].is_null() => {
-            let t = Turn::new(sink, (0..span.n).map(|i| span.index(i) as u32).collect());
+            let t = Turn::new(sink, (0..span.n).map(|i| span.index(i) as u32).collect(), saves);
             s.sink = Some(Sink::turn(t.clone()));
             Some(t)
         }
@@ -251,6 +254,18 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared,
 /// export frame out whole cost Night Bloom ~40 % more layout (calm 4-5 s: 256 vs 147 ms a frame per worker).
 #[allow(clippy::too_many_arguments)]
 fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+    let mut slides = Slides::new(s, req);
+    let drawn = draw_each(held, s, req, span, rx, shared, on_row, &mut slides);
+    slides.forget(s);
+    if slides.made > 0 {
+        eprintln!("export: slid {} frames from {} kept pictures (slide.rs)", slides.slid, slides.made);
+    }
+    drawn
+}
+
+/// `draw_frames`' frames, each slid from a kept picture of its still stage when only the frame moved (slide.rs).
+#[allow(clippy::too_many_arguments)]
+fn draw_each(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, on_row: &mut dyn FnMut(Row), slides: &mut Slides) -> Result<Costs, String> {
     let mut costs = Costs::default();
     loop {
         if let Some(e) = shared.failed.lock().unwrap().as_ref() {
@@ -279,7 +294,16 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiv
         }
         // A panic while drawing fails this frame, named, like any error: uncaught on worker 0 (this thread) it left the
         // other workers waiting for its frame in the encoder's turn, and the export hung with no word (p1, 2026-10-25).
-        let (reply, _) = catch_unwind(AssertUnwindSafe(|| draw(held, s, &f, staged)))
+        let slid = catch_unwind(AssertUnwindSafe(|| slides.try_slide(held, s, &f, &staged)))
+            .unwrap_or_else(|p| Err(format!("the engine crashed sliding it ({})", panic_words(&p))))
+            .map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
+        if slid.is_none() {
+            slides.before_whole(s, &staged);
+        }
+        let (reply, _) = catch_unwind(AssertUnwindSafe(|| match slid {
+            Some(reply) => Ok((reply, None)),
+            None => draw(held, s, &f, staged),
+        }))
             .unwrap_or_else(|p| Err(format!("the engine crashed drawing it ({})", panic_words(&p))))
             .map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
         let took = tf.elapsed().as_secs_f64() * 1000.0;

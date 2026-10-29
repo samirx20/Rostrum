@@ -71,7 +71,10 @@ class ViewRenderer(PictureWorker):
 
     def request(self, scene: dict, req: dict):
         """Draw `req` (Engine.view's fields) of `scene`; replaces a view still waiting. The window's own view takes it
-        straight from this (the GUI) thread: no worker hop (the scene first when the item doesn't hold it)."""
+        straight from this (the GUI) thread: no worker hop (the scene first when the item doesn't hold it). A scene
+        whose clays change shape over the shot (face shapes) goes as it is at the view's frame (clay_faces.py)."""
+        from rostrum3d import clay_faces
+        scene = clay_faces.at(scene, req.get("frame"))
         link = self.link
         if link is not None and link.item is not None and req.get("renderer") != "cycles" and not self._final:
             self._want = (scene, req)
@@ -172,6 +175,8 @@ class ViewRenderer(PictureWorker):
             eng.release()
         if kind == "view":
             self._final = final
+        from rostrum3d import clay_faces
+        scene = clay_faces.at(scene, req.get("frame"))         # face shapes: the clays as they are at this frame
         if eng.ensure_scene(scene) and self.link is None:      # a scene was loaded by the engine program: its copies info
             self.copiesInfo.emit(dict(getattr(_program(eng), "copies", None) or {}))
         if kind == "view" and self.link is not None and not final:

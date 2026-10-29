@@ -107,7 +107,7 @@ def _make(ctx, targets, args, layout: str | None = None):
              "(a stream from a mouth at the copies item's origin: radius = the mouth's, pourTime = seconds they leave over, "
              "evenly, pourSpeed m/s along the copies item's own down (turn it to aim), pourSpread degrees; then simulate=\"falls\") "
              "or path (path = the id of a text, svg or path2d mesh: count copies evenly along all its outlines by length, each "
-             "outline its own loop; alongPath turns each copy's +X along it, pathShift 0–1 slides them along). "
+             "outline its own loop; alongPath turns each copy's +X along it, pathShift slides them along, 1 = once round, keyable so they travel along it). "
              "Vary with seed, varyMove, varyTurn, varyScale; varyStart (a falling copies item: each copy starts to fall up to that "
              "many seconds after fallStart, from the seed, so they land one after another). In a stream (varyStart or a pour) "
              "each copy is not there until it starts to fall: nothing hangs in the air waiting. Colour variety: give several "
