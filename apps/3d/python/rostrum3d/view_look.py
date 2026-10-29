@@ -45,10 +45,17 @@ def part_point(fr, part: str):
         raise ValueError(f'"{owner}" has no joints (no bones)')
     b = resolve(joint, Rig(item), f'"{owner}"')       # the pose tools' own name lookup: hand.R, "right hand", Humanoid names
     end = [0.0, float(chain[b][0].get("length", 0.0)), 0.0]
+    line = [b]                                        # only the bone and the bones it hangs from move its end
+    while chain[line[-1]][1] >= 0:
+        line.append(chain[line[-1]][1])
+    line.reverse()
+    pose = skin.poser([(chain[i][0], line.index(chain[i][1]) if chain[i][1] >= 0 else -1) for i in line], fr.stack)
+    ends: dict = {}                                   # held frame -> the bone end in the clay's own space
 
     def at(f: int) -> list[float]:
-        bone = skin.transforms(chain, fr.held(owner, f) / fr.fps)[b]
-        return aim.point(fr.world(owner, f), aim.point(bone, end))
+        if (g := fr.held(owner, f)) not in ends:
+            ends[g] = aim.point(pose(g / fr.fps)[-1], end)
+        return aim.point(fr.world(owner, f), ends[g])
     return at
 
 
