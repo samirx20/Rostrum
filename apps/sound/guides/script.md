@@ -210,7 +210,9 @@ moved by more than a second). Which ending fits the piece is yours to choose:
   `length(...)` past the last let-go by the tail (measured: about 1 s for piano, strings and pads, 2 s for a crash), keep
   Ring out on. The one ending check, `bad_ending`, reads every way an ending fails in one fault (near silence or dead
   air before the end, a cut, the delivery's fade of sound still loud, and, when an ending is asked, an unresolved last
-  chord or parts stopping early); its fix is `ending(...)` (inspect_guide 'listening' has the numbers).
+  chord or parts stopping early); its fix is the one line to paste, filled in for your song (the kind the brief asks,
+  `at` your end marker or the length), e.g. `ending("ring", at="#end")`: paste it, don't hand-write last bars
+  (inspect_guide 'listening' has the numbers).
   `ring_out(False)` (after `length`) stops the song at its length, its last 0.1 s smoothed (`ring_out(False,
   soft_end=False)`: a dead stop): for a sound that has already died away there.
 - **Ring out** (the song field `ringOut`, on in every new song): a sound still ringing at `length` plays on until it dies

@@ -98,3 +98,14 @@ def test_a_quiet_ring_passes_the_quiet_ending_arc_and_the_ending_check(tmp_path)
     ring = _wav(tmp_path / "quiet.wav", lambda s: 10 ** ((-22 - 3 * s) / 20), seconds=13.0)
     doc = _doc("It settles and decays to a quiet ending.")
     assert arc.fault(doc, ring) == [] and end_check.fault(doc, None, ring) == []
+
+
+def test_the_fix_is_the_one_line_to_paste_filled_in_for_this_song(tmp_path):
+    """sound-vault: 7 of 10 agents read "write ending(...)" as advice and hand-wrote endings; the fix is the line itself."""
+    silent = _wav(tmp_path / "silent.wav", lambda s: np.where(s < 4.8, 10 ** (-15 / 20), 0.0))
+    fix = end_check.fault(_doc(), None, silent, end_s=13.5)[0]["fix"]
+    assert fix.startswith('paste this one line as the script\'s last line: ending("ring", at=13.5)')
+    assert end_check.call(_doc("then an unresolved low drone to the end"), 45.0) == 'ending("ring", at=45, chord="V")'
+    assert end_check.call(_doc("A bed that should fade out at the end"), 30.0) == 'ending("fade", at=30)'
+    marked = SimpleNamespace(data={"markers": [{"id": "m1", "name": "end", "at": 12.0}]}, folder=None)
+    assert end_check.call(marked, 13.5) == 'ending("ring", at="#end")'

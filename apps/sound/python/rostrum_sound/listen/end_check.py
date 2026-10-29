@@ -38,13 +38,44 @@ MOST = 0.5             # more than this share of the ending's parts stopped earl
 ENDS = ("end", "ending", "the end", "clean end", "hard end", "final", "final hit", "button")   # marker names: "it ends here"
 # the words that ask for a fade, a hard stop, a loop, an open end, or keep a bad_ending: brief.py
 
-RING = ('write ending("ring", at="#end") ("button" for a hit on the end, "fade" only for an asked fade-out): it lands every '
-        'part together on the home chord at the asked end and rings it out past it (up to 2 s past the length is fine); '
-        'keep the end where the brief puts it, never earlier')
+RING = "{line}"     # the one line every ending fault's fix leads with, filled in by call() (sound-vault: 3 of 10 agents
+                    # used ending(); the other 7 read "write ending(...) (button ..., fade ...)" as advice and hand-wrote)
 LOOP = ("no ending: the last bar plays through into bar 1 (no ending(...), no fade, no last chord), the length on the "
         "bar line where bar 1 comes back")
-CHORD = 'end on the home chord: ending("ring") lands every part on it (chord=... only when the brief asks another)'
-PARTS = 'keep the parts playing into the end and land them together: ending("ring", at="#end") does it'
+CHORD = '(it lands every part on the home chord; chord=... only when the brief asks another)'
+PARTS = '(it keeps the parts playing into the end and lands them together)'
+
+
+def call(doc, end_s: float | None = None) -> str:
+    """The ending(...) line to paste as the script's last line, filled in for this song: the kind the brief asks
+    (a fade, a hard stop: "button", else "ring"), `at` the song's end marker, else its own ending's `at`, else the
+    asked end in seconds; an open ending the brief asks for keeps chord="V"."""
+    data = getattr(doc, "data", None) or {}
+    own = data.get("ending") if isinstance(data.get("ending"), dict) else {}
+    kind = own.get("kind") or ("fade" if brief.asks(data, "fade_ending") else
+                               "button" if brief.asks(data, "hard_stop") else "ring")
+    at = own.get("at") if isinstance(own.get("at"), (str, int, float)) and not isinstance(own.get("at"), bool) else None
+    if at is None:
+        try:
+            from ..doc import markers
+            with markers.project(getattr(doc, "folder", None)):
+                at = next((f"#{n}" for n, _ in markers.all(data) if n.strip().lower() in ENDS), None)
+        except Exception:  # noqa: BLE001  a marker that does not resolve is the document checks' business
+            at = None
+    if at is None:
+        at = round(float(end_s), 2) if end_s else "#end"
+    at_s = f'"{at}"' if isinstance(at, str) else f"{at:g}"
+    chord = ', chord="V"' if kind == "ring" and brief.asks(data, "open_ending") and not own.get("chord") else ""
+    return f'ending("{kind}", at={at_s}{chord})'
+
+
+def _lead(line: str, kind: str) -> str:
+    """The fix: the line first, then what it does, so it reads as the one thing to write."""
+    what = {"ring": "lands every part together on the home chord there and rings it out, up to 2 s past the length",
+            "button": "lands one short accented chord there (a kick and crash on the drums that play) and lets it ring",
+            "fade": "fades the master over the bars before it, the parts playing on"}[kind]
+    return (f"paste this one line as the script's last line: {line} (it {what}); it replaces any hand-written last "
+            "bars, keep the end where the brief puts it, never earlier")
 
 
 def asked(doc) -> str | None:
@@ -139,6 +170,9 @@ def fault(doc, faded: dict | None, wav=None, end_s: float | None = None) -> list
         found += _doc(doc, data)
     if not found:
         return []
-    fixes = list(dict.fromkeys(f for _, f in found))
+    line = call(doc, end_s or (m["end_s"] if m else None))
+    kind = line.split('"')[1]
+    fixes = list(dict.fromkeys(_lead(line, kind) if f == RING else f"{line} {f}" if f in (CHORD, PARTS) else f
+                               for _, f in found))
     return [shared.fault("bad_ending", "the ending fails" + (f" ({why})" if why else "") + ": " + "; ".join(w for w, _ in found),
                          "; ".join(fixes), "the end")]
