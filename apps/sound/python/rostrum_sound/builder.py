@@ -9,6 +9,7 @@ from rostrum_core import RostrumError, codes
 
 from . import expression as EX
 from . import names, script_ops
+from . import shape as SH
 from .builder_music import MusicMap
 from .builder_parts import Clip, Inserts, checked
 from .builder_routing import Bus, Routing
@@ -27,7 +28,7 @@ class Track(Routing, Inserts):
 
     def __init__(self, song, id_, fields):
         self.song, self.id, self.notes, self.hits, self.clips = song, id_, [], [], []
-        self.human, self.phrases = None, []
+        self.human, self.phrases, self.shapes = None, [], []
         given = dict(fields)
         if "instrument" not in given:
             kinds = [k for k in INSTRUMENT_KEYS if given.get(k) is not None]
@@ -117,10 +118,16 @@ class Track(Routing, Inserts):
         self.phrases.append(EX.phrase(start, end, vel, f"track {self.id} › phrase"))
         return self
 
-    def _shaped(self, id_, f, own_vel, root, where):
+    def shape(self, what, from_, to, over, curve="linear"):
+        """Volume ("vol"), brightness ("bright") or articulation ("art") along over=(start, end): `shape.py`."""
+        self.shapes.append(SH.make(what, from_, to, over, curve, self.fields, f"track {self.id} › shape"))
+        return self
+
+    def _shaped(self, id_, type_, f, own_vel, root, where):
         for ph in [] if own_vel else self.phrases:
             v = ph.velocity(f["at"], root, where)
             f = f if v is None else {**f, "vel": v}
+        f = SH.apply(f, type_, self._curves, root, where) if self._curves else f
         return self.human.apply(id_, f, root, where) if self.human else f
 
     def item(self, root, taken) -> dict:
@@ -131,8 +138,9 @@ class Track(Routing, Inserts):
             for id_, f, own_vel in entries:
                 id_ = id_ or make(f)
                 taken.add(id_)
-                out.append({"id": id_, "type": type_, **self._shaped(id_, f, own_vel, root, where)})
+                out.append({"id": id_, "type": type_, **self._shaped(id_, type_, f, own_vel, root, where)})
             return {key: out}
+        self._curves = SH.curves(self.shapes, root, f"{where} › shape")
         out = {"id": self.id, "type": "track", **self.fields}
         out |= place("note", "notes", self.notes, lambda f: ids.note(self.id, f["at"], root, taken, where))
         out |= place("hit", "hits", self.hits, lambda f: ids.hit(self.id, f["drum"], f["at"], root, taken, where))
@@ -141,7 +149,9 @@ class Track(Routing, Inserts):
             cid = c.id or ids.clip(self.id, c.fields["at"], root, taken, where)
             taken.add(cid)
             clips.append({"id": cid, "type": "clip", **c.fields, "effects": c.insert_items(cid, taken)["effects"]})
-        return {**out, "clips": clips, **self.insert_items(self.id, taken), **self.routing_items(taken)}
+        inserts = self.insert_items(self.id, taken)    # + one lowpass for the bright shapes, after the track's own effects
+        inserts["effects"] += [SH.bright_effect(self.id, self._curves["bright"], taken, where)] if "bright" in self._curves else []
+        return {**out, "clips": clips, **inserts, **self.routing_items(taken)}
 
 
 class Master(Inserts):

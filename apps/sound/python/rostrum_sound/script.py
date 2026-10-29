@@ -16,6 +16,7 @@
     s.note("A4", at=bar(2), dur=beats(4), dynamics=[(0, 0.6), (1, 1.0)], vibrato={"rate": 5, "depth": 20})
     s.dynamics([(0, 0.5), ("#drop", 1.2)]); s.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)
     s.humanize(seed=1, timing=0.012, velocity=0.06); s.phrase(bar(1), bar(5), vel=[(0, 0.5), (1, 0.9)])
+    s.shape("vol", 0.5, 1.2, over=(bar(1), "#drop"), curve="late"); s.shape("bright", 0.2, 1, over=(bar(5), bar(9)))   # shape.py
     f = vel_curve([(0, 0.5), (1, 0.9)], bar(1), bar(5)); s.note("D3", at=beat(2), dur=1, vel=f(beat(2)) + 0.1)
     downbeat(bar(21), at=36.0); land(bar(21), at="#logo lands", ramp_from=bar(17)); seconds_of(bar(1) - beats(1))   # script_sync.py
     marker("logo lands", at=bar(21), shared=True)     # a project marker 2D follows (published by run_script)
@@ -43,6 +44,7 @@ _asked = threading.local()
 API = ["brief(text)", "tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)", "bus(id, **fields)",
        "marker(name, at, shared=False)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)",
+       "t.shape(what, from_, to, over, curve)",
        *script_sync.API, *script_moment.API, *script_build.API, *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
 
 
