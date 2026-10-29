@@ -69,6 +69,7 @@ pub(crate) fn draw(
                     applied = j;
                 }
                 blitz_paint::set_plan(around(&kids, base, p..end, HashMap::new()));
+                crate::profile::label("mb-staged");
                 timed(s, None, true, false)?;
                 s.painter.accumulate(j == 0, k)?;
             }
@@ -80,6 +81,7 @@ pub(crate) fn draw(
             let w = 1.0 / taps.len() as f32;
             for (j, &i) in taps.iter().enumerate() {
                 blitz_paint::set_plan(around(&kids, base, p..end, HashMap::from([(kids[p], Run::Shift(st.moves[i]))])));
+                crate::profile::label("mb-blend");
                 timed(s, None, true, false)?;
                 s.painter.accumulate(j == 0, w)?;
             }
@@ -97,14 +99,24 @@ pub(crate) fn draw(
                 runs.push((q..r, m));
                 q = r;
             }
-            // A run whose picture runs past the frame's edge (or whose size isn't known) would streak the frame's edge
-            // px: it is painted at each of its moves instead, alone, and averaged into its picture (`edge`). One that
+            // A page drawn at its own size (an export, a still) keeps its streak pictures up to MARGIN px past the frame's
+            // edges (`wide`), so a streak that reads past the edge within that reads the layer there. Past it, or in a
+            // view, a run whose picture runs past the frame's edge (or whose size isn't known) would streak the frame's
+            // edge px: it is painted at each of its moves instead, alone, and averaged into its picture (`edge`). One that
             // covers the whole frame (a backdrop) streaks its edge px, as its picture would continue past it.
             let (k, x0, y0) = (view.0 as f64, view.1 as f64, view.2 as f64);
             let seen = [x0, y0, x0 + size.0 as f64 / k, y0 + size.1 as f64 / k];
-            let edge: Vec<bool> = runs.iter().map(|(run, m)| {
+            let wide = view == (1.0, 0.0, 0.0) && blitz_paint::viewport().is_none();
+            let far = if wide { [seen[0] - MARGIN, seen[1] - MARGIN, seen[2] + MARGIN, seen[3] + MARGIN] } else { seen };
+            // How far past the frame each run's streak reads (device px; None: not known).
+            let past: Vec<Option<f64>> = runs.iter().map(|(run, m)| {
+                let r = reads(joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?, &m.moves, seen, far, 1.0 / k);
+                Some([seen[0] - r[0], seen[1] - r[1], r[2] - seen[2], r[3] - seen[3]].into_iter().fold(0.0, f64::max) * k)
+            }).collect();
+            let edge: Vec<bool> = runs.iter().zip(&past).map(|((run, m), past)| {
                 let long = taps(&m.moves, view, size).len() > 2;   // a streak of 2 px or less smears the edge by that much at most
-                long && run.clone().any(|i| streak(i).is_none_or(|st| st.reach.is_none() || crosses(st.ink, seen)))
+                let crossing = run.clone().any(|i| streak(i).is_none_or(|st| st.reach.is_none() || crosses(st.ink, seen)));
+                long && crossing && !(wide && past.is_some_and(|p| p < MARGIN - 1.0))
             }).collect();
             // A run whose streak never reaches the frame isn't drawn.
             let off: Vec<bool> = runs.iter().map(|(run, _)| run.clone().all(|i| streak(i).and_then(|st| st.reach).is_some_and(|r| r[2] <= seen[0] || r[0] >= seen[2] || r[3] <= seen[1] || r[1] >= seen[3]))).collect();
@@ -114,7 +126,7 @@ pub(crate) fn draw(
             let spots: Vec<Option<Spot>> = runs.iter().map(|(run, m)| {
                 let ink = joined(run.clone().map(|i| streak(i).filter(|st| st.reach.is_some()).map(|st| st.ink)))?;
                 let reach = joined(run.clone().map(|i| streak(i).and_then(|st| st.reach)))?;
-                Some(Spot { reads: reads(reach, &m.moves, seen, 1.0 / k), ink })
+                Some(Spot { reads: reads(reach, &m.moves, seen, far, 1.0 / k), ink })
             }).collect();
             let mut pictures: Vec<Vec<usize>> = vec![];
             let mut taken = runs.len();
@@ -134,17 +146,21 @@ pub(crate) fn draw(
             }
             q = if taken < runs.len() { runs[taken].0.start } else { q };
             let mut slot = vec![0; taken];
+            // A run painted at each of its moves (`edge`) is its own picture, averaged; every other picture is made in one
+            // paint, each run's pieces drawn into their picture (`Run::Keep`), in stage order.
+            let mut keep: HashMap<NodeId, Run> = kids.iter().map(|&o| (o, Run::Skip)).collect();
+            let mut kept = 0;
             for g in &pictures {
-                let mine = |i: &usize| g.iter().any(|&r| runs[r].0.contains(i));
-                let alone: HashMap<NodeId, Run> = kids.iter().enumerate().filter(|(i, _)| !mine(i)).map(|(_, &o)| (o, Run::Skip)).collect();
                 if let [r] = g[..] {
                     if edge[r] {
                         let (run, m) = &runs[r];
                         let taps = taps(&m.moves, view, size);
+                        let alone: HashMap<NodeId, Run> = kids.iter().enumerate().filter(|(i, _)| !run.contains(i)).map(|(_, &o)| (o, Run::Skip)).collect();
                         for (j, &t) in taps.iter().enumerate() {
                             let mut plan = alone.clone();
                             plan.extend(run.clone().map(|i| (kids[i], Run::Shift(m.moves[t]))));
                             blitz_paint::set_plan(plan);
+                            crate::profile::label("mb-edge");
                             timed(s, None, true, false)?;
                             s.painter.accumulate(j == 0, 1.0 / taps.len() as f32)?;
                         }
@@ -154,10 +170,33 @@ pub(crate) fn draw(
                         continue;
                     }
                 }
-                blitz_paint::set_plan(alone);
-                timed(s, None, true, false)?;
-                s.painter.keep_cached();
-                g.iter().for_each(|&r| slot[r] = s.painter.cached_len() - 1);
+                for &r in g {
+                    keep.extend(runs[r].0.clone().map(|i| (kids[i], Run::Keep(kept))));
+                    slot[r] = kept;
+                }
+                kept += 1;
+            }
+            if kept > 0 {
+                // As far past the frame as the pictures' streaks read (what lies there is drawn, not culled).
+                let margin = if !wide { 0.0 } else {
+                    let most = (0..taken).filter(|&r| !off[r] && !edge[r]).filter_map(|r| past[r]).fold(0.0, f64::max);
+                    if most > 0.0 { (most.ceil() + 2.0).min(MARGIN) } else { 0.0 }
+                };
+                if margin > 0.0 {
+                    blitz_paint::set_viewport(Some(kurbo::Rect::new(seen[0] - margin, seen[1] - margin, seen[2] + margin, seen[3] + margin)));
+                }
+                s.painter.set_kept_margin(margin as i32);
+                blitz_paint::set_plan(keep);
+                crate::profile::label("mb-picture");
+                let painted = timed(s, None, true, false);
+                s.painter.set_kept_margin(0);
+                blitz_paint::set_viewport(None);
+                painted?;
+                let first = s.painter.cached_len();
+                s.painter.keep_drawn(kept)?;
+                for g in pictures.iter().filter(|g| !matches!(g[..], [r] if edge[r])) {
+                    g.iter().for_each(|&r| slot[r] += first);
+                }
             }
             let (mut plan, mut moves) = (HashMap::new(), vec![]);
             for (i, (run, m)) in runs.iter().take(taken).enumerate() {
@@ -186,6 +225,7 @@ pub(crate) fn draw(
             drawn += moves.len();
             blitz_paint::set_streaks(moves);
             blitz_paint::set_plan(around(&kids, base, p..end, plan));
+            crate::profile::label("mb-streaks");
             timed(s, None, true, false)?;
             if end == n && held {
                 s.painter.accumulate(true, 1.0)?; // the stage is painted over the sum (serve.rs)
@@ -199,8 +239,13 @@ pub(crate) fn draw(
             base = true;
         }
     }
+    crate::profile::label("frame");
     Ok((once, drawn))
 }
+
+/// How far past the frame's edges a page drawn at its own size keeps its streak pictures (device px, each side): a
+/// 1080p picture with it is (1920 + 2 × 128) × (1080 + 2 × 128) half-float px, 23 MB.
+const MARGIN: f64 = 128.0;
 
 /// The plan of one step: the pieces before it as kept picture 0 (the steps before: `base`), the pieces after it skipped,
 /// its own as `plan` says (drawn when it doesn't name them).
@@ -246,9 +291,9 @@ fn shares(a: Option<Spot>, b: Option<Spot>) -> bool {
 
 /// Where a streak reads its picture (page px), as the GPU pass does (anyrender_skia `draw_cached_streak`): each px of
 /// its `reach` inside the frame `seen` (the rect rounded out to whole device px) reads the picture at that px carried
-/// back through every one of its `moves`, held inside the frame (the picture is stretched past its edges), sampled
-/// smoothly. `slack`: what the rounding and the smooth sampling add, each side.
-fn reads(reach: [f64; 4], moves: &Moves, seen: [f64; 4], slack: f64) -> [f64; 4] {
+/// back through every one of its `moves`, held inside the picture `kept` (the frame, or past it by a margin: the picture
+/// is stretched past its edges), sampled smoothly. `slack`: what the rounding and the smooth sampling add, each side.
+fn reads(reach: [f64; 4], moves: &Moves, seen: [f64; 4], kept: [f64; 4], slack: f64) -> [f64; 4] {
     use crate::rig::math::Aff;
     let grow = |r: [f64; 4]| [r[0] - slack, r[1] - slack, r[2] + slack, r[3] + slack];
     let held = |r: [f64; 4]| [r[0].clamp(seen[0], seen[2]), r[1].clamp(seen[1], seen[3]), r[2].clamp(seen[0], seen[2]), r[3].clamp(seen[1], seen[3])];
@@ -257,12 +302,13 @@ fn reads(reach: [f64; 4], moves: &Moves, seen: [f64; 4], slack: f64) -> [f64; 4]
     let mut out = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
     for m in moves {
         // A move that can't be undone: it may read anywhere in the picture.
-        let Some(back) = (Aff { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }).inverse() else { return grow(seen) };
+        let Some(back) = (Aff { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }).inverse() else { return grow(kept) };
         for q in corners.map(|p| back.apply(p)) {
             out = [out[0].min(q.0), out[1].min(q.1), out[2].max(q.0), out[3].max(q.1)];
         }
     }
-    grow(held(out))
+    let kept_in = |r: [f64; 4]| [r[0].clamp(kept[0], kept[2]), r[1].clamp(kept[1], kept[3]), r[2].clamp(kept[0], kept[2]), r[3].clamp(kept[1], kept[3])];
+    grow(kept_in(out))
 }
 
 /// The rectangles joined (None when one isn't known, or there are none).
@@ -316,7 +362,7 @@ mod tests {
 
     fn spot(ink: [f64; 4], x0: f64, x1: f64) -> Option<Spot> {
         let (moves, reach) = slide(ink, x0, x1);
-        Some(Spot { reads: reads(reach, &moves, [0.0, 0.0, 1920.0, 1080.0], 1.0), ink })
+        Some(Spot { reads: reads(reach, &moves, [0.0, 0.0, 1920.0, 1080.0], [0.0, 0.0, 1920.0, 1080.0], 1.0), ink })
     }
 
     #[test]

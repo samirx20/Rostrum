@@ -211,3 +211,62 @@ fn a_rack_focus_keeps_a_still_layer_one_piece_through_the_shutter() {
     assert!(streaks[1].is_none(), "the still layer is one piece, blurred once");
     assert!(streaks[2].is_some(), "the fast layer is a streak");
 }
+
+/// motion/streak.rs `reach`: a layer's blur reaches as far as it is drawn, so a blurred layer scaled up 4× (or seen
+/// through a 4× zoom) claims its blur 4× wider, and a neighbour inside that blur never shares its streak picture.
+#[test]
+fn a_scaled_up_blurred_layers_reach_grows_with_its_scale() {
+    let ink_at = |scale: f64| {
+        let mut s = item("s", "shape", json!({ "x": 500.0, "y": 300.0, "w": 40.0, "h": 40.0, "scale": scale }));
+        s["anim"] = json!({ "x": [{ "t": 0.0, "v": 500.0, "ease": "linear" }, { "t": 1.0, "v": 2300.0, "ease": "linear" }] });
+        s["effects"] = json!([item("b", "blur", json!({ "radius": 10.0 }))]);
+        let mut comp = item("c", "comp", json!({ "shutter": 180.0, "shutterSamples": 8.0, "width": 1920.0, "height": 1080.0 }));
+        comp["layers"] = json!([s]);
+        let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+        let staged = crate::scene_serve::stage_at(&scene, 0.5, &json!({})).unwrap();
+        staged.streaks()[1].as_ref().expect("a streak").ink
+    };
+    let (one, four) = (ink_at(1.0), ink_at(4.0));
+    // The box is 40 px at scale 1 and 160 px at 4; the blur's reach (3 × 10 px of its own) past it: 30 and 120 px.
+    assert!(one[1] <= 300.0 - 20.0 - 30.0 && one[1] > 300.0 - 20.0 - 40.0, "{one:?}");
+    assert!(four[1] <= 300.0 - 80.0 - 120.0, "the blur scaled with the layer: {four:?}");
+}
+
+/// eval.rs `at_reusing`: a probe that re-reads only the own fields of the layers whose insides stay the same through
+/// the frame is the full evaluation, field for field, and gives the same streaks.
+#[test]
+fn a_probe_reusing_the_frames_insides_is_the_full_evaluation() {
+    let lin = |a: f64, b: f64| json!([{ "t": 0.0, "v": a, "ease": "linear" }, { "t": 1.0, "v": b, "ease": "linear" }]);
+    let mut cam = item("f", "camera", json!({ "x": 200.0, "y": 200.0, "homeX": 200.0, "homeY": 200.0, "zoom": 1.0 }));
+    cam["anim"] = json!({ "x": lin(200.0, 260.0) });
+    let mut g = item("g", "group", json!({ "w": 200.0, "h": 100.0 }));
+    g["anim"] = json!({ "x": lin(0.0, 600.0), "rotation": lin(0.0, 90.0), "opacity": lin(1.0, 0.0) });
+    g["layers"] = json!([item("a", "shape", json!({ "w": 40.0, "h": 40.0, "x": 30.0 }))]);
+    let mut h = item("h", "group", json!({ "w": 200.0, "h": 100.0 }));
+    let mut b = item("b", "shape", json!({ "w": 40.0, "h": 40.0 }));
+    b["anim"] = json!({ "y": lin(0.0, 300.0) });
+    h["layers"] = json!([b]);
+    let mut s = item("s", "shape", json!({ "w": 80.0, "h": 40.0, "matte": "m" }));
+    s["anim"] = json!({ "y": lin(0.0, 900.0) });
+    s["effects"] = json!([item("bl", "blur", json!({ "radius": 4.0 }))]);
+    let mut m = item("m", "shape", json!({ "w": 80.0, "h": 40.0 }));
+    m["anim"] = json!({ "y": lin(0.0, 900.0) });
+    let mut comp = item("c", "comp", json!({ "shutter": 180.0, "shutterSamples": 8.0 }));
+    comp["layers"] = json!([cam, g, h, s, m]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let own = eval::own_only(&scene.comp);
+    assert_eq!(own, [false, true, false, true, true], "the frame and a group whose child moves on its own re-read everything");
+    let t = 0.5;
+    let centre = eval::shutter_at(t, t, || eval::at(&scene.comp, t)).unwrap();
+    let probes = super::streak::probe_times(t, 30.0, 180.0);
+    let full: Vec<_> = probes.iter().map(|&ts| eval::shutter_at(t, ts, || eval::at(&scene.comp, ts)).unwrap()).collect();
+    let reused: Vec<_> = probes.iter().map(|&ts| eval::shutter_at(t, ts, || eval::at_reusing(&scene.comp, ts, &centre, &own)).unwrap()).collect();
+    for (f, r) in full.iter().zip(&reused) {
+        assert_eq!(format!("{f:?}"), format!("{r:?}"), "at {}", f.t);
+    }
+    let ids = ["g", "s", "m"];
+    let a = super::streak::moves(&centre, &full, |_| true, |_| 0.0, |_| false);
+    let b = super::streak::moves(&centre, &reused, |_| true, |_| 0.0, |id| ids.contains(&id));
+    assert_eq!(format!("{a:?}"), format!("{b:?}"));
+    assert!(a.0.iter().filter(|m| m.is_some()).count() >= 2, "the group and the matted layer are streaks: {:?}", a.1);
+}

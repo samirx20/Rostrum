@@ -83,6 +83,11 @@ impl Plan {
         Ok(Plan { names, smear })
     }
 
+    /// No trails and no smears: `apply` leaves the comp as it is.
+    pub fn adds_nothing(&self) -> bool {
+        self.names.is_empty() && !self.smear
+    }
+
     /// The comp at its time (`eval::at`) → its trail copies added and its smears measured.
     pub fn apply<'a>(&'a self, root: &'a Node, comp: &mut Item<'a>) {
         let fps = fps(root);
