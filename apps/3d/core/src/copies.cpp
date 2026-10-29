@@ -36,13 +36,15 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no material and no displayColor (clay_usd.cpp)
+constexpr float kGone = 1e-4f;  // a hidden copy's size: not 0, a singular matrix breaks renderers (write_values)
 
 // The node's props besides the transform, all sent by the compiler; then the ones it sends only when set (a stored
 // scene without them keeps its cache key)
 const char* const kKeys[] = {"layout", "count", "columns", "spacingX", "spacingY", "spacingZ", "radius", "faceOut",
                              "surface", "amountBy", "density", "minSpacing", "alongSurface", "onTop", "seed", "varyMove",
                              "varyTurn", "varyScale", "seenBy", "seenSize"};
-const char* const kOptionalKeys[] = {"onlySeen", "varyStart", "pourTime", "pourSpeed", "pourSpread"};
+const char* const kOptionalKeys[] = {"onlySeen", "varyStart", "pourTime", "pourSpeed", "pourSpread",
+                                     "path", "alongPath", "pathShift", "pathPoints", "pathClosed"};
 
 // A number from (seed, copy, channel), 0..1, the same on every run and machine: each copy's chances are its own, so
 // changing the count or the layout never reshuffles the others.
@@ -92,7 +94,7 @@ std::string choice(const JsValue& v, const std::string& where, const std::vector
 
 // One prop into p; the same checks for the scene and the live request.
 void set_param(Params& p, const std::string& key, const JsValue& v, const std::string& where) {
-  if (key == "layout") p.layout = choice(v, where, {"line", "grid", "circle", "surface", "pour"});
+  if (key == "layout") p.layout = choice(v, where, {"line", "grid", "circle", "surface", "pour", "path"});
   else if (key == "count") p.count = whole(v, where, 1, 10000);
   else if (key == "columns") p.columns = whole(v, where, 1, 10000);
   else if (key == "spacingX") p.spacing[0] = number(v, where);
@@ -119,6 +121,14 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
     p.pourSpread = at_least(v, where, 0);
     if (p.pourSpread > 90) fail(where, std::to_string(p.pourSpread) + " is too big", "0 .. 90 degrees");
   }
+  else if (key == "path") p.path = text(v, where);
+  else if (key == "alongPath") p.alongPath = flag(v, where);
+  else if (key == "pathShift") {
+    p.pathShift = at_least(v, where, 0);
+    if (p.pathShift > 1) fail(where, std::to_string(p.pathShift) + " is too big", "0 .. 1 (a share of the path's length)");
+  }
+  else if (key == "pathPoints") p.pathPoints = read_path_points(v, where);
+  else if (key == "pathClosed") p.pathClosed = read_path_closed(v, where);
   else if (key == "seenBy") p.seenBy = text(v, where);
   else if (key == "onlySeen") flag(v, where);  // the document's switch; `seenBy` carries it
   else if (key == "seenSize") {
@@ -163,47 +173,6 @@ std::vector<Held> read_held(const JsArray& list, const std::string& where, size_
     }
     r.finish();
     out.push_back(std::move(h));
-  }
-  return out;
-}
-
-template <class T, class F>
-std::vector<T> track(Reader& anim, const std::string& key, size_t frames, T single, F read) {
-  if (!anim.has(key)) return {single};
-  const JsArray& a = anim.list(key);
-  if (a.size() != frames)
-    fail(anim.at(key), std::to_string(a.size()) + " values", std::to_string(frames) + " values, one per frame");
-  std::vector<T> out;
-  for (size_t i = 0; i < a.size(); ++i) out.push_back(read(a[i], anim.at(key) + "[" + std::to_string(i) + "]"));
-  return out;
-}
-
-std::vector<Effector> read_effectors(const JsArray& list, const std::string& where, size_t frames) {
-  std::vector<Effector> out;
-  for (size_t i = 0; i < list.size(); ++i) {
-    const std::string w = where + "[" + std::to_string(i) + "]";
-    if (!list[i].IsObject()) fail(w, "is " + list[i].GetTypeName(), "an effector object");
-    Reader r(list[i].GetJsObject(), w);
-    Effector e;
-    e.id = r.str("id");
-    const std::string kind = r.one_of("kind", {"scale", "turn", "push", "colour"});
-    e.kind = kind == "scale" ? Effector::Scale : kind == "turn" ? Effector::Turn : kind == "push" ? Effector::Push
-                                                                                                  : Effector::Colour;
-    e.smooth = r.one_of("falloff", {"smooth", "linear"}) == "smooth";
-    const std::string axis = r.one_of("axis", {"x", "y", "z"});
-    e.axis = axis == "x" ? 0 : axis == "y" ? 1 : 2;
-    const double radius = r.num_min("radius", 0, true), amount = r.num("amount");
-    const GfVec3f colour = r.vec3("colour"), centre = r.vec3("centre");
-    static const JsObject none;
-    Reader anim(r.has("anim") ? r.object("anim") : none, w + ".anim");
-    const auto num = [](const JsValue& v, const std::string& at) { return number(v, at); };
-    e.centre = track<GfVec3f>(anim, "centre", frames, centre, Reader::vec3_of);
-    e.colour = track<GfVec3f>(anim, "colour", frames, colour, Reader::vec3_of);
-    e.amount = track<double>(anim, "amount", frames, amount, num);
-    e.radius = track<double>(anim, "radius", frames, radius, num);
-    anim.finish();
-    r.finish();
-    out.push_back(std::move(e));
   }
   return out;
 }
@@ -360,6 +329,11 @@ std::vector<Copy> lay_out(const State& s) {
       out.push_back(c);
       base.push_back(p.alongSurface ? GfRotation(GfVec3d::YAxis(), GfVec3d(normals[i])) : none);
     }
+  } else if (p.layout == "path") {
+    std::vector<GfVec3f> pos;
+    lay_path(p, &pos, &base);
+    out.resize(pos.size());
+    for (size_t i = 0; i < pos.size(); ++i) out[i].pos = pos[i];
   } else {
     out.resize(size_t(p.count));
     for (int i = 0; i < p.count; ++i) {
@@ -421,11 +395,9 @@ void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& w
   for (size_t i = 0; i < copies.size(); ++i) {
     Copy& c = copies[i];
     for (const Effector& e : effectors) {
-      const double r = pick(e.radius, k), amount = pick(e.amount, k);
-      if (r <= 0) continue;
+      const double amount = pick(e.amount, k);
       const GfVec3d centre(pick(e.centre, k)), here = world.Transform(GfVec3d(c.pos));
-      const double t = std::clamp(1 - (here - centre).GetLength() / r, 0.0, 1.0);
-      const double w = e.smooth ? t * t * (3 - 2 * t) : t;
+      const double w = field_weight(e, k, here);
       if (w <= 0) continue;
       switch (e.kind) {
         case Effector::Scale: c.scale *= float(std::max(0.0, 1 + amount * w)); break;
@@ -436,6 +408,10 @@ void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& w
           c.pos += GfVec3f(to_local.TransformDir(away * (amount * w)));
           break;
         }
+        case Effector::Move: c.pos += GfVec3f(to_local.TransformDir(kAxes[e.axis] * (amount * w))); break;
+        case Effector::Hide:
+          if (w >= 0.5) c.scale = kGone;
+          break;
         case Effector::Colour:
           if (tints) {
             const float m = float(std::clamp(amount * w, 0.0, 1.0));
@@ -585,8 +561,9 @@ void write_values(const UsdStageRefPtr& stage, State& s) {
   }
   // only what an effector or a keyed copy changes gets samples; the rest is the layout's plain value
   const bool keyed = any_keyed(s);
-  const bool by_pos = keyed || has_kind(s, Effector::Push), by_rot = keyed || has_kind(s, Effector::Turn),
-             by_scl = has_kind(s, Effector::Scale);
+  const bool by_pos = keyed || has_kind(s, Effector::Push) || has_kind(s, Effector::Move),
+             by_rot = keyed || has_kind(s, Effector::Turn),
+             by_scl = has_kind(s, Effector::Scale) || has_kind(s, Effector::Hide);
   const Arrays still = arrays(s.laid, nullptr);
   if (!by_pos) pos.Set(still.positions);
   if (!by_rot) rot.Set(still.orientations);
@@ -680,6 +657,7 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   for (const char* key : kKeys) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
   for (const char* key : kOptionalKeys)
     if (it.props.has(key)) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
+  check_path(s.p, it.id);
   s.held = read_held(held, it.id + ".held", size_t(ctx.end - ctx.start + 1));
   s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
   if (sim) s.sim = read_sim(*sim, it.id + ".sim");
@@ -736,6 +714,7 @@ double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const
   const auto t0 = std::chrono::steady_clock::now();
   Params p = s.p;  // checked whole before anything changes
   for (const auto& [key, value] : props) set_param(p, key, value, "copies.props." + key);
+  check_path(p, "copies.props");
   std::vector<Held> h = s.held;
   if (held) {
     if (!held->IsArray()) fail("copies.held", "is " + held->GetTypeName(), "a list of held copies");
@@ -802,7 +781,7 @@ GfRange3d world_box(const UsdStageRefPtr& stage, const State& s, int frame) {
   GfRange3d out;
   for (size_t i = 0; i < copies.size(); ++i) {
     const Copy& c = copies[i];
-    if (s.sim.waiting(int(i), frame)) continue;  // not there yet
+    if (s.sim.waiting(int(i), frame) || c.scale <= kGone) continue;  // not there yet, or hidden
     const GfRange3d& b = s.bounds.empty() ? GfRange3d() : s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
     if (b.IsEmpty()) {
       out.UnionWith(world.Transform(GfVec3d(c.pos)));
@@ -834,7 +813,7 @@ int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3
     if ((i < int(s.shown.size()) && !s.shown[i]) || s.sim.waiting(i, frame)) return -1;
     const Copy& c = copies[i];
     if (proto >= 0 && c.proto != proto) return -1;
-    if (c.scale <= 1e-6f) return -1;
+    if (c.scale <= kGone) return -1;  // gone (a hide or scale effector)
     const GfVec3f q = c.rot.GetInverse().Transform(local - c.pos) / c.scale;
     const GfRange3d& b = s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
     if (b.IsEmpty()) return double(q.GetLength());  // no bounds (a clay): nearest copy

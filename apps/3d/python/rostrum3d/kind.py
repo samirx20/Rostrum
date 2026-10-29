@@ -148,7 +148,7 @@ def check(data: dict) -> list[str]:
         if t == "combine":
             _check_combine(item, problems)
         if t == "copies":
-            copies_fields.check(item, problems, items)
+            copies_fields.check(item, problems, items, by_id)
         if t == "effector":
             _ref(problems, item, "near", item.get("near"), items, "item")
         if t == "clay":

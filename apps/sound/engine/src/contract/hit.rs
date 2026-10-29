@@ -20,6 +20,8 @@ pub fn read(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<
     let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
     let tune = o.num("tune", 0.25, 4.0, Some(1.0))?;
     let decay = o.num("decay", 0.1, 4.0, Some(1.0))?;
+    // Seconds after it is struck that it stops (with a 10 ms fade ending there), on every kit; left out: it rings out.
+    let cut = o.opt_num("cut", 0.001, 60.0)?;
     let idx = (t * sr as f64).round() as usize;
     let da = o.at("drum");
     let voice = match inst {
@@ -27,7 +29,7 @@ pub fn read(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<
             let name = drum.as_str().ok_or_else(|| Error::bad(&da, drum, "is not a drum name", SYNTH_DRUMS))?;
             super::read::one_of(name, &da, SYNTH_DRUMS)?;
             o.put("drum", json!(name));
-            json!({ "kind": "drum", "voice": name, "startIdx": idx, "velocity": vel, "pan": pan, "tune": tune, "decay": decay })
+            json!({ "kind": "drum", "voice": name, "startIdx": idx, "velocity": vel, "pan": pan, "tune": tune, "decay": decay, "cut": cut })
         }
         Inst::KitSfz(files) => {
             let plays = |k: u8| files.iter().find(|(_, keys)| keys.contains(&k));
@@ -42,7 +44,7 @@ pub fn read(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<
             };
             let (spec, _) = plays(key).ok_or_else(|| Error::new("BAD_ARGUMENT", &da, format!("key {key}"), "has no sample in this kit").hint(format!("It plays: {}.", can.join(", "))))?;
             o.put("drum", drum.clone());
-            json!({ "kind": "note", "instrument": "sampled", "sfz": spec, "freqs": [pitch::freq(key as f64)], "startIdx": idx, "duration": 0.2 * decay, "velocity": vel, "pan": pan })
+            json!({ "kind": "note", "instrument": "sampled", "sfz": spec, "freqs": [pitch::freq(key as f64)], "startIdx": idx, "duration": 0.2 * decay, "velocity": vel, "pan": pan, "cut": cut })
         }
         _ => return Err(Error::new("BAD_ARGUMENT", at, "a hit", "needs a drum kit on its track").hint("Give the track {\"kit\": \"drums\"} or {\"kitSfz\": …}.")),
     };

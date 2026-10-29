@@ -82,8 +82,8 @@ The **Colour** row shows the colour the track is drawn in.
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note starts on the grid
    line nearest the pointer (a bar line within about 7 px wins, so a click just past the bar lands on the bar); a new hit goes
    in the grid cell under the pointer. The faint note and the snap line's chip ("Bar 13") show where the click lands before you click.
-   Rows tinted red are keys the track's recorded sound can't play: a click there draws nothing and the top bar says why
-   ("Timpani plays C2–C4: A1 is below it").
+   Rows shaded a little darker are past the track's recorded sound's samples (a hairline marks the edge): a note
+   there is drawn like any other and plays from the nearest sample, stretched to the key you wrote, which can sound thin or odd.
    **Drums:** with **Draw** (B), click a step to add a hit and click that hit again to remove it; drag along a row to
    paint every step you pass (start the drag on a hit to erase along the row); one drag is one step, one **Ctrl+Z**
    takes it away. Steps are the window's **Grid ▾** cells. **Shift+click**: an accent (100 %); **Alt+click**: soft

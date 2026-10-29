@@ -52,7 +52,7 @@ impl Instrument {
                     let k = kit.get(name).cloned().unwrap_or(KitVoice { tune: 1.0, decay: 1.0, level: 1.0, sample: None, sample_rate: None, model: None });
                     // A one-shot decoded at its own rate is read faster or slower to sound at its pitch on this device.
                     let tune = if k.sample.is_some() { k.tune * k.sample_rate.unwrap_or(self.rate) / self.rate } else { k.tune };
-                    let hit = crate::mix::schedule::Voice::Drum { voice: name.clone(), start_idx: 0, velocity: velocity * k.level, pan: 0.0, tune, decay: k.decay, sample: k.sample, model: k.model };
+                    let hit = crate::mix::schedule::Voice::Drum { voice: name.clone(), start_idx: 0, velocity: velocity * k.level, pan: 0.0, tune, decay: k.decay, cut: None, sample: k.sample, model: k.model };
                     if let Err(e) = crate::instruments::voices::Voice::from_schedule(&hit, usize::MAX, self.rate, &mut out) {
                         let _ = self.reports.send(Report::Failed { what: e });
                     }

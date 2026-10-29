@@ -22,7 +22,7 @@ class Solver:
         self._thread.start()
 
     def start(self, job: dict) -> int:
-        """A new drag: {clay, bone, local, point, world, view, held, holds, t, w, h}. Its generation number."""
+        """A new drag: {clay, bone, local, point, world, view, held, holds, t, w, h, layer, stack}. Its generation number."""
         with self._cv:
             self._gen += 1
             self._job, self._spot = {**job, "gen": self._gen}, None
@@ -65,14 +65,15 @@ def solve(job: dict, x: float, y: float, seq: int) -> dict:
     t0 = time.perf_counter()
     c = job["clay"]
     to = aim.point(aim.invert(job["world"]), G._on_plane(job["view"], x, y, job["point"]))
-    turns = L.solve(c, job["bone"], job["local"], to, job["held"], job["t"])
+    stack = job.get("stack", ())                    # the animation layers: solved from the pose as shown
+    turns = L.solve(c, job["bone"], job["local"], to, job["held"], job["t"], stack)
     t1 = time.perf_counter()
-    pose = L.chain_pose(c, turns, job["t"]) if job["live"] else None
+    pose = L.chain_pose(c, turns, job["t"], stack) if job["live"] else None
     t2 = time.perf_counter()
     drawn = PV.overlay(c, job["holds"], job["world"], job["view"], job["t"], job["w"], job["h"], set(turns), turns)
     chip = PV.chip(PV.chain_of(c), job["bone"], turns)
     t3 = time.perf_counter()
     return {"seq": seq, "turns": turns, "pose": pose, "drawn": drawn, "chip": chip,
-            "calls": L.key_calls(turns, job["t"], c),
+            "calls": L.key_calls(turns, job["t"], c, job.get("layer", ""), stack),
             "ms": {"ik": (t1 - t0) * 1000, "pose": (t2 - t1) * 1000, "overlay": (t3 - t2) * 1000,
                    "solve": (t3 - t0) * 1000}}

@@ -11,12 +11,9 @@ from .script_time import Beats
 
 AT_ONCE = 0.03          # a note starting this close to the moment is played *on* it
 SLIVER = 0.001
-HIT_RING = 6.0          # a drum hit struck this long before the moment may still ring into it (a crash, a ride bell)
-LEFT_RINGING = "drum hits left ringing"
-WHY_HITS = ("a drum hit has no length to cut: it rings as its sample was recorded, so stop's short / release and choke "
-            "leave hits as struck (they only drop hits that would start in the stop). To end one sooner: a shorter "
-            "ring time written on the hit itself (track.hit('crash', at, decay=0.3); a recorded kit's one-shot samples ring on), or the cymbal on its own "
-            "track with a volume lane falling after the moment")
+# How long before the moment a hit may still ring into it: cymbals and open hats for seconds, the other drums under one.
+LONG_RING = frozenset({"crash", "crash2", "cymbal", "ride", "ride2", "rideBell", "china", "splash", "openHat"})
+HIT_RING, DRUM_RING = 6.0, 1.0
 
 
 class Counts(dict):
@@ -68,9 +65,29 @@ def drop_hits(track, root, where, keep, counts):
     track.hits = kept
 
 
-def hits_ringing(track, root, where, struck, counts):
-    """Hits an end asked for would have shortened (`struck(start)`): kept as struck, counted, so the reply says why."""
-    counts.add(LEFT_RINGING, sum(1 for _, h, _ in track.hits if struck(times.seconds(h["at"], root, where))))
+def rings_into(h, s, at) -> bool:
+    """A hit struck at `s` before `at` may still sound at it (by its drum: a cymbal for seconds, a kick under one)."""
+    ring = HIT_RING if not isinstance(h["drum"], str) or h["drum"] in LONG_RING else DRUM_RING
+    return at - ring <= s < at - AT_ONCE
+
+
+def cut_hits(track, root, where, end_at, counts):
+    """Each hit `end_at(start, hit)` gives an end for (seconds, or None) gets `cut` = that end less its start (a cut
+    already shorter stays); one cut to nothing is dropped. The engine stops it there on every kit, with a 10 ms fade."""
+    out = []
+    for id_, h, own in track.hits:
+        s = times.seconds(h["at"], root, where)
+        end = end_at(s, h)
+        if end is not None:
+            cut = round(end - s, 6)
+            if cut < SLIVER:
+                counts.add("hits dropped")
+                continue
+            if h.get("cut") is None or cut < h["cut"]:
+                h = {**h, "cut": cut}
+                counts.add("hits cut")
+        out.append((id_, h, own))
+    track.hits = out
 
 
 def rest(track, at, before, root, where, counts):
@@ -92,14 +109,14 @@ def stop(track, at, until, short, release, root, where, counts):
         return at + release if s < at and e > at + release else None
     edit(track, root, where, keep, end_at, counts)
     drop_hits(track, root, where, keep, counts)
-    hits_ringing(track, root, where, lambda s: (on(s) and short is not None) or at - HIT_RING <= s < at - AT_ONCE, counts)
+    cut_hits(track, root, where, lambda s, h: s + short if on(s) and short is not None else at + release if rings_into(h, s, at) else None, counts)
 
 
 def choke(track, at, after, root, where, counts):
     """Notes sounding at the moment (started on it or before) end `after` seconds past it."""
     cut = at + after
     edit(track, root, where, lambda s: True, lambda s, e: cut if s <= at + AT_ONCE and e > cut else None, counts)
-    hits_ringing(track, root, where, lambda s: at - HIT_RING <= s <= min(at + AT_ONCE, cut), counts)
+    cut_hits(track, root, where, lambda s, h: cut if (rings_into(h, s, at) or abs(s - at) <= AT_ONCE) and s < cut else None, counts)
 
 
 def swell(track, at, over, low, root, where, counts):

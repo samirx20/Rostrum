@@ -188,7 +188,8 @@ class Pose(PoseDrag, QObject):
         it = self._item()
         at = self.b.time if self.b._page == "animate" else None
         if it is not None:
-            self.b._guard(lambda: self.b._apply(L.rest_calls(it["id"], at), "Pose: back to rest"))
+            calls = L.rest_calls(it["id"], at, L.layering(self.b)[0])
+            self.b._guard(lambda: self.b._apply(calls, "Pose: back to rest"))
 
     def delete_hovered(self) -> bool:
         """Del: the hold ring under the pointer let go (True when there was one)."""
@@ -261,7 +262,7 @@ class Pose(PoseDrag, QObject):
             return
         local = aim.point(aim.invert(through.find_item(scene, it["id"], req["frame"])[0]), r["point"])
         held = {h["bone"] for h in L.holds_of(it)}
-        self._lit_now = set(PV.moving(PV.chain_of(it), L.bone_at(it, local, self.b.time), held))
+        self._lit_now = set(PV.moving(PV.chain_of(it), L.bone_at(it, local, self.b.time, L.layering(self.b)[1]), held))
 
     # --- drawing
     def _refresh(self, *_):

@@ -29,12 +29,13 @@ class Camera:
         self.tan_h, self.near = self.tan_w * height / width, v["near"]
 
     def project(self, p):
-        d = [a - b for a, b in zip(p, self.eye)]
-        depth = -sum(a * b for a, b in zip(d, self.back))
+        d0, d1, d2 = p[0] - self.eye[0], p[1] - self.eye[1], p[2] - self.eye[2]
+        b, r, up = self.back, self.right, self.up          # sum() of a tuple: the same (compensated) sums, faster
+        depth = -sum((d0 * b[0], d1 * b[1], d2 * b[2]))
         if depth <= self.near:
             return None
-        u = sum(a * b for a, b in zip(d, self.right)) / (depth * self.tan_w)
-        v = sum(a * b for a, b in zip(d, self.up)) / (depth * self.tan_h)
+        u = sum((d0 * r[0], d1 * r[1], d2 * r[2])) / (depth * self.tan_w)
+        v = sum((d0 * up[0], d1 * up[1], d2 * up[2])) / (depth * self.tan_h)
         return (u + 1) / 2 * self.w, (1 - v) / 2 * self.h
 
     def holds(self, corners) -> str:
@@ -58,6 +59,7 @@ class Track:
     def __init__(self, data: dict, info: dict, frames: range, folder=None, sim: dict | None = None):
         self.fr = Frames(data, range(info["start"], frames.stop), info["fps"], folder)
         self.data, self.info, self.frames, self.built, self.skipped = data, info, frames, {}, {}
+        self._rows: dict = {}
         if sim:                                 # mcp/motion_sim.moves: the simulated things where the stored result has them
             self.skipped.update(sim["skip"])
             self._lay_over(sim["moves"], info["start"])
@@ -103,4 +105,26 @@ class Track:
         return out
 
     def rows(self, id_: str) -> list[dict]:
-        return [self.row(id_, f) for f in self.frames]
+        """Its rows, worked out once per Track (callers read them, never change them)."""
+        if id_ not in self._rows:
+            self._rows[id_] = [self.row(id_, f) for f in self.frames]
+        return self._rows[id_]
+
+
+def track_of(doc, info: dict, frames: range, folder, sim_of) -> tuple[Track, dict | None]:
+    """(Track, sim) for a document (mcp's doc: .data, .seq), kept for its newest state like mcp.draw.scene_of: a second
+    look_motion at the same document (other items, a path, a sub-range) reads the same measured rows. Built again when
+    the document changes (a new tree and seq) or the cache stores something (a simulation's result). `sim_of()`:
+    mcp.motion_sim.moves for it."""
+    from rostrum_core.cache import CACHE
+    stamp = (getattr(doc, "seq", None), CACHE.puts, repr(sorted(info.items())), frames, str(folder))
+    hit = getattr(doc, "_track", None)
+    if hit and hit[0] is doc.data and hit[1] == stamp:
+        return hit[2], hit[3]
+    sim = sim_of()
+    track = Track(doc.data, info, frames, folder, sim)
+    try:
+        doc._track = (doc.data, stamp, track, sim)
+    except AttributeError:                                  # a stand-in without attributes: built every time
+        pass
+    return track, sim

@@ -64,13 +64,11 @@ class Gesture:
         if self._ended:
             raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"', "is closed already (cancelled when the "
                                "window closed)", hint="Start it again.")
-        if not callable(calls):
-            return calls
         shown, shown_idx = self.doc.data, self.doc._index()
         self.doc.data = self.start
         self.doc._indexed(self.start, self._start_idx)
-        try:
-            return calls()
+        try:                                # a person's calls through the window's routes (a chosen animation layer)
+            return self.doc.routed(calls() if callable(calls) else calls, self.who)
         finally:
             self.doc.data = shown
             self.doc._indexed(shown, shown_idx)

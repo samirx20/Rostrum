@@ -61,16 +61,22 @@ def test_a_moment_at_its_own_marker_uses_the_marker_already_there():
     with pytest.raises(RostrumError, match="not there yet"):
         run_source(SRC.replace('moment("hit", at=31.5)', 'moment("hit", at="#hit")'), "t.py")
 
-def test_stop_short_and_choke_on_drum_hits_say_how_many_were_left_ringing_and_why():
-    # Late Set r1: "nothing there to change" for a crash struck on the moment (a hit has no length to cut).
-    run_source("""tempo(120); length(40)
+def test_stop_choke_and_strike_cut_drum_hits_as_written():
+    # Late Set r1: "nothing there to change" for a crash struck on the moment; a hit now has a cut the engine honours.
+    src = """tempo(120); length(40)
 d = track("drums", kit="drums")
-d.hit("ride", at=30.0)
+d.hit("ride", at=30.0); d.hit("kick", at=29.0)
 m = moment("stop", at=31.5)
 m.strike(d, "crash", vel=1.0)
-m.stop(d, short=0.2)
-m.choke(d, after=0.5)
-""", "t.py")
+m.ACTION
+"""
+    cuts = lambda tree: {h["drum"]: h.get("cut") for h in tree["tracks"][0]["hits"]}
+    tree = run_source(src.replace("ACTION", "stop(d, short=0.2)"), "t.py")
     line = next(l for l in printed() if l.startswith("moment stop at 31.50 s"))
-    assert "stop on drums (2 drum hits left ringing)" in line and "choke after 0.50 s on drums (2 drum hits left ringing)" in line
-    assert "nothing there to change" not in line and "no length to cut" in line and "decay=0.3" in line
+    assert "stop on drums (2 hits cut)" in line, line
+    # the crash on the moment cut to `short`, the ride ringing across it ends on the moment, the kick (2.5 s before) is left
+    assert cuts(tree) == {"ride": 1.5, "kick": None, "crash": 0.2}
+    tree = run_source(src.replace("ACTION", "choke(d, after=0.5)"), "t.py")
+    assert cuts(tree) == {"ride": 2.0, "kick": None, "crash": 0.5}
+    tree = run_source(src.replace('m.strike(d, "crash", vel=1.0)', 'm.strike(d, "crash", vel=1.0, ring=1.5)').replace("m.ACTION", ""), "t.py")
+    assert cuts(tree)["crash"] == 1.5

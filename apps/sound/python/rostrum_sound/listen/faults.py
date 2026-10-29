@@ -24,6 +24,8 @@ NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "so
 HELD_S = 12.0          # one harmony (pitch-class shape, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
 HELD_MOVED_DB = 12.0   # ...unless its level moves this much (a long swell or a fade is movement the ear follows)
+HELD_PITCHED = 0.35    # ...and only where notes are this share of the sound (55 Hz-4.2 kHz): a drum-only second measured
+                       #   0.0-0.32 (a steady hi-hat read as "one harmony held"), real mixes with drums 0.38-1.0
 DULL_DB = -20.0       # the brightest tenth of the piece's top end (4–16 kHz) under this against 250 Hz–1 kHz: dull
 SHELF_MARGIN, SHELF_MOST_DB = 1.5, 8.0   # dull_top's shelf: tried on the render to reach DULL_DB + this, at most this gain
 MONO_CORR = 0.9       # left and right this alike: the mix is near mono (wide mixes measure 0.4–0.8)
@@ -38,12 +40,16 @@ def held_spans(y, sr) -> list[dict]:
     the stretch's mean, the sound audible (> -50 dBFS), for HELD_S or longer, its level moving under HELD_MOVED_DB.
     The longest first, non-overlapping. The shape is each block's twelve classes less their own mean: which notes stand
     out, not the floor every class carries in a real mix (reverb, harmonics, a melody, the bass), which made any two
-    blocks in one key ≥ 0.9 alike and a ii-V every two beats read as one held harmony."""
+    blocks in one key ≥ 0.9 alike and a ii-V every two beats read as one held harmony. A block counts only where notes
+    are HELD_PITCHED of its sound: a drum groove's leftover after the drums are taken out is a steady shape too."""
     m = resample(mono(y), sr, _SR) if sr != _SR else mono(y)
-    c = chroma(m, _SR, _HOP)
+    c, e = chroma(m, _SR, _HOP, pitched=True)
     nb = c.shape[1] // _BLOCK
     if nb < 2:
         return []
+    e = np.pad(e, ((0, 0), (0, max(0, nb * 2 * _BLOCK - e.shape[1]))), mode="edge")   # two STFT steps per chroma frame
+    eb = e[:, :nb * 2 * _BLOCK].reshape(2, nb, 2 * _BLOCK).sum(axis=2)
+    pitched = eb[0] >= HELD_PITCHED * eb[1]
     cb = c[:, :nb * _BLOCK].reshape(12, nb, _BLOCK).mean(axis=2)
     cb = cb - cb.mean(axis=0, keepdims=True)
     cb = cb / (np.linalg.norm(cb, axis=0, keepdims=True) + 1e-12)
@@ -55,21 +61,21 @@ def held_spans(y, sr) -> list[dict]:
         while s < i:
             mean = cb[:, s:i].mean(axis=1)
             mean /= np.linalg.norm(mean) + 1e-12
-            if (mean @ cb[:, s:i]).min() >= HELD_ALIKE and (lv[s:i] > -50).all():
+            if (mean @ cb[:, s:i]).min() >= HELD_ALIKE and (lv[s:i] > -50).all() and pitched[s:i].all():
                 break
             s += 1
-        if (i - s) * sec >= HELD_S and (i == nb or not _still(cb, lv, s, i + 1)) and lv[s:i].max() - lv[s:i].min() < HELD_MOVED_DB:
+        if (i - s) * sec >= HELD_S and (i == nb or not _still(cb, lv, pitched, s, i + 1)) and lv[s:i].max() - lv[s:i].min() < HELD_MOVED_DB:
             spans.append({"from_s": num(s * sec, 1), "to_s": num(i * sec, 1), "seconds": num((i - s) * sec, 1),
                           "level_moved_db": num(float(lv[s:i].max() - lv[s:i].min()), 1)})
             s = i                         # the next span starts after this one
     return sorted(spans, key=lambda r: -r["seconds"])
 
 
-def _still(cb, lv, s, i):
+def _still(cb, lv, pitched, s, i):
     """Would the stretch s..i still be one held harmony (so the shorter one is not yet its end)?"""
     mean = cb[:, s:i].mean(axis=1)
     mean /= np.linalg.norm(mean) + 1e-12
-    return (mean @ cb[:, s:i]).min() >= HELD_ALIKE and (lv[s:i] > -50).all()
+    return (mean @ cb[:, s:i]).min() >= HELD_ALIKE and (lv[s:i] > -50).all() and pitched[s:i].all()
 
 
 def _correlation(y):

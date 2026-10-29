@@ -4,6 +4,9 @@ Turn, absolute turns, unkeyed = rest); `pose.drag` bends the chain from a grabbe
 (pose_ik.py) and keys the Turn of every bone that moved; `pose.hold` keeps spots still; `pose.rest` takes the pose
 off; `pose.move_joint` places a joint by hand (kept when the joints are found again). Each is one undo step.
 
+Animation layers: a rig reads the turns as shown (the layers laid over the Base), so a drag starts from what is on
+screen; `layer` on pose.drag / pose.rest puts the keys on that layer (ops_poses.put_shown: add holds offsets).
+
 Bone ids are `<clay>_<part>` (body, arm_L, foot_R …), so keys survive finding the joints again; finding them again
 keeps every bend (each bone's turn relative to its rest) and every joint a person or agent placed.
 `pose.find_joints` needs the clay's shape from the core (its `clay_grid`): the app and the MCP server hand their
@@ -15,11 +18,11 @@ import math
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
-from rostrum_core.keys import keys_of, track_value
+from rostrum_core.keys import keys_of, layers, track_value
 
 from . import aim, build, compile as C, pose_ik, pose_joints as PJ, resolve
 from .kind import REGISTRY as R
-from .ops_keys import put_key
+from .ops_poses import LAYER, put_shown
 
 TURN = pose_ik.TURN
 _GRID = None              # (doc, clay id, cells) -> the core's clay_grid reply
@@ -121,7 +124,7 @@ def _one_clay(ctx, targets) -> dict:
 def _rig(ctx, clay, t=0.0) -> pose_ik.Rig:
     if not clay.get("bones"):
         ctx.fail(codes.BAD_ARGUMENT, clay["id"], "has no joints yet", hint="pose.find_joints finds them from its shape.")
-    return pose_ik.Rig(clay, t)
+    return pose_ik.Rig(clay, t, layers.stack_of(ctx.doc))
 
 
 def _find(ctx, r, name) -> int:
@@ -252,8 +255,9 @@ def pose_names(ctx, targets, args):
              "on the clay. Held joints (`holds`, default the clay's holds from pose.hold) stay put, and so does every "
              "bone that carries one (e.g. hold both feet: the body stays, only the arm bends); with no holds the "
              "root (body) doesn't turn. Keys the Turn of every bone that moved at `at` (seconds). Reply: the moved "
-             "joints with their turns, and `miss`: how far (m) the spot ended from `to` (more than 0 = out of reach).",
-             target="clay", label="Pose by dragging", params=[PART, GRAB, TO, HOLDS, AT])
+             "joints with their turns, and `miss`: how far (m) the spot ended from `to` (more than 0 = out of reach). "
+             "Starts from the pose as shown (animation layers too); `layer`: the keys go on that animation layer.",
+             target="clay", label="Pose by dragging", params=[PART, GRAB, TO, HOLDS, AT, LAYER])
 def pose_drag(ctx, targets, args):
     clay = _one_clay(ctx, targets)
     t = float(args.get("at", 0.0))
@@ -275,8 +279,9 @@ def pose_drag(ctx, targets, args):
     except ValueError as e:
         ctx.fail(codes.BAD_ARGUMENT, "holds", str(e))
     out = pose_ik.solve_rig(r, g, spot, _to_clay(ctx, clay["id"], args["to"], t), held)
-    for id_, p, at, v in pose_ik.drag_keys(clay, out["turns"], t):
-        put_key(ctx, id_, p, at, {"v": v})
+    layer = args.get("layer") or ""
+    for id_, p, at, v in pose_ik.drag_keys(clay, out["turns"], t, layer=layer, stack=r.stack):
+        put_shown(ctx, id_, p, at, v, layer)
     joint = {i: j or i for i, j in zip(r.ids, r.joint)}
     scale = _scale(ctx, clay["id"], t)
     return {"moved": [{"id": i, "joint": joint[i], "turn": [out["turns"][i][p] for p in TURN]} for i in out["moved"]],
@@ -331,19 +336,22 @@ def _carry_back(r: pose_ik.Rig, p) -> list[float]:
 
 @R.operation("pose.rest", "Take a clay's pose off: without `at`, every Turn key of its joints is removed (back to "
              "the resting shape for the whole shot); with `at` (seconds), the resting turn is keyed at that time on "
-             "every joint that has keys (it passes through rest there).", target="clay", label="Pose: back to rest",
-             params=[Param.number("at", label="At", min=0, max=36000, step=0.001, unit="s", default=None,
+             "every joint that has keys (it passes through rest there). With `layer`: only that animation layer's Turn keys go "
+             "(without `at`), or that layer is keyed to show rest at `at`.", target="clay", label="Pose: back to rest",
+             params=[LAYER, Param.number("at", label="At", min=0, max=36000, step=0.001, unit="s", default=None,
                                   nullable=True, help="Key the rest pose at this time instead of removing the keys")])
 def pose_rest(ctx, targets, args):
+    layer = args.get("layer") or ""
+    mine = (lambda k: k.get("layer") == layer) if layer else (lambda k: True)     # the Base: every Turn key
     for t in targets:
         bones = _all_bones(ctx.item(t))
         if args.get("at") is None:
-            ctx.remove_many([k["id"] for b in bones for k in b.get("keys", []) if k["prop"] in TURN])
+            ctx.remove_many([k["id"] for b in bones for k in b.get("keys", []) if k["prop"] in TURN and mine(k)])
             continue
         for b in bones:
-            if any(keys_of(b, p) for p in TURN):
+            if any(k["prop"] in TURN and (k.get("layer") or "") == layer for k in b.get("keys", [])):
                 for p in TURN:
-                    put_key(ctx, b["id"], p, float(args["at"]), {"v": float(b.get(p, 0.0))})
+                    put_shown(ctx, b["id"], p, float(args["at"]), float(b.get(p, 0.0)), layer)
 
 
 @R.operation("pose.move_joint", "Move a clay's joint by hand (its head, on the resting clay): the bones after it "

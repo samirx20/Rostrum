@@ -16,7 +16,7 @@ from . import outline, painting_open
 
 
 class TimelineRows(SlotMixin):
-    _rows_at = None          # (placed, folds, A-opened, rows): the rows of that state
+    _rows_at = None          # (placed, folds, A-opened, animation layer, rows): the rows of that state
     _rows_kept = None        # outline.rows' memory: a layer unchanged since the last rows keeps its rows
     _rows_told = None        # the rows QML was last told about
     _facts_told = None       # the row facts it was last told (row_facts.py)
@@ -32,12 +32,14 @@ class TimelineRows(SlotMixin):
                 got = self._rows_at = (opened, c["fps"], c["duration"], [painting_open.row(opened, c["fps"], c["duration"])])
             return got[3]
         placed, flipped, only = self.placed(), frozenset(self._flipped), frozenset(self._anim_only)
+        layer = self._anim_layers.rows_layer() if getattr(self, "_anim_layers", None) is not None else ""
         got = self._rows_at
         if self._rows_kept is None:
             self._rows_kept = {}
-        if got is None or got[0] is not placed or got[1] != flipped or got[2] != only:
-            got = self._rows_at = (placed, flipped, only, outline.rows(placed, self._flipped, self._anim_only, self._rows_kept))
-        return got[3]
+        if got is None or got[0] is not placed or got[1] != flipped or got[2] != only or got[3] != layer:
+            got = self._rows_at = (placed, flipped, only, layer,
+                                   outline.rows(placed, self._flipped, self._anim_only, self._rows_kept, layer))
+        return got[4]
 
     @Slot(str, bool)
     def foldLevel(self, item_id, want_open):

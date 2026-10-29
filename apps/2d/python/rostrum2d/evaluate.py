@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from rostrum_core.keys import animated, keys_of, track_value
+from rostrum_core.keys import animated, keys_of, layers, track_value
 from rostrum_core.marker_times import seconds
 
 from . import fields as F, widthprofile
@@ -55,9 +55,14 @@ def value_at(owner: dict, prop: str, t: float):
     return p.default
 
 
-def resolve(owner: dict, t: float) -> dict:
-    """Every field of an item at time t (still values, defaults filled in, animated ones evaluated)."""
+def resolve(owner: dict, t: float, stack: list[dict] = ()) -> dict:
+    """Every field of an item at time t (still values, defaults filled in, animated ones evaluated). `stack`: the
+    document's animation layers (rostrum_core.keys.layers.stack_of), laid over the Base as the engine is sent them
+    (layerbake.py); left out, the Base alone."""
     out = {p.name: owner.get(p.name, p.default) for p in F.FIELDS[owner["type"]]}
     for prop in animated(owner):
-        out[prop] = _track(prop, keys_of(owner, prop), t)
+        if keys := keys_of(owner, prop):                # a field keyed only on an animation layer keeps its Base still
+            out[prop] = _track(prop, keys, t)
+        if stack and prop in out and F.key_field(owner["type"], prop) != "d":
+            out[prop] = layers.value(owner, prop, t, stack, out[prop], lambda ks, at: track_value(placed(ks), at))
     return out

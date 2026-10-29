@@ -16,7 +16,7 @@ from rostrum2d.drawing import each_frame
 from rostrum2d.frame import TYPE as FRAME
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
-from rostrum_core.keys import animated, keys_of, marked
+from rostrum_core.keys import animated, keys_of, layers as anim_layers, marked
 from rostrum_gui import anim_rows
 
 from . import framing, key_ghosts
@@ -41,22 +41,30 @@ def _owned(layer: dict) -> list[dict]:
     return [*layer.get("effects", []), *layer.get("masks", []), *layer.get("bones", []), *layer.get("iks", [])]
 
 
-def _fields(layer: dict) -> list[tuple[dict, str]]:
-    """(owner, prop) for every animated field of a layer and of its effects and masks, in field-table order."""
+def _props(owner: dict, on: str = "") -> set[str]:
+    """The fields with keys on animation layer `on` ("" = the Base: rostrum_core.keys.layers)."""
+    return {k["prop"] for k in owner.get("keys", []) if (k.get(anim_layers.FIELD) or "") == on}
+
+
+def _fields(layer: dict, on: str = "") -> list[tuple[dict, str]]:
+    """(owner, prop) for every animated field of a layer and of its effects and masks, in field-table order; `on`:
+    the chosen animation layer's fields only."""
     out = []
     for owner in [layer, *_owned(layer)]:
-        props = animated(owner)
+        props = _props(owner, on)
         out += [(owner, p.name) for p in F.FIELDS[owner["type"]] if p.name in props]
     return out
 
 
-def _keys(owner: dict, prop: str) -> list[dict]:
-    """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
+def _keys(owner: dict, prop: str, on: str = "") -> list[dict]:
+    """A field's keys for the timeline (`on`: an animation layer's, else the Base's); a key on a shared marker (placed
+    by retime.placed) carries its words."""
+    keys = anim_layers.layer_keys(owner, prop, on) if on else keys_of(owner, prop)
     return [{"id": k["id"], "ids": [k["id"]], "t": k["t"],
-             **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys_of(owner, prop)]
+             **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys]
 
 
-def _setting_rows(lay: dict, props: list[str], depth: int, fps: float, past) -> list[dict]:
+def _setting_rows(lay: dict, props: list[str], depth: int, fps: float, past, on: str = "") -> list[dict]:
     """An open layer's row per animated SETTING: X and Y keys are one "Position" row (W and H "Size", anims.PAIRS), a
     key of both at one frame one diamond standing for both (`ids`), so a click or drag takes the pair together."""
     by: dict[str, list[str]] = {}
@@ -65,7 +73,7 @@ def _setting_rows(lay: dict, props: list[str], depth: int, fps: float, past) -> 
     out = []
     for setting, mine in by.items():
         label = NAMES.label_of(lay, setting)
-        keys = _one_per_frame(sorted((k for p in mine for k in _keys(lay, p)), key=lambda k: k["t"]), fps)
+        keys = _one_per_frame(sorted((k for p in mine for k in _keys(lay, p, on)), key=lambda k: k["t"]), fps)
         out.append({**_row("field", lay, depth, label, keys, mine[0]), "props": mine, **past([(lay, p) for p in mine])})
     return out
 
@@ -75,12 +83,12 @@ def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
     return anim_rows.stretches(owner["id"], anims)
 
 
-def _lines(lay: dict, depth: int, is_open: bool) -> tuple[dict, list[dict]]:
+def _lines(lay: dict, depth: int, is_open: bool, on: str = "") -> tuple[dict, list[dict]]:
     """(line 0's stretches and the key ids on other lines, the rows of lines 1, 2 …): a layer's animations that overlap
     in time go on lines of their own under it (anims.py packs them), each named by its settings, in grey. Those lines
     are rows under the layer like any other: only while it is open. Folded, its one row holds every key (the later lines' stretches wait for it to be
     opened: drawn on one row they would lie over each other)."""
-    anims = animations(lay)
+    anims = [] if on else animations(lay)     # an animation layer's keys have no stretches (the Base's animations)
     if not is_open:
         return {"stretches": _stretches(lay, [a for a in anims if a["line"] == 0]), "elsewhere": set()}, []
     rows, elsewhere = [], set()
@@ -142,31 +150,33 @@ def _matte_marks(out: list[dict], comp: dict) -> list[dict]:
     return [{**r, "matteFor": users[r["id"]]} if r["row"] == "layer" and r["id"] in users else r for r in out]
 
 
-def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept: dict | None = None) -> list[dict]:
+def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept: dict | None = None,
+         on: str = "") -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
-    only their animated settings (theirs, their effects' and masks'), not their own layers.
+    only their animated settings (theirs, their effects' and masks'), not their own layers. `on`: the timeline's
+    chosen animation layer (rostrum_core.keys.layers), whose keys alone show ("" = the Base).
     `kept`: the caller's memory between calls. A layer that is the very same item as last time (a change makes new
     items only along the path to what it changed) has the same rows, with its own layers' rows inside, so they are
     taken over, not worked out again: an edit costs the layers it touched. The rows handed out are shared; read only."""
     out: list[dict] = []
     duration, fps = comp["duration"], comp["fps"]
-    state = (frozenset(flipped), frozenset(anim_only), fps, duration)
+    state = (frozenset(flipped), frozenset(anim_only), fps, duration, on)
     if kept is not None and kept.get("state") != state:
         kept.clear()
     fresh: dict = {}
 
     def past(pairs) -> dict:
         """The faint marks past the keys (Repeat, Back and forth, a spring's tail) of these (owner, prop) fields."""
-        return key_ghosts.marks([(keys_of(o, p), duration) for o, p in pairs], fps)
+        return key_ghosts.marks([(anim_layers.layer_keys(o, p, on) if on else keys_of(o, p), duration) for o, p in pairs], fps)
 
     def layer_rows(lay, depth) -> list[dict]:
         out = []
-        fields = _fields(lay)
+        fields = _fields(lay, on)
         inside = bool(fields or _owned(lay) or lay.get("layers"))
         only = lay["id"] in anim_only
         is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
-        first, lines = _lines(lay, depth, is_open)
-        summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
+        first, lines = _lines(lay, depth, is_open, on)
+        summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p, on) if k["id"] not in first["elsewhere"]),
                                         key=lambda k: k["t"]), fps)
         row = _row("layer", lay, depth, label_of(lay), summary)
         row["stretches"] = first["stretches"]
@@ -190,11 +200,11 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
         if not is_open:
             return out
-        out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past))
+        out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past, on))
         for o in _owned(lay):
-            keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
+            keys = sorted((k for p in _props(o, on) for k in _keys(o, p, on)), key=lambda k: k["t"])
             if keys or not (only or o["type"] == "ik"):   # every bone (its row picks it to pose); an IK chain once keyed
-                out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
+                out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in _props(o, on))})
         if not only:
             out.extend(walk(lay.get("layers", []), depth + 1))
         return out

@@ -54,7 +54,7 @@ Exports go through the same `frame` request, so preview ≡ export.
 
 **Steps follow the motion** (engine `motion/steps.rs`, as After Effects' adaptive sample limit). `shutterSamples` is the
 fewest. Before a blurred frame is staged, the comp is evaluated (no stage, no paint) at the edges of k equal slices of
-the open shutter (k = `shutterSamples`, 2..16), each as a sub-frame of the frame (so a cut is never a move); every
+the open shutter (k = `shutterSamples`, 2..4), each as a sub-frame of the frame (so a cut is never a move); every
 layer's box corners (a text's estimated as for smears) are carried to the output through its own x, y, rotation and
 scale, its groups' and the frame's (`frame/mod.rs` `map`: pan, zoom, roll, depth). The fastest corner's move across one
 slice, × k, is that layer's px per shutter at its fastest; the frame takes
@@ -71,35 +71,46 @@ layer; a layer that hardly moves while the shutter is open (a slow drift, a back
 would give the same picture in every step but for a fraction of a pixel. When each of its box corners (and its
 children's and its matte's, measured as above) stays within `HOLD_PX` = 0.25 px of where it is at the frame's own time,
 and its markup differs from that time's only in numbers that each stay within 0.25 (path points, letter places,
-opacity, a blur's radius), it is written as at the frame's time in every step, so it is painted once (`still_runs.rs`).
+opacity, a blur's radius), it is drawn as at the frame's time, once, with no streak.
 Its streak would have been under half a pixel long; the frame differs from drawing it every step only on hard edges, by
 what moving that edge a quarter of a pixel does. A colour written in hex that changes, or a layer that starts or ends
 inside the shutter, is drawn every step as before. Export-speed bench (2026-10-29, 20 s at 1080p, blurred blobs under
 a fast title): 39 s → 31.5 s; worst frame 29 levels on one title edge, average 0.12 of a level, no visible change.
 
-**A fast frame move is cheap** (engine `scene_serve.rs` `stage_at`, `still_runs.rs`). When the frame (camera) moves
-faster than the layers do on their own, the steps are measured a second time with the frame held where it is at the
-frame's time (`steps.rs` `own_steps`): that many steps are what the layers' own moves need. The n sub-frames are then
-split into that many equal groups. In a group the layers are as at its middle sub-frame and only the frame moves, so
-each top-level layer that blends normally is painted once per group and its picture is moved for the other
-sub-frames (staging, layout and painting skipped). A whip pan needing 128 steps whose layers need 16 paints 16 times,
-not 128. The picture is the same up to resampling (a picture moved by a fraction of a px is sampled smoothly) and the
-few px a move uncovers at the frame's edge, which take the picture's edge px. Layers with a blend mode, glow or frosted
-glass are still drawn each sub-frame, alone: the sub-frame is staged (its changed pieces, as text edits) and the other
-layers' kept pictures are still moved (B1, 2026-10-29: one glowing layer used to make every sub-frame draw every layer;
-Undertow r2's glowing water did so in every frame of its drop, which took 5-35 s each). A frame that isn't grouped (the layers' own moves need every step) still has one base, its middle sub-frame: a layer only the frame moves is painted there once and slid for every other sub-frame, the rest drawn per sub-frame (B1). The frame's depth of field (focus, blur) is as at the frame's own time in every sub-frame, so a still depth layer is one piece, blurred once a frame. A request's own `shutterSamples` never groups. Top-level layers in a row that
-the frame moves alike in every sub-frame of the group (the same depth) share one kept picture (`still_runs.rs`
-`moving_runs`): 200 bubbles at five depths keep five pictures, not 200 (each a whole frame on the graphics card, laid
-over every sub-frame: the Undertow whip pan took 31 s a frame that way). At most `KEPT_BYTES` (serve.rs, 768 MB) of pictures are kept at once; past
-it the group's other moving layers are drawn each sub-frame.
+**One streak per layer** (engine `motion/streak.rs`, `blurred.rs`; 2026-10-29). Each sub-frame's comp is evaluated
+(no stage, no layout). A top-level layer that, in every sub-frame, is the same layer but for where it is placed (its x,
+y, turn and scale, and the frame's move, zoom and roll on it at its depth; any other field within 0.25; no matte, no
+smear, no turn or scale change under a tilt) is the same picture moved: the page is laid out once, at the frame's own
+time, that layer is painted once (with its depth-of-field blur) and drawn as its **streak**: the average of the picture
+under each sub-frame's move, one GPU pass of up to 128 reads a pixel (anyrender `draw_cached_streak`), one read per px
+of its longest path. Turning and scaling streak per pixel as they should (each read goes through the whole move, not a
+slide). Layers in a row that move alike (the same depth under a pan) are one picture and one streak. What a layer
+streaks over is what lies under it, so this is each layer's own motion blur laid over the others, as After Effects
+blurs each layer: where two layers that move differently overlap, it differs a little from averaging whole sub-frames.
+A layer that only moves but blends (a blend mode, glow, frosted glass) is painted as laid out, moved to each
+sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. A moving layer whose
+picture runs past the frame's edge (or whose size isn't known before layout: a text, a path) is built the same way,
+alone, so what lies past the edge streaks in; one that covers the whole frame (a backdrop) takes its edge px for the few
+px a move pulls in; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 sub-frames spread over the shutter (`streak.rs` `PROBES`) and the
+moves in between read off them; a fade or a colour change within one shutter opening is taken at the frame's time (its
+average). A layer still staged per sub-frame gets as many sub-frames as its own corners (and its matte's) travel in px,
+at least `shutterSamples`, not the frame's count.
+
+A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer with a
+matte) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
+sub-frame, alone, over the picture of the layers under it, and averaged; the layers above it are drawn once over that.
+Only such layers cost a layout per step. When the sub-frames draw different layers (one starts or ends inside the
+shutter), every sub-frame is drawn whole, as before. At most `KEPT_BYTES` (serve.rs, 768 MB) of streak pictures are kept
+at once; past it the picture so far is kept as one and the next streaks follow it. The frame's depth of field (focus,
+blur) is as at the frame's own time in every sub-frame.
 
 **Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
 the comp's values for that one frame, and its `shutterSamples` is then the exact count, not adapted (1 sample = no blur:
 a fast preview while playing; or a timing test at 8 vs 16). The screen's playback sends 1 while time moves unless
 **Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
 
-**Cost:** about n times a sharp frame (n stages written and painted; layers that keep still are painted once:
-`still_runs.rs`). Only the fast frames take more steps, so an export with one whip pan costs a little more in total.
+**Cost:** one layout and one paint of the page, one paint per streak, and one streak pass per moving layer (its
+cost grows with its steps); a layer that changes while the shutter is open costs a stage and paint per step.
 
 ## Trails
 

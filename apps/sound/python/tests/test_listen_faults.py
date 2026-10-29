@@ -93,6 +93,27 @@ def test_one_chord_for_14_s_is_held():
     spans = held_spans(y[:, None], SR)
     assert spans and spans[0]["seconds"] >= 12.0
 
+def test_a_steady_drum_groove_is_not_a_held_harmony():
+    """Sound-as-written's left-over: a drum-only canary mix (kick, snare, a hi-hat every eighth) read as "one harmony held
+    0-15.3 s". Only notes hold a harmony; the drums' leftover after they are taken out is not one."""
+    rng, beat = np.random.default_rng(3), 0.5
+    y = np.zeros(20 * SR)
+    t = np.arange(int(0.3 * SR)) / SR
+    kick = np.sin(2 * np.pi * (55 + 90 * np.exp(-t * 30)) * t) * np.exp(-t * 12)
+    hat = np.diff(rng.normal(0, 1, t.size + 1)) * np.exp(-t * 60)
+    snare = (rng.normal(0, 1, t.size) * 0.6 + np.sin(2 * np.pi * 190 * t)) * np.exp(-t * 18)
+    for k in range(int(19.5 / (beat / 2))):
+        a = int(k * beat / 2 * SR)
+        y[a:a + t.size] += 0.25 * hat[:y.size - a]
+        if k % 4 == 0:
+            y[a:a + t.size] += 0.6 * kick[:y.size - a]
+        if k % 4 == 2:
+            y[a:a + t.size] += 0.4 * snare[:y.size - a]
+    assert held_spans(y[:, None], SR) == []
+    chord = 0.04 * sum(_ringing(m, 20.0, 0.0) for m in (41, 53, 57, 60, 64))      # the same groove under a held chord is held
+    assert held_spans((y + chord[:y.size])[:, None], SR)
+
+
 def test_low_boom_hit_is_weak_and_the_render_lines_say_why(tmp_path):
     """Sound-gaps brief 2: a loud low hit with no bright attack, after a breath of silence, passed the old mel check
     (2.9x) while listeners and the benchmark heard a normal note. The attack check names it and points at the crack."""

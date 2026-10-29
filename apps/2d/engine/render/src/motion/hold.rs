@@ -51,12 +51,12 @@ pub fn hold_still(centre: &Item, centre_pieces: &[String], items: &[Item], sampl
 }
 
 /// The comp's top-level layers that are drawn as pieces of their own, in order (stage.rs `each_sibling`).
-fn drawn<'t, 'a>(comp: &'t Item<'a>) -> Vec<&'t Item<'a>> {
+pub(super) fn drawn<'t, 'a>(comp: &'t Item<'a>) -> Vec<&'t Item<'a>> {
     comp.layers.iter().filter(|l| l.kind != "camera" && !crate::scene::matte::used(l, comp)).collect()
 }
 
 /// Every corner of each drawn top-level layer's piece (its own, its children's, its matte's) in output px, by layer id.
-fn places<'a>(comp: &Item<'a>) -> HashMap<&'a str, Vec<Pt>> {
+pub(super) fn places<'a>(comp: &Item<'a>) -> HashMap<&'a str, Vec<Pt>> {
     let view = View::of(comp).ok();
     let mut out = HashMap::new();
     for l in drawn(comp) {

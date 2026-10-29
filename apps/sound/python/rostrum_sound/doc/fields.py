@@ -89,6 +89,8 @@ FIELDS = {
           help="Pitch of the drum, as a ratio: 1× as it is, 2× an octave up, 0.5× an octave down (classic kit only)."),
         N("decay", 0.1, 4, "Hit", "×", imp="secondary", default=1, label="Ring time",
           help="How long the drum rings, as a ratio of its usual: 1× as it is, 2× twice as long."),
+        N("cut", 0.001, 60, "Hit", "s", imp="secondary", label="Cut after",
+          help="Stops the hit this long after it is struck (a choked cymbal), on every kit; left empty it rings out."),
     ],
     "clip": [
         Param.text("media", group="Clip", label="File", control="file",

@@ -12,6 +12,7 @@ from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.parts import SlotMixin
 from rostrum3d import fields as F
 
+from rostrum_core.keys.layers import stack_of
 from . import esc3d, route
 from .keys3d import ROUTES, SKIP, WINDOW
 
@@ -195,7 +196,7 @@ class KeyRoutes3D(SlotMixin):
         name, _, size = how.partition("_")
         axis, sign = NUDGE_AXIS[name]
         step = sign * NUDGE_STEP[size]
-        calls = [self.edit_call(it["id"], axis, round(route.value_at(it, axis, self.time) + step, 6)) for it in items]
+        calls = [self.edit_call(it["id"], axis, round(route.value_at(it, axis, self.time, stack_of(self.doc.data)) + step, 6)) for it in items]
         label = f"Nudge {self.selection_label([it['id'] for it in items])}"
         self._guard(lambda: self._done(self.doc.apply(calls, self.who, label=label, join=False), ""))   # never joined to the last
 

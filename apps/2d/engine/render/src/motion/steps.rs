@@ -25,27 +25,19 @@ pub const MOST: usize = 128;
 /// The sub-frames for the frame at `t`: at least `least`, more when something moves further than GAP_PX × `least`
 /// on screen while the shutter (`angle` degrees at `fps`) is open.
 pub fn steps(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
-    measure(comp, t, fps, angle, least, false)
+    measure(comp, t, fps, angle, least)
 }
 
-/// `steps` for the layers' own moves alone: every layer carried to the output through the frame as it stands at `t`
-/// (the frame's own move left out). Sub-frames beyond these differ only in where the frame is (scene_serve.rs `buckets`).
-pub fn own_steps(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
-    measure(comp, t, fps, angle, least, true)
-}
-
-fn measure(comp: &Node, t: f64, fps: f64, angle: f64, least: usize, own: bool) -> usize {
+fn measure(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
     if least >= MOST {
         return least;
     }
-    let probes = least.clamp(2, 16);
+    let probes = least.clamp(2, 4);
     let open = angle / 360.0 / fps;
-    let centre = if own { eval::shutter_at(t, t, || eval::at(comp, t)) } else { None };
-    let still = centre.as_ref().and_then(|c| View::of(c).ok());
     let corners: Vec<HashMap<(&str, usize), Pt>> = (0..=probes)
         .map(|k| {
             let at = t + open * (k as f64 / probes as f64 - 0.5);
-            eval::shutter_at(t, at, || eval::at(comp, at)).map_or_else(HashMap::new, |c| on_screen(&c, still.as_ref()))
+            eval::shutter_at(t, at, || eval::at(comp, at)).map_or_else(HashMap::new, |c| on_screen(&c))
         })
         .collect();
     // The most any corner moves across one slice (a layer showing on one side only has no move to measure).
@@ -66,10 +58,9 @@ fn measure(comp: &Node, t: f64, fps: f64, angle: f64, least: usize, own: bool) -
 }
 
 /// Every layer's box corners (its anchor alone when it has no box) in output px, by (layer id, corner).
-/// `view`: the frame to carry them through (None: the comp's own at its time).
-fn on_screen<'a>(comp: &Item<'a>, view: Option<&View>) -> HashMap<(&'a str, usize), Pt> {
-    let own = if view.is_none() { View::of(comp).ok() } else { None };
-    let view = view.or(own.as_ref());
+fn on_screen<'a>(comp: &Item<'a>) -> HashMap<(&'a str, usize), Pt> {
+    let view = View::of(comp).ok();
+    let view = view.as_ref();
     let mut out = HashMap::new();
     for l in comp.layers.iter().filter(|l| l.kind != "camera") {
         let m = view.map_or(Aff::ID, |v| v.map(l));

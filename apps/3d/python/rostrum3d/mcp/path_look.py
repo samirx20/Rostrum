@@ -10,7 +10,7 @@ from rostrum_core.mcp import Reply
 from rostrum_core.mcp.files import look_path
 
 from .. import view_look
-from ..motion_track import Camera, Track
+from ..motion_track import Camera, track_of
 from . import draw, motion_sim
 from .shot import check_frame, look_renderer
 
@@ -39,7 +39,7 @@ def _frames(ctx, info: dict, args: dict) -> list[int]:
 def measure(ctx, doc, info: dict, args: dict):
     from .look import _add_camera, view_of
     frames = _frames(ctx, info, args)
-    track = Track(doc.data, info, range(frames[0], frames[-1] + 1), ctx.app.folder, motion_sim.moves(doc.data, info, ctx.app.folder))
+    track, _ = track_of(doc, info, range(frames[0], frames[-1] + 1), ctx.app.folder, lambda: motion_sim.moves(doc.data, info, ctx.app.folder))
     try:
         at = view_look.part_point(track.fr, args["path"])
     except ValueError as e:

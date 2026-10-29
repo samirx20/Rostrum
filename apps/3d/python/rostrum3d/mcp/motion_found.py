@@ -64,35 +64,53 @@ def _depth(a, b) -> float:
                              for p in a[1] for q in b[1])]
     best = float("inf")
     for n in axes:
-        size = sum(x * x for x in n) ** 0.5
+        n0, n1, n2 = n
+        size = sum((n0 * n0, n1 * n1, n2 * n2)) ** 0.5      # sum() of a tuple: the same (compensated) sums as before, faster
         if size < 1e-9:
             continue
-        pa = [sum(c[k] * n[k] for k in range(3)) / size for c in a[0]]
-        pb = [sum(c[k] * n[k] for k in range(3)) / size for c in b[0]]
+        pa = [sum((c[0] * n0, c[1] * n1, c[2] * n2)) / size for c in a[0]]
+        pb = [sum((c[0] * n0, c[1] * n1, c[2] * n2)) / size for c in b[0]]
         best = min(best, min(max(pa), max(pb)) - max(min(pa), min(pb)))
         if best <= 0:
             return 0.0
     return best
 
 
+def _bounds(corners) -> tuple:
+    xs, ys, zs = zip(*corners)
+    return min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)
+
+
 def _near(a, b) -> bool:
-    return all(min(p[k] for p in a[0]) <= max(p[k] for p in b[0]) and min(p[k] for p in b[0]) <= max(p[k] for p in a[0]) for k in range(3))
+    """Two _bounds overlap on every axis."""
+    return a[0] <= b[1] and b[0] <= a[1] and a[2] <= b[3] and b[2] <= a[3] and a[4] <= b[5] and b[4] <= a[5]
 
 
 def passing_through(rows: dict, moving: set, info: dict, fr=None) -> list[dict]:
     """Pairs of shown shapes, at least one of them moving, that overlap deeper than DEEP_M: both named, per span of frames.
     With the shot's Frames (`fr`), two fixed-form shapes (a ball, a box, a cone …) are measured by their exact forms."""
-    from ..contact_faults import depth, placed
+    from ..contact_faults import FORMS, depth, placed
     out = []
     shapes = [i for i in rows if any(x["solid"] for x in rows[i])]
+    exact = {i for i in shapes if fr and fr.items[i]["type"] == "mesh" and fr.items[i].get("shape") in FORMS}
+    forms, box = {}, {}                  # (item, frame) -> its placed form / its solid's bounds, each worked out once
+    def form(i, f):                      # noqa: E306
+        if (i, f) not in forms:
+            forms[(i, f)] = placed(fr, i, f)
+        return forms[(i, f)]
+
+    def bounds(i, x):
+        if (i, x["frame"]) not in box:
+            box[(i, x["frame"])] = _bounds(x["solid"][0])
+        return box[(i, x["frame"])]
     for a, b in itertools.combinations(shapes, 2):
         if a not in moving and b not in moving:
             continue
         hit = {}
+        both = a in exact and b in exact
         for x, y in zip(rows[a], rows[b]):
-            if x["shown"] and y["shown"] and x["solid"] and y["solid"] and _near(x["solid"], y["solid"]):
-                forms = (placed(fr, a, x["frame"]), placed(fr, b, y["frame"])) if fr else (None, None)
-                d = depth(*forms)[0] if all(forms) else _depth(x["solid"], y["solid"])
+            if x["shown"] and y["shown"] and x["solid"] and y["solid"] and _near(bounds(a, x), bounds(b, y)):
+                d = depth(form(a, x["frame"]), form(b, y["frame"]))[0] if both else _depth(x["solid"], y["solid"])
                 if d > DEEP_M:
                     hit[x["frame"]] = d
         for f0, f1 in frame_spans(list(hit)):

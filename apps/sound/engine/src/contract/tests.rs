@@ -242,3 +242,14 @@ fn stems_carry_the_limiter_so_they_add_up_to_the_mix_and_never_clip() {
     assert_eq!(r["stemMeters"]["a"]["overFullScale"], json!(0), "{}", r["stemMeters"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_hits_cut_reaches_its_voice_and_is_checked() {
+    let s = json!({ "contract": "rostrum-sound-schedule/1", "tempo": 120, "tracks": [
+        { "id": "drums", "instrument": { "kit": "classic" }, "hits": [{ "drum": "cymbal", "at": 0, "cut": 0.25 }, { "drum": "kick", "at": 1 }] }] });
+    let c = super::schedule::compile(&s, "schedule").unwrap();
+    let v = c.job["tracks"][0]["clips"][0]["content"]["voices"].as_array().unwrap().clone();
+    assert_eq!((v[0]["cut"].clone(), v[1]["cut"].clone()), (json!(0.25), Value::Null));
+    let e = error_of(check(json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "d", "instrument": { "kit": "classic" }, "hits": [{ "drum": "kick", "at": 0, "cut": -1 }] }], "length": 1 })));
+    assert!(e["at"].as_str().unwrap_or("").contains("cut") || e.to_string().contains("cut"), "{e}");
+}

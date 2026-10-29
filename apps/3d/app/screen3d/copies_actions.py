@@ -9,7 +9,7 @@ openScatter; it ends at the next selection change). No Qt.
 """
 from __future__ import annotations
 
-from rostrum3d import copies_fields as CF, fields as F
+from rostrum3d import copies_fields as CF, fields as F, item_bounds
 from rostrum3d.kind import KIND
 from rostrum_core import ids
 from rostrum_core.tree import index
@@ -21,7 +21,7 @@ MAKE, SCATTER, NEAR, HOLD, RELEASE = "copies.make", "copies.scatter", "effector.
 SOURCES = CF.SOURCES                                   # what a copies item can repeat
 SURFACES = ("mesh", "combine", "import", "clay", "group")      # what copies can be scattered over
 LAYOUT_WORDS = {"line": "Line", "grid": "Grid", "circle": "Circle", "surface": "On a surface…"}
-NEAR_WORDS = {"scale": "Scale", "turn": "Turn", "push": "Push", "colour": "Colour"}
+NEAR_WORDS = {"scale": "Scale", "turn": "Turn", "push": "Push", "move": "Move", "hide": "Hide", "colour": "Colour"}
 BALL = 0.05                                            # a new "near" sphere's radius, metres (small: it is a handle, not a thing)
 
 
@@ -90,12 +90,19 @@ def reach(it: dict) -> float:
     return round(max(0.1, 2 * step), 3)
 
 
-def beside(it: dict) -> tuple[float, float, float]:
+def beside(it: dict, data: dict | None = None) -> tuple[float, float, float]:
     """Where a new "near" sphere goes: by the middle of the copies' layout (the copies item's own place, in its list's
-    space); the engine's own bounds are not asked for a handle this small."""
+    space; along a path, the middle of the path item, whose outline the copies follow); the engine's own bounds are
+    not asked for a handle this small."""
     x, y, z = (it.get(k, 0.0) for k in "xyz")
     n, lay = it.get("count", 1), it.get("layout")
-    if lay == "line":
+    if lay == "path" and data is not None and it.get("path"):
+        try:
+            lo, hi = item_bounds.world_box(data, [it["path"]])
+            x, y, z = ((a + b) / 2 for a, b in zip(lo, hi))
+        except ValueError:                  # nothing to measure yet: the copies item's own place
+            pass
+    elif lay == "line":
         x, y, z = (x + it.get("spacingX", 0.0) * (n - 1) / 2, y + it.get("spacingY", 0.0) * (n - 1) / 2,
                    z + it.get("spacingZ", 0.0) * (n - 1) / 2)
     elif lay == "grid":
@@ -114,7 +121,7 @@ def near_calls(f, kind: str) -> list[dict]:
     out = []
     if other is None:                                  # a new small sphere to move: the change follows it
         ball = counted(f.doc, "mesh")
-        x, y, z = beside(copies)
+        x, y, z = beside(copies, f.doc.data)
         args = {"id": ball, "shape": "sphere", "name": "Near", "radius": BALL, "x": x, "y": y, "z": z,
                 "guide": True}                         # a handle in the view, never in the shot or a render
         parent = f.doc.parent_of(copies["id"])[0]

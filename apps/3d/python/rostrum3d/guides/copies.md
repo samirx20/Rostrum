@@ -19,11 +19,20 @@ tints copies near a point instead, and doesn't show on copies still simulating.)
 | `grid` | `count` is the total, `columns`; `spacingX` = between columns, `spacingZ` = between rows (rows fill from the first) |
 | `circle` | `count`, `radius`; `faceOut` turns each copy to face away from the middle |
 | `surface` | `surface` = the item they stand on; `amountBy` count or density (per m²); `minSpacing`; `alongSurface`; `onTop` |
+| `path` | `path` = a text, SVG or drawing (`path2d`) mesh; `count` copies evenly along all its outlines by length (each outline, every letter and every hole, gets its share and wraps round); `alongPath` (on) turns each copy's +X along the line and its up out of the outline's flat side; `pathShift` 0–1 slides them all along (1 = once round) |
 | `pour` | a stream from a mouth at the copies item's origin: `radius` = the mouth's radius (each copy starts somewhere inside that disc, flat in the item's own x z); `pourTime` = seconds the copies leave over, evenly, from `fallStart` (default 2; 0 = all at once); `pourSpeed` = m/s each leaves with along the copies item's own down (0: they just drop; turn the copies item, `rx`/`rz`, to aim it sideways); `pourSpread` = degrees off that aim (default 10), so the stream fans out |
 
 Where the copies sit: a line starts at the copies item's origin and steps by `spacing`; a grid's first copy is at the origin
 and the columns and rows go towards +x and +z (not centred: move the copies item back by half the grid to centre it); a circle
-and a pour are centred on the origin.
+and a pour are centred on the origin. A path's copies sit on the path item's outlines where that item is at the shot's first
+frame (move the copies item afterwards and they go with it).
+
+**Along a path.** Make the outline first: `mesh("word", shape="text", text="HELLO")`, an `svg` mesh, or a `path2d` mesh
+showing a drawing from Rostrum2D. Then `copies("lights", bulb, layout="path", path="word", count=120)`. Give it `depth=0`
+or hide it (`visible=False`) when only the copies should show; keep it when the copies trim a solid word. With
+`alongPath` on, a long source (a dash, a link) lies along the line; turn the source inside the copies item to choose
+which of its sides runs along. Short outlines get few copies: the count is shared by length, so raise `count` until the
+smallest letter reads. The path is read at the shot's first frame (`pathShift` is a still setting).
 
 A **pour** only moves once it falls (`simulate("falls")`, the guide *simulate*); before that the copies sit together in the
 mouth. Make it the brief's way, in one script: put the source where the spout is, `copies("beans", bean, layout="pour",
@@ -72,7 +81,7 @@ Counts that look low after you moved the camera are right: look again after the 
 
 ## Change the ones near something
 
-`effector.add` on a copies item: `kind`, `near` (the item the change is centred on), `radius`, `amount`, `falloff`. To centre it on a point you move rather than a real thing, add a small sphere with
+`effector.add` on a copies item: `kind`, `near` (the item the change is centred on), `field` (its shape), `radius`, `amount`, `falloff`. To centre it on a point you move rather than a real thing, add a small sphere with
 `"guide": true` (Display › Only in the view): the view draws it as a handle, renders and `look_frame` never show it.
 
 | kind | amount | also |
@@ -80,11 +89,30 @@ Counts that look low after you moved the camera are right: look again after the 
 | `scale` | extra size at the centre: 0.5 = half again bigger, −1 = gone | |
 | `turn` | degrees | `axis` x y z |
 | `push` | metres away from the centre | |
+| `move` | metres along `axis` (the world's x, y or z) | `axis` |
+| `hide` | (none) | a copy is gone where the change is half or more |
 | `colour` | 0–1 mix | `colour` |
 
-The change fades from the centre to the radius (`falloff` smooth or linear). The centre follows `near` every frame, so move that
+Where the change reaches is the `field`:
+
+| field | where | radius |
+|---|---|---|
+| `sphere` (default) | round `near`'s origin, fading out to the radius | how far it reaches |
+| `plane` | a flat wall through `near`'s origin, facing `near`'s own up (+Y): every copy behind the wall gets the whole change, in front it fades out | how wide the fade in front of the wall is (0: a hard edge) |
+| `noise` | soft patches all through space, fully on in some places, off in others; moving `near` drifts them | about how big the patches are; `seed` gives another pattern |
+
+The change fades to its edge (`falloff` smooth or linear). The centre follows `near` every frame, so move that
 item (or key it) and the effect travels through the copies: a ball rolling past a row of grass bends it; a light sphere that
 brightens petals as it passes. Key the effector's `amount`, `radius` or `colour` for change over time.
+
+Techniques with the shapes:
+- **A sweep that builds or clears a field of copies:** `field="plane"` with `kind="hide"` (or `scale`, amount −1) and a
+  handle you key across the copies: the wall passes and everything behind it is gone (or, turn the handle round, everything
+  behind it appears). `kind="move"` with `axis="y"` instead lifts them as the wall passes; a `radius` gives the edge a soft ramp. A hide cuts where the change is half: with a plane that is half the radius in front of the wall (radius 0 cuts right at it), with a sphere about half the radius from the centre.
+- **Uneven, natural variety:** `field="noise"` with `scale`, `turn` or `colour`: patches of bigger, tilted or tinted copies
+  instead of a round blob. Key the handle slowly and the patches drift through the copies.
+- **Turn a plane** by turning its `near` item (its up is the wall's facing): rx 90 makes a wall that faces +Z, for a sweep
+  from front to back.
 A colour effector shows in Final on a source with a material (laid over its base colour), and in Quick only on a source with no material; a block-view material and a copies item still simulating show no per-copy colour.
 
 ## Mistakes the checker names
@@ -94,3 +122,5 @@ A colour effector shows in Final on a source with a material (laid over its base
 - `count` while `amountBy` is density (the count then comes from the area), `columns` outside a grid, `radius` outside a circle or a pour, `pourTime`/`pourSpeed`/`pourSpread` outside a pour: the
   field is refused by `copies.set` until the layout makes it apply (in a script it is not used, and the reply names it; the rest runs).
 - `copies.hold` with a copy number past the last one.
+- layout `path` with no `path`, a path that isn't a text, svg or path2d mesh (a box has no outline), or the path being the
+  copies item or inside it.

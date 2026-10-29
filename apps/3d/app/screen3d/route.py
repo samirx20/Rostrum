@@ -4,7 +4,7 @@ what keys may drive and what the inspector shows (values at the playhead). No Qt
 from __future__ import annotations
 
 from rostrum3d import fields as F
-from rostrum_core.keys import keys_of
+from rostrum_core.keys import keys_of, layers
 from rostrum_gui.route import KeyRoute
 
 
@@ -13,17 +13,19 @@ def drives(item: dict, prop: str) -> bool:
     return prop in F.animatable(item["type"])
 
 
-def value_at(item: dict, prop: str, t: float):
+def value_at(item: dict, prop: str, t: float, stack: list[dict] = ()):
+    """The field's value at t as shown: its Base keys (else its setting), with the animation layers `stack`
+    (layers.stack_of the document) laid over, so a drag or a nudge starts from what is on screen."""
+    read = lambda keys, at: F.key_value_at(item["type"], prop, keys, at)   # noqa: E731 (a keyed Visible: held, never 0.5)
     keys = keys_of(item, prop)
-    if not keys:
-        return item.get(prop, F.param(item["type"], prop).default)
-    return F.key_value_at(item["type"], prop, keys, t)             # a keyed Visible: on / off, held (never 0.5)
+    base = read(keys, t) if keys else item.get(prop, F.param(item["type"], prop).default)
+    return layers.value(item, prop, t, list(stack), base, read) if stack else base
 
 
-def shown_values(item: dict, t: float) -> dict:
+def shown_values(item: dict, t: float, stack: list[dict] = ()) -> dict:
     if item["type"] not in F.KEYED:
         return item
-    return {**item, **{p: value_at(item, p, t) for p in {k["prop"] for k in item.get("keys", [])}}}
+    return {**item, **{p: value_at(item, p, t, stack) for p in {k["prop"] for k in item.get("keys", [])}}}
 
 
 _route = KeyRoute(F, drives, value_at)

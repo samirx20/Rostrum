@@ -1,12 +1,14 @@
 //! Motion blur, smears and trails (apps/2d/MOTION.md). All three read the layer's real motion: the comp evaluated
 //! at other times (eval.rs `at`), so a rig-bound layer's motion is its posed motion. The shutter (shutter.rs) picks
-//! the sub-frame times scene_serve.rs `stage_at` writes a stage for, as many as the motion on screen needs (steps.rs); trails (trail.rs) and smears (smear.rs) are a
+//! the sub-frame times scene_serve.rs `stage_at` evaluates, as many as the motion on screen needs (steps.rs); a layer that
+//! only moves is one streak (streak.rs, drawn by blurred.rs); trails (trail.rs) and smears (smear.rs) are a
 //! post-pass on the evaluated tree, run by scene_serve.rs `markup` between `eval::at` and `stage::stage`.
 
 mod hold;
 mod shutter;
 mod smear;
 mod steps;
+pub mod streak;
 mod trail;
 #[cfg(test)]
 mod tests;
@@ -95,25 +97,16 @@ impl Plan {
     }
 }
 
-/// The sub-frame times of the frame at `t` (none: no motion blur), and how many of them need a stage of their own. The
-/// comp's `shutterSamples` (Blur steps) is the fewest: a frame whose layers move further on screen gets more (steps.rs).
-/// A request's own `shutterSamples` is the exact count (1 = a fast preview while playing, or a timing test).
-/// How many need a stage of their own (MOTION.md › Motion blur › Steps follow the motion):
-/// the steps the layers' own moves need (steps.rs `own_steps`). When the frame's move needs more sub-frames than that,
-/// the sub-frames fall into that many equal groups, in order; within a group the layers are as at the group's middle
-/// sub-frame and only the frame moves (scene_serve.rs `stage_at`), so serve.rs draws each layer once per group and
-/// moves the picture. Equal to the sub-frames' count when nothing is grouped (a request's own `shutterSamples` too).
-pub fn sub_frames_grouped(comp: &Node, req: &serde_json::Value, t: f64) -> Result<(Vec<f64>, usize), String> {
+/// The sub-frame times of the frame at `t` (none: no motion blur). The comp's `shutterSamples` (Blur steps) is the
+/// fewest: a frame whose layers move further on screen gets more (steps.rs). A request's own `shutterSamples` is the exact
+/// count (1 = a fast preview while playing, or a timing test).
+pub fn sub_frames(comp: &Node, req: &serde_json::Value, t: f64) -> Result<Vec<f64>, String> {
     let (angle, n) = shutter(comp, req)?;
     if angle <= 0.0 || n < 2 {
-        return Ok((vec![], 0));
+        return Ok(vec![]);
     }
-    if !req["shutterSamples"].is_null() {
-        return Ok((sample_times(t, fps(comp), angle, n), n));
-    }
-    let all = steps::steps(comp, t, fps(comp), angle, n);
-    let own = if all > n { steps::own_steps(comp, t, fps(comp), angle, n).min(all) } else { all };
-    Ok((sample_times(t, fps(comp), angle, all), own))
+    let n = if req["shutterSamples"].is_null() { steps::steps(comp, t, fps(comp), angle, n) } else { n };
+    Ok(sample_times(t, fps(comp), angle, n))
 }
 
 /// Load-time check (scene_serve.rs `check`): the trails' copies and the comp's shutter.

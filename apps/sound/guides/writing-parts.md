@@ -36,12 +36,11 @@ synthesized choir (no free recorded choir exists); and every older synthesized v
 purpose. A name whose sample pack is not installed fails loudly and says how to install it (below). Each name has one part
 it is made for and its level is matched on the first part listed. `inspect_engine` with `detail: "full"` lists the same table (`roles`; `name: "<instrument>"` gives one line),
 `inspect_engine (what "instrument") builtIn=… / model=… / synth=…` gives one sound's line and the range it was recorded
-over: a note outside a recorded range thins out or is refused, so write inside it. Synthesized sounds play any key.
-In the Editor the rows a track's recorded sound can't play are tinted red, with a red line at the edge of its range (the
-engine's own range, asked once per sound); with Draw the faint note turns red there, and a click on such a row draws
-nothing and says why in the top bar ("Timpani plays C2–C4: A1 is below it"). A drag, ↑ ↓, Ctrl+↑ ↓ or Transpose that
-would take notes past the range is refused the same way (a drag stops on the last key that fits). Synths and models
-shade nothing.
+over: a note outside a recorded range plays from the nearest sample, stretched to the written pitch (it can sound thin or odd;
+`render_mix` names such notes), so write inside the range unless that stretched sound is what you want. Synthesized sounds play any key.
+In the Editor the rows past a track's recorded samples are shaded a little darker, with a faint hairline at the edge of
+the range (the engine's own range, asked once per sound). It is a hint, not a limit: Draw, a drag, ↑ ↓, Ctrl+↑ ↓,
+Transpose and Paste put notes there like anywhere else. Synths and models shade nothing.
 
 | Part | Plain names (`builtIn`) | Recorded range |
 |---|---|---|

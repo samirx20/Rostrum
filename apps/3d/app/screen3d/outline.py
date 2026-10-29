@@ -25,6 +25,8 @@ def label_of(item: dict, owner: dict | None = None) -> str:
         p = F.param(owner["type"], item["prop"])
         return f"{label_of(owner)} · {p.label if p else item['prop']} at {item['t']:g} s"
     name = item.get("name")
+    if item.get("type") == "effector" and (not name or name == F.LABELS["effector"]):
+        return f'{str(item.get("kind", "scale")).capitalize()} near {item.get("near") or "its copies"}'   # follows Changes
     return str(item["id"] if not name or name == F.LABELS.get(item.get("type")) else name)
 
 

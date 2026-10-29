@@ -1,7 +1,8 @@
 """The scene description: what the Python layer sends the engine (ENGINE_CONTRACT.md). One composition, every
 item's still values with defaults filled in, and the keys of its animated fields; the engine evaluates them per
 frame (the evaluation's reference is evaluate.py). A field with an expression (exprbake.py) is sent as linear keys,
-one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. A stepped
+one per frame, in place of its own keys; so is a field an animation layer moves (layerbake.py), the stack over its
+keys or expression, and a field an auto layout sets (layoutbake.py), over all of it. A stepped
 item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A swap set (swap.py) is
 sent as a plain group whose children's opacity shows one at a time; a 3D render layer (render3d.py) is
 sent as a video layer over the render's frames. A layer timed from a shared marker (retime.py) has its times
@@ -13,7 +14,7 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video, write_on
+from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layerbake, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video, write_on
 from .frame import fields as _frame_fields
 from .layout_fields import py_only
 from rostrum_core import RostrumError, plugin_parts
@@ -47,7 +48,8 @@ def _key(key: dict) -> dict:
 def _anim(item: dict, until: float) -> dict:
     """Each animated field's keys; a last key's "after the last key" goes written out as plain keys up to `until`, the
     composition's end (rostrum_core.keys.after: the engine reads keys only)."""
-    return {prop: _keys(item, prop, until) for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
+    anim = {prop: _keys(item, prop, until) for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
+    return {prop: keys for prop, keys in anim.items() if keys}   # a field keyed only on a layer: its Base is still
 
 
 def _keys(item: dict, prop: str, until: float) -> list[dict]:
@@ -247,6 +249,8 @@ def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: d
     fps = comp.get("fps", F.defaults("comp")["fps"])
     comp = retime.timed(comp, markers, fps, timed_memo)   # layers timed from a marker: every time in comp seconds from here
     baked = exprbake.bake(comp, fps, markers, lambda: project_sound.beats(folder, comp.get("soundtrack", ""), comp.get("duration", 5.0)))
+    for item_id, fields in layerbake.bake(doc_data, comp, fps, baked).items():    # animation layers over the Base
+        baked.setdefault(item_id, {}).update(fields)
     for item_id, fields in layoutbake.bake(comp, fps, baked, drawn).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),

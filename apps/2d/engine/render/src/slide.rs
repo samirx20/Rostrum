@@ -23,7 +23,7 @@ use serde_json::{json, Value};
 
 use crate::scene_serve::{draw, Held, Staged};
 use crate::serve::{self, Session};
-use crate::still_runs::{movable, with_matrix};
+use crate::still_runs::regroups;
 
 /// Px kept round the frame on every side of a kept picture: the farthest a frame slides from it.
 const MARGIN: i64 = 32;
@@ -199,6 +199,36 @@ fn moved(pieces: &[String], by: (i64, i64), clear: bool) -> Option<Vec<String>> 
         out.push(with_matrix(p, &format!("matrix({:.6}, {:.6}, {:.6}, {:.6}, {:.3}, {:.3})", m[0], m[1], m[2], m[3], e as f64 / 1000.0, f as f64 / 1000.0))?);
     }
     Some(out)
+}
+
+/// A frame wrapper's piece cut round its matrix: (text before the numbers, the matrix, text after) (frame/mod.rs writes
+/// `<div id="cam~<id>" style="…transform:matrix(a, b, c, d, e, f);…">`).
+fn split(piece: &str) -> Option<(&str, [f64; 6], &str)> {
+    const KEY: &str = "transform:matrix(";
+    if !piece.starts_with("<div id=\"cam~") {
+        return None;
+    }
+    let tag = piece.find('>')?;
+    let at = piece[..tag].find(KEY)? + KEY.len();
+    let end = at + piece[at..tag].find(')')?;
+    let mut m = [0.0; 6];
+    let mut parts = piece[at..end].split(',');
+    for v in &mut m {
+        *v = parts.next()?.trim().parse().ok()?;
+    }
+    parts.next().is_none().then_some((&piece[..at], m, &piece[end..]))
+}
+
+/// The piece with its frame matrix written as `matrix` (`matrix(…)`).
+fn with_matrix(piece: &str, matrix: &str) -> Option<String> {
+    let (a, _, b) = split(piece)?;
+    Some(format!("{}{matrix}{}", &a[..a.len() - "matrix(".len()], &b[1..]))
+}
+
+/// The piece's frame matrix, when it is a frame wrapper that composites plainly (still_runs.rs `regroups`): a piece that
+/// may be drawn once and moved.
+fn movable(piece: &str) -> Option<[f64; 6]> {
+    split(piece).filter(|_| regroups(piece)).map(|(_, m, _)| m)
 }
 
 #[cfg(test)]
