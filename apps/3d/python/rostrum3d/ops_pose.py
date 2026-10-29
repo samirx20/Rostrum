@@ -17,7 +17,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import keys_of, track_value
 
-from . import aim, build, compile as C, pose_ik, pose_joints as PJ, resolve
+from . import aim, build, clay_detail, compile as C, pose_ik, pose_joints as PJ, resolve
 from .kind import REGISTRY as R
 from .ops_keys import put_key
 
@@ -33,7 +33,8 @@ def use_engine(engine, folder=None):
         shots = doc.get("shots") or []
         if not shots:
             raise ValueError("the document has no shot yet, so the engine can't build the scene (shot.add first)")
-        engine.ensure_scene(_with_held_skins(C.describe(doc, shots[0]["id"], folder), getattr(engine, "_held", None)))
+        scene = C.describe(doc, shots[0]["id"], folder)
+        engine.ensure_scene(_grid_scene(scene, getattr(engine, "_held", None), _clays(doc.get("items", [])).get(id_), cells))
         return engine.clay_grid(id_, cells)
     _GRID = grid if engine is not None else None
 
@@ -61,6 +62,33 @@ def _with_held_skins(scene: dict, held: dict | None) -> dict:
                 and old["props"].get("detail") == n["props"].get("detail")):
             n["skin"] = old["skin"]
     return scene
+
+
+# hello-fast: the grid samples the clay at cell centres, so a grain of a third of a cell (or of its thinnest part) is
+# fine enough for it
+GRID_GRAIN = 3
+
+
+def _grid_scene(scene: dict, held: dict | None, clay: dict | None, cells: int) -> dict:
+    """The scene sent for a clay's grid (`clay`: its document item). A shape the engine already holds (same steps) goes
+    at the detail it holds it at, with its bones (_with_held_skins): nothing is built again. A changed shape goes at a
+    coarse detail (a third of a grid cell, or of its thinnest part, when that is coarser than its own) and without its
+    cache file (that one is for its own detail): the look builds it once at full detail, where building it twice at
+    full detail cost seconds on a figure (Hello: 0.8 then 1.2 mm, about 3 s of the script's 5)."""
+    held_clays = _clays(held.get("items", [])) if held else {}
+    id_ = clay["id"] if clay else None
+    n = _clays(scene.get("items", [])).get(id_)
+    old = held_clays.get(id_)
+    if n is not None and old is not None and old.get("steps") == n.get("steps"):
+        n["props"] = {**n["props"], "detail": old["props"].get("detail")}
+        n["cache"] = old.get("cache", n.get("cache", ""))
+    elif n is not None and (ball := clay_detail.bounds(clay)) is not None:
+        thin = PJ.thinnest(clay) or math.inf
+        coarse = round(min(2 * ball[1] / cells, thin) / GRID_GRAIN, 4)
+        if coarse > float(n["props"].get("detail", 0.0)):
+            n["props"] = {**n["props"], "detail": coarse}
+            n["cache"] = ""
+    return _with_held_skins(scene, held)
 
 
 def use_grid(fn):
