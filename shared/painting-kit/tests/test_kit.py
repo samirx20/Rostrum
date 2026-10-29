@@ -144,6 +144,20 @@ def test_a_mask_made_round_its_shape_is_the_whole_canvas_mask():
         assert np.array_equal(compose.mask_array(mask, w, h), 1 - whole if mask["invert"] else whole), i
 
 
+def test_kept_state_box_is_every_set_bit():
+    """The box a kept state stores (kept_disk._set_box) covers every pixel with any bit set, -0.0 too: what's outside
+    comes back as +0.0."""
+    from rostrum_paint import kept_disk
+    rng = np.random.default_rng(4)
+    for i in range(30):
+        h, w = int(rng.integers(1, 40)), int(rng.integers(1, 60))
+        px = np.zeros((h, w, 4), np.float32)
+        for _ in range(int(rng.integers(0, 4))):
+            y, x, c = int(rng.integers(h)), int(rng.integers(w)), int(rng.integers(4))
+            px[y, x, c] = rng.choice([-0.0, 1e-45, 0.5])
+        assert kept_disk._set_box(px) == kept_disk._box(px.view(np.uint32).any(axis=2)), i
+
+
 def test_a_fresh_process_goes_on_from_the_state_kept_on_disk(doc, tmp_path, monkeypatch):
     """A layer state kept on disk (kept_disk) gives the pixels a full replay gives, and only the strokes after it
     are stamped."""

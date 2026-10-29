@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from . import native
 from .marks import _ss, apply_paint
 
 KEYS = ("edge_darken", "granulation", "bloom", "pooling")     # stroke settings, 0 = off
@@ -52,7 +53,10 @@ def reach(size: float, p) -> int:
 
 def _blur(a: np.ndarray, r: int) -> np.ndarray:
     """Box blur, zero outside, as shifted sums in a fixed order: each pixel's sum is the same wherever the window
-    around it starts (a stroke in pieces and a stroke at once agree)."""
+    around it starts (a stroke in pieces and a stroke at once agree). The native stamper's when built (the same
+    numbers)."""
+    if a.size and native.dries():
+        return native.blur(a, r)
     for axis in (0, 1):
         pad = [(0, 0), (0, 0)]
         pad[axis] = (r, r)
@@ -85,7 +89,9 @@ def _wide(a: np.ndarray, r: int, at=(0, 0)) -> np.ndarray:
 
 
 def _upsample(small, f, H, W, at):
-    """A coarse grid (one sample per f px, sample k at px (k + at) * f) back up to H x W, bilinear."""
+    """A coarse grid (one sample per f px, sample k at px (k + at) * f) back up to H x W, bilinear (native when built)."""
+    if small.size and small.dtype == np.float32 and native.dries():
+        return native.upsample(small, f, H, W, at)
     Hc, Wc = small.shape
     ys = (np.arange(H, dtype=np.float32) + 0.5) / f - at
     xs = (np.arange(W, dtype=np.float32) + 0.5) / f - at
@@ -125,36 +131,62 @@ def dry(layer, cov_full_or_win, win, color, mode, size, p, paper) -> None:
     """Lay the wash's dried edge, granulation, pooling and bloom on `layer` in place. `cov_full_or_win`: the stroke's
     coverage over `win` (x0, y0, x1, y1, layer px); `paper`: the canvas's marks.Paper (its grain and noise)."""
     x0, y0, x1, y1 = win
-    a = np.asarray(cov_full_or_win, np.float32)
+    a = np.ascontiguousarray(cov_full_or_win, np.float32)
     deep = np.zeros_like(a)          # gathered pigment: the deeper colour
     light = np.zeros_like(a)         # the stroke's own colour, past its edge (a bloom's pale body)
+    fast = native.dries()            # the per-pixel steps native (native.mix), the same numbers
     if p["edge_darken"] > 0:
-        thin = np.clip(a - _blur(a, max(1, round(size * 0.04))), 0, 1)        # the hard line the edge dries to
-        e = 1.6 * thin + 0.7 * np.clip(a - _blur(a, edge_px(size)), 0, 1)     # and the darker band inside it
-        along = np.clip(0.25 + 1.3 * (_fbm(paper, win, size * 1.2, 0) - 0.25), 0.15, 1.25)
-        deep += np.float32(1.6 * p["edge_darken"]) * e * along
+        b_thin, b_edge = _blur(a, max(1, round(size * 0.04))), _blur(a, edge_px(size))
+        n, k = _fbm(paper, win, size * 1.2, 0), np.float32(1.6 * p["edge_darken"])
+        if fast:
+            native.mix("edge", k, (a, b_thin, b_edge, n), (deep,))
+        else:
+            thin = np.clip(a - b_thin, 0, 1)                                  # the hard line the edge dries to
+            e = 1.6 * thin + 0.7 * np.clip(a - b_edge, 0, 1)                  # and the darker band inside it
+            along = np.clip(0.25 + 1.3 * (n - 0.25), 0.15, 1.25)
+            deep += k * e * along
     if p["granulation"] > 0:
         G = paper.fields()[0][y0:y1, x0:x1]
         clump = paper.noise(x0, y0, x1, y1, CLUMP * paper.size / 3.0, SALT + 9)
-        g = np.clip((SETTLE - G) / SETTLE * 2, 0, 1) * _ss((clump - 0.3) / 0.5)
-        deep += np.float32(0.45 * p["granulation"]) * a * g
+        k = np.float32(0.45 * p["granulation"])
+        if fast and G.dtype == clump.dtype == np.float32:
+            native.mix("granulation", k, (a, G, clump), (deep,))
+        else:
+            g = np.clip((SETTLE - G) / SETTLE * 2, 0, 1) * _ss((clump - 0.3) / 0.5)
+            deep += k * a * g
     if p.get("pooling", 0) > 0:
-        n = _fbm(paper, win, max(8.0, size * 2.0), 3)
-        deep += np.float32(0.75 * p["pooling"]) * a * _ss((n - 0.42) / 0.3)
+        n, k = _fbm(paper, win, max(8.0, size * 2.0), 3), np.float32(0.75 * p["pooling"])
+        if fast:
+            native.mix("pooling", k, (a, n), (deep,))
+        else:
+            deep += k * a * _ss((n - 0.42) / 0.3)
     if p.get("bloom", 0) > 0:
         r = bloom_px(size, p["bloom"])
-        spread = np.clip(_wide(a, r, (x0, y0)) * np.float32(2.0), 0, 1)         # 1 at the edge and in, falling to 0 r px out
+        wide = _wide(a, r, (x0, y0))
         n = _fbm(paper, win, max(4.0, r * 2.2), 6)
-        front = np.clip(0.05 + 1.1 * (1 - n) - 0.2, 0.04, 0.95)       # where the run stops: nearer or farther, by the noise
-        wet = _ss((spread - front) / 0.08) * (1 - a)                   # the bloom past the edge: soft but defined
-        rim = np.clip(wet - _blur(wet, max(1, r // 7)), 0, 1)          # the pushed pigment, dried along the front ...
-        strong = _ss((_fbm(paper, win, max(4.0, r * 1.5), 7) - 0.3) / 0.4)   # ... heavy in places, gone in others
         amt = np.float32(min(1.0, p["bloom"]))
-        light += amt * np.float32(0.45) * wet * (0.6 + 0.4 * n)
-        deep += amt * np.float32(1.8) * rim * strong
+        if fast:
+            wet = np.empty_like(a)
+            native.mix("wet", 0, (a, wide, n), (wet,))
+        else:
+            spread = np.clip(wide * np.float32(2.0), 0, 1)              # 1 at the edge and in, falling to 0 r px out
+            front = np.clip(0.05 + 1.1 * (1 - n) - 0.2, 0.04, 0.95)   # where the run stops: nearer or farther, by the noise
+            wet = _ss((spread - front) / 0.08) * (1 - a)               # the bloom past the edge: soft but defined
+        b_wet, n7 = _blur(wet, max(1, r // 7)), _fbm(paper, win, max(4.0, r * 1.5), 7)
+        if fast:
+            native.mix("bloom", amt, (wet, b_wet, n, n7), (light, deep))
+        else:
+            rim = np.clip(wet - b_wet, 0, 1)                           # the pushed pigment, dried along the front ...
+            strong = _ss((n7 - 0.3) / 0.4)                             # ... heavy in places, gone in others
+            light += amt * np.float32(0.45) * wet * (0.6 + 0.4 * n)
+            deep += amt * np.float32(1.8) * rim * strong
     for extra, col, m in ((light, np.asarray(color, np.float32), mode), (deep, *_deep(color, mode))):
         extra = np.minimum(extra, 1)
-        if extra.any():
+        if not extra.any():
+            continue
+        if m == "normal" and native.walks():    # the same numbers as apply_paint's (tests/test_native.py)
+            native.fill(layer[y0:y1, x0:x1], extra, col)
+        else:
             apply_paint(layer[y0:y1, x0:x1], np.zeros_like(extra), extra, col, m)
 
 
