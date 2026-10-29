@@ -8,12 +8,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rostrum_core import project
+from rostrum_core import agent_last, project
 
 
 def main_mix(folder) -> dict | None:
     """The project's main mix ({id, name, file}), or None when the project has no Sound item (a stale mark is loud)."""
     return project.main(folder, "sound") if folder else None
+
+
+def where_the_music_is(folder) -> str:
+    """Why this project has no song to play and what to do, for the cue error and a silent export's reply: when the agent's
+    RostrumSound works in another folder (2D and Sound started on different projects), it names that folder and the call
+    that brings Sound here; else how to make the music here."""
+    open_here = f'run_open_project {{"folder": "{folder}"}}'
+    other = agent_last.where("rostrum-sound")
+    if other and Path(other).resolve() != Path(folder).resolve():
+        return (f"Your RostrumSound works in another project, {other}, so its music is not in this one. On rostrum-sound "
+                f"call {open_here}, run the song's script there again and run_set_main_mix; then it plays here.")
+    return (f"Make the music in RostrumSound (server rostrum-sound) on this same project: {open_here} there, write the "
+            "music with run_script (its inspect_guide 'scoring-to-picture'), run_set_main_mix; then it plays here.")
 
 
 _FOUND: dict = {}       # (folder, chosen) -> (the sound files' stamp, the song): asked on every change, even a pen move

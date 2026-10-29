@@ -104,3 +104,30 @@ def test_another_agent_in_the_same_folder_never_gets_this_agents_project(tmp_pat
     monkeypatch.delenv("CLAUDE_CODE_SESSION_ID")
     monkeypatch.setattr("os.getppid", lambda: 999999)                      # no session id: another agent process
     assert choose().whose == "scratch"
+
+
+def test_one_agents_apps_share_one_project_and_the_newest_choice_wins(tmp_path, monkeypatch):
+    """Re-bench 2026-10-29 (D1): 2D and Sound started in two scratch projects, so the music made in Sound was never
+    under 2D's export (12 of 14 runs). Started for one agent, the second app joins the first's folder."""
+    monkeypatch.setenv("ROSTRUM_SCRIPTED_HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "film-agent")
+
+    def start(app, project=None):
+        s = agent_start.choose(app, EXT, project, None, lambda folder, explicit: "main")
+        doc(Path(s.folder))
+        agent_start.settle(SimpleNamespace(name=app, folder=s.folder, documents={}, opened=""), s)
+        return s
+
+    pic, music = start("rostrum-2d"), start("rostrum-sound")
+    assert pic.whose == "scratch" and music.whose == "joined" and music.folder == pic.folder
+    assert "your other Rostrum app works on" in music.sentence()
+    assert agent_last.where("rostrum-sound") == str(Path(pic.folder).resolve())
+    person = doc(tmp_path / "person")
+    agent_last.remember("rostrum-2d", person, "main")             # the agent opens the person's film in 2D
+    again = start("rostrum-sound")                                # Sound started again: it follows to that folder
+    assert again.whose == "joined" and again.folder == str(Path(person).resolve())
+    asked = start("rostrum-2d", str(tmp_path / "other"))          # a server started with --project: that folder wins
+    assert asked.whose == "asked" and start("rostrum-sound").folder == str((tmp_path / "other").resolve())
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "another-agent")
+    assert start("rostrum-sound").whose == "scratch"              # another agent never joins this one's project
