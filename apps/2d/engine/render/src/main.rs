@@ -10,6 +10,7 @@
 
 mod asset_cache;
 mod assets;
+mod blurred;
 mod boxes;
 mod frame;
 mod color;

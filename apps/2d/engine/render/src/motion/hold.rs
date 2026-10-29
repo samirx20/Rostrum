@@ -51,7 +51,7 @@ pub fn hold_still(centre: &Item, centre_pieces: &[String], items: &[Item], sampl
 }
 
 /// The comp's top-level layers that are drawn as pieces of their own, in order (stage.rs `each_sibling`).
-fn drawn<'t, 'a>(comp: &'t Item<'a>) -> Vec<&'t Item<'a>> {
+pub(super) fn drawn<'t, 'a>(comp: &'t Item<'a>) -> Vec<&'t Item<'a>> {
     comp.layers.iter().filter(|l| l.kind != "camera" && !crate::scene::matte::used(l, comp)).collect()
 }
 

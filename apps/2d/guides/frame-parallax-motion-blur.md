@@ -203,7 +203,7 @@ those behind or in front of it get softer. It reads the same **Depth** the paral
 own layers (not inside a group: a group blurs as one, at its depth); a layer that **sticks to the shot** is never
 blurred. The canvas, Quick preview and the export show the same blur.
 
-**What it costs.** Each layer is blurred once per frame (once per motion-blur step when the shutter is on, below), and
+**What it costs.** Each layer is blurred once per frame (also with the shutter on, below), and
 only over the part of the frame it covers, plus the blur's own spread: a small layer costs a small blur, a layer off the
 frame costs nothing, and a world-sized backdrop costs one frame-sized blur, however big it is. So the cost grows with
 how many layers cover the frame: 150 layers that each fill the frame are 150 frame-sized blurs a frame. A layer in focus
@@ -248,16 +248,14 @@ streak at the default 8, a still frame or a slow move costs no more than before,
 (the fastest frames of a whip pan take 4 to 7 times as many steps). What moves inside a layer (a path changing shape, letters playing their
 keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples`.
 
-**What it costs.** A frame costs about its steps times what moves in it. A layer that hardly moves in a frame (a slow
-drift, a background under a fast title) is drawn once for that frame, not once per step. A layer that only the frame
-(camera) moves is drawn once and slid into place for the other steps (in a very fast drop or whip pan, once per group
-of steps), its depth-of-field blur with it; the focus holds still for the instant the shutter is open. Only a layer
-that moves, turns or changes on its own, or one that can't be slid (a glow, a blend mode other than Normal), is drawn
-again at every step. So a scene with many full-frame layers,
-depth of field and a fast camera move pays most in its fastest frames: look at the time left in the export's progress
-early, and stop it if it is more than you have (the pieces it finished are kept, see `exporting` › 7). Raising
-`shutterSamples` does not make fast moves smoother (they get their steps anyway); it only makes every frame slower.
-Keep 8 unless steps show inside a layer, and look at a few frames before exporting the whole film.
+**What it costs.** The page is laid out and painted once a frame. A layer that only moves, turns or scales (or that
+the frame moves: a pan, a whip, a drop) is painted once, with its depth-of-field blur, and smeared along its path in one
+pass on the graphics card, however many steps the frame takes. Layers at one depth under a pan share that one picture.
+A layer that changes while the shutter is open (a path changing shape, letters playing their keys, a colour, a layer
+with a matte) or that blends (a glow, a blend mode other than Normal, frosted glass) is drawn again at every step, alone,
+over what is under it. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
+`shutterSamples` does not make fast moves smoother (they get their steps anyway); it only makes the layers that change
+slower. Keep 8 unless steps show inside a layer, and look at a few frames before exporting the whole film.
 
 The frame at time t is the average of the samples centred on t. Layers that do not move stay sharp. Motion of keys, groups,
 rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. What a layer shows never blurs, only how it moves: a counting number stays one sharp number per frame and a drawing drawn frame by frame shows one drawing, as in After Effects. A layer that shows in a frame shows in all its samples, so the first frame of the piece (or of a layer) is as strong as the next. Preview
