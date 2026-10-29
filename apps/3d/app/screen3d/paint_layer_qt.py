@@ -63,6 +63,8 @@ class PaintLayerRows(QObject):
         args = {name: value}
         if name == "fill" and value:
             args["fillColor"] = self.m.brush.values["color"]       # filled with the brush's colour; changed after
+        if name == "shapeMask" and value != "none" and not self._shape_kept():
+            return False
         if name == "shapeMask" and value != "none" and not self._mask_ready():
             return self._find(layer["id"], value)
         return self._apply(layer["id"], args)
@@ -81,6 +83,21 @@ class PaintLayerRows(QObject):
             return None
         f = paint_scene.surface_of(self.m.v.sent()[0] or {}, item["id"])
         return clay_paint.read(f) if f else None
+
+    def _shape_kept(self) -> bool:
+        """A mesh laid flat before masks existed has no shape kept for them: with nothing painted on it yet it is laid
+        flat again here (its own step, the engine's, quick), so the mask just works; with strokes the masks' message
+        says why (laying it flat again would move them)."""
+        item = self.m._item() or {}
+        if paint_masks.shape_known(item):
+            return True
+        if not paint_masks.unpainted(item):
+            self.m.b.fail_line(f"Error: mask: {self.m._name()} is painted already and its shape for the masks "
+                               "isn't kept: laying it flat again (mesh.unfold) would move its strokes")
+            return False
+        self.m.b._guard(lambda: self.m.b._apply([{"op": "mesh.unfold", "target": [item["id"]], "args": {}}],
+                                                f"Unfold {self.m._name()}"))
+        return paint_masks.shape_known(self.m._item() or {})
 
     def _mask_ready(self) -> bool:
         item = self.m._item() or {}

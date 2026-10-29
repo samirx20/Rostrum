@@ -6,7 +6,7 @@ from __future__ import annotations
 import numpy as np
 from rostrum_core.errors import RostrumError, codes
 
-from rostrum3d import ops_paint, paint_scene, paint_view, texels
+from rostrum3d import clay_paint, ops_paint, paint_scene, paint_view, texels
 from rostrum3d.paint_fields import CHANNELS
 
 from . import draw
@@ -69,17 +69,26 @@ def laid(ctx, scene: dict | None, item: dict, folder=None) -> dict:
                                                _ask(ctx, loaded(ctx, scene)) if view else None, folder, scene if view else None)
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"{item["id"]}"', str(e)) from e
-    return {**held, "splats": splats}
+    # what its masks are worked out from (paint_scene._masked): the item as kept, a clay's surface
+    return {**held, "splats": splats, "kept": item, "surface": clay_paint.read(surface) if surface else None}
 
 
 def picture(held: dict, size: int, layer: str | None = None, channel: str | None = None) -> np.ndarray:
     """(S, S, 4) uint8 straight alpha: one layer, one channel's layers, or every layer together; a projected layer's
-    picture under its own strokes, as paint_scene lays it."""
+    picture under its own strokes, a filled one covering it all, a masked one only where its mask is: as paint_scene
+    lays them."""
     paints = [p for p in held["paints"] if (layer is None or p["id"] == layer) and (channel is None or p.get("channel", "colour") == channel)]
     if layer:
         paints = [{**p, "visible": True} for p in paints]
     splats = {k: v for k, v in held.get("splats", {}).items() if any(p["id"] == k for p in paints)}
-    return np.asarray(paint_scene.canvas_rgba({**held, "paints": paints}, size, splats), np.uint8)
+    kept = held.get("kept")
+    if kept is not None:                   # a masked layer shows only where its mask is, as the render has it
+        kept = {**kept, "paints": [p for p in kept.get("paints", []) if any(q["id"] == p["id"] for q in paints)]}
+    try:
+        px = paint_scene.canvas_rgba({**held, "paints": paints}, size, splats, kept, held.get("surface"))
+    except ValueError as e:                # a mask whose shape isn't known: said, as the render says it
+        raise RostrumError(codes.BAD_ARGUMENT, "paint look", f'"{held["id"]}"', str(e)) from e
+    return np.asarray(px, np.uint8)
 
 
 def alpha(held: dict, size: int) -> np.ndarray:

@@ -47,6 +47,18 @@ def _geo_key(uvs) -> str:
     return cache_key("mesh.geometry", VERSION, [hashlib.sha1(np.asarray(uvs, np.float32).tobytes()).hexdigest()], {})
 
 
+def shape_known(item: dict) -> bool:
+    """A mesh's built mesh is kept for its masks (it was unfolded since masks exist); a clay's always is."""
+    if item.get("type") != "mesh":
+        return True
+    return bool(item.get("uvs")) and CACHE.get("meshgeo", _geo_key(item["uvs"])) is not None
+
+
+def unpainted(item: dict) -> bool:
+    """No stroke or fill item on any of its layers: unfolding it again moves nothing painted."""
+    return not any(p.get("strokes") for p in item.get("paints", []))
+
+
 def geo_of(item: dict, surface) -> tuple[Geo, str]:
     """(the surface, what it is: its cache name) of a painted clay (`surface`) or a mesh. Loud for a mesh whose built
     mesh wasn't kept (unfolded before masks existed)."""

@@ -86,5 +86,10 @@ def test_a_filled_layer_with_a_mask_paints_only_there(tmp_path):
     top = [(ax, sgn) for ax in range(3) for sgn in (1, -1)].index((1, 1))
     assert _at(n, top, 0.5, 0.5, a) > 250                                  # dust on top
     assert all(_at(n, k, 0.5, 0.5, a) < 5 for k in range(6) if k != top)  # none on the sides or underneath
+    from rostrum3d.mcp import paint_canvas                              # the agents' flat look matches the render
+    look = paint_canvas.picture({**paint_scene._filled(item), "splats": {}, "kept": item, "surface": None}, SIZE)
+    assert (look[..., 3] == a).all()
+    assert paint_masks.shape_known(item) and paint_masks.unpainted(item)   # filled, no strokes: nothing to move
+    assert not paint_masks.shape_known({**item, "uvs": [0.5, 0.5] * 24})   # unfolded before masks: not kept
     d.undo(Who.person())
     assert d.item("dust")["maskSpread"] == 0.5                             # each change one undo step

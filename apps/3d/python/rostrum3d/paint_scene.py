@@ -320,10 +320,12 @@ def laid_canvas(item: dict, surface_file=None, texels_fn=None, folder=None, scen
     return held, splats
 
 
-def canvas_rgba(canvas: dict, size: int, splats: dict) -> np.ndarray:
+def canvas_rgba(canvas: dict, size: int, splats: dict, item: dict | None = None, surface=None) -> np.ndarray:
     """size × size × 4 straight RGBA uint8 of a laid canvas's layers (its projected layers' pictures under their
-    strokes), as one channel's picture is made."""
-    return _paint_rgba(canvas, size, splats)
+    strokes, its masked layers times their masks: `item` the canvas as kept, `surface` a clay's), as one channel's
+    picture is made."""
+    masked = _masked(item, surface, size)[0] if item is not None else {}
+    return _paint_rgba(canvas, size, splats, masked)
 
 
 def _apply(scene: dict, node: dict, job: dict, pics: dict) -> None:

@@ -112,8 +112,9 @@ Examples (each one layer; stack them):
   layer the same way (Fill light grey) so the dust is dull too.
 - **Grime in the cracks**: a **Colour** layer, Fill a dark brown, Mask **Cavities**.
 
-A mesh laid flat for painting before masks existed has no shape kept for them: the message line says so. Laying it
-flat again (`mesh.unfold`) fixes it, but moves the strokes already painted on it, so do it before painting.
+A mesh laid flat for painting before masks existed has no shape kept for them. With nothing painted on it yet,
+picking a Mask lays it flat again by itself (an undo step of its own) and the mask just works. With strokes on it
+the message line says so instead: laying it flat again (`mesh.unfold`) would move them.
 
 ## How to: a roughness scuff on a glossy lid
 
