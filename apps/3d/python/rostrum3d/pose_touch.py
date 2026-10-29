@@ -9,10 +9,9 @@ head's side, so arm and head read as one lump).
                                radius) while at rest it was clear, and the two touch on the picture through the shot camera.
                                Not for a limb against its own trunk.
 
-One fault per keyed joint, the worst frame; a part into another outranks one touching it. The joint named is the keyed
-one that moves the two apart (a limb's, never the trunk both hang from). The fix: the degrees to turn that joint so
-the part clears by CLEAR_M (or the clearance); over BIG_TURN degrees a turn is the wrong tool, it says how far to move
-the hand or foot target out instead.
+One note per keyed joint, the worst frame; a part into another outranks one touching it. The joint named is the keyed
+one that moves the two apart (a limb's, never the trunk both hang from), with the degrees of turn that would clear the
+part by CLEAR_M (or the clearance): a measurement, not an instruction.
 """
 from __future__ import annotations
 
@@ -28,7 +27,6 @@ THROUGH_R = 0.35         # … and this share of the thinner part's radius passe
 TRUNK_R = 0.5            # … this share for a limb against the trunk it hangs from
 TOUCH_R = 0.3            # clearance: at least this share of the thinner part's radius (or the larger blend)
 CLEAR_M = 0.01           # the fix turns the joint so the part clears by this
-BIG_TURN = 45            # degrees: a bigger fix moves the target instead
 
 
 def chain(par: list[int], n: int) -> list[int]:
@@ -100,11 +98,5 @@ def _fault(track, info, id_, item, names, posed, joint, kind, need, f, m, o, cle
         sid, by = "touches_body", clear
         what = (f"{id_}'s {part} " + (f"comes {gap * 100:.1f} cm from" if gap >= 0.0005 else "touches") +
                 f" its {into} at {t:.1f} s and they meet on the picture: the two read as one lump")
-    if round(deg) <= BIG_TURN:
-        fix = (f"turn {names[joint]} about {deg:.0f}° further away from the {into} at {t:.1f} s (c.bend(\"{names[joint]}\", …)), "
-               f"so the {part} clears it by {by * 100:.1f} cm")
-    else:
-        fix = (f"move the {part}'s hand or foot target (c.pose) {need * 100:.1f} cm out from the {into} at {t:.1f} s "
-               f"(turning {names[joint]} alone would take about {deg:.0f}°, too far for one joint)")
-    return F.fault(f"{sid}:{id_}.{names[joint]}", what, fix + f"; or move the {into} out of its path",
-                   f"frame {f}, {t:.2f} s")
+    what += f" (joint {names[joint]}; about {deg:.0f}° of turn away would clear it by {by * 100:.1f} cm)"
+    return F.note(f"{sid}:{id_}.{names[joint]}", what, f"frame {f}, {t:.2f} s")
