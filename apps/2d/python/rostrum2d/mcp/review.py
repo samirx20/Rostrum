@@ -177,7 +177,7 @@ def look_review(ctx, args):
         return finish(look_empty.scan_video(mp4))
     fps, last = comp.get("fps", 30), (round(duration * comp.get("fps", 30)) - 1) / comp.get("fps", 30)
     picks = [min(t, last) for t in times]
-    scene = render.scene_of(doc, comp["id"], (picks[0], picks[-1]), sorted({round(t * fps) for t in picks}))
+    scene = render.look_scene(doc, comp["id"])
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_review_") as tmp:

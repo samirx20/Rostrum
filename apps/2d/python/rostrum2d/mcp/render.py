@@ -10,7 +10,7 @@ from rostrum_core.errors import RostrumError, codes
 
 from rostrum2d.scene import describe
 
-from . import edge_cut
+from . import edge_cut, warm
 
 
 SLOW_PICTURES_S = 5.0
@@ -53,13 +53,29 @@ def scene_later(doc, comp_id: str, span: tuple[float, float] | None = None, fram
     return make
 
 
+def look_scene(doc, comp_id: str, at: float | None = None) -> dict:
+    """What the looks draw (look_frame, sheets, run_script's look, the review): the whole composition, described again
+    only where the document changed (warm.py), its refusals first as scene_of's. `at`: one frame's look, whose reply
+    names a subject cut by the frame edge then."""
+    from rostrum2d import follow
+    comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
+    if comp and (broken := follow.problems(comp)):
+        raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
+    scene = warm.scene(doc, comp_id, (comp or {}).get("duration", 5.0))
+    if at is None or comp is None:
+        return scene
+    try:
+        cut = edge_cut.warnings_at(doc.data, comp, at)
+    except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
+        cut = [f"(The frame-edge check could not run: {e}.)"]
+    return {**scene, "warnings": [*scene.get("warnings", []), *cut]} if cut else scene
+
+
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:
     """Draw each (time, png path). A failure names the frame and stops; earlier files stay."""
-    from rostrum2d.engine import Engine
     fps = scene["comp"]["props"]["fps"]
     try:
-        with Engine() as eng:
-            eng.load(scene)
+        with warm.engine(scene) as eng:
             for i, (t, png) in enumerate(items):
                 try:
                     eng.still(t, png)
@@ -77,13 +93,11 @@ def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width
     """Draw each (time, png path) `width` px wide: the same frame drawn smaller by the engine (Engine.pixels' scale, as
     the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. Full width or more: stills."""
     from PIL import Image
-    from rostrum2d.engine import Engine
     fps, comp_w = scene["comp"]["props"]["fps"], scene["comp"]["props"]["width"]
     if width >= comp_w:
         return stills(where, scene, items, progress)
     try:
-        with Engine() as eng:
-            eng.load(scene)
+        with warm.engine(scene) as eng:
             for i, (t, png) in enumerate(items):
                 try:
                     view, w, h, stride = eng.pixels(t, scale=width / comp_w)
@@ -104,11 +118,9 @@ def area_still(where: str, scene: dict, t: float, area, width: int, png: Path) -
     """Only `area` [x, y, w, h] (comp px) of the frame at `t`, drawn by the engine at `width` px wide (sharp: a zoom,
     not a crop of a small picture), as `png`. Returns its size."""
     from PIL import Image
-    from rostrum2d.engine import Engine
     x, y, w, h = (float(v) for v in area)
     try:
-        with Engine() as eng:
-            eng.load(scene)
+        with warm.engine(scene) as eng:
             view, pw, ph, stride = eng.pixels(t, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
             data = bytes(view)
             view.release()

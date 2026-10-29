@@ -9,7 +9,7 @@ working on one page; the topic guides at the end hold the detail.
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
 2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet.
    Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
-3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself.
+3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look takes well under a second once the session's first one has run (about 0.2 s a frame or a sheet on a 70 s film), so look often.
 4. **Change the script**, not the document.
 5. **Re-run under the SAME name** (the same path). A re-run merges: what you changed changes, what a person moved
    by hand stays. A new name adds a second copy of everything.

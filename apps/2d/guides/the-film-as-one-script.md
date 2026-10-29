@@ -12,8 +12,9 @@ guides; the fragments here show the shape of a technique, not a piece to copy.
 
 1. Write the script to a file (`C:/work/film.py`) and run it: `run_script {"path": "C:/work/film.py", "look": true}`.
    `look: true` brings back one contact sheet (3 tiles across) of 6 moments spread over the film
-   (2.5 … 27.5 s on a 30 s film); `look: [2, 7.5, 12, 18]` picks the moments (up to 12). It adds a few seconds to the
-   call. If the stills fail, the merge still stands and the summary says "Look FAILED"; look again with `look_frame`.
+   (2.5 … 27.5 s on a 30 s film); `look: [2, 7.5, 12, 18]` picks the moments (up to 12). It adds about a second to the
+   call (the first look of a session a few seconds: the engine starts and the film is laid out once; after that a
+   look draws only the frames asked, and a re-run sends the engine only what the script changed). If the stills fail, the merge still stands and the summary says "Look FAILED"; look again with `look_frame`.
    `notes: true` adds the checks' measurements at the end (the same ones `look_frame` with `what: "review"` lists),
    e.g. `Notes (n): [text_crossed:title] text 'X' crossed by 'ring' 10–85 %`. Notes are observations with numbers,
    never instructions; unasked, the reply carries none.
