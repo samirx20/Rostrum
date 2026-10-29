@@ -250,10 +250,11 @@ The time left is a number to use, not a reason to stop early.
   (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
   guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
-- **Many of one thing.** A row, grid or ring, or a scatter over a surface (grass, pebbles, confetti): `copies.make` / `copies.scatter`
+- **Many of one thing.** A row, grid or ring, a scatter over a surface (grass, pebbles, confetti), or a run along a word's or drawing's outlines (layout `path`): `copies.make` / `copies.scatter`
   (script: `copies(id, source, layout=, count=)`), 10,000 at most, drawn as instances; scattered copies the shot camera never sees are
   left out, and `look_frame` says how many it saw. `copies.hold` keeps one copy where you put it; `effector.add` makes the ones near an
-  item bigger, turned, pushed away or tinted, following that item as it moves. Guide `copies`.
+  item bigger, turned, pushed, moved, hidden or tinted, in a sphere round it, behind a wall through it or in noise patches, following
+  that item as it moves. Guide `copies`.
 - **Things that fall and land.** `sim.body` kind `falls` on what drops (a copies item: every copy), `still` on what it lands on
   (the ground at height 0 is there by default), `sim.set` for mass, bounce, friction; then the `run_simulation` tool (a job). It is
   stored and only recomputed when something it depends on changes; renders compute it first when it is out of date, never

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
-from rostrum_core.keys import key_value, keys_of, register_key_ops
+from rostrum_core.keys import key_value, keys_of, register_key_ops, register_layer_ops
 from rostrum_core.keys.curve import curve_of, handles_of  # noqa: F401  (the one curve reading, shared with 3D: mcp/curves.py, the curve view)
 
 from . import fields as F, pathdata
@@ -165,7 +165,8 @@ def keyable_now(doc, owner: dict, t) -> bool:
 
 put_key = register_key_ops(R, owners=OWNERS, check_key=_checked_value, check_still=_still_value, settable=settable,
                            value_params=[V, C, D], key_add_help="The field is animated from then on: its keys alone decide its value.",
-                           field_sets={"pose": POSE}, value_now=_value_now)
+                           field_sets={"pose": POSE}, value_now=_value_now, layers=True)
+register_layer_ops(R)            # animlayer.add / set / remove / move (rostrum_core.keys.layers; laid in: layerbake.py)
 
 
 # ---- the curve of a field: the keys as an agent or the curve editor draws them ---------------------------------

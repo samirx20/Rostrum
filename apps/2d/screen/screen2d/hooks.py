@@ -4,6 +4,7 @@ from __future__ import annotations
 from rostrum2d import fields as F, fill_fields, stepped, text_anchor
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
+from rostrum_core.keys.layers import stack_of
 
 from . import beat_words, corner_rows, exprs, outline, fill_rows, font_rows, pair_keys, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
@@ -112,7 +113,8 @@ class Hooks2D:
         return self._t, self.marks.times if self.marks else None, self.comp_id
 
     def shown_values(self, item):
-        return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds
+        return route.shown_values(self.placed_item(item["id"]), self._t,     # keys on a marker read as seconds
+                                  stack_of(self.doc.data))                 # the animation layers laid over (layerbake.py)
 
     def anim_state(self, item, param):
         if param == fill_rows.ROW:                       # the Fill row's mark: its colour's or its stops' keys

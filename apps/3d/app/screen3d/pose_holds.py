@@ -60,7 +60,7 @@ class PoseHolds:
             return                                      # dropped off the clay: the hold stays where it was
         world = through.find_item(scene, it["id"], req["frame"])[0]
         local = aim.point(aim.invert(world), r["point"])
-        on = L.bone_at(it, local, self.b.time)
+        on = L.bone_at(it, local, self.b.time, L.layering(self.b)[1])
         rest = r.get("rest") or self._rest_spot(it, on, local)
         calls = L.hold_calls(it["id"], rest=ring["at"], off=True) + L.hold_calls(it["id"], rest=rest)
         self.b._guard(lambda: self.b._apply(calls, f"Move hold on {self._part(on)}"))

@@ -20,6 +20,7 @@ from .anims import PLAIN, Names
 from .easing import EASE_LIST, OLD_NAMES
 from .evaluate import key_value, keys_of
 from .fields import KEY_FIELDS
+from .layers import FIELD as LAYER, layer_keys, stack_of
 
 CURVE = ("x1", "y1", "x2", "y2")
 SHAPING = [p.name for p in KEY_FIELDS if p.name not in ("t", "v", "c", "d", "ease")]   # x1 … bounce, speed
@@ -97,10 +98,10 @@ def register_anim_ops(registry, *, owners, put_key: Callable, names: Names = PLA
         for kid in targets:
             owner, key = owner_of(ctx, kid), ctx.item(kid)
             old = timing.own_seconds(ctx, key, owner["id"])
-            moved.setdefault((owner["id"], key["prop"]), {})[kid] = (old, around + (old - around) * by)
-        for (owner_id, prop), mine in moved.items():
+            moved.setdefault((owner["id"], key["prop"], key.get("layer")), {})[kid] = (old, around + (old - around) * by)
+        for (owner_id, prop, layer), mine in moved.items():          # a layer's keys are checked against its own
             final = {k["id"]: mine[k["id"]][1] if k["id"] in mine else timing.own_seconds(ctx, k, owner_id)
-                     for k in keys_of(ctx.item(owner_id), prop)}
+                     for k in (layer_keys(ctx.item(owner_id), prop, layer) if layer else keys_of(ctx.item(owner_id), prop))}
             ts = sorted(final.values())
             if any(b - a < 1e-6 for a, b in zip(ts, ts[1:])):
                 ctx.fail(codes.CONFLICT, f"{owner_id}.{prop}", f"would have two keys at the same time after stretching by {by:g}",
@@ -111,7 +112,7 @@ def register_anim_ops(registry, *, owners, put_key: Callable, names: Names = PLA
 
     @registry.operation("key.paste", "Paste copies of keys onto the same settings of the target items, the first copied "
                         "key at `at` (the target's own seconds), the others keeping their spacing. Each key keeps its "
-                        "value and ease. A target without one of those settings is refused, naming it.",
+                        "value, ease and animation layer. A target without one of those settings is refused, naming it.",
                         target=owners, label="Paste keys", importance="secondary",
                         params=[Param.list("from", "id", label="Keys", required=True, help="The keys to copy (their ids)"),
                                 Param.number("at", label="At", min=-36000, max=36000, unit="s", required=True)])
@@ -123,17 +124,20 @@ def register_anim_ops(registry, *, owners, put_key: Callable, names: Names = PLA
             owner, key = owner_of(ctx, kid), dict(ctx.item(kid))
             src.append((timing.own_seconds(ctx, key, owner["id"]) + timing.offset(ctx, owner["id"]), key))
         first = min(t for t, _ in src)
-        seen: set[tuple[str, str, float]] = set()
+        seen: set[tuple[str, str, float, str]] = set()
         for target in targets:
             for t, key in sorted(src, key=lambda x: x[0]):
                 at = round(float(args["at"]) + t - first, 6)
-                if (target, key["prop"], at) in seen:
+                layer = key.get(LAYER) if key.get(LAYER) in {x["id"] for x in stack_of(ctx.doc)} else ""
+                if (target, key["prop"], at, layer) in seen:
                     ctx.fail(codes.CONFLICT, f'{target}.{key["prop"]}', f"would get two pasted keys at {at:g} s",
                              hint="Copy the keys of one item at a time.")
-                seen.add((target, key["prop"], at))
+                seen.add((target, key["prop"], at, layer))
                 field = next(f for f in ("v", "c", "d") if f in key)
-                put_key(ctx, target, key["prop"], at, {field: key_value(key), "ease": key.get("ease", "smooth")})
-                made = next(k for k in keys_of(ctx.item(target), key["prop"]) if not marked.marked(k) and abs(k["t"] - at) < 1e-6)
+                put_key(ctx, target, key["prop"], at, {field: key_value(key), "ease": key.get("ease", "smooth"),
+                                                       **({LAYER: layer} if layer else {})})
+                mine = layer_keys(ctx.item(target), key["prop"], layer) if layer else keys_of(ctx.item(target), key["prop"])
+                made = next(k for k in mine if not marked.marked(k) and abs(k["t"] - at) < 1e-6)
                 for name in SHAPING:
                     if name in key:
                         ctx.set(made["id"], name, key[name])

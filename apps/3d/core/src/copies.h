@@ -5,6 +5,7 @@
 #pragma once
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/quatf.h>
+#include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/range3d.h>
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/base/js/value.h>
@@ -21,7 +22,7 @@ struct ItemsContext;
 namespace copies {
 
 struct Params {
-  std::string layout = "line";  // line | grid | circle | surface | pour
+  std::string layout = "line";  // line | grid | circle | surface | pour | path
   int count = 6, columns = 4;
   double spacing[3] = {0.2, 0, 0};
   double radius = 0.5;
@@ -37,6 +38,13 @@ struct Params {
   // pour: every copy starts in a disc of `radius` round the item's origin (its own XZ) and leaves its own -Y at pourSpeed
   // m/s, within pourSpread degrees of it; one after another, evenly over pourTime s from Falls from
   double pourTime = 2, pourSpeed = 0, pourSpread = 10;
+  // path (v1.31): `count` copies evenly by length over every contour (copies item's space, worked out by the compiler from
+  // the `path` item's outline); alongPath turns each copy's +X along it; pathShift slides them (a share of the length)
+  std::string path;
+  std::vector<std::vector<PXR_NS::GfVec3f>> pathPoints;
+  std::vector<bool> pathClosed;
+  bool alongPath = true;
+  double pathShift = 0;
   std::string seenBy;           // camera id: only the copies it sees are drawn ("" = all)
   int seenW = 1920, seenH = 1080;
 };
@@ -53,16 +61,22 @@ struct Held {
   bool keyed() const;
 };
 
-// "Change near": per frame, w = falloff(distance(copy, centre) / radius) changes each copy near the centre
+// "Change near": per frame, w = falloff(t) changes each copy, t from the field shape (copies_shapes.cpp): a sphere
+// (1 - distance to the centre / radius), a plane through the centre facing `normal` (1 behind it, fading to 0 at radius in
+// front), or noise (smooth patches about radius big, shifted by the centre, from `seed`)
 struct Effector {
   std::string id;
-  enum Kind { Scale, Turn, Push, Colour } kind = Scale;
+  enum Kind { Scale, Turn, Push, Move, Hide, Colour } kind = Scale;
+  enum Field { Sphere, Plane, Noise } field = Sphere;
   bool smooth = true;
   int axis = 1;
+  unsigned seed = 1;
   // one value, or one per frame of the shot
-  std::vector<PXR_NS::GfVec3f> centre, colour;  // world; linear RGB
+  std::vector<PXR_NS::GfVec3f> centre, colour, normal;  // world; linear RGB; world unit (a plane)
   std::vector<double> amount, radius;
-  bool moves() const { return centre.size() > 1 || amount.size() > 1 || radius.size() > 1 || colour.size() > 1; }
+  bool moves() const {
+    return centre.size() > 1 || amount.size() > 1 || radius.size() > 1 || colour.size() > 1 || normal.size() > 1;
+  }
 };
 
 struct Copy {
@@ -113,6 +127,18 @@ struct State {
   SimTrack sim;                               // the stored fall, when it has one
   bool late = false;                          // on a clay: laid out after the clays' sync (lay_out_late)
 };
+
+// copies_effect.cpp: the effectors read from the node (`frames`: the shot's frame count, a track's length) and how much
+// effector e changes a copy at world point `here`, frame index k: 0..1, its field shape and falloff applied.
+std::vector<Effector> read_effectors(const PXR_NS::JsArray& list, const std::string& where, size_t frames);
+double field_weight(const Effector& e, size_t k, const PXR_NS::GfVec3d& here);
+// copies_path.cpp: `pathPoints` / `pathClosed` read loudly (lists of contours of [x, y, z]; one flag per contour).
+std::vector<std::vector<PXR_NS::GfVec3f>> read_path_points(const PXR_NS::JsValue& v, const std::string& where);
+std::vector<bool> read_path_closed(const PXR_NS::JsValue& v, const std::string& where);
+// A path layout's points make sense (some length; one closed flag per contour); `where`: for the failure.
+void check_path(const Params& p, const std::string& where);
+// The path layout: p.count places and their turns (identity when alongPath is off).
+void lay_path(const Params& p, std::vector<PXR_NS::GfVec3f>* pos, std::vector<PXR_NS::GfRotation>* turn);
 
 // Reads the node (props, held, effectors), defines the instancer at `path` and builds the sources under it.
 // The layout waits for lay_out_all (a surface may be built after this item).

@@ -5,7 +5,9 @@ engine contract v1.18). Every call the screen makes into them is here, so a chan
 No Qt.
 
 Spaces: `local` / `to` / `rest` are in the clay's own space (the holds are kept as resting spots there); `to` of a
-joint move is a world point; turns are degrees, {bone id: {"rx", "ry", "rz"}}, absolute (as the bone's Turn keys are).
+joint move is a world point; turns are degrees, {bone id: {"rx", "ry", "rz"}}, absolute, as shown: `stack` is the
+document's animation layers (layers.stack_of), laid over the Base, so a drag starts from what is on screen. A release
+keys what it shows; on the chosen layer the window's route (rostrum_gui/anim_layers.py) turns each into its offset.
 """
 from __future__ import annotations
 
@@ -21,6 +23,13 @@ def _ik():
     return pose_ik
 
 
+def layering(bridge) -> tuple[str, list]:
+    """The window's chosen animation layer ("" the Base: where a person's keys go) and the document's layer stack."""
+    from rostrum_core.keys import layers
+    model = getattr(bridge, "_anim_layers", None)
+    return (model.rows_layer() if model is not None else ""), layers.stack_of(bridge.doc.data)
+
+
 def out_of_date(clay: dict, data: dict | None = None) -> bool:
     """The clay has no joints yet, or its shape changed since they were found (`data`: the document)."""
     if not clay.get("bones"):
@@ -29,23 +38,23 @@ def out_of_date(clay: dict, data: dict | None = None) -> bool:
     return bool(pose_joints.out_of_date(clay, data))
 
 
-def bone_at(clay: dict, local, t: float) -> str:
+def bone_at(clay: dict, local, t: float, stack=()) -> str:
     """The bone a spot on the clay (as drawn at time t) belongs to: the nearest posed segment."""
-    return _ik().bone_at(clay, list(local), t) or ""
+    return _ik().bone_at(clay, list(local), t, stack) or ""
 
 
-def solve(clay: dict, bone: str, local, to, holds: list[str], t: float) -> dict:
+def solve(clay: dict, bone: str, local, to, holds: list[str], t: float, stack=()) -> dict:
     """The turns that bring the grabbed spot (`local`, on `bone`, as drawn at t) to `to`, from the clay as given (the
     press-time clay: each move solves from the same start, so the release keys exactly what the last move showed)."""
-    out = _ik().solve(clay, bone, list(local), list(to), holds=list(holds), t=t)
+    out = _ik().solve(clay, bone, list(local), list(to), holds=list(holds), t=t, stack=stack)
     turns = out.get("turns", out) if isinstance(out, dict) else out
     return {b: {k: float(v[k]) for k in TURN} if isinstance(v, dict) else dict(zip(TURN, map(float, v)))
             for b, v in turns.items()}
 
 
-def chain_pose(clay: dict, turns: dict, t: float) -> list:
+def chain_pose(clay: dict, turns: dict, t: float, stack=()) -> list:
     """The `clay_pose` payload: one 12-number bone move per bone, the clay as at t with the bones in `turns` turned so."""
-    return _ik().chain_pose(clay, turns, t)
+    return _ik().chain_pose(clay, turns, t, stack)
 
 
 def held(clay: dict) -> list[str]:
@@ -71,10 +80,11 @@ def send_pose(link, item: str, pose: list, then) -> None:
 
 
 # --- the document's calls (each list one undo step where the screen applies it)
-def key_calls(turns: dict, t: float, clay: dict | None = None) -> list[dict]:
+def key_calls(turns: dict, t: float, clay: dict | None = None, layer: str = "", stack=()) -> list[dict]:
     """A drag's release: what pose.drag keys (pose_ik.drag_keys): the Turn of every bone that moved at t, and a bone
-    keyed for the first time keeps its old turn at the clay's other key times."""
-    keys = _ik().drag_keys(clay, turns, t) if clay is not None else [(b, k, t, v[k]) for b, v in turns.items() for k in TURN]
+    keyed for the first time (on the chosen `layer`, "" the Base) keeps its old turn at the clay's other key times.
+    The values are what the drag shows; the window's route puts them on the chosen layer as its keys."""
+    keys = _ik().drag_keys(clay, turns, t, layer=layer, stack=stack) if clay is not None else [(b, k, t, v[k]) for b, v in turns.items() for k in TURN]
     return [{"op": "key.add", "target": [b], "args": {"prop": k, "v": round(v, 6), "t": at}} for b, k, at, v in keys]
 
 
@@ -96,8 +106,10 @@ def find_calls(item: str, names: str | None = None) -> list[dict]:
     return [{"op": "pose.find_joints", "target": [item], "args": {"names": names} if names else {}}]
 
 
-def rest_calls(item: str, at: float | None = None) -> list[dict]:
-    return [{"op": "pose.rest", "target": [item], "args": {} if at is None else {"at": at}}]
+def rest_calls(item: str, at: float | None = None, layer: str = "") -> list[dict]:
+    """Back to rest: on the chosen animation `layer` ("" the Base) only that layer's turns."""
+    args = {**({} if at is None else {"at": at}), **({"layer": layer} if layer else {})}
+    return [{"op": "pose.rest", "target": [item], "args": args}]
 
 
 def hold_calls(item: str, rest=None, bone: str = "", off: bool = False) -> list[dict]:

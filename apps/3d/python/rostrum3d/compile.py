@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, shot_layer, copies_fields, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_scene, shot_layer, copies_fields, copies_path, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -92,9 +92,20 @@ def _rig_node(item: dict, fr: _Frames) -> dict:
     return node
 
 
+def _up(world) -> list[float]:
+    """A transform's own +Y in the world, unit length (a plane effector's wall faces it)."""
+    v = [row[1] for row in world[0]]
+    n = sum(c * c for c in v) ** 0.5
+    if n < 1e-12:
+        raise ValueError("a plane effector's near item is scaled to zero, so its wall faces nowhere")
+    return [round(c / n, 6) for c in v]
+
+
 def _effector(item: dict, copies: dict, fr: _Frames) -> dict:
     """One effector as the core wants it: its settings at the start, its centre (the near item's world origin, or the
-    copies item's own when it names none) and every keyed number baked per frame (ENGINE_CONTRACT § 2, copies)."""
+    copies item's own when it names none) and every keyed number baked per frame (ENGINE_CONTRACT § 2, copies). A field
+    other than the sphere sends `field` (and noise its `seed`, a plane the `normal`: the near item's up, per frame like
+    the centre); a sphere sends neither, so older scenes read the same."""
     id_, near = item["id"], item.get("near") or copies["id"]
     if near not in fr.items:
         raise ValueError(f'{id_}: is near "{near}", which is not an item')
@@ -109,6 +120,15 @@ def _effector(item: dict, copies: dict, fr: _Frames) -> dict:
         anim["colour"] = colours
     if any(c != centres[0] for c in centres):
         anim["centre"] = centres
+    if v0["field"] != "sphere":
+        node["field"] = v0["field"]
+    if v0["field"] == "noise":
+        node["seed"] = int(v0["seed"])
+    if v0["field"] == "plane":
+        normals = [_up(fr.world(near, f)) for f in fr.frames]
+        node["normal"] = normals[0]
+        if any(n != normals[0] for n in normals):
+            anim["normal"] = normals
     if anim:
         node["anim"] = anim
     return node
@@ -128,6 +148,14 @@ def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
         node["props"].pop("varyStart", None)
     if node["props"]["layout"] != "pour":                       # a pour's own, likewise
         for k in copies_fields.POUR_KEYS:
+            node["props"].pop(k, None)
+    if node["props"]["layout"] == "path" and not node["props"]["path"]:   # no path picked yet: nothing to draw
+        node["props"].update(layout="line", visible=False)
+        node.get("anim", {}).pop("visible", None)
+    if node["props"]["layout"] == "path":                       # the path's points, once (copies_path.py)
+        node["props"]["pathPoints"], node["props"]["pathClosed"] = copies_path.points(item, fr)
+    else:
+        for k in copies_fields.PATH_KEYS:
             node["props"].pop(k, None)
 
 

@@ -13,7 +13,7 @@ from rostrum_core.tree import index
 from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 from rostrum2d.scene_keep import Keeper
 
-from . import bounds, colour_feed, drag_cancel, outline, picture_change, route, screen_seen
+from . import bounds, colour_feed, drag_cancel, layers2d, outline, picture_change, route, screen_seen
 from .scrub_ahead import ScrubAhead
 from .drags import DragSlots
 from .panel_hold import PanelHold
@@ -91,6 +91,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
         super().__init__(doc, parent=parent)
+        self._anim_layers = layers2d.make(self)             # the timeline's animation layers (layers2d.py)
         self._outline_paced = news.OnceAFrame(self.outlineChanged.emit, self)   # a drag's steps (_on_doc)
         self._outline_news = OutlineNews(self)              # a change's or a pick's: the frame after (outline_news.py)
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
@@ -169,6 +170,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
     cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)
+    animLayers = Property(QObject, lambda self: self._anim_layers, constant=True)   # QML: backend.animLayers (layers2d.py)
 
     def open_item(self, item_id):
         """Undo / Redo of a step that reached Sound's song (Add a sound here): the song opened live (project_sound)."""
