@@ -48,9 +48,26 @@ constexpr double kPlastic = 1100;      // kg/m³: "Mass from size, as solid plas
 constexpr double kGravity = 9.81;
 constexpr int kStepsPerSecond = 240;   // physics steps; a 24 fps frame is 10 of them
 constexpr int kMaxHullPoints = 4000;   // more points than this are thinned (the hull keeps at most 256 anyway)
-constexpr JPH::ObjectLayer kStill = 0, kMoving = 1;
-constexpr int kClothIterations = 8;
-constexpr double kBendSoftest = 6.5, kBendRange = 6;  // bend compliance 10^(softest - range × Stiffness) × weight × edge²    // a cloth's solver passes per physics step (each a sub-step)
+// A cloth's points keep half a grid square off what they touch (cloth_gap below: a box corner shows through less), which on
+// the flat ground left every hem lying a centimetre above the floor, lit underneath (3E Drape: "a notch in the front hem").
+// So a cloth meets its own ground, lower by that much, and the rigid bodies the real one: kGround and kClothGround.
+constexpr JPH::ObjectLayer kStill = 0, kMoving = 1, kGround = 2, kCloth = 3, kClothGround = 4;
+bool meets(JPH::ObjectLayer a, JPH::ObjectLayer b) {
+  switch (a) {
+    case kStill: return b == kMoving || b == kCloth;
+    case kMoving: return b == kStill || b == kMoving || b == kGround || b == kCloth;
+    case kGround: return b == kMoving;
+    case kCloth: return b == kStill || b == kMoving || b == kClothGround;
+    case kClothGround: return b == kCloth;
+    default: return false;
+  }
+}
+constexpr int kClothIterations = 8;   // a cloth's solver passes per physics step (each a sub-step)
+constexpr double kBendSoftest = 6.5, kBendRange = 6;  // bend compliance 10^(softest - range × Stiffness) × weight × edge² …
+// … but never softer than 10^kBendGrid (the two added as springs in a row): softer than that, a fold is tighter than the
+// grid can draw and crumples into it (3E Drape at Stiffness 0.1: a zipper of dimples along each fold, a scalloped hem on the
+// floor; the same scene at 10^4.4 folded clean). Card and cotton keep about their bend, silk folds as finely as the grid allows.
+constexpr double kBendGrid = 4.6;
 constexpr double kClothGap = 0.002;    // m: how far a cloth's points keep off what they touch (no flicker on a plinth)
 constexpr double kTear = 4;            // an edge stretched past this many times its length: the cloth came apart
 
@@ -67,7 +84,7 @@ class Layers final : public JPH::BroadPhaseLayerInterface {
  public:
   JPH::uint GetNumBroadPhaseLayers() const override { return 2; }
   JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer l) const override {
-    return JPH::BroadPhaseLayer(JPH::BroadPhaseLayer::Type(l));
+    return JPH::BroadPhaseLayer(JPH::BroadPhaseLayer::Type(l == kMoving || l == kCloth ? 1 : 0));  // moving : still
   }
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
   const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer l) const override { return l.GetValue() ? "moving" : "still"; }
@@ -77,13 +94,13 @@ class Layers final : public JPH::BroadPhaseLayerInterface {
 class LayerVsBroad final : public JPH::ObjectVsBroadPhaseLayerFilter {
  public:
   bool ShouldCollide(JPH::ObjectLayer o, JPH::BroadPhaseLayer b) const override {
-    return o == kMoving || b.GetValue() == kMoving;
+    return o == kMoving || o == kCloth || b.GetValue() == 1;
   }
 };
 
 class LayerPairs final : public JPH::ObjectLayerPairFilter {
  public:
-  bool ShouldCollide(JPH::ObjectLayer a, JPH::ObjectLayer b) const override { return a == kMoving || b == kMoving; }
+  bool ShouldCollide(JPH::ObjectLayer a, JPH::ObjectLayer b) const override { return meets(a, b); }
 };
 
 double span(const std::vector<V3>& pts, V3* lo_out = nullptr, V3* hi_out = nullptr) {
@@ -293,10 +310,23 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     for (int q = 0; q < 3; ++q) edge += dist(c.points[size_t(t[q])], c.points[size_t(t[(q + 1) % 3])]) * k;
   edge /= double(3 * c.triangles.size());
   const float stretch = float(0.02 * (1 - st) * base), shear = float(1e-6 * w);
-  const float bend = float(std::pow(10.0, kBendSoftest - kBendRange * st) * w * edge * edge);
+  const double asked = std::pow(10.0, kBendSoftest - kBendRange * st), finest = std::pow(10.0, kBendGrid);
+  const float bend = float(asked * finest / (asked + finest) * w * edge * edge);
   using SS = JPH::SoftBodySharedSettings;
   const SS::VertexAttributes va(stretch, shear, bend, held ? SS::ELRAType::EuclideanDistance : SS::ELRAType::None, 1.03f);
   s->CreateConstraints(&va, 1, SS::EBendType::Dihedral);
+  // each fold line's share by its shape (a discrete shell's bending, stiffness ∝ edge² over the two triangles' area): Jolt
+  // gives every edge one compliance, so the grid's diagonals (√2 longer, the same area) bent twice as easily as its rows and
+  // columns, and folds ran along them in zigzags (3E Drape: dimples along the folds and a scalloped hem). A row edge of the
+  // grid keeps the compliance above.
+  for (SS::DihedralBend& b : s->mDihedralBendConstraints) {
+    const JPH::Float3 &x0 = s->mVertices[b.mVertex[0]].mPosition, &x1 = s->mVertices[b.mVertex[1]].mPosition,
+                      &x2 = s->mVertices[b.mVertex[2]].mPosition, &x3 = s->mVertices[b.mVertex[3]].mPosition;
+    const JPH::Vec3 p0(x0), p1(x1), p2(x2), p3(x3), e = p1 - p0;
+    const float areas = 0.5f * ((p2 - p0).Cross(e).Length() + (p3 - p0).Cross(e).Length());  // the two triangles
+    const float e2 = e.LengthSq();
+    if (e2 > 0 && areas > 0) b.mCompliance *= areas / e2;
+  }
   s->Optimize();
   return s;
 }
@@ -372,7 +402,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   double floor = 1e30;
   if (setup.ground) {
     JPH::BodyCreationSettings g(new JPH::BoxShape(JPH::Vec3(1e4f, 1.0f, 1e4f)),
-                                JPH::RVec3(0, setup.groundY * k - 1.0, 0), JPH::Quat::sIdentity(), JPH::EMotionType::Static, kStill);
+                                JPH::RVec3(0, setup.groundY * k - 1.0, 0), JPH::Quat::sIdentity(), JPH::EMotionType::Static, kGround);
     g.mFriction = 0.6f;
     g.mRestitution = 0.2f;
     bi.CreateAndAddBody(g, JPH::EActivation::DontActivate);
@@ -471,6 +501,23 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     return std::max(kClothGap, e[e.size() / 2] * 0.6);  // 0.6 of a grid square: half let a sharp box corner poke through the 96-grid sheet
   };
 
+  // the cloths' ground (kClothGround), lower than the ground by their contact gap less kClothGap, so a hem lies kClothGap
+  // above the floor. The least gap of them all: a cloth with a larger one lies a little higher, never in the floor.
+  if (setup.ground && !cloths.empty()) {
+    double least = 1e30;
+    for (const Cloth& cl : cloths) least = std::min(least, cloth_gap(cl));
+    JPH::BodyCreationSettings g(new JPH::BoxShape(JPH::Vec3(1e4f, 1.0f, 1e4f)),
+                                JPH::RVec3(0, (setup.groundY - (least - kClothGap)) * k - 1.0, 0), JPH::Quat::sIdentity(),
+                                JPH::EMotionType::Static, kClothGround);
+    // and slippery: a sheet lands on the floor on the air it pushes out from under it, and its hem slides out flat. At the
+    // ground's 0.6 the hem stuck where it first touched and every fold it landed with stood up in an arch (3E Drape's
+    // scalloped hem: 2-8 cm arches along 30 % of the hem; the cloth at Friction 0.1 lay flat). 0.1 meets a cloth's 0.6 as
+    // about 0.25 (Jolt multiplies them under a root); a box or a plinth keeps the cloth's own grip.
+    g.mFriction = 0.1f;
+    g.mRestitution = 0.2f;
+    bi.CreateAndAddBody(g, JPH::EActivation::DontActivate);
+  }
+
   const int frames = setup.end - setup.start + 1;
   const int steps = std::max(1, int(std::ceil(kStepsPerSecond / setup.fps)));
   const float dt = float(1.0 / setup.fps / steps);
@@ -485,7 +532,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   for (size_t c = 0; c < cloths.size(); ++c) {
     const Cloth& cl = cloths[c];
     JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
-                                     JPH::Quat::sIdentity(), kMoving);
+                                     JPH::Quat::sIdentity(), kCloth);
     sb.mNumIterations = kClothIterations;
     sb.mFriction = float(std::max(0.0, cl.friction));
     sb.mRestitution = 0.0f;

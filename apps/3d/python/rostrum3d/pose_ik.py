@@ -308,10 +308,13 @@ def held_bones(clay: dict) -> list[str]:
     return [r.ids[n] for n in sorted(r.held(clay.get("holds") or []))]
 
 
-def drag_keys(clay: dict, turns: dict, t: float) -> list[tuple[str, str, float, float]]:
+def drag_keys(clay: dict, turns: dict, t: float, fill: bool = True) -> list[tuple[str, str, float, float]]:
     """The keys a drag at time t writes: (bone id, rx|ry|rz, time, degrees). A drag changes only its own moment: a
     bone keyed for the first time also gets its turn from before the drag keyed at every other time the clay's bones
-    have Turn keys (else its one key would hold for the whole shot, and the pose already keyed there would change)."""
+    have Turn keys (else its one key would hold for the whole shot, and the pose already keyed there would change).
+    fill=False (a script's .bend / .pose: the script states each joint's keys itself) writes the given keys only: the
+    fill pinned a joint keyed later in the script at rest on every time keyed before it (gaps6: bend("arm.L", {0.8: …})
+    after a keyed wave held the arm out at rest until the wave's last key)."""
     bones, stack = [], list(clay.get("bones", []))
     while stack:
         b = stack.pop()
@@ -321,7 +324,7 @@ def drag_keys(clay: dict, turns: dict, t: float) -> list[tuple[str, str, float, 
                     if k.get("prop") in TURN and abs(float(k["t"]) - t) > 1e-9})
     out = []
     for b in bones:
-        if b["id"] in turns and not any(k.get("prop") in TURN for k in b.get("keys", [])):
+        if fill and b["id"] in turns and not any(k.get("prop") in TURN for k in b.get("keys", [])):
             out += [(b["id"], p, T, float(b.get(p, 0.0))) for T in times for p in TURN]
     out += [(id_, p, t, float(turn[p])) for id_, turn in turns.items() for p in TURN]
     return out

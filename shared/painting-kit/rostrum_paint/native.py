@@ -30,7 +30,10 @@ def lib_path() -> Path:
         return Path(env)
     target = Path(__file__).resolve().parents[3] / "apps" / "2d" / "engine" / "target"
     from rostrum_core import builds
-    return builds.newest([target / p / _NAME for p in ("release", "agent")], "the native stamper") or target / "agent" / _NAME
+    from rostrum_core.engine_copy import run_exe
+    found = builds.newest([target / p / _NAME for p in ("release", "agent")], "the native stamper")
+    # loaded from a run copy: a library held open by a running 2D server would make cargo fail with "file in use"
+    return run_exe(found, "2d-stamp", target) if found else target / "agent" / _NAME
 
 
 def _lib():
