@@ -17,6 +17,7 @@ from pathlib import Path
 PART_FRAMES = 300            # frames per part of a video file (10 s at 30 fps): at most this many are drawn again after a restart
 RESTARTS = 2                 # engine restarts one export may take; one more failure fails it
 PACE_FRAMES = 30             # the recent frames whose pace gives the time left
+COUNTS = ("samples", "stillPieces", "repeatedFrames")    # the timing's counts, added up over the parts like its seconds
 
 
 def run(eng, req: dict, progress, send) -> dict:
@@ -145,7 +146,7 @@ def _merged(replies: list[dict], total: int | None) -> dict:
     timing = {}
     for r in replies:
         for key, v in (r.get("timing") or {}).items():
-            if isinstance(v, (int, float)) and key.endswith("S"):
+            if isinstance(v, (int, float)) and (key.endswith("S") or key in COUNTS):
                 timing[key] = timing.get(key, 0) + v
             elif key == "maxMs":
                 timing[key] = max(timing.get(key, 0), v)

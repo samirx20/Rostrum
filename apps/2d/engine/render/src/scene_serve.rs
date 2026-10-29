@@ -306,6 +306,20 @@ pub(crate) struct Staged {
 }
 
 impl Staged {
+    /// What the frame's picture is made from, as a 128-bit hash of its stage, motion-blur samples and their grouping: a
+    /// frame is a function of these alone (its time enters only through them: keys, grain's frame, a video's picture),
+    /// so two frames with the same print are the same picture (export_crew.rs repeats it).
+    pub(crate) fn print(&self) -> u128 {
+        use std::hash::{Hash, Hasher};
+        let half = |salt: u8| {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            salt.hash(&mut h);
+            (&self.pieces, &self.samples, &self.bases).hash(&mut h);
+            h.finish() as u128
+        };
+        half(0) << 64 | half(1)
+    }
+
     /// A frame's own pieces, not motion-blurred (the world picture's page, scene_world.rs).
     pub(crate) fn of(t: f64, pieces: Vec<String>) -> Staged {
         Staged { t, pieces, samples: vec![], bases: vec![], eval_ms: 0.0 }

@@ -79,3 +79,36 @@ fn a_gradient_of_no_size_in_a_tilted_flipped_group_exports() {
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(reply.unwrap()["frames"].as_u64(), Some(6));
 }
+
+/// A frame whose stage is the frame before's is not drawn: the encoder gets that picture again. Every frame the encoder
+/// gets, repeats included, is the picture the same frame exports as a PNG (drawn on its own), so a still stretch costs
+/// nothing and changes no pixel. A shape slides for 0.3 s, then everything holds.
+#[test]
+fn a_still_frame_is_the_frame_before_again_and_the_same_picture() {
+    let mut s0 = item("s0", "shape", json!({ "x": 40.0, "y": 60.0, "w": 60.0, "h": 40.0, "fill": "#ff3300" }));
+    s0["anim"] = json!({ "x": [{ "t": 0.0, "v": 40.0 }, { "t": 0.3, "v": 160.0 }] });
+    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 1.0, "background": "#101418" }));
+    comp["layers"] = json!([s0, item("s1", "shape", json!({ "x": 200.0, "y": 160.0, "w": 80.0, "h": 50.0, "fill": "#33ccff" }))]);
+    let (mut held, mut session) = (Held::default(), None);
+    load(&mut held, &mut session, &mut None, &json!({ "scene": { "format": FORMAT, "version": VERSION, "comp": comp }, "cpu": true })).unwrap();
+    let s = session.as_mut().unwrap();
+    let dir = std::env::temp_dir().join(format!("rostrum-repeat-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let images = dir.join("f-{frame}.png").to_string_lossy().into_owned();
+    crate::scene_export::export(&held, s, &json!({ "images": images, "workers": 2 }), &mut |_| {}).unwrap();
+    let kept = std::sync::Arc::new(std::sync::Mutex::new(vec![]));
+    s.sink = Some(crate::sink::Sink::kept(kept.clone()));
+    let span = crate::export_crew::Span { start: 0.0, fps: 30.0, n: 30 };
+    let (rows, _, _) = crate::export_crew::draw_all(&held, s, &json!({}), span, 3, &mut |_| {}).unwrap();
+    crate::serve::finish(s).unwrap();
+    let repeated = rows.iter().filter(|r| r.repeat).count();
+    assert!(repeated >= 18, "only {repeated} of the 20 still frames were repeated");
+    assert!(rows.iter().take(10).all(|r| !r.repeat), "a moving frame was repeated");
+    let kept = kept.lock().unwrap();
+    assert_eq!(kept.iter().map(|k| k.0).collect::<Vec<_>>(), (0..30).collect::<Vec<u32>>());
+    for (i, (_, bytes)) in kept.iter().enumerate() {
+        let png = image::open(dir.join(format!("f-{i:04}.png"))).unwrap().to_rgba8();
+        assert!(png.as_raw() == bytes, "frame {i}: the encoder's picture is not the frame's own");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
