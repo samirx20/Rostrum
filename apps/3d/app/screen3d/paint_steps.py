@@ -5,7 +5,9 @@
     (a Brush row: brush, size, color, opacity) | paint-where surface|view (On the surface | From the view) |
     paint-tint (the coverage tint on / off) | paint-how stroke|stamp (Brush | Stamp, on a Relief layer) |
     paint-load <picture file> (the stamp's Picture › Load picture…, the file handed in as its dialog would) |
-    paint-click <x> <y> (a real left click on the viewport there, in parts of it: a Stamp) | paint-drag <x0> <y0> <x1> <y1> [steps] [<x2> <y2> …] (a real left
+    paint-click <x> <y> (a real left click on the viewport there, in parts of it: a Stamp) |
+    paint-layer-set fill|fillColor|shapeMask|maskSpread|maskInvert <value> (a chosen layer's row; waits for a mask
+    being found) | paint-drag <x0> <y0> <x1> <y1> [steps] [<x2> <y2> …] (a real left
     drag on the window through those points of the viewport, in parts of it, 0..1; each move waits for its pick)
 """
 from __future__ import annotations
@@ -51,6 +53,17 @@ def do(bridge, win, word, rest):
         from pathlib import Path
         if not pm.brush.loadChoice("texture", str(Path(rest[0]).resolve())):
             raise RuntimeError(f"paint-load: {rest[0]} was refused ({bridge.status})")
+    elif word == "paint-layer-set":
+        name, raw = rest[0], rest[1]
+        value = raw == "true" if name in ("fill", "maskInvert") else float(raw) if name == "maskSpread" else raw
+        if not pm.layerRows.setValue(name, value):
+            raise RuntimeError(f"paint-layer-set: {name} {raw} was refused ({bridge.status})")
+        end = time.monotonic() + 120
+        while pm.layerRows.busy:                        # a mask found off the window's thread
+            if time.monotonic() > end:
+                raise RuntimeError("paint-layer-set: the mask was not found in time")
+            QCoreApplication.processEvents()
+            time.sleep(0.02)
     elif word == "paint-tint":
         pm.coverage.toggle()
     elif word == "paint-channel":

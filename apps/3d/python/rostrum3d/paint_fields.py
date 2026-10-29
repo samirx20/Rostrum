@@ -64,6 +64,28 @@ LAYER = [
                       "sits over the material's own value where painted"),
 ]
 
+MASKS = {"none": "None", "edges": "Edges", "cavities": "Cavities", "up": "Facing up", "thin": "Thin parts"}
+MASKED = {"not": {"is": ["shapeMask", "none"]}}
+FILLED = {"is": ["fill", True]}
+LAYER += [
+    Param.toggle("fill", label="Fill", group="Fill", default=False, importance=S,
+                 help="The layer covers the whole surface with `fillColor` (its strokes go on top): a whole material "
+                      "(a metal, a dust, a paint), shown where its Mask is"),
+    Param.color("fillColor", label="Fill colour", group="Fill", default="#ffffff", importance=S, valid_when=FILLED,
+                help="What a filled layer covers the surface with: a colour, or for Roughness, Relief and Metal its grey "
+                     "(white = rough, raised, metal)"),
+    Param.choice("shapeMask", list(MASKS), label="Mask", group="Mask", default="none", importance=S, labels=MASKS,
+                 help="Where the layer shows, from the item's own shape (paint_masks.py): Edges (convex edges and "
+                      "corners: wear), Cavities (creases and hollows: grime), Facing up (dust), Thin parts (light "
+                      "through ears and leaves); none = everywhere it is painted. With Fill on, the layer is a whole "
+                      "material shown only there"),
+    Param.number("maskSpread", label="Spread", group="Mask", min=0, max=1, step=0.01, default=0.5, display="percent",
+                 importance=S, valid_when=MASKED, help="How far the mask reaches: 0 = only its strongest part, "
+                                                       "100 % = as far as it goes"),
+    Param.toggle("maskInvert", label="Invert", group="Mask", default=False, importance=S, valid_when=MASKED,
+                 help="Everywhere but the mask (not on the edges, not on top …)"),
+]
+
 SIZE = Param.number("paintSize", label="Paint size", group="Paint", min=256, max=8192, step=256, unit="px", integer=True,
                     default=2048, importance=D, valid_when=PAINTED,
                     help="The side of the square picture the paint is kept in, laid on the unfolded surface")

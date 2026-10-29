@@ -7,7 +7,8 @@ import RostrumKit
 // Colour, Roughness, Relief, Metal, Glow); then Paint layers, top first, + for a new one; each row: its eye, its name
 // (click: paint on it), what it paints. A drag on the viewport paints on the active layer, one undo step per stroke.
 // Only what applies now is shown: Paints only with a layer to set it on; Brush | Stamp only on a Relief layer (Stamp:
-// the rows become Picture (+ Load picture…), Size, Depth, Turn, and a click lays the whole picture once). B or Esc leaves.
+// the rows become Picture (+ Load picture…), Size, Depth, Turn, and a click lays the whole picture once). Under Paints,
+// the chosen layer's Fill (and its colour) and Mask (Spread, Invert only while one is chosen). B or Esc leaves.
 Item {
     Flickable {
         id: flick
@@ -51,6 +52,10 @@ Item {
                 ChoiceField { objectName: "paintChannel"; width: parent.width - 72 - Theme.grid
                               options: paintMode.channels; current: paintMode.activeChannel
                               onPicked: (v) => paintMode.setChannel(v) }
+            }
+            Repeater {   // the chosen layer's Fill (+ its colour) and Mask (+ Spread, Invert while one is chosen)
+                model: paintMode.activeChannel !== "" ? paintMode.layerRowsObj.rows : null
+                delegate: InspectorRow { width: col.width; bridge: paintMode.layerRowsObj; instant: paintMode.layerRowsObj.rows.instant }
             }
 
             Item { width: 1; height: Theme.grid }

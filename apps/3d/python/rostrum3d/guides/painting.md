@@ -23,6 +23,9 @@ sculpt the clay again afterwards (see "Painting on clay").
    - **Paints**: what the active layer paints. **Colour**; **Roughness** (white = rough and dull, black = mirror);
      **Relief** (middle grey = flat, white = raised, black = sunk: fine detail such as wrinkles, pores and scratches); **Metal** (white =
      metal); **Glow** (its colours give off light).
+   - Under Paints, the chosen layer's **Fill** and **Mask** (see "Wear and dust: automatic masks" below). **Fill**
+     covers the whole model with the layer's **Fill colour**; **Mask** shows the layer only on Edges, Cavities,
+     Facing up or Thin parts; **Spread** and **Invert** appear once a mask is chosen.
    - **▨** beside the layers' **+**: the coverage tint. Every surface the shot's camera sees and nothing paints yet
      gets a faint orange hatch (on the screen only, never in Final or a render), and the line under it says how much
      is done: "Seen by Hero 01: 62 % painted". The first tint from a new view takes a few seconds ("tinting…").
@@ -85,6 +88,33 @@ scale pattern, a stitched seam, a coin's face.
    again (drag does nothing more while stamping). On a clay the stamp stays on its spot when you sculpt the clay again.
 4. Shift+F (Final): Relief shows in Final and in the render. Too strong: undo, lower Depth, click again.
 
+## Wear and dust: automatic masks
+
+A layer can show only where the model's own shape says: on its **Edges** (the sharp outside edges and corners, where
+paint wears off first), in its **Cavities** (creases, hollows and inside corners, where dirt gathers), where it is
+**Facing up** (where dust settles), or on its **Thin parts** (ears, fins, leaves: where light shines through). Rostrum
+works these out from the shape by itself; nothing is painted by hand. They follow a clay when you sculpt it again.
+
+1. Select the model, press **B**, click **+** next to Paint layers and set **Paints**.
+2. Switch **Fill** on: the layer covers the whole model with its **Fill colour** (the brush colour when you switched
+   it on; change it in its row). For Roughness, Relief and Metal the colour's grey is the value (white = rough,
+   raised, metal).
+3. Pick a **Mask**. The first time on a model it takes a moment ("Finding edges…" on the message line); after that it
+   is instant. The layer now shows only there.
+4. **Spread**: how far the mask reaches (low = only the sharpest edges, the very top; high = wider). **Invert**:
+   everywhere except there (paint that survives only in the recesses).
+5. Brush strokes on the same layer are masked too: paint more wear by hand where you want it, only on edges.
+
+Examples (each one layer; stack them):
+- **Worn paint on a metal case**: a **Metal** layer, Fill white, Mask **Edges**, Spread about 40 %. Under the paint
+  colour the bare metal shows along the edges.
+- **Dust**: a **Colour** layer, Fill a light warm grey, Mask **Facing up**, Opacity about 50 %. Add a **Roughness**
+  layer the same way (Fill light grey) so the dust is dull too.
+- **Grime in the cracks**: a **Colour** layer, Fill a dark brown, Mask **Cavities**.
+
+A mesh laid flat for painting before masks existed has no shape kept for them: the message line says so. Laying it
+flat again (`mesh.unfold`) fixes it, but moves the strokes already painted on it, so do it before painting.
+
 ## How to: a roughness scuff on a glossy lid
 
 1. Select the lid, press **B**.
@@ -130,6 +160,13 @@ scale pattern, a stitched seam, a coin's face.
   it faces straight up or down), worked out again each time the clay is reshaped; with `point` the paint picture's
   up. It goes on the item's top Relief layer (`layer` to choose one), made when there is none. It is one stroke of one dab, so `inspect_paint_strokes` and
   `look_frame what "paint"` see it like any stroke.
+- **Automatic masks and fills** are paint layer settings (`paint.add` or `paint.set` on the layer, one undo step
+  each): `fill: true` with `fillColor` covers the whole surface (a whole material on one layer); `shapeMask`:
+  `edges`, `cavities`, `up` (facing the item's own +Y), `thin` (or `none`), with `maskSpread` (0..1, how far it
+  reaches, default 0.5) and `maskInvert`. Strokes on a masked layer are masked too. The masks are worked out from the
+  shape once per shape (a clay's surface, a mesh's built mesh kept when it was unfolded: a mesh unfolded before this
+  must be unfolded again) and kept; the first one on a big clay takes a few seconds. They are tools: what is worn or
+  dusty is your layer's colour and value. Check with `look_frame` (Final) from the shot.
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.
 

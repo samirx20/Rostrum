@@ -26,7 +26,7 @@ import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_paint import canvas, library
 
-from . import clay_paint, paint_bleed, paint_view, stamp_turn
+from . import clay_paint, paint_bleed, paint_masks, paint_view, stamp_turn
 from .material_fields import DOC_ONLY, MATERIAL
 from .paint_fields import CHANNELS
 
@@ -98,11 +98,13 @@ def _over(dst: np.ndarray, src: np.ndarray, opacity: float = 1.0) -> np.ndarray:
     return np.concatenate([np.where(out_a > 1e-6, rgb, 0), out_a], axis=-1)
 
 
-def _paint_rgba(held: dict, size: int, splats: dict) -> np.ndarray:
-    """The channel's layers as size × size × 4 straight RGBA uint8 (the kit's own bytes when nothing is projected). A
-    projected layer is its picture with its own strokes over it, laid normally over what is below (the layers between
-    projected ones: the kit's, as one)."""
-    if not splats:
+def _paint_rgba(held: dict, size: int, splats: dict, masked: dict | None = None) -> np.ndarray:
+    """The channel's layers as size × size × 4 straight RGBA uint8 (the kit's own bytes when nothing is projected or
+    masked). A projected layer is its picture with its own strokes over it, a masked one its paint (its ground, its
+    strokes) times its mask (`masked`: {layer id: size × size 0..1}), each laid normally over what is below (the layers
+    between them: the kit's, as one)."""
+    masked = masked or {}
+    if not splats and not masked:
         return canvas.rgba8(held, size, size)
     out, run = np.zeros((size, size, 4), np.float32), []
 
@@ -112,35 +114,41 @@ def _paint_rgba(held: dict, size: int, splats: dict) -> np.ndarray:
             out = _over(out, canvas.rgba8({**held, "paints": list(run)}, size, size).astype(np.float32) / 255)
             run.clear()
     for layer in held["paints"]:
-        if layer["id"] not in splats:
+        if layer["id"] not in splats and layer["id"] not in masked:
             run.append(layer)
             continue
         flush()
         if layer.get("visible", True) and layer.get("opacity", 1) > 0:
             own = canvas.layer_rgba(held, layer["id"], size, size).astype(np.float32) / 255
-            out = _over(out, _over(splats[layer["id"]], own), float(layer.get("opacity", 1)))
+            if layer["id"] in splats:
+                own = _over(splats[layer["id"]], own)
+            if layer["id"] in masked:
+                own[..., 3] *= masked[layer["id"]]
+            out = _over(out, own, float(layer.get("opacity", 1)))
     flush()
     return (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)
 
 
 def _picture(held: dict, channel: str, layers: list, size: int, under: tuple, surface: str = "", trim=None,
-             splats=None, extra=None, pieces=None) -> Path:
+             splats=None, extra=None, pieces=None, masked=None) -> Path:
     raw = CHANNELS[channel][3]
     held = {"id": held["id"], "paints": layers, "paintmasks": held.get("paintmasks", [])}
     splats = {k: v for k, v in (splats or {}).items() if any(layer["id"] == k for layer in layers)}
     extra = extra or {}
     projected = {k: v for k, v in extra.get("projected", {}).items() if k in splats}
+    masked = {k: v for k, v in (masked or {}).items() if any(layer["id"] == k for layer in layers)}
+    shapes = {k: v for k, v in extra.get("masks", {}).items() if k in masked}
     settings = {"size": size, "channel": channel, "under": list(under),
                 **({"surface": surface, "trim": clay_paint.TRIM} if surface else {}),
                 **({"bleed": extra["bleed"]} if extra.get("bleed") else {}),
-                **({"projected": projected} if projected else {})}
+                **({"projected": projected} if projected else {}), **({"masks": shapes} if shapes else {})}
     key = cache_key("paint.surface", VERSION, [canvas.content_key(held, size, size)], settings)
     if CACHE.get("paint", key):
         return CACHE.path("paint", key) / "surface.png"
 
     def make(tmp: Path):
         from PIL import Image
-        px = _paint_rgba(held, size, splats)              # uint8 throughout: a 2048² picture in float cost ~0.1 s
+        px = _paint_rgba(held, size, splats, masked)              # uint8 throughout: a 2048² picture in float cost ~0.1 s
         a = px[..., 3]
         if trim is not None:                              # a clay's: no spill into other pieces
             a = (np.clip(trim(a[..., None].astype(np.float32) / 255)[..., 0], 0, 1) * 255 + 0.5).astype(np.uint8)
@@ -279,11 +287,20 @@ def _pic_id(pic) -> str:
 
 def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
     """(the kit canvas as drawn, {layer id: projected picture laid on the canvas}, their cache keys) for a job."""
-    held = clay_paint.laid(stamp_turn.upright_on_clay(job["item"], surface), surface) if surface is not None         else job["item"]
+    item = _filled(job["item"])
+    held = clay_paint.laid(stamp_turn.upright_on_clay(item, surface), surface) if surface is not None else item
     if pics:
         held = paint_view.laid(held, pics, job["item"].get("paintSize", 2048))
     splats, keys = _splats(job, pics, held) if job.get("sources") else ({}, {})
     return held, splats, keys
+
+
+def _filled(canvas: dict) -> dict:
+    """`canvas` with each filled layer (paint_fields `fill`) laid as the kit's toned ground of its `fillColor`."""
+    if not any(p.get("fill") for p in canvas.get("paints", [])):
+        return canvas
+    return {**canvas, "paints": [{**p, "ground": p.get("fillColor", "#ffffff")} if p.get("fill") else p
+                                 for p in canvas["paints"]]}
 
 
 def laid_canvas(item: dict, surface_file=None, texels_fn=None, folder=None, scene: dict | None = None) -> tuple[dict, dict]:
@@ -316,7 +333,8 @@ def _apply(scene: dict, node: dict, job: dict, pics: dict) -> None:
     surface = clay_paint.read(node["paint"]["file"]) if "paint" in node else None
     held, splats, splat_keys = _laid(job, surface, pics)
     pieces = paint_bleed.pieces(item, surface, size)
-    extra = {"projected": splat_keys, "bleed": paint_bleed.key(item, surface, size)}
+    masked, mask_keys = _masked(item, surface, size)
+    extra = {"projected": splat_keys, "bleed": paint_bleed.key(item, surface, size), "masks": mask_keys}
     by_channel: dict[str, list] = {}
     for layer in held["paints"]:
         by_channel.setdefault(layer.get("channel", "colour"), []).append(layer)
@@ -327,12 +345,13 @@ def _apply(scene: dict, node: dict, job: dict, pics: dict) -> None:
     def material(mat: dict, base: dict, mid: str) -> None:
         props = dict(base["props"])
         for channel, layers in by_channel.items():
-            trim = None
-            if surface is not None:
+            trim = None       # (a filled layer covers the whole clay: nothing to trim back to its strokes)
+            if surface is not None and not any(layer.get("ground") or layer.get("fill")
+                                               for layer in own_layers.get(channel, [])):
                 trim = lambda a, ls=own_layers.get(channel, []): clay_paint.trim(surface, ls, a)  # noqa: E731
             props[CHANNELS[channel][1]] = str(_picture(held, channel, layers, size, _under(channel, mat),
                                                        surface.key if surface is not None else "", trim, splats,
-                                                       extra, pieces))
+                                                       extra, pieces, masked))
         if "glow" in by_channel and not props.get("emissionStrength"):
             props["emissionStrength"] = 1.0        # painted glow shows at strength 1 on a material that had none
         new = {"id": mid, "props": props}
@@ -348,6 +367,20 @@ def _apply(scene: dict, node: dict, job: dict, pics: dict) -> None:
     if faces:
         node["props"]["faceMaterials"] = [f"{item['id']}__paint__{m}" if m else m
                                           for m in node["props"]["faceMaterials"]]
+
+
+def _masked(item: dict, surface, size: int) -> tuple[dict, dict]:
+    """({layer id: its mask, 0..1, as the layer uses it}, {layer id: what that depends on}) for the masked layers."""
+    layers = [p for p in item.get("paints", []) if p.get("shapeMask", "none") != "none"]
+    if not layers:
+        return {}, {}
+    key, shape = paint_masks.masks(item, surface, size)
+    out, keys = {}, {}
+    for p in layers:
+        spread, invert = float(p.get("maskSpread", 0.5)), bool(p.get("maskInvert", False))
+        out[p["id"]] = paint_masks.levels(shape[p["shapeMask"]], spread, invert)
+        keys[p["id"]] = [key, p["shapeMask"], spread, invert]
+    return out, keys
 
 
 def finish(scene: dict, later: list, texels=None) -> dict:

@@ -162,7 +162,8 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   is in the picture. Beside Paint layers' +, **▨** tints what the shot camera sees and isn't painted yet (a faint
   orange hatch, on the screen only) and the line under it says "Seen by Hero 01: 62 % painted". On a Relief layer,
   **Brush | Stamp**: Stamp turns the rows into Picture (with Load picture…), Size, Depth and Turn, and a click lays the
-  whole picture once (one undo step).
+  whole picture once (one undo step). Under Paints, the chosen layer's **Fill** (and Fill colour) and **Mask** (None,
+  Edges, Cavities, Facing up, Thin parts; Spread and Invert once one is chosen).
 - **Project a picture from <shot>…** (right-click, with several shapes selected or while painting): a rendered 2D item
   of the project (it follows the 2D item: render it again in 2D and the 3D view updates) or a picture file, laid on the
   selected shapes from the shot's camera like a projector; what the camera doesn't see stays unpainted, so turning the

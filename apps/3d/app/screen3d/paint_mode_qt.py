@@ -15,6 +15,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from . import paint_mode as P
 from .coverage_qt import Coverage
 from .paint_brush_qt import PaintBrush
+from .paint_layer_qt import PaintLayerRows
 from .paint_stroke import PaintStroke
 
 
@@ -36,6 +37,7 @@ class PaintMode(PaintStroke, QObject):
         self._anchors, self._moved, self._mpp, self._mpp_screen = [], [0.0, 0.0], None, None   # a clay's (paint_stroke)
         self._where, self._pose, self._holding = "surface", None, False     # From the view: its pose; trail held
         self._how = "stroke"                                                # Brush | Stamp (on a Relief layer)
+        self.layerRows = PaintLayerRows(self, self)             # the chosen layer's Fill and Mask rows
         self.answered.connect(self._on_answer)
         bridge.docChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._on_selection)
@@ -50,6 +52,7 @@ class PaintMode(PaintStroke, QObject):
     activeChannel = Property(str, lambda s: s._layer().get("channel", "colour") if s._layer() else "", notify=changed)
     brushObj = Property(QObject, lambda s: s.brush, constant=True)
     coverageObj = Property(QObject, lambda s: s.coverage, constant=True)   # "Seen by Hero 01: 62 % painted" + tint
+    layerRowsObj = Property(QObject, lambda s: s.layerRows, constant=True)   # the chosen layer's Fill, Mask
     trail = Property("QVariantList", lambda s: s._trail, notify=trailChanged)       # parts of the viewport, 0..1
     cursorRadius = Property(float, lambda s: max(2.0, s.brush.values["size"] / 2 * (1.0 if s._by_view() else s._ratio)),
                             notify=trailChanged)
@@ -68,6 +71,7 @@ class PaintMode(PaintStroke, QObject):
 
     def _sync_stamp(self):
         self.brush.set_stamping(self._stamping())
+        self.layerRows.refresh()                          # (the chosen layer, or its values, changed)
 
     # --- the mesh painted and its layers
     def _item(self):
