@@ -94,7 +94,7 @@ pub(super) fn widest(it: &Item, parent: Aff) -> f64 {
 
 /// A layer's own place, turn and scale (stage.rs `layer`): the anchor point lands on (x, y); the layer turns and scales
 /// about it.
-fn local(it: &Item) -> Aff {
+pub(super) fn local(it: &Item) -> Aff {
     let n = |f: &str, d: f64| it.props.get(f).and_then(serde_json::Value::as_f64).unwrap_or(d);
     let (w, h) = super::smear::size(it).unwrap_or((0.0, 0.0));
     let (ax, ay) = (n("anchorX", 0.5) * w, n("anchorY", 0.5) * h);

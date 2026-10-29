@@ -285,7 +285,7 @@ impl Staged {
             salt.hash(&mut h);
             (&self.pieces, &self.samples).hash(&mut h);
             for st in self.streaks.iter().flatten() {
-                for m in &st.moves {
+                for m in st.moves.iter().chain(st.parts.iter().flat_map(|p| &p.1)) {
                     m.map(f64::to_bits).hash(&mut h);
                 }
             }
@@ -416,9 +416,12 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
         mark("steps", &mut split);
         let held = req["held"].as_bool() == Some(true);
         let reaches = |p: usize| crate::motion::streak::pad(&centre_pieces[p]);
-        let (moves, staged) = if held { (vec![], vec![]) } else { crate::motion::streak::moves(&centre, &at_probes, |p| crate::still_runs::regroups(&centre_pieces[p]), reaches, |id| reused.contains(id)) };
+        let (moves, staged) = if held { (vec![], vec![]) } else { crate::motion::streak::moves(&centre, &at_probes, |p, l| crate::still_runs::keeps(&centre_pieces[p], crate::scene::blends::css(l.str("blend"))), reaches, |id| reused.contains(id)) };
         let moves: Vec<_> = moves.into_iter().map(|m| m.map(|mut m| {
             m.moves = crate::motion::streak::spread(&m.moves, n);
+            for (_, pm) in &mut m.parts {
+                *pm = crate::motion::streak::spread(pm, n);
+            }
             m
         })).collect();
         mark("moves", &mut split);
