@@ -22,6 +22,13 @@
 //! `rostrum2d_stamp_fill(region, row, h, w, c, col)`: a fill's coverage `c` (h×w f32) laid on `h` rows of `w`
 //! RGBA f32 (`row` floats apart) in one colour (`col`, 3 f32), the kit's `marks.apply_paint` (normal, from no coverage)
 //! number for number.
+//!
+//! A wash's drying (the kit's `wash.py`, `wash.rs`), each the kit's numbers: `rostrum2d_stamp_noise(out, h, w, k)` is
+//! `marks._noise` into h×w f32, `k` = origin x, origin y, the step across and down (f64: px per lattice cell), the
+//! seed-and-salt term (its low 32 bits), the knots across and down on a seamless canvas (0 0 otherwise);
+//! `rostrum2d_stamp_blur(a, out, h, w, r)` is `wash._blur`; `rostrum2d_stamp_upsample(small, hc, wc, f, at, out, h, w)`
+//! is `wash._upsample`; `rostrum2d_stamp_wash_mix(kind, n, k, f, out)` one effect's per-pixel steps of `wash.dry`
+//! (`wash::mix`: `f` 4 and `out` 2 pointers, null where unused). 0, or 1 when the arguments make no sense.
 
 mod paint;
 mod tip;
@@ -121,6 +128,7 @@ impl Dab {
 
 mod stroke;
 pub use stroke::lay;
+mod wash;
 
 /// Reads `params` into a Stroke (the slices borrowed from the caller's arrays).
 #[allow(clippy::too_many_arguments)]
@@ -292,6 +300,47 @@ fn fill_row(px: &mut [f32], c: &[f32], col: [f32; 3]) {
         }
         q[3] += inc * (1.0f32 - q[3]);
     }
+}
+
+/// # Safety
+/// `out` points at h×w f32, `k` at 7 f64.
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_noise(out: *mut f32, h: usize, w: usize, k: *const f64) -> i32 {
+    let k = std::slice::from_raw_parts(k, 7);
+    if !(k[2] > 0.0 && k[3] > 0.0) || k[5] < 0.0 || k[6] < 0.0 {
+        return 1;
+    }
+    let out = std::slice::from_raw_parts_mut(out, h * w);
+    wash::noise(out, h, w, [k[0], k[1]], [k[2], k[3]], k[4] as u64, [k[5] as i64, k[6] as i64]);
+    0
+}
+
+/// # Safety
+/// `a` and `out` point at h×w f32 (not the same array).
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_blur(a: *const f32, out: *mut f32, h: usize, w: usize, r: usize) -> i32 {
+    wash::blur(std::slice::from_raw_parts(a, h * w), std::slice::from_raw_parts_mut(out, h * w), h, w, r);
+    0
+}
+
+/// # Safety
+/// `small` points at hc×wc f32, `out` at h×w f32.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn rostrum2d_stamp_upsample(small: *const f32, hc: usize, wc: usize, f: usize, at: f64, out: *mut f32, h: usize, w: usize) -> i32 {
+    if f == 0 {
+        return 1;
+    }
+    wash::upsample(std::slice::from_raw_parts(small, hc * wc), hc, wc, f, at, std::slice::from_raw_parts_mut(out, h * w), h, w);
+    0
+}
+
+/// # Safety
+/// `f` points at 4 pointers and `out` at 2 (see `wash::mix`).
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_wash_mix(kind: u32, n: usize, k: f32, f: *const *const f32, out: *const *mut f32) -> i32 {
+    let (f, out) = (std::slice::from_raw_parts(f, 4), std::slice::from_raw_parts(out, 2));
+    if wash::mix(kind, n, k, f, out) { 0 } else { 1 }
 }
 
 unsafe fn message(e: &str, err: *mut u8, len: usize) -> i32 {

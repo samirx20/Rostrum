@@ -57,6 +57,8 @@ struct Shared {
 /// What an extra worker sends this thread: a drawn frame, then its end (its layers' timings, or its failure).
 enum Msg {
     Row(Row),
+    /// A frame's paint calls for the card thread (`own`): its number in the export, its document number, the calls.
+    Tape(u64, u32, anyrender::Tape),
     Done(Result<Costs, String>),
 }
 /// One drawn frame: its number in the export, ms, the STEPS (ms), motion-blur samples and still pieces.
@@ -92,7 +94,7 @@ impl Span {
 /// encoder's turn's seconds (sink_turn.rs `spent`). `saves`: the segment files the encoder saves, by the export position
 /// each ends at (scene_export.rs `saves`).
 #[allow(clippy::too_many_arguments)]
-pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, saves: HashMap<usize, String>, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64, u64, [f64; 3]), String> {
+pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: usize, saves: HashMap<usize, String>, progress: &mut dyn FnMut(Value)) -> Result<(Vec<Row>, Costs, f64, u64, [f64; 3], Value), String> {
     let html = crate::scene_serve::shell_of(held.scene()?, s.width, s.height)?;
     let like = s.like();
     let turn = match s.sink.take() {
@@ -106,6 +108,11 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
             None
         }
     };
+    // One thread owns the graphics card (`own`): this one, while `workers` others lay frames out and keep their paint calls.
+    let card = turn.is_some() && s.painter.is_gpu() && std::env::var(CARD_VAR).is_ok_and(|v| v.trim() == "1");
+    if let Some(t) = turn.as_ref().filter(|_| card) {
+        t.free_this_thread();
+    }
     let per = budget(s.width, s.height, workers);
     s.painter.set_budget(per);
     let shared = Shared { claim: AtomicU64::new(0), failed: Mutex::new(None), prints: Mutex::new(HashMap::new()), start_us: AtomicU64::new(0), made: AtomicU64::new(0) };
@@ -138,7 +145,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
             shared.start_us.fetch_add(started.elapsed().as_micros() as u64, Ordering::Relaxed);
             ws.painter.set_budget(per);
             ws.sink = turn.clone().map(Sink::turn);
-            let r = share(held, ws, req, span, &shared, &mut |row| send(Msg::Row(row)));
+            let r = share(held, ws, req, span, &shared, card, &mut |m| send(m));
             let r = settle(ws, r);
             ws.sink = None;
             ws.painter.release();
@@ -154,17 +161,25 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
         send(Msg::Done(r));
     };
     let mut pool = std::mem::take(&mut s.pool);
-    let extra = workers - 1;
+    let extra = if card { workers } else { workers - 1 };
+    let mut played = Played::default();
     pool.run(extra, &job, || {
-        let mine = share(held, s, req, span, &shared, &mut |row| {
-            note(row, &mut rows);
-            while let Ok(m) = rx.try_recv() {
-                match m {
-                    Msg::Row(r) => note(r, &mut rows),
-                    Msg::Done(d) => ends.push(d),
+        let mine = if card {
+            own(s, &rx, extra, &shared, &mut played, &mut |row| note(row, &mut rows), &mut ends)
+        } else {
+            share(held, s, req, span, &shared, false, &mut |m| {
+                if let Msg::Row(row) = m {
+                    note(row, &mut rows);
                 }
-            }
-        });
+                while let Ok(m) = rx.try_recv() {
+                    match m {
+                        Msg::Row(r) => note(r, &mut rows),
+                        Msg::Done(d) => ends.push(d),
+                        Msg::Tape(..) => {}
+                    }
+                }
+            })
+        };
         match settle(s, mine) {
             Ok(c) => costs.merge(c),
             Err(e) => fail(&e),
@@ -175,6 +190,7 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
         match m {
             Msg::Row(r) => note(r, &mut rows),
             Msg::Done(d) => ends.push(d),
+            Msg::Tape(..) => fail("export: a frame's paint calls came after the card thread had stopped"),
         }
     }
     let ended = ends.len();
@@ -204,7 +220,73 @@ pub fn draw_all(held: &Held, s: &mut Session, req: &Value, span: Span, workers: 
     if rows.len() as u64 != span.n || rows.iter().enumerate().any(|(k, r)| r.i != k as u64) {
         return Err(format!("export: {} of {} frames were drawn", rows.len(), span.n));
     }
-    Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6, shared.made.load(Ordering::Relaxed), turn_s))
+    let card_v = card.then(|| played.report());
+    Ok((rows, costs, shared.start_us.load(Ordering::Relaxed) as f64 / 1e6, shared.made.load(Ordering::Relaxed), turn_s, card_v.unwrap_or(Value::Null)))
+}
+
+/// `ROSTRUM2D_EXPORT_CARD=1`: one thread owns the card (`own`). Off by default: measured on Haiku's, Opus's and a still
+/// film (2026-10-30, 1080p, 3 workers, two encoder lanes) it tied the workers' own connections at best (Haiku 10.3 vs
+/// 9.8 s, still 5.5 vs 5.6) and lost on Opus (9.5-11.3 vs 7.8-8.5): playing a frame's calls takes the card thread
+/// ~2.4 ms and reading it back as long, one frame after another, where three workers paint side by side.
+const CARD_VAR: &str = "ROSTRUM2D_EXPORT_CARD";
+
+/// What the card thread did (`own`): frames played, and ms spent playing their calls, flushing them to the card and
+/// waiting for read-backs and the encoder; ms it waited for the workers' next tape.
+#[derive(Default)]
+struct Played {
+    frames: u64,
+    ms: [f64; 4],
+}
+
+impl Played {
+    fn report(&self) -> Value {
+        let s = |k: usize| self.ms[k] / 1000.0;
+        json!({ "frames": self.frames, "playS": s(0), "flushS": s(1), "readS": s(2), "idleS": s(3) })
+    }
+}
+
+/// The card thread (this one, on the export's own session): every frame a worker laid out and kept as paint calls is
+/// played here, on one graphics connection that never changes thread, lowest frame first, its read-back overlapping the
+/// next frame's playing (the frames still on the card are sent on whenever no tape is waiting); the frames a worker
+/// painted itself (`Tape::unfit`) and repeats go to the encoder from that worker. Ends when every worker has ended and every tape is played. A tape waiting here is never one a pushing worker
+/// waits for in the encoder's turn: the lowest is always played first, so the frame due is never held back here.
+fn own(s: &mut Session, rx: &Receiver<Msg>, workers: usize, shared: &Shared, played: &mut Played, note: &mut dyn FnMut(Row), ends: &mut Vec<Result<Costs, String>>) -> Result<Costs, String> {
+    let mut waiting: std::collections::BTreeMap<u64, (u32, anyrender::Tape)> = Default::default();
+    let mut take = |m: Msg, waiting: &mut std::collections::BTreeMap<u64, (u32, anyrender::Tape)>, ends: &mut Vec<Result<Costs, String>>| match m {
+        Msg::Row(r) => note(r),
+        Msg::Tape(i, index, tape) => drop(waiting.insert(i, (index, tape))),
+        Msg::Done(d) => ends.push(d),
+    };
+    loop {
+        if let Some(e) = shared.failed.lock().unwrap().as_ref() {
+            return Err(format!("export stopped: {e}"));
+        }
+        while let Ok(m) = rx.try_recv() {
+            take(m, &mut waiting, ends);
+        }
+        let Some((i, (index, tape))) = waiting.pop_first() else {
+            if ends.len() >= workers {
+                return Ok(Costs::default());
+            }
+            // Nothing to play: the frames still on the card go to the encoder before this thread waits. A worker's
+            // repeat of one of them (a still stretch) waits for it in the encoder's turn, and nothing else would send it.
+            serve::drain(s).map_err(|e| format!("export (on the card thread): {e}"))?;
+            let t = Instant::now();
+            match rx.recv() {
+                Ok(m) => take(m, &mut waiting, ends),
+                Err(_) => return Err("export: the drawing workers went away".into()),
+            }
+            played.ms[3] += t.elapsed().as_secs_f64() * 1000.0;
+            continue;
+        };
+        let ms = catch_unwind(AssertUnwindSafe(|| serve::play(s, &tape, index)))
+            .unwrap_or_else(|p| Err(format!("the engine crashed painting it ({})", panic_words(&p))))
+            .map_err(|e| format!("export frame {index} (export frame {i}, on the card thread): {e}"))?;
+        played.frames += 1;
+        for k in 0..3 {
+            played.ms[k] += ms[k];
+        }
+    }
 }
 
 /// A worker's end: its frames in flight to the encoder, or dropped when it failed.
@@ -217,7 +299,7 @@ fn settle(s: &mut Session, r: Result<Costs, String>) -> Result<Costs, String> {
 }
 
 /// One worker: the frames its markup thread claims from `claim` (each the next no worker has), drawn on `s` in that order.
-fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared, card: bool, on_row: &mut dyn FnMut(Msg)) -> Result<Costs, String> {
     let scene = held.scene()?;
     std::thread::scope(|sc| {
         let (tx, rx) = sync_channel::<(u64, Result<Staged, String>)>(AHEAD);
@@ -239,7 +321,7 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared,
                 }
             }
         });
-        let drawn = draw_frames(held, s, req, span, rx, shared, on_row);
+        let drawn = draw_frames(held, s, req, span, rx, shared, card, on_row);
         // `rx` is gone with draw_frames: a builder still working stops at its next frame.
         match builder.join() {
             Ok(()) => drawn,
@@ -253,9 +335,9 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, shared: &Shared,
 /// drew first: incremental layout gives a fresh layout's boxes (vendor/PATCHES.md J1; incremental_tests.rs). Laying every
 /// export frame out whole cost Night Bloom ~40 % more layout (calm 4-5 s: 256 vs 147 ms a frame per worker).
 #[allow(clippy::too_many_arguments)]
-fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
+fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, card: bool, on_row: &mut dyn FnMut(Msg)) -> Result<Costs, String> {
     let mut slides = Slides::new(s, req);
-    let drawn = draw_each(held, s, req, span, rx, shared, on_row, &mut slides);
+    let drawn = draw_each(held, s, req, span, rx, shared, card, on_row, &mut slides);
     slides.forget(s);
     if slides.made > 0 {
         eprintln!("export: slid {} frames from {} kept pictures (slide.rs)", slides.slid, slides.made);
@@ -265,7 +347,7 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiv
 
 /// `draw_frames`' frames, each slid from a kept picture of its still stage when only the frame moved (slide.rs).
 #[allow(clippy::too_many_arguments)]
-fn draw_each(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, on_row: &mut dyn FnMut(Row), slides: &mut Slides) -> Result<Costs, String> {
+fn draw_each(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver<(u64, Result<Staged, String>)>, shared: &Shared, card: bool, on_row: &mut dyn FnMut(Msg), slides: &mut Slides) -> Result<Costs, String> {
     let mut costs = Costs::default();
     loop {
         if let Some(e) = shared.failed.lock().unwrap().as_ref() {
@@ -284,13 +366,16 @@ fn draw_each(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver
         if same {
             serve::repeat(s, span.index(i) as u32).map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
             let took = tf.elapsed().as_secs_f64() * 1000.0;
-            on_row(Row { i, took, steps: vec![0.0; STEPS.len()], samples: 0, still: 0, repeat: true });
+            on_row(Msg::Row(Row { i, took, steps: vec![0.0; STEPS.len()], samples: 0, still: 0, repeat: true }));
             continue;
         }
         let mut f = json!({ "t": t, "index": span.index(i), "alpha": req["alpha"].as_bool() == Some(true) });
         match req["images"].as_str() {
             Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", span.index(i)))),
             None => f["encode"] = json!(true),
+        }
+        if card {
+            f["tape"] = json!(true);
         }
         // A panic while drawing fails this frame, named, like any error: uncaught on worker 0 (this thread) it left the
         // other workers waiting for its frame in the encoder's turn, and the export hung with no word (p1, 2026-10-25).
@@ -313,7 +398,11 @@ fn draw_each(held: &Held, s: &mut Session, req: &Value, span: Span, rx: Receiver
         let timing = &reply["timing"];
         let steps = STEPS.iter().map(|k| timing[*k].as_f64().unwrap_or(0.0)).collect();
         let (samples, still) = (timing["samples"].as_u64().unwrap_or(1), timing["stillPieces"].as_u64().unwrap_or(0));
-        on_row(Row { i, took, steps, samples, still, repeat: false });
+        on_row(Msg::Row(Row { i, took, steps, samples, still, repeat: false }));
+        // Laid out and walked here, painted on the card thread.
+        if let Some(tape) = s.tape.take() {
+            on_row(Msg::Tape(i, span.index(i) as u32, tape));
+        }
     }
     Ok(costs)
 }

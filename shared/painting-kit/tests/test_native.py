@@ -4,9 +4,10 @@ a stroke off the edge, the stroke shaping, tip pictures, even spacing and a pict
 import numpy as np
 import pytest
 
-from rostrum_paint import brush as B, compose, marks, native, pictures
+from rostrum_paint import brush as B, compose, marks, native, pictures, wash
 
 needs_native = pytest.mark.skipif(not native.available(), reason="the native stamper is not built (apps/2d/engine/stamp)")
+needs_dries = pytest.mark.skipif(not native.dries(), reason="the native stamper is built from before the wash's drying")
 needs_walks = pytest.mark.skipif(not native.walks(), reason="the native stamper is built from before its spacing and fill")
 H, W = 120, 200
 
@@ -150,3 +151,64 @@ def test_hand_line_and_drying_wash_same_both_ways_and_in_pieces():
     for k in range(5, 41, 5):
         B.stamp_stroke(c, pts[:k], (0.2, 0.3, 0.7), 14, "round", paper=paper, carry=carry, piece=(0.0, k < 40), **kw)
     assert np.array_equal(a, c)
+
+
+def _python(monkeypatch):
+    monkeypatch.setattr(native, "dries", lambda: False)
+    monkeypatch.setattr(native, "walks", lambda: False)
+
+
+@needs_dries
+def test_native_noise_blur_upsample_equal_the_python(monkeypatch):
+    """A wash's drying, piece by piece: the paper's noise (any size, feature size, origin, seed and salt, seamless or
+    not), the box blur (any radius, windows smaller than it) and the coarse grid brought back up give numpy's bytes."""
+    rng = np.random.default_rng(11)
+    cases = [(int(rng.integers(1, 90)), int(rng.integers(1, 130)), float(rng.choice([1.5, 2.7, 9.3, 40, 300])),
+              int(rng.integers(0, 2 ** 31)), int(rng.integers(0, 60)),
+              rng.choice([(0, 0), (-37, 12), (13.25, -0.5), (911.0, 4)]), i % 5 == 0) for i in range(60)]
+    blurs = [(rng.random((int(rng.integers(1, 70)), int(rng.integers(1, 90)))) * (rng.random() > 0.2)).astype(np.float32)
+             for _ in range(12)]
+    ups = [(rng.random((int(rng.integers(1, 12)), int(rng.integers(1, 15)))).astype(np.float32), int(rng.integers(2, 12)))
+           for _ in range(12)]
+    got = ([marks._noise(h, w, c, sd, st, tuple(o), wr) for h, w, c, sd, st, o, wr in cases],
+           [wash._blur(a, r) for a in blurs for r in (1, 3, 24)],
+           [wash._upsample(s, f, s.shape[0] * f - f // 2, s.shape[1] * f + 3, 0.5) for s, f in ups])
+    _python(monkeypatch)
+    want = ([marks._noise(h, w, c, sd, st, tuple(o), wr) for h, w, c, sd, st, o, wr in cases],
+            [wash._blur(a, r) for a in blurs for r in (1, 3, 24)],
+            [wash._upsample(s, f, s.shape[0] * f - f // 2, s.shape[1] * f + 3, 0.5) for s, f in ups])
+    for name, g, w in zip(("noise", "blur", "upsample"), got, want):
+        for i, (x, y) in enumerate(zip(g, w)):
+            assert x.dtype == y.dtype and x.shape == y.shape and x.tobytes() == y.tobytes(), f"{name} {i}"
+
+
+@needs_dries
+def test_native_wash_drying_equals_the_python(monkeypatch):
+    """Whole washes dried (edge, granulation, pooling, bloom; small brushes whose noise is worked out at full size and
+    big ones on the coarse grid; normal, multiply and screen; plain, seamless and picture paper): the same layer."""
+    h, w = 150, 260
+    cov = np.zeros((h, w), np.float32)
+    yy, xx = np.mgrid[:h, :w]
+    cov[20:120, 30:200] = 0.9
+    cov *= (0.6 + 0.4 * np.sin(xx / 7.0) ** 2).astype(np.float32)
+    cases = [(dict(edge_darken=0.8, granulation=0.6, pooling=0.5, bloom=0.0), 12, "normal", marks.Paper(h, w)),
+             (dict(edge_darken=0.5, granulation=0.0, pooling=0.7, bloom=0.6), 160, "normal", marks.Paper(h, w, seed=3)),
+             (dict(edge_darken=0.3, granulation=0.9, pooling=0.0, bloom=1.0), 40, "multiply", marks.Paper(h, w, wrap=True)),
+             (dict(edge_darken=0.6, granulation=0.4, pooling=0.4, bloom=0.4), 90, "screen",
+              marks.Paper(h, w, picture=pictures.PAPERS[1], scale=0.8, origin=(7, -3)))]
+    base = np.full((h, w, 4), [0.2, 0.25, 0.3, 0.6], np.float32)
+
+    def dry_all():
+        out = []
+        for p, size, mode, paper in cases:
+            layer = base.copy()
+            win = wash.window((h, w), (30, 20, 200, 120), wash.reach(size, p))
+            wash.dry(layer, cov[win[1]:win[3], win[0]:win[2]], win, (0.7, 0.3, 0.2), mode, size, p, paper)
+            out.append(layer)
+        return out
+    got = dry_all()
+    _python(monkeypatch)
+    for p, size, mode, paper in cases:
+        paper._g = None
+    for i, (x, y) in enumerate(zip(got, dry_all())):
+        assert x.tobytes() == y.tobytes(), f"case {i}"

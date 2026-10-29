@@ -21,6 +21,7 @@ says which (`take_weak`).
 | `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`); the fast paths below |
 | `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask; `reach`, the columns of a row the tip's shape can cover |
 | `src/paint.rs` | paint meets the layer (normal, multiply, erase, screen, add) |
+| `src/wash.rs` | a wash's drying (below): the paper's noise, the box blur, the coarse grid brought back up, and each effect's per-pixel steps (`mix`) |
 
 ## A stroke in pieces (layout 5)
 
@@ -39,6 +40,26 @@ The taper's sine and power are the C library's here, as Python's `math.sin` and 
 walk with the Python on hundreds of strokes (`tests/test_native.py`), so a library that rounds differently shows
 there. They came after layout 5 without changing its calls: an older build lacks them and the kit uses its Python
 (`native.walks()`), the same numbers.
+
+## A wash's drying
+
+A wash stroke dries after its dabs (the kit's `wash.py`: a darker edge, granulation, pooling, a bloom). In Python that
+was most of painting a wash: Night Market's 54 wash strokes spent ~5.3 s drying and ~3 s stamping (2D export round 5).
+Its per-pixel parts are here, each the kit's numbers (an older build lacks them and the kit uses its Python,
+`native.dries()`):
+
+| Entry | The kit's | Notes |
+|---|---|---|
+| `rostrum2d_stamp_noise` | `marks._noise` (also the paper's grain) | the sample places in f64, the Catmull-Rom weights and sums in f32, knot rows across first; the knot hash in wrapping 64-bit integer steps (numpy's int64 products wrap; only their low 32 bits count) |
+| `rostrum2d_stamp_blur` | `wash._blur` | each pixel's sum in the window's order; the zeros outside aren't added (a sum that starts at +0 is the same without them) |
+| `rostrum2d_stamp_upsample` | `wash._upsample` | the places in f32; the weights and blend in f64 (numpy mixes f32 with int64 there), then f32 |
+| `rostrum2d_stamp_wash_mix` | `wash.dry`'s per-pixel steps, one effect a call | edge, granulation, pooling, the bloom's wet and its rim; each strength is the NumPy f32 scalar the Python makes |
+
+The kit still makes the coarse grids (the bloom's mean, the noise's coarse grid: small) and lays the dried paint with
+`rostrum2d_stamp_fill` in normal mode (`marks.apply_paint` otherwise). Each pixel is worked out alone, so big windows
+are split over up to 8 threads. Night Market's wash drying: 5.3 s -> ~0.7 s. `tests/test_native.py` compares each
+entry with the Python on many sizes, feature sizes, origins, radii, and whole washes dried (every effect, small and big
+brushes, normal / multiply / screen, plain, seamless and picture paper).
 
 ## Build
 
@@ -76,7 +97,8 @@ without changing a pixel (`stroke.rs`):
 - **Nothing to add.** A dry dab in a mode that steps by the coverage's growth (normal, erase, overlay, soft light,
   colour) leaves a pixel the stroke already covers at least as much as the dab can (its strength × tip picture ×
   mask; 1 with grain) as it is: skipped without working out the coverage. Dense dabs change only a thin crescent.
-- **Threads.** A stroke with enough work (64k px, dabs over 2k px) is laid by up to 8 threads, each owning every
+- **Threads.** A stroke with enough work (64k px, dabs over 2k px; a dry stroke's dabs over 256 px, as its threads
+  never wait for each other: Night Market's 54 wash strokes of ~1-2k px dabs, 3.2 s -> 1.3-1.7 s) is laid by up to 8 threads, each owning every
   T-th band of 4 rows: a pixel's result depends only on itself, so dry dabs never wait; a wet dab's pick-up, laying
   and take-up wait for each other (a short spin, twice a dab).
 

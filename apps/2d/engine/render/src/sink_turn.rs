@@ -29,6 +29,9 @@ pub struct Turn {
     /// Microseconds, summed over the workers: converting frames, waiting for their turn (WINDOW), handing them to the
     /// encoder (its queue full: the encoder behind). The export's reply says them (`timing.turn`).
     spent: [AtomicU64; 3],
+    /// The card thread (export_crew.rs `own`): its frames never wait for the window. It plays the workers' frames lowest
+    /// first, so a frame it waited for could be one only it can play: it would wait for itself.
+    free: std::sync::OnceLock<std::thread::ThreadId>,
 }
 
 struct State {
@@ -50,7 +53,12 @@ impl Turn {
         let pos = order.iter().enumerate().map(|(p, &i)| (i, p)).collect();
         let nv12 = sink.wants_nv12();
         let st = State { sink, pos, next: 0, held: BTreeMap::new(), stop: None, saves };
-        Arc::new(Turn { state: Mutex::new(st), cv: Condvar::new(), nv12, spent: Default::default() })
+        Arc::new(Turn { state: Mutex::new(st), cv: Condvar::new(), nv12, spent: Default::default(), free: Default::default() })
+    }
+
+    /// The calling thread's frames are held however far ahead they come (the card thread: `free`).
+    pub fn free_this_thread(&self) {
+        let _ = self.free.set(std::thread::current().id());
     }
 
     /// Whether its encoder takes NV12 (a worker's sink says so: the GPU then reads its frames back as NV12, painter.rs).
@@ -79,7 +87,7 @@ impl Turn {
             if let Some(why) = &st.stop {
                 return Err(format!("the export stopped: {why}"));
             }
-            if p < st.next + WINDOW {
+            if p < st.next + WINDOW || self.free.get() == Some(&std::thread::current().id()) {
                 break;
             }
             st = self.cv.wait(st).unwrap();

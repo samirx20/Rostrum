@@ -306,6 +306,34 @@ mod mf {
         }
     }
 
+    /// `done` finished as `path` (its `n` frames), then "encode-mp4: saved <n> <path>" on stderr. Renamed from its hidden
+    /// name only once whole: a crash before leaves nothing under `path`. On a thread in this process's multithreaded COM.
+    fn finish(done: Open, path: String, n: u32) -> Result<(), String> {
+        let t = std::time::Instant::now();
+        let r = unsafe { step(format!("finishing {path} (Finalize)"), done.writer.Finalize()) };
+        let tmp = done.path.clone();
+        drop(done);
+        if let Err(e) = r {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(e);
+        }
+        if std::fs::rename(&tmp, &path).is_err() {
+            // another drive (or the name is taken): copied over, then the hidden one removed
+            std::fs::copy(&tmp, &path).map_err(|e| format!("saving {path}: {e}"))?;
+            let _ = std::fs::remove_file(&tmp);
+        }
+        eprintln!("encode-mp4: finished {path} in {:.2} s", t.elapsed().as_secs_f64());
+        eprintln!("encode-mp4: saved {n} {path}");
+        Ok(())
+    }
+
+    #[path = "../../encode_lanes.rs"]
+    mod lanes;
+
+    /// Files at most being encoded side by side by a kept encoder (encode_lanes.rs): the one taking frames and the one
+    /// before, finishing. To measure: ROSTRUM2D_MP4_LANES (1-3; 1: one file at a time, as before round 5).
+    const LANES: usize = 2;
+
     /// Files saved by a kept encoder, each being finished on a thread of its own (`--keep`'s 2 marks).
     struct Finishing(Vec<std::thread::JoinHandle<Result<(), String>>>);
 
@@ -314,24 +342,18 @@ mod mf {
         /// hidden name only once whole: a crash before leaves nothing under `path`.
         fn add(&mut self, done: Open, path: String, n: u32) {
             self.0.push(std::thread::spawn(move || {
-                let t = std::time::Instant::now();
                 unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok().map_err(|e| e.to_string())? };
-                let r = unsafe { step(format!("finishing {path} (Finalize)"), done.writer.Finalize()) };
-                let tmp = done.path.clone();
-                drop(done);
-                if let Err(e) = r {
-                    let _ = std::fs::remove_file(&tmp);
-                    return Err(e);
-                }
-                if std::fs::rename(&tmp, &path).is_err() {
-                    // another drive (or the name is taken): copied over, then the hidden one removed
-                    std::fs::copy(&tmp, &path).map_err(|e| format!("saving {path}: {e}"))?;
-                    let _ = std::fs::remove_file(&tmp);
-                }
-                eprintln!("encode-mp4: finished {path} in {:.2} s", t.elapsed().as_secs_f64());
-                eprintln!("encode-mp4: saved {n} {path}");
-                Ok(())
+                finish(done, path, n)
             }));
+        }
+
+        /// Waits until at most `most` of the files are still being written or finished (the oldest first).
+        fn limit(&mut self, most: usize) -> Result<(), String> {
+            while self.0.iter().filter(|h| !h.is_finished()).count() > most {
+                let k = self.0.iter().position(|h| !h.is_finished()).unwrap();
+                self.0.remove(k).join().map_err(|_| "finishing a file panicked".to_string())??;
+            }
+            self.check()
         }
 
         /// The first failure of a file already finished (the ones still going are left to go on).
@@ -376,7 +398,7 @@ mod mf {
             }
             let mut spare = Spare { dir, k: 0, making: Default::default() };
             let mut finishing = Finishing(vec![]);
-            let mut file = if keep {
+            let first = if keep {
                 spare.arm(sp);
                 let first = spare.take()?;
                 spare.arm(sp);
@@ -384,7 +406,7 @@ mod mf {
             } else {
                 open(out, sp)?
             };
-            eprintln!("encode-mp4: encoder {}", encoder_name(&file.writer, file.stream));
+            eprintln!("encode-mp4: encoder {}", encoder_name(&first.writer, first.stream));
             eprintln!("encode-mp4: started in {:.2} s (Media Foundation {t_mf:.2} s, the writer and its encoder {:.2} s)",
                       t_start.elapsed().as_secs_f64(), t_start.elapsed().as_secs_f64() - t_mf);
 
@@ -396,6 +418,10 @@ mod mf {
             let (free, free_rx) = std::sync::mpsc::channel::<Vec<u8>>();
             // `--nv12`: the frames come as NV12 already (the export's drawing workers convert them side by side, sink.rs).
             let frame_bytes = if nv12_in { size } else { wu * hu * 4 };
+            // A kept encoder's files each on a lane of their own (encode_lanes.rs), else one writer on this thread.
+            let lanes_n = std::env::var("ROSTRUM2D_MP4_LANES").ok().and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(LANES).clamp(1, 3);
+            let room = lanes::Room::new(size);
+            let (mut file, mut lane) = if keep && lanes_n > 1 { (None, Some(lanes::Lane::start(first, fps, room.clone()))) } else { (Some(first), None) };
             for _ in 0..3 {
                 let _ = free.send(vec![0u8; frame_bytes]);
             }
@@ -468,7 +494,9 @@ mod mf {
             while let Ok(read) = full.recv() {
                 took(&mut waited);
                 // A new picture straight into a new buffer, as NV12 (a repeat: the buffer before again).
-                match read? {
+                let got = read?;
+                let fresh = matches!(got, Got::Pic(_));
+                match got {
                     Got::Pic(pic) => {
                         let buf = step(format!("frame {n}: MFCreateMemoryBuffer"), MFCreateMemoryBuffer(size as u32))?;
                         let mut p = std::ptr::null_mut();
@@ -493,19 +521,37 @@ mod mf {
                         // The next writer (made ahead) takes the frames after this at once; this file is finished
                         // (Finalize: its last pictures out of the card's encoder, 0.2-0.3 s) and renamed on a thread of
                         // its own meanwhile, so an export cut into 33 files never waits for one.
-                        let done = std::mem::replace(&mut file, spare.take()?);
+                        let taken = spare.take()?;
                         let mut next = 0.0;
                         took(&mut next);
                         spare.arm(sp);
                         eprintln!("encode-mp4: {n} frames; waiting for frames {waited:.2} s, converting {converted:.2} s, encoder {encoded:.2} s, waiting for the next writer {next:.3} s");
-                        finishing.check()?;
-                        finishing.add(done, path, n);
+                        match lane.as_mut() {
+                            Some(l) => {
+                                let done = std::mem::replace(l, lanes::Lane::start(taken, fps, room.clone()));
+                                finishing.0.push(done.save(path));
+                                // At most lanes_n files at once: this one and those still encoding or finishing.
+                                finishing.limit(lanes_n - 1)?;
+                            }
+                            None => {
+                                let done = std::mem::replace(file.as_mut().expect("a writer"), taken);
+                                finishing.check()?;
+                                finishing.add(done, path, n);
+                            }
+                        }
                         (saved, n, waited, converted, encoded) = (saved + n, 0, 0.0, 0.0, 0.0);
                         continue;
                     }
                 }
                 took(&mut converted);
                 let buf = last.as_ref().expect("a picture before (checked above)");
+                if let Some(l) = lane.as_mut() {
+                    l.push(buf, fresh, &room)?;
+                    took(&mut encoded);
+                    n += 1;
+                    continue;
+                }
+                let file = file.as_ref().expect("a writer");
                 let sample = step(format!("frame {n}: MFCreateSample"), MFCreateSample())?;
                 step(format!("frame {n}: AddBuffer"), sample.AddBuffer(buf))?;
                 // 100 ns units from the frame number, exact: no drift over a long film.
@@ -519,16 +565,19 @@ mod mf {
             if keep {
                 // Frames never saved have no file to go to: the hidden one goes with its writer. The files being
                 // finished are waited for (each is saved whole or fails loudly).
-                let tmp = file.path.clone();
-                drop(file);
-                let _ = std::fs::remove_file(tmp);
+                if let Some(f) = file.take() {
+                    let tmp = f.path.clone();
+                    drop(f);
+                    let _ = std::fs::remove_file(tmp);
+                }
+                drop(lane);
                 finishing.wait()?;
                 return Ok(saved);
             }
             if n == 0 {
                 return Err("no frames arrived".into());
             }
-            step("finishing the MP4 (Finalize)", file.writer.Finalize())?;
+            step("finishing the MP4 (Finalize)", file.as_ref().expect("a writer").writer.Finalize())?;
             let mut finished = 0.0;
             took(&mut finished);
             eprintln!("encode-mp4: {n} frames; waiting for frames {waited:.2} s, converting {converted:.2} s, encoder {encoded:.2} s, finishing {finished:.2} s");

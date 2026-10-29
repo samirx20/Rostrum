@@ -56,6 +56,8 @@ mod null_backend;
 pub use null_backend::*;
 pub mod recording;
 pub use recording::Scene;
+pub mod tape;
+pub use tape::Tape;
 
 mod resource_id;
 pub use resource_id::ResourceId;

@@ -99,7 +99,7 @@ fn a_still_frame_is_the_frame_before_again_and_the_same_picture() {
     let kept = std::sync::Arc::new(std::sync::Mutex::new(vec![]));
     s.sink = Some(crate::sink::Sink::kept(kept.clone()));
     let span = crate::export_crew::Span { start: 0.0, fps: 30.0, n: 30 };
-    let (rows, _, _, _, _) = crate::export_crew::draw_all(&held, s, &json!({}), span, 3, Default::default(), &mut |_| {}).unwrap();
+    let (rows, _, _, _, _, _) = crate::export_crew::draw_all(&held, s, &json!({}), span, 3, Default::default(), &mut |_| {}).unwrap();
     crate::serve::finish(s).unwrap();
     let repeated = rows.iter().filter(|r| r.repeat).count();
     assert!(repeated >= 18, "only {repeated} of the 20 still frames were repeated");

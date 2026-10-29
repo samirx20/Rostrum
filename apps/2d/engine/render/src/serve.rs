@@ -108,6 +108,8 @@ pub(crate) struct Session {
     /// with, and the settings of the one taking this export's frames.
     pub(crate) kept_encoder: Option<(String, Sink)>,
     pub(crate) kept_key: Option<String>,
+    /// The last `tape` frame's paint calls (export_crew.rs: played on the export's card thread), when they could be kept.
+    pub(crate) tape: Option<anyrender::Tape>,
 }
 
 /// Opens a session in place of the running one (`session`), on the running one's GL context (painter.rs `into_gl`): one
@@ -164,7 +166,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_streaks: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_streaks: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None, tape: None }, reply))
 }
 
 /// What a drawing worker's session copies from the export's (`twin`): size, depth, colour and what paints.
@@ -205,7 +207,7 @@ pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let painting = like.painting.clone();
-    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_streaks: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None })
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], sample_streaks: vec![], shm: None, deferred: None, painting, over: None, stage_open: false, shell: html.to_string(), pool: Default::default(), kept_encoder: None, kept_key: None, tape: None })
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -495,6 +497,21 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     let (mut diff_ms, mut layout_ms, mut edits, mut paint_ms, mut record_ms) = (0.0, 0.0, 0, 0.0, 0.0);
     let (mut taps, mut tap_read_ms, mut tap_write_ms) = (0, 0.0, 0.0);
     let (still_ms, mut still_pieces) = (0.0, 0);
+    // An export frame for the card thread (export_crew.rs): laid out and walked here, its paint calls kept on a tape and
+    // played there, unless the walk needed this card's own answer (`Tape::unfit`): then painted here as ever.
+    let taped = req["tape"].as_bool() == Some(true) && req["encode"].as_bool() == Some(true) && samples.is_empty() && s.sample_streaks.is_empty() && s.over.is_none() && !boxes_wanted;
+    if taped {
+        (diff_ms, layout_ms, edits) = apply(s, markup)?;
+        let t = Instant::now();
+        let mut tape = anyrender::Tape::new();
+        blitz_paint::paint_scene(&mut tape, &mut s.doc, 1.0, s.width, s.height, 0, 0);
+        record_ms = t.elapsed().as_secs_f64() * 1000.0;
+        if tape.unfit.is_none() {
+            s.tape = Some(tape);
+            let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": 0.0, "recordMs": record_ms, "edits": edits, "samples": 1, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "taped": true });
+            return Ok((json!({ "ok": true, "timing": timing }), None));
+        }
+    }
     // The streaks drawn (blurred.rs): `timing.streaks`; `timing.stillPieces`: pieces drawn once for the whole shutter.
     let mut streak_runs = 0;
     let mut timed = |s: &mut Session, mk: Option<&str>, draw: bool, held: bool| -> Result<(), String> {
@@ -513,7 +530,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     };
     let streaks = std::mem::take(&mut s.sample_streaks);
     if samples.is_empty() && streaks.is_empty() {
-        timed(s, Some(markup), true, false)?;
+        timed(s, (!taped).then_some(markup), true, false)?;
     } else {
         // Motion blur: moving layers drawn as streaks, what changes while the shutter is open staged per sub-frame and
         // averaged (blurred.rs).
@@ -702,6 +719,32 @@ pub(crate) fn repeat(s: &mut Session, index: u32) -> Result<(), String> {
     drain(s)?;
     let px = Pixels { raw: vec![], spec: s.color, width: s.width, deep: s.deep, index, ready: true, repeat: true, nv12: false };
     s.sink.as_mut().ok_or("no encoder")?.push(px)
+}
+
+/// Export frame `index` from the paint calls a drawing worker kept (export_crew.rs: this is the card thread): played on
+/// this session's surface, its read-back started and the oldest frame in flight sent to the encoder, as `frame` does
+/// for a frame it paints itself. Returns ms (playing the calls, flushing them to the card, waiting for read-backs and
+/// the encoder).
+pub(crate) fn play(s: &mut Session, tape: &anyrender::Tape, index: u32) -> Result<[f64; 3], String> {
+    let (w, h) = (s.width, s.height);
+    s.painter.set_view(crate::painter::View::full(w, h))?;
+    s.painter.paint(false, |scene| tape.play(scene))?;
+    let (rec, flush) = (s.painter.last_draw_ms, s.painter.last_flush_ms);
+    let t = Instant::now();
+    let nv12 = s.sink.as_ref().ok_or("no encoder")?.wants_nv12();
+    if s.painter.start_read(index, &s.color, s.deep, nv12)? {
+        // The card thread keeps more frames in flight than a drawing worker (one): it plays on while they come back.
+        let most = std::env::var("ROSTRUM2D_CARD_IN_FLIGHT").ok().and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(crate::gpu_output::SLOTS - 1).clamp(1, crate::gpu_output::SLOTS - 1);
+        while s.painter.reads_in_flight() > most {
+            collect(s)?;
+        }
+    } else {
+        let raw = s.painter.read()?;
+        let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index, ready: false, repeat: false, nv12: false };
+        s.sink.as_mut().unwrap().push(px)?;
+    }
+    s.painter.taps_written()?;
+    Ok([rec, flush, t.elapsed().as_secs_f64() * 1000.0])
 }
 
 /// Every frame in flight to the encoder, then the encoder closed and waited for.

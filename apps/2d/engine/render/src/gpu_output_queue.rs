@@ -6,7 +6,7 @@
 //! compared with the halves' 8 bytes a pixel) and no output step on the CPU, the same bytes as color.rs `output` gives.
 //! The CPU redoes only the marked pixels (a see-through edge), from a copy of the frame kept on the GPU, since the next
 //! frame is painted over the surface before this one is collected (painter.rs patches NV12 with nv12.rs `patch`, the
-//! same integer formula as the GPU's). Two slots take turns.
+//! same integer formula as the GPU's). `SLOTS` slots take turns.
 
 use std::collections::VecDeque;
 use std::ffi::c_void;
@@ -40,27 +40,31 @@ struct Queued {
     nv12: bool,
 }
 
+/// Frames that may be queued at once: an export's card thread (export_crew.rs `own`) plays the next frames while the
+/// ones before come back.
+pub const SLOTS: usize = 4;
+
 #[derive(Default)]
 pub struct Queue {
-    slots: [Slot; 2],
+    slots: [Slot; SLOTS],
     next: usize,
     pending: VecDeque<Queued>,
 }
 
 impl GpuOutput {
     /// Queues the output of texture `src` (the frame, RGBA16F, w × h, top row first) with `codes` into the next slot, and
-    /// its copy into pixel buffers; as NV12 when `nv12` (8-bit, w and h even). Nothing waits. At most two may be queued.
+    /// its copy into pixel buffers; as NV12 when `nv12` (8-bit, w and h even). Nothing waits. At most `SLOTS` may be queued.
     /// The caller has flushed Skia's work and resets Skia's GL state afterwards.
     pub fn queue_start(&mut self, src: u32, (w, h): (u32, u32), codes: &std::sync::Arc<[u32]>, deep: bool, nv12: bool) -> Result<(), String> {
         if nv12 && (deep || w % 2 != 0 || h % 2 != 0) {
             return Err(format!("the GPU output step: NV12 is 8-bit at an even size, not {w}×{h}{}", if deep { " 16-bit" } else { "" }));
         }
-        if self.queue.pending.len() >= 2 {
-            return Err("the GPU output step: two frames already queued".into());
+        if self.queue.pending.len() >= SLOTS {
+            return Err(format!("the GPU output step: {SLOTS} frames already queued"));
         }
         self.prepare();
         let k = self.queue.next;
-        self.queue.next = 1 - k;
+        self.queue.next = (k + 1) % SLOTS;
         let fw = w.div_ceil(BLOCK);
         let f = &self.f;
         (f.ActiveTexture)(0x84C2);

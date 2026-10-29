@@ -54,7 +54,11 @@ def _cubic(u):
 def _noise(h, w, cell, seed, salt, origin=(0, 0), wrap=False):
     """Smooth value noise 0..1 with features about `cell` px wide, over canvas px (0..w, 0..h) whose paper starts at
     `origin` (canvas px): the plane's (x - ox, y - oy). Fixed to the paper, not to the canvas's size. `wrap`: it
-    repeats every w and h px (a seamless canvas, wrap.py): a whole number of features across, the knots round again."""
+    repeats every w and h px (a seamless canvas, wrap.py): a whole number of features across, the knots round again.
+    The native stamper's when built (the same numbers)."""
+    from . import native
+    if h > 0 and w > 0 and cell > 0 and native.dries():
+        return native.noise(h, w, cell, seed, salt, origin, wrap)
     nkx, nky = (max(1, round(w / cell)), max(1, round(h / cell))) if wrap else (0, 0)
     ix, wx = _cubic((np.arange(w) - origin[0]) / (w / nkx if wrap else cell))
     iy, wy = _cubic((np.arange(h) - origin[1]) / (h / nky if wrap else cell))
