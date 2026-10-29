@@ -88,19 +88,28 @@ of its longest path. Turning and scaling streak per pixel as they should (each r
 slide). Layers in a row that move alike (the same depth under a pan) are one picture and one streak. Streaks that don't read
 each other's pictures share one picture, painted together (`blurred.rs` `shares`): where a streak reads is its reach
 inside the frame, rounded out to whole device px and pulled back through every one of its moves (each sub-frame's
-picture px it averages), held inside the frame; two runs share only when neither reads where the other's picture is. What a layer
+picture px it averages), held inside the picture; two runs share only when neither reads where the other's picture is.
+All of a step's pictures are made in **one paint** of the page, each run's layers drawn into their own picture
+(blitz-paint `Run::Keep`, anyrender `begin_kept`), not one paint per picture. What a layer
 streaks over is what lies under it, so this is each layer's own motion blur laid over the others, as After Effects
 blurs each layer: where two layers that move differently overlap, it differs a little from averaging whole sub-frames.
 A layer that only moves but blends (a blend mode, glow, frosted glass) is painted as laid out, moved to each
-sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. A moving layer whose
-picture runs past the frame's edge (or whose size isn't known before layout: a text, a path) is built the same way,
-alone, so what lies past the edge streaks in; one that covers the whole frame (a backdrop) takes its edge px for the few
-px a move pulls in; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 times spread over
+sub-frame (one per px of its path), over the layers under it and averaged: no layout per step. In an export or a still
+(the page at its own size) the pictures reach up to 128 px past each edge of the frame (`blurred.rs` `MARGIN`), so a
+layer that runs past the edge streaks what lies there in; a moving layer whose streak reads further past the edge than
+that, or whose size isn't known before layout (a text, a path), or any in a zoomed or cropped view, is built like a
+blending one, alone; one that covers the whole frame (a backdrop) takes its picture's edge px for the px a move pulls in
+past that; a streak that never reaches the frame isn't drawn. The layers are evaluated at 5 times spread over
 the open shutter (`streak.rs` `probe_times`, shared with the step count) and the moves at each sub-frame read off them,
 straight between the two probes around it; a fade or a colour change within one shutter opening is taken at the frame's time (its
 average). A layer still staged per sub-frame gets as many sub-frames as its own corners (and its matte's) travel in px,
 at least `shutterSamples`, not the frame's count; only its own pieces are written at each sub-frame (`stage.rs`
-`parts_of`). A frame's `timing.evalSplit` says where its evaluation ms went (probes, moves, staged sub-frames, holds).
+`parts_of`). A top-level layer with nothing keyed inside it (its children, effects, masks and stops; no rig, not following
+a path) is evaluated at the probes by its own fields only, its insides taken from the frame's own (`eval.rs`
+`at_reusing`; not in a comp with trails or smears). A layer's blur, shadow and stroke reach past its boxes is scaled by
+how much it is stretched on screen (its scale, its groups', the frame's zoom: `steps.rs` `widest`). A frame's
+`timing.evalSplit` says where its evaluation ms went (probes, steps, moves, staged sub-frames, holds); with
+`ROSTRUM2D_PROFILE` each motion-blur paint is labelled `mb-picture`, `mb-streaks`, `mb-blend`, `mb-edge`, `mb-staged`.
 
 A layer whose look changes while the shutter is open (a path changing shape, letters playing, a colour, a layer whose
 matte changes or moves differently) or that can't be laid over on its own (a blend mode, glow, frosted glass) is staged and painted at every
@@ -115,8 +124,9 @@ the comp's values for that one frame, and its `shutterSamples` is then the exact
 a fast preview while playing; or a timing test at 8 vs 16). The screen's playback sends 1 while time moves unless
 **Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
 
-**Cost:** one layout and one paint of the page, one paint per streak, and one streak pass per moving layer (its
-cost grows with its steps); a layer that changes while the shutter is open costs a stage and paint per step.
+**Cost:** one layout of the page, two paints (the streak pictures, then the frame), and one streak pass per moving
+layer (its cost grows with its steps); a layer that blends, or reads too far past the frame's edge, costs a paint per
+step; a layer that changes while the shutter is open costs a stage and paint per step.
 
 ## Trails
 

@@ -511,6 +511,13 @@ impl Painter {
         if shader_errors.is_empty() { Ok(()) } else { Err(shader_errors.join("; ")) }
     }
 
+    /// Keeps the last painted picture (a still run of a motion-blurred frame, slide.rs) as kept picture
+    /// `cached().len()`, which a paint plan's `Run::Cached` then draws in its place.
+    pub fn keep_cached(&mut self) {
+        let image = self.surface.image_snapshot();
+        self.cache.cached.push(image);
+    }
+
     /// Keeps the pictures the last paint drew its `Run::Keep(k)` layers into (blurred.rs: a step's streak pictures, made
     /// in one paint), in number order, as kept pictures from `cached_len()` on; one it never drew into (all of its layers
     /// culled) is kept as nothing (a transparent px). `n`: how many the paint was to make.
