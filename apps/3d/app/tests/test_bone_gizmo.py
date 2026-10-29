@@ -45,7 +45,7 @@ def test_a_ring_drag_keys_the_turn_at_the_playhead_in_one_undo_step(bridge):
     rest = dict(v)
     pw, origin, turn = gizmo_bone.frame(doc, it, v, scene, bridge.frame, t)
     chain = skin.bones_of(doc.item("strap"))
-    head = skin.segment(skin.transforms(chain, t)[1], chain[1][0])[:3]
+    head = skin.segment(skin.transforms(chain, t, [])[1], chain[1][0])[:3]
     world = through.find_item(scene, "strap", bridge.frame)[0]
     assert origin == pytest.approx(aim.point(world, head))     # the rings stand on the bone's head as posed
 

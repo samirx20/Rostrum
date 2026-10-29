@@ -86,7 +86,7 @@ def _seen_touching(cam, x, y) -> bool:
 
 def _fault(track, info, id_, item, names, posed, joint, kind, need, f, m, o, clear) -> dict:
     t = (f - info["start"]) / info["fps"]
-    mat = skin.transforms(skin.bones_of(item), track.fr.held(id_, f) / track.fr.fps)[joint]
+    mat = skin.transforms(skin.bones_of(item), track.fr.held(id_, f) / track.fr.fps, track.fr.stack)[joint]
     root = aim.point(track.fr.world(id_, f), aim.point(mat, [0.0, 0.0, 0.0]))
     lever = max(math.dist(root, posed[f][m][0]), 1e-3)
     deg = math.degrees(math.atan2(need, lever))

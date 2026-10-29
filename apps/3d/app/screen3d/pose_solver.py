@@ -65,12 +65,13 @@ def solve(job: dict, x: float, y: float, seq: int) -> dict:
     t0 = time.perf_counter()
     c = job["clay"]
     to = aim.point(aim.invert(job["world"]), G._on_plane(job["view"], x, y, job["point"]))
-    stack = job.get("stack", ())                    # the animation layers: solved from the pose as shown
+    stack = job["stack"]                            # the animation layers: solved from, and drawn as, the pose shown
     turns = L.solve(c, job["bone"], job["local"], to, job["held"], job["t"], stack)
     t1 = time.perf_counter()
     pose = L.chain_pose(c, turns, job["t"], stack) if job["live"] else None
     t2 = time.perf_counter()
-    drawn = PV.overlay(c, job["holds"], job["world"], job["view"], job["t"], job["w"], job["h"], set(turns), turns)
+    drawn = PV.overlay(c, job["holds"], job["world"], job["view"], job["t"], stack, job["w"], job["h"], set(turns),
+                       turns)
     chip = PV.chip(PV.chain_of(c), job["bone"], turns)
     t3 = time.perf_counter()
     return {"seq": seq, "turns": turns, "pose": pose, "drawn": drawn, "chip": chip,

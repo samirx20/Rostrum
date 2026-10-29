@@ -118,7 +118,7 @@ def pose_dq(P, W, moves):
 def numbers(grid, clay, report):
     occ = PJ.occupancy(grid)
     V, tris = surface(occ, grid["origin"], grid["cell"])
-    core = skin.skin(clay, [0.0])
+    core = skin.skin(clay, [0.0], [])
     rest, parts = core["rest"], core["parts"]
     moves = pose_ik.chain_pose(clay)
     names = [b.get("joint") or "" for b, _ in skin.bones_of(clay)]

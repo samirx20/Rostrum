@@ -11,7 +11,7 @@ the stack is read from the bottom up.
    goes on the layer, and the picture shows exactly the value you set. K keys the layer as it is now, so the picture
    doesn't change (on an Add layer that is 0 where the layer had nothing yet).
    Posing works the same way: a Pose drag, **Apply pose** in the Poses panel and **Back to rest** start from the pose
-   you see and key the chosen layer; the Base keeps its own pose.
+   you see and key the chosen layer; the Base keeps its own pose. Pose's bone lines and joint dots sit on that pose too.
 3. To move keys of a layer in time (drag, stretch, **Stagger**), choose the layer first: only its keys show and move.
    A layer's key may sit at the same time as a Base key.
 4. Back in the popover: drag a layer's **weight** (0 % = none of it, 100 % = all of it), switch it **off** to compare,

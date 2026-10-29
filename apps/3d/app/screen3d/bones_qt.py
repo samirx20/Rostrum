@@ -14,6 +14,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
+from rostrum_core.keys import layers
 from rostrum3d import aim, skin, through
 
 from .gizmo import HIT, View, _seg_dist
@@ -160,7 +161,7 @@ class Bones(QObject):
             q = view.project(aim.point(world, p))
             return None if q is None else [q[0] / w, q[1] / h]
         chain = skin.bones_of(self.b.doc.item(mesh))
-        for m, (bone, _) in zip(skin.transforms(chain, self.b.time), chain):
+        for m, (bone, _) in zip(skin.transforms(chain, self.b.time, layers.stack_of(self.b.doc.data)), chain):
             s = skin.segment(m, bone)
             a, b = at(s[:3]), at(s[3:])
             if a and b:
