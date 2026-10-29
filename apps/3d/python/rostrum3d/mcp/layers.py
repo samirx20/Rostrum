@@ -14,7 +14,13 @@ MEANING = {"beauty": "the picture: scene-linear Rec.709, alpha = coverage", "lig
            "reflections": "reflections and highlights (glossy)", "rest": "everything else: glass, glow, sky, haze",
            "shadow": "0 lit .. 1 in full shadow (matte surfaces' direct light lost to shadows)",
            "masks": "1 where the item (or anything it holds) is, else 0; hard-edged", "depth": "distance from the camera plane, metres; 0 = nothing",
-           "normal": "surface direction, world space, Y up, -1..1"}
+           "normal": "surface direction, world space, Y up, -1..1",
+           "motion": "motion vectors in pixels, x right, y up: X Y = where it was a frame before minus where it is, "
+                     "Z W = where it is minus where it will be a frame after; the picture rendered sharp"}
+LIGHT_GROUPS = ("R G B (before noise clean-up) = the sum of the lightgroup_<light> layers + what glows on its own "
+                "(emissive surfaces); each is one light's share, not cleaned of noise")
+CRYPTOMATTE = ("CryptoObject00..02: Cryptomatte object ranks (id, share) x 2 each, one id per top-level item; "
+               "names and ids in the file's header (cryptomatte/<key>/manifest), as Nuke, Resolve and Natron read them")
 
 
 def chosen(where: str, args: dict, shot: dict, renderer: str, exr: bool) -> list[str]:
@@ -50,4 +56,10 @@ def describe(channels: list[str], data: dict) -> dict:
         out["masks"] = masks
     if "rest" in layers:
         out["adds_up"] = ADDS_UP
+    groups = {layer: layer.split("_", 1)[1] for layer in layers if layer.startswith("lightgroup_")}
+    if groups:
+        out["light_groups"] = {layer: names.get(light, light) for layer, light in groups.items()}
+        out["meaning"]["lightgroup_<light>"] = LIGHT_GROUPS
+    if "CryptoObject00" in layers:
+        out["meaning"]["CryptoObject00"] = CRYPTOMATTE
     return out

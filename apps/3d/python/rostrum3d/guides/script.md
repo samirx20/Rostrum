@@ -261,5 +261,6 @@ In `edit_document`, a taken id is refused naming what holds it: `id "top" is alr
 - Change a single key's time, value or ease without rewriting that field's keys (`key.set`, `key.remove`, `key.clear`, `value.set`).
 - Shape a key's curve: `custom` ease points and `spring` stiffness / damping are key fields only `key.set` reaches (a script's `spring` / `custom` use the defaults).
 - Add a part to an import it didn't make, or anything to the document's own settings.
+- Change something for one shot only (`<type>.set_in_shot`, e.g. `light.set_in_shot` with `shot`) or make collections (`collection.add`): a re-run never touches either, so a person's per-shot changes stay.
 - Use markers: shot and key times in a script are plain seconds.
 - Look at anything. After each run use `look_frame`, `look_frame what "sheet"` and `look_at`.

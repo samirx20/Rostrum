@@ -14,11 +14,13 @@ struct Picture {
 };
 
 // one more layer of a layered EXR (passes.h): its full channel names ("light.R" ...) and their pixels, top row first,
-// as many floats a pixel as it has channels; half-float unless `full` (32-bit, for depth)
+// as many floats a pixel as it has channels; half-float unless `full` (32-bit, for depth); `attributes`: entries the
+// file's header needs for it (Cryptomatte's name, hash and manifest: cryptomatte.h)
 struct ExrLayer {
   std::vector<std::string> channels;
   std::vector<float> pixels;
   bool full = false;
+  std::map<std::string, std::string> attributes;
 };
 
 class ColorOut {

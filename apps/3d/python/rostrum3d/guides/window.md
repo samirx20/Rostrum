@@ -349,6 +349,22 @@ Intersect**; the first one you picked is the base. Rest the pointer on one for a
 result; move off and it goes back. Click to make it (one undo step); see the guide *modelling*. Only what applies is
 shown, so with one thing selected there is no Combine.
 
+### Only in this shot (an item's settings, 2+ shots)
+
+With two or more shots, the top of an item's settings reads **Changes: All shots | Only Close 02** (the shot the window
+shows). Pick **Only Close 02** and every change you make from then on, in the panel or by dragging the gizmo, shows in
+that shot alone: move a light, change its brightness, hide a prop (Visible off), give a mesh another material (its
+Material ball). The other shots keep their value. While Only is on, the panel lists only what a shot can change (a
+light's kind or a mesh's shape stay the same in every shot) and the diamonds are gone: a shot's own value holds through
+the whole shot, so a setting with keys stands still at that value in that shot (its keys still play in the others).
+
+A setting the shown shot has its own value for shows a **Use all shots** button beside its value, on either side of
+the switch: click it and that setting goes back to the value every other shot uses (one undo step). A switch (Visible)
+shows a small **This shot** tag instead: switch it back and it matches every shot again. Setting any value back to
+what every other shot has does the same. Pick another shot in the header and its own values show. Each change is one
+undo step. Agents:
+`<type>.set_in_shot`, `shot.clear_override` (guide *rendering*, "Only in this shot").
+
 ### Follow and stick (an item's settings)
 
 - **Follow** (a bud riding on an opening lid): in the item's **Follow** group, pick the item to ride on with the
@@ -373,6 +389,13 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
   inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
   material's name, dimmed; click that name to edit the material. Click a row to select the item. Drop a material ball on a row to give
   that item the material. Right-click a row for its menu. A body (Simulate) has a small badge at its row's right end.
+- **The Collections row** (at the bottom, once the scene has a collection): a collection is a named set of items, kept
+  together so one click reaches them all. Make one: select two or more items, right-click › **New collection** (one undo step; Ctrl+K too).
+  Each shows as a chip, "Collection 1 · 3" (its name and how many items). Click a chip to select its items; double-click
+  to rename it. Right-click a chip for what would change something now: **Hide** / **Show** (in every shot), **Hide in
+  Close 02 only** / **Show in Close 02 only** (with 2+ shots), **Add selected** (picked items not in it yet), **Delete
+  collection** (its items stay). A light's **Lights only** can name a collection too
+  (guide *lighting*). Agents: `collection.add`, `collection.set`, `collection.material`, `collection.show`.
 - **The Simulation row** (at the bottom, only while the scene has bodies): Simulate, and the stored result as a bar over
   the shot's frames: empty, filling, solid (stored), striped (out of date), red (failed). See *Simulate* above.
 - **Right, on the same rows:** an animated item's keys as diamonds on a slim bar from its first key to its last.

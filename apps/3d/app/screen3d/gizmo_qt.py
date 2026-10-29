@@ -13,7 +13,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum_gui.edits import Drag
 from rostrum_gui.snap import Target
-from rostrum3d import aim, fields as F, resolve
+from rostrum3d import aim, fields as F, resolve, shot_layer
 
 from . import gizmo as G, gizmo_bone, gizmo_live as live, route
 from .copies_gizmo import CopyGizmo
@@ -63,6 +63,7 @@ class Gizmo(live.LiveDrag, CopyGizmo, QObject):
 
     def _values(self, it):
         t = self.bridge.time
+        it = shot_layer.shown(self.bridge.doc.data, self.bridge.shot_id, it)   # where the shown shot has it (Only in this shot)
         v = {p.name: it.get(p.name, p.default) for p in F.FIELDS[it["type"]]}
         v.update({k: route.value_at(it, k, t) for k in MOVE + TURN + SCALE + PIVOT if k in v})
         v.setdefault("aim", "none")

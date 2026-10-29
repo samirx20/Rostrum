@@ -124,16 +124,23 @@ A shot carries its own render settings as fields, set like any other shot field 
 - `renderRange` `shot` (all of it) or `range`; then `renderStart` and `renderEnd` are seconds from the start of the shot,
   and the frame at `renderEnd` is the last one.
 - `renderFormat` `png` (the default), `exr` or `both`: what the screen's render sheet saves.
-- The passes an EXR carries, switches that exist only while `renderFormat` is `exr` or `both`: `passLight`, `passShadow`,
-  `passReflections`, `passMasks` (on by default), `passDepth`, `passNormal`. A call's `passes` (`["light", "shadow",
-  "reflections", "masks", "depth", "normal"]`, `[]` = the picture alone) overrides them for that call; without it,
+- The passes an EXR carries, switches that exist only while `renderFormat` is `exr` or `both` and Quality is not Stylized:
+  `passLight`, `passShadow`, `passReflections`, `passMasks` (on by default), `passDepth`, `passNormal`, `passLightGroups`,
+  `passCryptomatte`, `passMotion`. A call's `passes` (`["light", "shadow", "reflections", "masks", "depth", "normal",
+  "lightGroups", "cryptomatte", "motion"]`, `[]` = the picture alone) overrides them for that call; without it,
   `render_still` and `render_video` (with `exr`) use the shot's switches.
 
 **Passes in the EXR** (Cycles only; the manifest's `exr` part lists every channel, its layer and which item each mask is):
 `light.R/G/B` (matte surfaces' light), `reflections.R/G/B` (glossy), with either `rest.R/G/B` (glass, glow, sky, haze), so
 `R G B = light + reflections + rest` before noise clean-up (exactly with `denoise: false`); `shadow.A` (0 lit .. 1 in full
 shadow; it renders each frame twice, so it doubles the time, and the estimate counts it); `masks.<item id>` (hard-edged);
-`depth.Z` (metres, 32-bit; 0 where nothing is); `normal.X/Y/Z` (world space, Y up).
+`depth.Z` (metres, 32-bit; 0 where nothing is); `normal.X/Y/Z` (world space, Y up);
+`lightgroup_<light>.R/G/B` (one per light, named as the light's id, a dome too: that light's share of the picture; they add up to
+`R G B` before noise clean-up, less surfaces that glow on their own; not cleaned of noise; the manifest's `light_groups` names
+each); `CryptoObject00..02.R/G/B/A` (Cryptomatte masks per top-level item, soft-edged, with the names in the file's header, as
+Nuke, Resolve and Natron read them); `motion.X/Y/Z/W` (motion vectors in pixels, x right, y up, Blender's Vector layout:
+X Y = a frame before minus now, Z W = now minus a frame after; **with `motion` the picture renders sharp**, the shot's motion
+blur is not used, so the Editor blurs from the vectors).
 
 `render_still`, `render_video` and the Render button all read these same fields, so what you time is what is drawn.
 Asking for something else in a call (`quality`, `width`) changes only that call, not the shot.
@@ -198,6 +205,18 @@ The time left is a number to use, not a reason to stop early.
 - **Another angle is another shot.** `shot.from_view` with `position` [x, y, z], `turn` [rx, ry, rz] (degrees, it looks along
   its −Z) and `focalLength` makes a camera and a shot through it in one step ("Shot N", the first shot's size, frame rate, time
   and render settings; `id`, `name`, `cameraId` optional). A camera may serve several shots; each shot is its own window of time.
+- **Only in this shot.** One scene, several shots, and a shot needs its own tweak (the key light nearer and brighter for
+  the close-up, a prop out of frame hidden): `light.set_in_shot` with `shot: "close_02"` and the settings, the same ones
+  `light.set` takes (`mesh.set_in_shot`, `camera.set_in_shot`, `material.set_in_shot`, one per type). That shot alone
+  shows it; the others keep the scene's value. A keyed setting holds that one value through that shot (its keys still
+  play in the other shots). What kind of thing it is (a light's `kind`, a mesh's `shape`) is the same in every shot.
+  `shot.clear_override` (target: the shot; `item`; `fields`, all when left out) puts it back. `inspect_item` on the shot
+  shows its `overrides`. Your script re-run never wipes them, a person's or yours.
+- **Collections.** `collection.add` (`name`, `items`: ids, and / or `material`: every item using that material, now and
+  later) makes a named set. A light's `lightsOnly` may name it (it lights every member); `collection.material` gives
+  every member a material, `collection.show` (`visible`, and `shot` for one shot only) hides or shows them all;
+  `collection.set` (`items`, `include`, `exclude`, `name`, `material`) changes it, `collection.remove` deletes it (the
+  items stay). Each call is one undo step.
 - **Move a shot's own camera.** `shot.take_view` (target the shot) puts its camera at `position`, looking at `lookAt` (both
   world), with `focalLength`: one step, inside a group or on a rig it stays there, an aimed camera aims at `lookAt`, a camera
   with keys gets a key at `at` (seconds). `shot.frame` with `items` [ids] (shapes, clay, groups, copies, lights …) frames them: the camera keeps its direction and lens

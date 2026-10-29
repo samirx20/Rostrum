@@ -32,7 +32,7 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 | **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The numbers (samples, noise clean-up) are on the same line, at the right. Custom numbers are set on the shot (select the shot, then its Render group). **Stylized** is there while a material has Lines or Halftone on: the stylized renderer (lines, halftone, light to colour; guide `materials`), drawn at twice the size and smoothed down; its EXR holds the picture only (no passes) |
 | **Size** | The shot's own size, **½** or **× 2**. The size in pixels shows at the right of its name when it isn't the shot's own |
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
-| **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
+| **Passes** | Only while it saves an EXR with Cycles (not Stylized). The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**, **Each light on its own**, **Masks for compositing (Cryptomatte)**, **Motion for blur in the Editor**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
 | **The time** | How long it will take, measured on this computer (below) |
 | **Render this frame / Render 120 frames / Render 120 frames as MP4** | Starts it. It runs in the background on its own engine; the line under the bar says **Frame 12 of 120 · about 4 min left** (the time left is worked out from the frames this render has drawn, so it appears once the first frame is done), the top bar's job chip shows how far it is, with Cancel |
 
@@ -65,6 +65,9 @@ the reflections, soften the shadows, colour one item. Each pass is a named layer
 | **Masks per item** | `masks.<item id>` | one per item (groups too): white where the item is, black elsewhere |
 | **Depth** | `depth.Z` | distance from the camera in metres (full precision); 0 where nothing is |
 | **Surface direction** | `normal.X Y Z` | which way each surface faces, in the scene's directions (Y up) |
+| **Each light on its own** | `lightgroup_<light>.R G B` | one layer per light (named as the light, the sky dome too): the part of the picture that light makes, so the Editor can make one light brighter, dimmer or another colour without rendering again |
+| **Masks for compositing (Cryptomatte)** | `CryptoObject00` .. `02` `.R G B A` | soft-edged masks per item in the Cryptomatte form: in Nuke, Resolve/Fusion or Natron, a Cryptomatte node lists the items by name and you pick one or several |
+| **Motion for blur in the Editor** | `motion.X Y Z W` | which way each pixel moves, in pixels, toward the frame before (X Y) and from the frame after (Z W), as Blender's Vector layer; the Editor (or a vector blur in Nuke or Resolve) blurs from it |
 
 **They add back up.** Light + Reflections + Rest = the picture. With noise clean-up on, the picture is cleaned but the
 layers are not, so they add up to a slightly grainier picture; with it off they add up exactly.
@@ -73,6 +76,13 @@ Things to know:
 - **Shadow doubles the render time**: each frame is drawn a second time with no shadows, to see what the shadows took
   away. The time row counts it.
 - **Masks have hard edges** (one sample a pixel), so an edge can look stepped when a mask is used on its own.
+- **Each light on its own adds back up too**: all its layers together make the picture, less surfaces that glow on
+  their own (they belong to no light). Its layers are not cleaned of noise. A light's layer is named by the light's id.
+- **Cryptomatte masks are soft-edged** (every sample counts), one per top-level item with everything it holds, and the
+  names travel inside the file, so the compositor lists them.
+- **Motion for blur in the Editor renders the picture sharp**: Cycles makes the motion layer only without its own motion
+  blur, so with this pass on the shot's Motion blur is not used in the render. Blur in the Editor from the layer
+  (this is how films are usually made: the blur's amount can still change there).
 - Passes need the final renderer (Cycles); a quick (Storm) render saves the picture alone.
 
 ## Glass, liquid and bright bounces
@@ -155,7 +165,8 @@ Send to Editor comes with the Editor (not built yet).
 
 The sheet is built on the same pieces agents use: `render_estimate` (the same test and the same arithmetic),
 `render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`,
-and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
+and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`,
+`passLightGroups`, `passCryptomatte`, `passMotion`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".
 
 `render_video` with `estimate_only` answers at once with the measured figures (also over `budget_min`); with `budget_min` alone it

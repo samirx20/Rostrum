@@ -9,7 +9,7 @@ from rostrum_core import Document
 from rostrum3d import KIND, run_source
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.mcp.render import DocView, still
-from rostrum3d.render_fields import PASSES
+from rostrum3d.render_fields import PASSES, passes, settings
 from rostrum3d.runtime import find_exe
 
 SCENE = '''
@@ -22,8 +22,9 @@ shot("hero", camera=cam, fps=24, start=0, end=1)
 '''
 
 
-def exr_channels(path: Path) -> list[str]:
-    """The channel names in an OpenEXR file's header (its `channels` attribute), read without any EXR library."""
+def exr_channels(path: Path, attribute: str = "channels"):
+    """The channel names in an OpenEXR file's header (its `channels` attribute), read without any EXR library; another
+    `attribute`: its raw value (bytes)."""
     b = path.read_bytes()
     assert b[:4] == b"\x76\x2f\x31\x01", f"{path} is not an OpenEXR file"
 
@@ -37,7 +38,9 @@ def exr_channels(path: Path) -> list[str]:
         _, at = text(at)                                        # the attribute's type
         size = int.from_bytes(b[at:at + 4], "little")
         at += 4
-        if name == "channels":
+        if name == attribute and attribute != "channels":
+            return b[at:at + size]
+        if name == attribute == "channels":
             out, j = [], at
             while b[j] != 0:
                 ch, j = text(j)
@@ -45,7 +48,7 @@ def exr_channels(path: Path) -> list[str]:
                 j += 16                                         # pixel type, linear, reserved, x/y sampling
             return out
         at += size
-    raise AssertionError(f"{path} has no channel list")
+    raise AssertionError(f"{path} has no {attribute}")
 
 
 def test_exr_layers_are_the_ones_the_manifest_records(tmp_path):
@@ -62,6 +65,20 @@ def test_exr_layers_are_the_ones_the_manifest_records(tmp_path):
                                (64, 36), ["exr"], 0, {"samples": 2, "denoise": False}, tmp_path, list(PASSES))
     manifest = json.loads((done / "manifest.json").read_text(encoding="utf-8"))["exr"]
     assert sorted(exr_channels(files[0])) == sorted(manifest["channels"])
-    assert set(manifest["layers"]) == {"beauty", "light", "reflections", "rest", "shadow", "masks", "depth", "normal"}
+    assert set(manifest["layers"]) == {"beauty", "light", "reflections", "rest", "shadow", "masks", "depth", "normal",
+                                       "lightgroup_key", "CryptoObject00", "CryptoObject01", "CryptoObject02", "motion"}
+    assert manifest["light_groups"] == {"lightgroup_key": "key"}
+    crypto = json.loads(exr_channels(files[0], "cryptomatte/3ae39a5/manifest").decode())
+    assert {"box", "floor"} <= set(crypto)
     assert manifest["masks"]["masks.box"] == {"item": "box", "name": "The box"}
     assert "masks.floor" in manifest["masks"] and "masks.key" not in manifest["masks"] and "masks.cam" not in manifest["masks"]
+
+
+def test_the_pass_list_of_a_shot_saved_before_the_new_passes_is_unchanged():
+    """A shot saved before light groups, Cryptomatte and motion (none of their switches) renders the same layers; the new
+    switches add theirs; a Stylized render's EXR is the picture alone."""
+    old = {"renderFormat": "exr", "passLight": True, "passDepth": True}
+    assert passes(old) == ["light", "masks", "depth"]
+    assert passes({**old, "passMotion": True, "passLightGroups": True}) == ["light", "masks", "depth", "lightGroups", "motion"]
+    info = {"width": 64, "height": 36, "start": 0, "end": 0, "fps": 24}
+    assert settings({**old, "renderQuality": "stylized", "passCryptomatte": True}, info)["passes"] == []

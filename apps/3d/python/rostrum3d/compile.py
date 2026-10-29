@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, copies_fields, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_scene, shot_layer, copies_fields, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -203,6 +203,7 @@ def describe(data: dict, shot_id: str, folder=None, sim: str = "use") -> dict:
     is, else the older one), "none" (what a simulation starts from), "strict" (renders: raises sim.compute.SimError
     unless the result for the scene as it is is stored; compute it first with sim.compute.ready)."""
     info, shot = shot_info(data, shot_id), _shot(data, shot_id)
+    data = shot_layer.lay(data, shot_id)                  # the shot's own changes (Only in this shot), collections in linking
     frames = range(info["start"], info["end"] + 1)
     fr = _Frames(data, frames, info["fps"], folder)
     fr.shot_camera, fr.shot_size = info["camera"], [info["width"], info["height"]]      # copies: what must see them

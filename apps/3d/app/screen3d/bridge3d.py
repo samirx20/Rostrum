@@ -31,6 +31,7 @@ from .bridge_copies import CopiesMixin
 from .bridge_rows import RowsMixin
 from .bridge_scene import SceneMixin
 from .bridge_shots import ShotMixin
+from .bridge_shot_only import ShotOnlyMixin
 from .bridge_signals import Signals3D
 from .bridge_time import TimeMixin
 from .key_routes3d import KeyRoutes3D
@@ -59,7 +60,7 @@ def _viewport(bridge):
     return Viewport(bridge)
 
 
-class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, CopiesMixin, DocBridge):
+class Bridge3D(Signals3D, ShotOnlyMixin, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, CopiesMixin, DocBridge):
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: a "Final" tag
     QUICK_APPROX = {"material": MATERIAL_APPROX}                         # fields it only hints at: a "Final" tag too
@@ -119,8 +120,10 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
 
     @Slot(str)
     def rowAction(self, action_id):
-        """A row's button (or a choice of its menu) was clicked: the action runs as it would from the bar."""
-        self._hub.run(action_id)
+        """A row's button (or a choice of its menu) was clicked: the action runs as it would from the bar (a Use all
+        shots button: bridge_shot_only.py)."""
+        if not self.shot_only_action(action_id):
+            self._hub.run(action_id)
 
     actions = Property(QObject, lambda self: self._hub, constant=True)     # the panel's actions (action_preview3d.py)
     poses = Property(QObject, lambda self: self._poses, constant=True)  # QML: backend.poses (poses_qt.py)
@@ -153,14 +156,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
         return outline.label_of(item, owner)
 
-    def edit_call(self, item_id, param, value):
-        return route.edit_call(self.doc, item_id, param, value, self.time)
-
-    def shown_values(self, item):
-        return route.shown_values(item, self.time)
-
-    def anim_state(self, item, param):
-        return route.anim_state(item, param, self.time, self._info["fps"])
+    # edit_call, shown_values, anim_state: bridge_shot_only.py (the shown shot's own values, Only in this shot)
 
     def animate_calls(self, item_id, param, stop=False):
         return route.animate_calls(self.doc.item(item_id), param, self.time, self._info["fps"], stop)

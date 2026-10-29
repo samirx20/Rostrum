@@ -17,7 +17,8 @@ ListView {
 
     // the kit's hooks (LayerTimeline.qml, LayerTrack.qml): the item menu at (px, py) in the list's px, a row's middle
     // for the drag label, and the box that picks keys
-    function openMenu(id, px, py) { backend.select(id); itemMenu.openAt(list, px === undefined ? Theme.gap * 4 : px, py === undefined ? 0 : py, id) }
+    // a right-click on a row already among several picked keeps them all (New collection, Combine act on the picks)
+    function openMenu(id, px, py) { if (backend.selection.indexOf(id) < 0) backend.select(id); itemMenu.openAt(list, px === undefined ? Theme.gap * 4 : px, py === undefined ? 0 : py, id) }
     function rowMid(id) {
         const item = itemAtIndex(model.findIndex(r => r.id === id))
         return item ? item.y - contentY + item.height / 2 : -1

@@ -83,7 +83,7 @@ class Materials3D(QObject):
         it = self._holder()
         if it is None:
             return {}
-        mid = it.get("material", "")
+        mid = self.b.shown_values(it).get("material", "")     # as the shown shot has it (Only in this shot)
         if not mid or not self.b.doc.has(mid):
             return {"id": "", "label": "None", "users": 0, "colour": "", "ball": "", "shared": False}
         e = self._entry(self.b.doc.item(mid))
@@ -101,6 +101,8 @@ class Materials3D(QObject):
 
     @Slot(str)
     def assign(self, material_id):
+        if self.b.shotOnly:                     # Only in this shot: the shown shot's own material (bridge_shot_only.py)
+            return self.b._guard(lambda: self.b._apply([self.b.edit_call(i, "material", material_id) for i in self._sel()], "Material"))
         self._run({"op": "material.assign", "target": self._sel(), "args": {"material": material_id}}, "Material")
 
     @Slot(str)

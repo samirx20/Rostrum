@@ -19,5 +19,8 @@ LayerTimeline {
     // its room, so no row ever passes under it
     SimRow { id: simRow; x: 0; width: tl.width - Theme.gap; z: 4; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.gap
              ruler: tl.ruler; labelWidth: tl.labelWidth }
-    footer: simRow.visible ? simRow.height + Theme.gap : 0
+    // Collections (CollectionRow.qml) above it, there once the scene has one
+    CollectionRow { id: collRow; x: 0; width: tl.width - Theme.gap; z: 4; anchors.bottom: simRow.visible ? simRow.top : parent.bottom
+                    anchors.bottomMargin: simRow.visible ? 0 : Theme.gap; labelWidth: tl.labelWidth }
+    footer: (simRow.visible ? simRow.height + Theme.gap : 0) + (collRow.visible ? collRow.height + (simRow.visible ? 0 : Theme.gap) : 0)
 }

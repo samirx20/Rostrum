@@ -64,6 +64,7 @@ struct DrawSettings {
   double timeoutS = 600;  // a progressive renderer must finish within this
   std::vector<std::string> aovs;  // Cycles: the extra outputs to read back (passes.h aovs_for), into draw()'s `aovs`
   bool castShadows = true;        // Cycles: off, no light casts a shadow (the Shadow pass's second render)
+  bool motionPass = false;        // Cycles: the Motion pass (passes.h): no motion blur, moves sampled a frame either side
   int supersample = 2;            // stylized: it draws at this many times the picture's size (render's stylized)
   // while a progressive renderer works on one frame: (share done 0..1, ms drawing so far), at most every STEP_MS;
   // what lets the caller replace its guess of the time with one measured on this very frame
