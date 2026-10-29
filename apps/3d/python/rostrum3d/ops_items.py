@@ -10,7 +10,7 @@ from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 from rostrum_core.tree import child_keys, index, subtree_ids
 
-from . import build, fields as F, highlight, mirror
+from . import build, collection_kit, fields as F, highlight, mirror, shot_layer
 from .kind import REGISTRY as R
 
 ID = Param.text("id", label="Id", help="Optional; counted per type when left out (mesh_1, mesh_2 …). Letters, digits, _")
@@ -97,6 +97,13 @@ def item_remove(ctx, targets, args):
         if loc.item.get("followPose") and loc.item.get("follow") in gone and loc.item["id"] not in gone:
             ctx.set(loc.item["id"], "follow", "")
             ctx.set(loc.item["id"], "followPose", False)
+    for shot in ctx.doc.get("shots", []):          # PR1: a shot's own values for a deleted item go with it
+        own = shot.get(shot_layer.FIELD) or {}
+        if gone & set(own):
+            ctx.set(shot["id"], shot_layer.FIELD, {i: v for i, v in own.items() if i not in gone})
+    for coll in ctx.doc.get(collection_kit.LIST, []):   # and a collection lists it no more
+        if gone & set(coll.get("items", [])):
+            ctx.set(coll["id"], "items", [i for i in coll["items"] if i not in gone])
 
 
 def _reid(item: dict, new_id: str, taken: set, lists: dict):

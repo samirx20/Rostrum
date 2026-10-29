@@ -21,12 +21,14 @@ from rostrum_core import DocKind, Registry, plugin_parts
 from rostrum_core.tree import walk
 
 from rostrum_core.errors import codes
+from rostrum_core.keys import layers as anim_layers
 
 from . import clay_dabs, clay_fields, collection_kit, copies_fields, fields as F, graph, mirror, paint_fields, paint_view, shot_layer
 
-LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
+LISTS = anim_layers.with_lists({**F.LISTS, **rostrum_paint.LISTS})   # a mesh is a paint canvas (the shared kit); doc › animLayers
 HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",), "collections": ("collection",),
-         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS}
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS,
+         **anim_layers.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -50,7 +52,9 @@ for _type, _params in F.FIELDS.items():
                        label=f"Edit {_label}", fields=True)(_set_fields)
 
 
-def facts(item: dict) -> dict:
+def facts(item: dict, view=None) -> dict:
+    if item.get("type") == "shot":                   # Render only names a collection: the row is there once one exists
+        return {"collections": bool(view is not None and view.data.get(collection_kit.LIST))}
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item}
     if item.get("type") in F.KEYED:
@@ -72,9 +76,9 @@ def _check_keys(owner: dict, problems: list):
         want = "c" if F.param(owner["type"], prop).type == "color" else "v"
         if want not in k:
             problems.append(f'key {k["id"]}: a {prop} key needs {"c (a colour)" if want == "c" else "v (a number)"}')
-        if (prop, k.get("t")) in seen:
+        if (prop, k.get("t"), k.get(anim_layers.FIELD)) in seen:
             problems.append(f'{owner["id"]}: two {prop} keys at {k.get("t")} s')
-        seen.add((prop, k.get("t")))
+        seen.add((prop, k.get("t"), k.get(anim_layers.FIELD)))
 
 
 def _check_combine(item: dict, problems: list):
@@ -100,6 +104,7 @@ def _ref(problems, item, field, value, ids, what):
 _KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
           for t, ps in F.FIELDS.items()}
 _KNOWN["material"].add(graph.FIELD)                  # its blocks graph (graph.py): data the graph.* ops write, never a row
+_KNOWN["key"].add(anim_layers.FIELD)                 # the animation layer a key is on (rostrum_core.keys.layers)
 _KNOWN["shot"].add(shot_layer.FIELD)                 # Only in this shot: its own values (shot_layer.py), written by *.set_in_shot
 
 

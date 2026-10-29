@@ -11,7 +11,7 @@ each a switch that exists only while the shot saves an EXR with Cycles (absent f
 """
 from __future__ import annotations
 
-from .field_kit import ANY, CH, D, IS, N, NOT, S, T
+from .field_kit import ANY, CH, D, IS, N, NOT, S, T, X
 
 QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128, "denoise": True},
              "final": {"samples": 512, "denoise": True}}
@@ -45,6 +45,9 @@ RENDER = [
     N("renderSamples", "Samples", "Render", 1, 8192, 1, "", D, CUSTOM, integer=True, default=128,
       help="Cycles samples per pixel: time grows in step with them"),
     T("renderDenoise", "Noise clean-up", "Render", True, D, CUSTOM),
+    X("renderOnly", "Render only", "Render", "", S, {"fact": "collections"}, refers="collection",
+      help="A collection: the shot renders its items alone (the lights, camera and sky stay), e.g. the characters "
+           "on their own for the Editor; empty = everything. Only once the scene has a collection"),
     CH("renderSize", list(SIZES), "Size", "Render", "full", S, help="The shot's frame size, half of it or double"),
     CH("renderRange", ["shot", "range"], "Frames", "Render", "shot", S, help="The whole shot, or a stretch of it"),
     N("renderStart", "From", "Render", 0, 36000, 0.001, "s", S, RANGE, help="Seconds from the start of the shot"),

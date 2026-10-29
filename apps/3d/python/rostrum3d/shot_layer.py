@@ -5,7 +5,8 @@ else the document's. An overridden field that has keys holds the one value throu
 there): the simplest honest rule, and what a person sees in the settings panel. An override naming an item or field
 that is gone is skipped (an old override never stops a shot from building). Old documents have no `overrides`: nothing
 changes. Collections named in a light's `lightsOnly` become their members here too (collection_kit.py), so the core only
-ever sees item ids.
+ever sees item ids. A shot's `renderOnly` naming a collection hides every other thing that draws (lights, cameras and
+the groups holding members stay): the shot renders that collection alone, in Final and the Render button alike.
 """
 from __future__ import annotations
 
@@ -47,14 +48,36 @@ def lay(data: dict, shot_id: str) -> dict:
     shot = next((s for s in data.get("shots", []) if s.get("id") == shot_id), None)
     ov = of(shot)
     linked = COL.has_links(data)
-    if not ov and not linked:
+    only = next((c for c in COL.all_of(data) if c["id"] == (shot or {}).get("renderOnly")), None)
+    if not ov and not linked and only is None:
         return data
     out = {**data, "items": [_laid(i, ov) for i in data.get("items", [])]} if ov else dict(data)
     if ov and any(m["id"] in ov for m in data.get("materials", [])):
         out["materials"] = [{**m, **ov[m["id"]]} if m["id"] in ov else m for m in data["materials"]]
     if linked:
         out["items"] = COL.expand_links(out, out["items"])
+    if only is not None:
+        out["items"] = _alone(out["items"], set(COL.members(out, only, out["items"])))
     return out
+
+
+STAY = ("light", "camera")                             # what a render of one collection keeps besides its members
+
+
+def _alone(items: list[dict], members: set[str]) -> list[dict]:
+    """`items` with everything that draws hidden unless it is a member, inside one, or holds one."""
+    def one(it):
+        if it["id"] in members or it.get("type") in STAY:
+            return it, True
+        kids = [one(c) for c in it.get("children", [])]
+        keep = any(k for _, k in kids)
+        out = {**it, "children": [c for c, _ in kids]} if kids else dict(it)
+        if not keep:
+            out["visible"] = False
+            if it.get("keys"):                         # a keyed Visible would bring it back
+                out["keys"] = [k for k in it["keys"] if k.get("prop") != "visible"]
+        return out, keep
+    return [one(i)[0] for i in items]
 
 
 def shown(data: dict, shot_id: str, item: dict) -> dict:

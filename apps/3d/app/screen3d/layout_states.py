@@ -20,8 +20,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-picker-low", "material-shared", "blocks-view", "blocks-add-list", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
-         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "shot-only-light", "collections-row", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-curves", "animate-curves-picked", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "shot-only-light", "collections-row", "anim-layers-two", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
          "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-stylize", "sim-render-sheet", "sim-context", "sim-body-selected")
 BATCH = 6
@@ -207,6 +207,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shot-only-light", two_shots(), ["select key", "shotonly on", "set intensity 9"]),   # Changes: Only Hero 01, a This shot row
         ("shot-only-tag", two_shots(), ["select key", "shotonly on", "set intensity 9", "shotonly off"]),   # the tag on All shots
         ("collections-row", s, ["selectmany block vase", "action collection:new"]),       # the scene list's Collections chips
+        # animation layers (layers3d.py, the kit's AnimLayers.qml): the ⧉ popover empty, then two layers, the top one chosen
+        ("anim-layers-empty", s, ["page animate", "clickon animLayersButton", "wait 300"]),
+        ("anim-layers-two", s, ["page animate", "select block", "clickon animLayersButton", "wait 300", "click + New layer",
+                                "click + New layer", "wait 300"]),
+        ("anim-layers-chosen", s, ["page animate", "select block", "clickon animLayersButton", "click + New layer",
+                                   "press Escape", "wait 300"]),
         ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
         # Make this the shot (header, free view only; its place held in the shot camera) and its hover: the frame it takes
         ("take-view-hover", s, ["mode free", "orbit 40 10", "wait 300", "hover takeShot", "wait 700"]),
@@ -225,6 +231,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("animate-poses-onion", lid_turn(), ["page animate", "select lid", "frame 30", "pose Lid open", "onion on",
                                              "panel poses", "panel onion"]),                  # both panels open side by side
         ("animate-key-ease", lid_turn(), ["page animate", "select lid", "keys-menu lid.rx.k1600"]),   # a key's right-click Ease list
+        ("animate-curves", lid_turn(), ["page animate", "curves on"]),              # Curves, nothing picked: every item's
+        ("animate-curves-picked", lid_turn(), ["page animate", "select lid", "curves on"]),   # the lid's, Picked | All curves
+        ("animate-curves-all", lid_turn(), ["page animate", "select lid", "curves on", "curves all"]),
         ("animate-onion", lid_turn(), ["page animate", "select lid", "frame 30", "onion on", "panel onion"]),
         ("page-render", s, ["deselect", "estimate-recorded", "page render"]),          # the Render page, its queue empty
         ("render-queue-two", two_shots(), ["deselect", "estimate-recorded", "page render", "queue demo"]),   # running, waiting, ended rows

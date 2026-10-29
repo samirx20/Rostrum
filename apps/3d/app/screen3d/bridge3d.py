@@ -24,10 +24,11 @@ from rostrum_gui.time_snap import TimeSnap
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
 from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL, FINAL_STYLIZED, QUICK_APPROX as MATERIAL_APPROX, STYLIZED_ONLY
 
-from . import job_when3d, lipsync3d, outline, route
+from . import job_when3d, layers3d, lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .bridge_copies import CopiesMixin
+from .curves3d import Curves3D
 from .bridge_rows import RowsMixin
 from .bridge_scene import SceneMixin
 from .bridge_shots import ShotMixin
@@ -91,8 +92,10 @@ class Bridge3D(Signals3D, ShotOnlyMixin, ShotMixin, SceneMixin, TimeMixin, RowsM
         self._poses = Poses(self)
         self._lipsync, self.open_lipsync = lipsync3d.make(self)     # Lip sync… on a mouth group (lipsync3d.py)
         self._mover, self._time_snap = Mover(self), TimeSnap(self)        # the timeline (timeline3d.py, key_pick3d.py)
+        self._anim_layers = layers3d.make(self)           # the timeline's animation layers (layers3d.py)
         self._keys, self._key_bar, self._multi = KeyPick3D(self, self), KeyBar3D(self, self), Multi3D(self, self)
         self._stretch = Stretch3D(self, self)
+        self._curves = Curves3D(self, self)               # the timeline's Curves (curves3d.py, the kit's curve view)
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self._make_copies()                                 # right-click › Scatter on, the Count line (bridge_copies.py)
@@ -132,8 +135,10 @@ class Bridge3D(Signals3D, ShotOnlyMixin, ShotMixin, SceneMixin, TimeMixin, RowsM
     lipsync = Property(QObject, lambda self: self._lipsync, constant=True)   # QML: backend.lipsync (the kit's LipSyncSheet)
     importer = Property(QObject, lambda self: self._importer, constant=True)   # QML: backend.importer (importing.py)
     assets = Property(QObject, lambda self: self._assets, constant=True)   # QML: backend.assets (assets_qt.py)
+    curves = Property(QObject, lambda self: self._curves, constant=True)   # QML: backend.curves (curves3d.py)
     sim = Property(QObject, lambda self: self._sim, constant=True)         # QML: backend.sim (sim_qt.py)
     simRows = Property(QObject, lambda self: self._sim_rows, constant=True)   # QML: backend.simRows (sim_rows_qt.py)
+    animLayers = Property(QObject, lambda self: self._anim_layers, constant=True)   # QML: backend.animLayers (layers3d.py)
 
     @Property(QObject, constant=True)
     def adder(self):

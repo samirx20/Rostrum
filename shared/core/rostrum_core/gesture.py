@@ -42,6 +42,7 @@ class Gesture:
                                "window closed)", hint="Start it again.")
         if fresh:
             return self._fresh(calls)
+        calls = self.doc.routed(calls, self.who)
         work, edits, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
         self._near |= touched(edits, self.doc.kind.lists)
         self._made = None
