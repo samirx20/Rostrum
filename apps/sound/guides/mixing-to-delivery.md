@@ -28,7 +28,10 @@ when gentle limiting would leave it more than 0.5 LU under the target, renders t
 the target needs (at most 6 dB, so hits and stops keep their attack; a higher `maxLimit` of the song's own is used as it is). The song keeps its own `maxLimit`, so playback stays transparent; the reply says how far
 the limit went and how many dB of limiting it took (`data.loudness.pushed`), and how to make it the song's own. When that
 is short the file lands under and the `loudness` fault names the fix (tame the peaks, turn a track down, or a lower
-target). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
+target). The fault allows 0.5 LU, or the brief's own tolerance when the brief states one ("about -16 LUFS integrated
+(within 1 LU)": anything from -17 to -15 passes). On a piece with an asked hit the hit carries the loudness: the fix
+then keeps the bed after the hit quiet and aims at the quiet end of the brief's range (`master(loudness=-17)`), never
+lifts the quiet parts after the hit (that buries it: `buried_hit`, listening.md). A render also waits for the song's edit jobs asked before it (`edit_loudness`, cleanup, voice), so their edits
 are in the file. `edit_loudness` is for when the limiting a render reports is too much for the music.
 
 **Making the master need less limiting: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target

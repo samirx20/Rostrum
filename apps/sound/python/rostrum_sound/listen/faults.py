@@ -15,11 +15,11 @@ from .dsp import resample
 from .dsp_events import chroma
 from .memo import remembered
 from .moments import at_ceiling, check as moment_faults
-from . import drop_gap, lead_in, rise_gap, rival, shelf_try, squash, stop_fall, stop_soft, tempo_fit
+from . import drop_gap, hit_room, lead_in, rise_gap, rival, shelf_try, squash, stop_fall, stop_soft, tempo_fit
 
 NEW_WORDS = {"leading_silence": lead_in.words, "off_tempo": tempo_fit.words, "soft_stop": stop_soft.words,
              "drums_in_gap": drop_gap.words, "early_rival": rival.words,
-             "gap_before": rise_gap.words, "squashed_mix": squash.words}
+             "gap_before": rise_gap.words, "squashed_mix": squash.words, "buried_hit": hit_room.words}
 
 HELD_S = 12.0          # one harmony (pitch classes, ≥ 0.9 alike every second) held this long reads as one flat tone
 HELD_ALIKE = 0.9
@@ -234,14 +234,16 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, song=None) -> dict:
+def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, song=None, data=None) -> dict:
     """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
     is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
     the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
     drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them). `song`: {"tracks":
-    the render's track meters, "data": the document's data}, for a mix the limiter squashes (squash.py)."""
+    the render's track meters, "data": the document's data}, for a mix the limiter squashes (squash.py). `data` (else
+    song's): the document's data, whose brief says what a hit's bars around it must leave (hit_room.py)."""
     timed = [m for m in moments or [] if m.get("kind") != "tempo"]
     found = moment_faults(wav, timed, drums) if timed else []
+    found += hit_room.faults(wav, timed, data if data is not None else (song or {}).get("data")) if timed else []
     found = stop_soft.merge(found, limiter, peaky) + [f for m in moments or [] if m.get("kind") == "tempo" for f in tempo_fit.faults(m)]
     if whole:
         found += _whole(wav)
