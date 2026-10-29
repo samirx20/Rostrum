@@ -361,8 +361,10 @@ the whole shot, so a setting with keys stands still at that value in that shot (
 A setting the shown shot has its own value for shows a **Use all shots** button beside its value, on either side of
 the switch: click it and that setting goes back to the value every other shot uses (one undo step). A switch (Visible)
 shows a small **This shot** tag instead: switch it back and it matches every shot again. Setting any value back to
-what every other shot has does the same. Pick another shot in the header and its own values show. Each change is one
-undo step. Agents:
+what every other shot has does the same. The material's own rows (under the item's Material) work the same way: with
+Only on, a change to the material's colour or roughness shows in that shot alone, and the rows show the shown shot's
+values, each with its **Use all shots** button. Deleting an item also deletes every shot's own values for it. Pick
+another shot in the header and its own values show. Each change is one undo step. Agents:
 `<type>.set_in_shot`, `shot.clear_override` (guide *rendering*, "Only in this shot").
 
 ### Follow and stick (an item's settings)
@@ -393,9 +395,12 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
   together so one click reaches them all. Make one: select two or more items, right-click › **New collection** (one undo step; Ctrl+K too).
   Each shows as a chip, "Collection 1 · 3" (its name and how many items). Click a chip to select its items; double-click
   to rename it. Right-click a chip for what would change something now: **Hide** / **Show** (in every shot), **Hide in
-  Close 02 only** / **Show in Close 02 only** (with 2+ shots), **Add selected** (picked items not in it yet), **Delete
-  collection** (its items stay). A light's **Lights only** can name a collection too
-  (guide *lighting*). Agents: `collection.add`, `collection.set`, `collection.material`, `collection.show`.
+  Close 02 only** / **Show in Close 02 only** (with 2+ shots), **Add selected** (picked items not in it yet), **Give
+  material…** (the project's materials; every member that can wear one takes it, one undo step), **Delete
+  collection** (its items stay). A light's **Lights only** can name a collection too: while **Pick what it lights** is
+  on, click a chip to add the collection (again to take it out) (guide *lighting*). A shot's render settings can
+  render one collection alone (**Render only**, guide *rendering*). Deleting an item takes it out of every collection.
+  Agents: `collection.add`, `collection.set`, `collection.material`, `collection.show`.
 - **The Simulation row** (at the bottom, only while the scene has bodies): Simulate, and the stored result as a bar over
   the shot's frames: empty, filling, solid (stored), striped (out of date), red (failed). See *Simulate* above.
 - **Right, on the same rows:** an animated item's keys as diamonds on a slim bar from its first key to its last.

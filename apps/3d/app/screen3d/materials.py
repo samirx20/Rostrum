@@ -145,7 +145,7 @@ class Materials3D(QObject):
 
     def _rows(self):
         it = self._holder()
-        mid = it.get("material", "") if it else ""
+        mid = self.b.shown_values(it).get("material", "") if it else ""     # as the shown shot has them (PR1)
         mat = self.b.doc.item(mid) if mid and self.b.doc.has(mid) else None
         new = mat is None or mid != self._mat
         self._mat = mid if mat else ""
@@ -155,8 +155,8 @@ class Materials3D(QObject):
         else:
             op = self.b.doc.kind.registry.field_op("material")
             static = sections.layout(op, "material")
-            out = rows.evaluate(static, route.shown_values(mat, self.b.time), self.b.facts_of(mat),
-                                False, opened=self._open)
+            out = self.b.mark_shot_own(mat["id"], rows.evaluate(static, self.b.shown_values(mat), self.b.facts_of(mat),
+                                                                False, opened=self._open))
             top = [r for r in out if r["row"] == "param" and r.get("in") == ""]      # the essentials: primary params and their group's rest
             rest = [r for r in out if r not in top]
             for model, part in ((self.headModel, top), (self.model, rest)):

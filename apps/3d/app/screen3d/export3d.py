@@ -25,6 +25,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import project
 from rostrum_gui.edits import edit_label, field_call
 from rostrum_gui.export_sheet import ExportSheet, free_path
+from rostrum3d import collection_kit
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.estimate import scale
@@ -192,6 +193,16 @@ class Export3D(ExportSheet):
     def sizeText(self):
         s = self._settings()
         return f'{s["width"]} × {s["height"]}'
+
+    @Property("QVariantList", notify=own)
+    def alone(self):
+        """Render only (PR1): Everything, then each collection; empty (the row absent) while the scene has none."""
+        colls = collection_kit.all_of(self.bridge.doc.data)
+        return [{"value": "", "label": "Everything"}, *({"value": c["id"], "label": collection_kit.label(c)} for c in colls)] if colls else []
+
+    @Property(str, notify=own)
+    def aloneOn(self):
+        return self._shot().get("renderOnly", "")
 
     @Slot(str, str)
     def setShot(self, field, value):
