@@ -9,20 +9,20 @@ from rostrum_core import Document
 from rostrum3d import KIND, run_source
 from rostrum3d.compile import describe
 from rostrum3d.runtime import find_exe
+from rostrum3d.start_scene import SOURCE as START
 
 SRC = '''
-mesh("floor", shape="plane", width=4, depth=4, material=material("m", baseColor="#d0d0d0", roughness=0.6))
 for i in range(5):
     mesh(f"b{i}", shape="box", width=0.05, height=0.3, depth=0.05, x=-0.4 + 0.2 * i, material=material(f"k{i}", baseColor="#101010"))
-light("sun", kind="distant", intensity=3, rx=-60, ry=30)
 cam = camera("cam", focalLength=50, y=0.3, z=1.5, DOF).aim((0, 0.15, 0))
 shot("hero", camera=cam, fps=24, start=0, end=1)
 '''
 
 
 def _scene(dof: str) -> dict:
-    d = Document.new(KIND)
-    d.run_script("s.py", run_source(SRC.replace("DOF", dof), "s.py"))
+    d = Document.new(KIND)                             # the new scene's floor and lights, then the posts and camera
+    d.run_script("start.py", run_source(START, "start.py"))
+    d.run_script("s.py", run_source(SRC.replace("DOF", dof), "s.py", d))
     return describe(d.data, "hero")
 
 
@@ -44,5 +44,6 @@ def test_dof_off_renders_the_same_after_a_render_with_it_on(tmp_path):
         blurred = _render(eng, tmp_path / "on.png")
         eng.load(off)
         after = _render(eng, tmp_path / "after.png")
+    assert fresh.std() > 5, "the picture should show the posts"
     assert np.abs(blurred - fresh).mean() > 3 * np.abs(after - fresh).mean(), "the dof-on render should differ"
     assert np.abs(after - fresh).mean() < 2.0, "dof off after dof on is still blurred"
