@@ -38,8 +38,7 @@ ALIASES = {"wav": "wav24"}     # what a person means by plain "wav": the default
 
 AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb tail in a quiet room
 TAIL = 0.25             # seconds kept after the last audible sound
-LOOP_DECLICK_S = 0.01   # a loop's cut at its length: only this short ramp, so the join has no click and no dip
-FOLD_S = 1.0            # a ring-out that runs past an exact length is faded to nothing over the last second of it
+DECLICK_S = 0.01        # a file cut at its length while still sounding: only this short ramp, so the cut has no click
 RING_WARNINGS = ("The song's length is", "The last sounds still ring")    # the engine's words for a file that ends after the length
 RING_S = 2.0            # ring_past_length true: a ring-out may run this far past the length (the usual delivery allowance)
 MOST_RING_S = 6.0       # the most a ring-out may run past the length
@@ -77,9 +76,9 @@ class Options:
     trim: bool = True
     start: float | None = None       # a range of the song (seconds): `from` / `to` in a request; both or neither
     end: float | None = None
-    length: float | None = None      # exact: the song's Length (seconds) the file must be, a ring-out folded into it (see `deliver`)
-    ring: float = 0.0                # seconds a ring-out may run past `length` (ring_past_length), faded inside that
-    loop: bool = False               # the brief asks for a loop: what plays at `length` is cut there (a de-click), never faded
+    length: float | None = None      # exact: the song's Length (seconds) the file must be; what still sounds there is cut (a de-click)
+    ring: float = 0.0                # seconds a ring-out may run past `length` (ring_past_length), cut there (a de-click)
+    loop: bool = False               # the brief asks for a loop: no warning for the cut at `length` (it plays on into bar 1)
 
     @classmethod
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
@@ -217,8 +216,8 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`, and `clippedFiles`: {file
     name: samples cut flat} for each fixed-point file that went past full scale).
     `opts.length` (render_mix, whenever the song has a Length): the file is exactly that long. Trim never cuts below it, and a
-    ring-out the engine let run past it is faded out over the last second inside it (the engine's own ring-out warnings are
-    replaced by one saying so)."""
+    ring-out the engine let run past it is cut there with a 10 ms de-click, never faded (the engine's own ring-out warnings
+    are replaced by one saying so)."""
     sf = _soundfile()
     spec = opts.spec
     mix = mix_stem(item, name, [Path(p).stem for p in (*(r.get("stems") or {}).values(), *(r.get("busStems") or {}).values())])
@@ -242,7 +241,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
-    keep, first, fold, declick = frames, 0, 0, 0
+    keep, first, declick = frames, 0, 0
     ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
     if ranged:
         first = 0
@@ -257,18 +256,17 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
         keep = min(frames, int(opts.end * rate)) - first
     elif opts.length is not None:      # the song's Length is the file's length: not shorter (trim), not longer (a ring-out)
         keep = round(opts.length * rate)
-        if opts.ring:                  # the ring may run on up to `ring` past it (its silent end trimmed), faded inside that
+        if opts.ring:                  # the ring may run on up to `ring` past it (its silent end trimmed)
             keep = min(frames, max(keep, min(heard + int(TAIL * rate), keep + round(opts.ring * rate))))
-        fold = min(int(FOLD_S * rate), keep) if frames > keep and heard > keep else 0     # still ringing where it ends: fade it inside it
-        if opts.loop and fold:         # a loop plays on into bar 1: a 1 s fade there is a dip at the join (sound-endings, Notes App)
-            fold, declick = 0, min(int(LOOP_DECLICK_S * rate), keep)
+        if frames > keep and heard > keep:   # still sounding where it ends: cut there as asked, only a de-click, never a
+            declick = min(int(DECLICK_S * rate), keep)   # fade (Sam, 2026-10-29: the delivery never reshapes the music)
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     def one(job):
         kind, key, src, stem = job
         dest = folder / f"{stem}.{spec['ext']}"
         part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
-        n = write(part, src, keep, rate, spec, sf, first, fold or declick)
+        n = write(part, src, keep, rate, spec, sf, first, declick)
         if dest != src:
             src.unlink()
         part.replace(dest)
@@ -281,17 +279,18 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     mix = files[("mix", None)]
     start = r["range"][0] if ranged else first / rate
     song = (r.get("seconds") or frames / rate) if ranged else frames / rate
-    warnings = [w for w in r.get("warnings") or [] if not (fold and w.startswith(RING_WARNINGS))]
-    if fold:
+    cut = bool(declick) and opts.length is not None
+    warnings = [w for w in r.get("warnings") or [] if not (cut and w.startswith(RING_WARNINGS))]
+    if cut and not opts.loop:
         is_ = (f"{opts.length:.2f} s; the file is {keep / rate:.2f} s with the {opts.ring:g} s of ring allowed" if opts.ring and opts.length is not None
                else f"{keep / rate:.2f} s and so is the file")
-        warnings.append(f"The song's length is {is_}: what still rang past it ({(frames - keep) / rate:.1f} s) is faded "
-                        f"out over the last {fold / rate:.1f} s. End the last notes earlier, or set a longer length, so the ring has room "
-                        f"inside it; `ring_past_length: true` lets it run up to {RING_S:g} s past the length.")
+        warnings.append(f"The song's length is {is_}: it still sounds there, so the file stops while ringing "
+                        f"({(frames - keep) / rate:.1f} s more rang past it; not faded). To let it ring: end the last notes earlier, "
+                        f"set a longer length, or `ring_past_length: true` (up to {RING_S:g} s past the length); a fade: ending(\"fade\").")
     return {**{k: v for k, v in r.items() if k not in ("range", "warnings")}, "warnings": warnings, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
             "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None) and opts.length is None),
             **({"range": [start, start + keep / rate]} if opts.start is not None else {}),
             "clippedSamples": over, "clippedFiles": clipped,
-            **({"fadedEnd": {"faded_s": fold / rate, "rang_s": (frames - keep) / rate, "from_s": (keep - fold) / rate}} if fold else {})}
+            }

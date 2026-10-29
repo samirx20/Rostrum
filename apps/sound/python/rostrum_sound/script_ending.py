@@ -13,7 +13,8 @@ length. `chord`: the home chord of key(...) unless a numeral ("V"), symbol ("Gsu
 is given (script_ending_chord.py). `parts`: the tracks that land (default: every pitched track with notes in the 2 bars
 before `at`; for a button also the drum tracks with hits there). Applied when the script ends, after every note is
 written: notes ringing across `at` end on it, notes and hits after it are dropped, nothing else is changed. The kinds
-make each ending land; which ending fits the piece is the writer's. A loop has no ending: its last bar plays into bar 1. `song.root["ending"]` keeps what was asked.
+make each ending land; which ending fits the piece is the writer's. The length is set only when the script has none:
+a length set before stays, and the reply gives the arithmetic against it. A loop has no ending: its last bar plays into bar 1. `song.root["ending"]` keeps what was asked.
 """
 from __future__ import annotations
 
@@ -123,12 +124,16 @@ def apply(song) -> None:
         length = at_s + dur + (asked["ring"] if kind == "button" and asked["ring"] else CRASH_TAIL_S if crash else TAIL_S)
     old = song.root.get("length")
     old_s = None if old is None else times.seconds(old, root, "ending")
-    song.set(length=round(length, 3), ringOut=True)
+    if old is None:                    # a length the script set is the writer's: never moved (Sam, 2026-10-29)
+        song.set(length=round(length, 3), ringOut=True)
+    else:
+        song.set(ringOut=True)
     song.root["ending"] = {"kind": kind, "at": asked["at"], "at_s": round(at_s, 3), **({"home": key} if key else {}),
                          **({"chord": asked["chord"]} if asked["chord"] is not None else {})}
     sound = (f"fades from {at_s - min(span, at_s):.2f} s to {at_s:.2f} s" if kind == "fade" else
              f"lands {at_s:.2f} s, {'held' if kind == 'ring' else 'struck'} to {at_s + dur:.2f} s, rings to about {length:.2f} s")
-    say(f"ending {kind}: {sound}, file {length:.2f} s (Ring out on). " + "; ".join(said) + "." + _against(old_s, length, at_s))
+    file = f"file {length:.2f} s" if old is None else f"the length stays {old_s:.2f} s as set"
+    say(f"ending {kind}: {sound}, {file} (Ring out on). " + "; ".join(said) + "." + _against(old_s, length, at_s))
 
 
 def _against(asked, length, at_s) -> str:
