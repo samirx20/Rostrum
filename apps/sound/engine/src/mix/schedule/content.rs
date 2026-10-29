@@ -111,11 +111,12 @@ pub enum Content {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Voice {
+    /// cut (SFZ): seconds after its start it stops, a one-shot too (a recorded kit's hit written to stop; voices::cut_len).
     #[serde(rename_all = "camelCase")]
-    Note { instrument: String, #[serde(default)] synth: Option<crate::instruments::synth::spec::SynthSpec>, #[serde(default)] sampler: Option<crate::instruments::sampler::SamplerSpec>, #[serde(default)] plugin: Option<crate::plugins::clap::PluginSpec>, #[serde(default)] sfz: Option<crate::instruments::sfz::SfzSpec>, freqs: Vec<f64>, start_idx: usize, duration: f64, velocity: f64, pan: f64, #[serde(default)] glide_from: Option<f64>, #[serde(default)] expression: Option<crate::instruments::expression::Expression>, #[serde(default)] variation: Option<crate::instruments::expression::Variation>, #[serde(default)] touch: Option<Touch> },
-    /// tune: a pitch ratio; decay: a factor of the hit's length; sample: a one-shot played instead of the synthesized hit; model: a kit preset's synthesized hit (drumsynth.rs) instead of the classic kit's.
+    Note { instrument: String, #[serde(default)] synth: Option<crate::instruments::synth::spec::SynthSpec>, #[serde(default)] sampler: Option<crate::instruments::sampler::SamplerSpec>, #[serde(default)] plugin: Option<crate::plugins::clap::PluginSpec>, #[serde(default)] sfz: Option<crate::instruments::sfz::SfzSpec>, freqs: Vec<f64>, start_idx: usize, duration: f64, velocity: f64, pan: f64, #[serde(default)] glide_from: Option<f64>, #[serde(default)] expression: Option<crate::instruments::expression::Expression>, #[serde(default)] variation: Option<crate::instruments::expression::Variation>, #[serde(default)] touch: Option<Touch>, #[serde(default)] cut: Option<f64> },
+    /// tune: a pitch ratio; decay: a factor of the hit's length; cut: seconds after its start it stops (fading out over its last 10 ms), however long it would ring; sample: a one-shot played instead of the synthesized hit; model: a kit preset's synthesized hit (drumsynth.rs) instead of the classic kit's.
     #[serde(rename_all = "camelCase")]
-    Drum { voice: String, start_idx: usize, velocity: f64, pan: f64, #[serde(default = "unit")] tune: f64, #[serde(default = "unit")] decay: f64, #[serde(default)] sample: Option<Pcm>, #[serde(default)] model: Option<crate::instruments::drumsynth::DrumModel> },
+    Drum { voice: String, start_idx: usize, velocity: f64, pan: f64, #[serde(default = "unit")] tune: f64, #[serde(default = "unit")] decay: f64, #[serde(default)] cut: Option<f64>, #[serde(default)] sample: Option<Pcm>, #[serde(default)] model: Option<crate::instruments::drumsynth::DrumModel> },
 }
 
 /// How a procedural instrument's note is played (model/): 0 soft … 1 hard (mallet, pick, stick), and

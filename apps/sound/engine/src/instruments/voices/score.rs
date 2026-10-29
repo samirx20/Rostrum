@@ -33,7 +33,7 @@ pub fn render_score(voices: &[crate::mix::schedule::Voice], left: &mut [f32], ri
     for v in all { if let V::Note { sfz: Some(s), .. } = v { if !files.iter().any(|f| f.plays_as(s)) { files.push(s); } } }
     for spec in files {
         let notes: Vec<_> = all.iter().filter_map(|v| match v {
-            V::Note { sfz: Some(s), freqs, start_idx, duration, velocity, pan, expression, .. } if s.plays_as(spec) => Some(crate::instruments::sfz::Note { start: *start_idx, len: (duration * sr).round() as usize, freqs: freqs.as_slice(), velocity: *velocity, pan: *pan, expression: expression.as_ref() }),
+            V::Note { sfz: Some(s), freqs, start_idx, duration, velocity, pan, expression, cut, .. } if s.plays_as(spec) => Some(crate::instruments::sfz::Note { start: *start_idx, len: (duration * sr).round() as usize, freqs: freqs.as_slice(), velocity: *velocity, pan: *pan, expression: expression.as_ref(), cut: cut.map(|c| (c.max(0.0) * sr).round() as usize) }),
             _ => None,
         }).collect();
         crate::instruments::sfz::render(spec, &notes, left, right, sr, span)?;

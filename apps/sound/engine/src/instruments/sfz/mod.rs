@@ -273,7 +273,8 @@ pub fn instrument(file: &str) -> Result<Arc<Vec<Region>>, String> {
 }
 
 /// A note to play: start and length in samples, its pitches, velocity 0 … 1, pan −1 … 1, its expression.
-pub struct Note<'a> { pub start: usize, pub len: usize, pub freqs: &'a [f64], pub velocity: f64, pub pan: f64, pub expression: Option<&'a Expression> }
+/// `cut`: samples after `start` it stops, whatever its regions (a one-shot too), fading over voices::CUT_FADE.
+pub struct Note<'a> { pub start: usize, pub len: usize, pub freqs: &'a [f64], pub velocity: f64, pub pan: f64, pub expression: Option<&'a Expression>, pub cut: Option<usize> }
 
 const LEGATO_SKIP: f64 = 0.09; // seconds of the sample's attack a legato note enters past
 pub const LEGATO_FADE: f64 = 0.07;
@@ -317,6 +318,7 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
                 return Err(format!("{}: no sample for {} (key {}) at velocity {vel}; the instrument plays {}–{}", spec.file, name(key), written(key), name(lo), name(hi)));
             }
             let (off, release, legato) = ends[i];
+            let cut_at = n.cut.map(|c| n.start + c);
             if !crate::mix::window::heard(span, n.start, off.saturating_sub(n.start), sr) {
                 continue;
             }
@@ -329,6 +331,8 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
                 // It starts its attack early so it is heard on its time (onset.rs; a legato note enters past its attack;
                 // a note in the song's first moments starts at 0, as late as its attack); it is still let go at its end.
                 let at = if legato { n.start } else { n.start.saturating_sub(v.lead()) };
+                // A cut: silent from there, its release and a one-shot's ring too (the fade ends on the cut).
+                if let Some(c) = cut_at { v.cut(c.saturating_sub(at), crate::instruments::voices::CUT_FADE); }
                 // A one-shot rings to its sample's end unless a note of its choke group stops it.
                 match (r.one_shot, choked[i]) {
                     (false, c) => v.release(off.min(c.unwrap_or(usize::MAX)).saturating_sub(at), if c.is_some_and(|c| c < off) { Some(choke(r)) } else { release }),
@@ -341,7 +345,12 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
             for r in select_on(&regions, true, key, vel, nth, rand) {
                 let held = off.saturating_sub(n.start) as f64 / sr;
                 let mut v = SfzVoice::new(r, cached(&r.sample, read_wav)?, midi, n.velocity * 10f64.powf(-r.rt_decay * held / 20.0), n.pan, false, false, 0.0, None, sr);
-                // It plays to its sample's end (no note-off of its own).
+                // It plays to its sample's end (no note-off of its own), or to the note's cut.
+                match cut_at {
+                    Some(c) if c <= off => continue,
+                    Some(c) => v.cut(c - off, crate::instruments::voices::CUT_FADE),
+                    None => {}
+                }
                 mix(&mut v, off, left, right);
             }
         }
@@ -396,6 +405,9 @@ pub struct SfzVoice {
     attack: f64,
     /// Samples into the voice where its release starts (usize::MAX while held).
     note_end: usize,
+    /// A cut (cut()): samples into the voice where it is silent, whatever its release, and the fade's length before it.
+    cut_end: usize,
+    cut_fade: usize,
     /// The note's length in seconds for `swell` and the expression's shape (a score's; live: none).
     dur: f64,
     swell: bool,
@@ -426,7 +438,7 @@ impl SfzVoice {
             let span = (end * 0.45).min(4.0 * s.rate).max(0.8 * s.rate);
             (end, span, (0.3 * s.rate).min(span * 0.5))
         });
-        SfzVoice { gain, pl: pl as f32, pr: pr as f32, step, looped, auto, release: r.release.max(0.002), attack: if legato { LEGATO_FADE } else { r.attack }, note_end: usize::MAX, dur, swell, expression, tone: None, pos, i: 0, sr, r: r.clone(), s }
+        SfzVoice { gain, pl: pl as f32, pr: pr as f32, step, looped, auto, release: r.release.max(0.002), attack: if legato { LEGATO_FADE } else { r.attack }, note_end: usize::MAX, cut_end: usize::MAX, cut_fade: 1, dur, swell, expression, tone: None, pos, i: 0, sr, r: r.clone(), s }
     }
 
     /// Output samples from the voice's start to where it is heard (onset.rs): the sample's attack at the note's pitch,
@@ -446,6 +458,13 @@ impl SfzVoice {
         }
     }
 
+    /// Silent from `at` samples from now on, whatever its release or a one-shot's sample, fading out over the `over`
+    /// seconds before it (a drum hit's cut: it stops there, without a click).
+    pub fn cut(&mut self, at: usize, over: f64) {
+        self.cut_end = self.cut_end.min(self.i + at);
+        self.cut_fade = ((over * self.sr) as usize).max(1);
+    }
+
     pub fn held(&self) -> bool {
         self.note_end == usize::MAX
     }
@@ -460,6 +479,8 @@ impl SfzVoice {
             if u < attack { u / attack.max(1e-6) } else if u < attack + r.hold { 1.0 } else if u < attack + r.hold + r.decay { 1.0 - (1.0 - r.sustain) * (u - attack - r.hold) / r.decay } else { r.sustain }
         };
         if i >= self.note_end { let x = (i - self.note_end) as f64 / sr / self.release; if x >= 1.0 { return None; } env *= (1.0 - x).powi(2); }
+        if i >= self.cut_end { return None; }
+        if i + self.cut_fade > self.cut_end { env *= (self.cut_end - i) as f64 / self.cut_fade as f64; }
         if self.swell { let x = (t / (self.dur * 0.65).max(0.05)).min(1.0); env *= 0.12 + 0.88 * x * x * (3.0 - 2.0 * x); }
         if let Some(e) = &self.expression { env *= e.gain(t, self.dur); }
         let p = self.pos as usize;

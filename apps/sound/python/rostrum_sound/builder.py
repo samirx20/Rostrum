@@ -67,9 +67,9 @@ class Track(Routing, Inserts):
     def chord(self, pitches, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
         return self.note(list(pitches), at, dur, vel, pan, id, end, **playing_)
 
-    def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None):
-        """One drum hit: hit("kick", at=beat(0))."""
-        self.hits.append((id, checked("hit", dict(drum=drum, at=at, vel=vel, pan=pan, tune=tune, decay=decay),
+    def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None, cut=None):
+        """One drum hit: hit("kick", at=beat(0)); cut=0.4 stops it 0.4 s after it is struck (a choked crash)."""
+        self.hits.append((id, checked("hit", dict(drum=drum, at=at, vel=vel, pan=pan, tune=tune, decay=decay, cut=cut),
                                       f"track {self.id} › hit", FD.DEFAULTS["hit"]), vel is not None))
         return self
 
