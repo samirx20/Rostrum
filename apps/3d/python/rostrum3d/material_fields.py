@@ -26,13 +26,13 @@ def ALL(*conditions):
 
 MATERIAL = [
     C("baseColor", "Base colour", "Surface", "#cccccc", when=IS("baseColorTexture", "")),
-    X("baseColorTexture", "Base colour image", "Surface", "", S, help='Absolute path of an sRGB image on the UVs; replaces the base colour'),
+    X("baseColorTexture", "Base colour image", "Surface", "", S, help='Absolute path of an sRGB image on the UVs; replaces the base colour. A UDIM set works: one tile (name.1001.png) picks the set, or name.<UDIM>.png'),
     N("metallic", "Metallic", "Surface", 0, 1, 0.01, when=IS("metallicTexture", ""),
       help="1 = metal (its colour tints the reflections)"),
-    X("metallicTexture", "Metallic image", "Surface", "", D, help="A grey image read as raw numbers: white = metal"),
+    X("metallicTexture", "Metallic image", "Surface", "", D, help="A grey image read as raw numbers: white = metal (a UDIM set works too)"),
     N("roughness", "Roughness", "Surface", 0, 1, 0.01, default=0.5, when=IS("roughnessTexture", ""),
       help="0 = mirror, 1 = chalk. On glass it also blurs what is seen through it (frosted glass)"),
-    X("roughnessTexture", "Roughness image", "Surface", "", D, help="A grey image read as raw numbers"),
+    X("roughnessTexture", "Roughness image", "Surface", "", D, help="A grey image read as raw numbers (a UDIM set works too)"),
     N("transmission", "Transmission", "Glass", 0, 1, 0.01, "", S,
       help="1 = light passes through (glass, water, juice). Below 1 the rest is an opaque painted surface mixed in: "
            "clear and tinted glass and liquids need 1 (the base colour tints what is seen through)"),
@@ -70,13 +70,13 @@ MATERIAL = [
     N("subsurfaceRadius", "How far it travels", "Under the surface", 0, 500, 0.1, "mm", S, UNDER, default=4.0,
       help="How far light gets inside before it comes back out, in real millimetres: skin about 4, wax and soap "
            "about 8, marble about 5. A small object shows it more than a big one with the same value"),
-    X("bumpTexture", "Bump image", "Relief", "", D, help="A grey height image: white is raised"),
+    X("bumpTexture", "Bump image", "Relief", "", D, help="A grey height image: white is raised (a UDIM set works too)"),
     N("bumpStrength", "Bump strength", "Relief", 0, 1, 0.01, "", D, NOT("bumpTexture", ""), default=0.5),
     N("emissionStrength", "Glow strength", "Glow", 0, 1e4, 0.1, "", D, help="The surface gives off light (screens, LEDs)"),
     C("emissionColor", "Glow colour", "Glow", "#ffffff", D,
       ALL(GLOWS, IS("emissionTexture", ""), IS("emissionRender", ""))),
     X("emissionTexture", "Glow image", "Glow", "", D, ALL(GLOWS, IS("emissionRender", "")),
-      help="Absolute path of an sRGB image on the UVs: the glow takes its colours (a screen's picture)"),
+      help="Absolute path of an sRGB image on the UVs: the glow takes its colours (a screen's picture; a UDIM set works too)"),
     X("emissionRender", "Glow from 2D item", "Glow", "", D, ALL(GLOWS, IS("emissionTexture", "")),
       help="The id of a 2D item of this project: its newest PNG-sequence render plays on the surface, its frame "
            "at each moment of the shot (held at the ends). Read-only: change it in Rostrum2D and render again"),

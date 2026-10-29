@@ -192,6 +192,24 @@ Bare metal shows only what it reflects. Metal lettering on a dark face in a dark
 - Any image file works. To paint them by hand on the model instead, use Paint (B): its layers paint colour, roughness,
   relief, metal or glow over this material, and the material's own values stay where nothing is painted (guide `painting`).
 
+### Pictures in tiles (UDIM sets)
+
+Studio models often carry one picture spread over several files, one per square of the UV layout: `skin.1001.png`,
+`skin.1002.png`, `skin.1011.png` … This is a **UDIM set**. Tile 1001 is the first square (u and v 0 to 1), 1002 the
+square to its right, 1011 the square above 1001 (the number is 1001 + the column + 10 × the row, ten columns).
+
+- **Picking one tile picks the set.** Choose any one file of the set (`skin.1001.png` or `skin_1001.png`) for any
+  picture field: when another tile with the same name sits beside it, the material uses the whole set. A file with no
+  other tile beside it stays a single picture.
+- You can also write the set yourself: the absolute path with `<UDIM>` where the number goes,
+  `D:/assets/skin.<UDIM>.png`. It works when at least one tile is there; otherwise the material is refused and the
+  message names the set.
+- **Imports keep them.** An OBJ, FBX or glTF whose colour picture is one tile of a set (or names `<UDIM>` itself) comes
+  in with the whole set; a USD file with a set already in it is used as it is.
+- `look_material` names a set as "UDIM set, N tiles" with the numbers it found.
+- Paint can't sit over a set (paint is one picture): to paint that channel, empty the field on the painted item's
+  material first (guide `painting`).
+
 ## Things that glow
 
 **`emissionStrength`** above 0 makes the surface give off light in **`emissionColor`** (screens, LEDs, a neon tube). In Cycles a glowing surface also lights what's near it; for a strong light source, a real light is cleaner and faster.

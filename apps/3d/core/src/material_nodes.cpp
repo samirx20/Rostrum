@@ -1,10 +1,12 @@
 #include "material_nodes.h"
 
 #include <pxr/base/gf/vec3f.h>
+#include <pxr/base/vt/array.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/types.h>
 
 #include "error.h"
+#include "udim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -38,6 +40,12 @@ UsdShadeShader cycles_image(const UsdStageRefPtr& stage, const SdfPath& mat, con
   UsdShadeShader t = shader(stage, mat, name, "cycles_image_texture");
   set_files(t, "filename", pic);
   set(t, "colorspace", SdfValueTypeNames->String, std::string("data"));
+  // A UDIM set (v1.34): Cycles' image_texture loads only the tiles in its `tiles` list (1001 alone by default), each
+  // file the name with <UDIM> replaced by the tile number. The tiles there when the material is built are listed.
+  if (udim::is_set(pic.files.front())) {
+    const std::vector<int> found = udim::tile_numbers(pic.files.front());
+    set(t, "tiles", SdfValueTypeNames->IntArray, VtIntArray(found.begin(), found.end()));
+  }
   const std::string& f = pic.files.front();
   const std::string ext = f.size() > 4 ? f.substr(f.size() - 4) : f;
   if (!colour || ext == ".exr" || ext == ".hdr" || ext == ".EXR" || ext == ".HDR") return t;  // float: linear already

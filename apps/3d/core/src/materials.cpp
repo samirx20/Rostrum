@@ -20,6 +20,7 @@
 #include "material_nodes.h"
 #include "material_stylized.h"
 #include "stage_items.h"
+#include "udim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -30,7 +31,7 @@ const std::vector<std::string> kBrush = {"uv", "around x", "around y", "around z
 
 Picture still_picture(Reader& p, const char* key) {
   const std::string file = p.str(key);
-  check_file(file, p.at(key), "an image");
+  check_picture(file, p.at(key));
   return file.empty() ? Picture{} : Picture{{file}, 0};
 }
 
@@ -236,6 +237,14 @@ void check_file(const std::string& path, const std::string& where, const char* w
   const std::string accepted = std::string("\"\" or the absolute path of ") + what;
   if (!std::filesystem::path(path).is_absolute()) fail(where, "\"" + path + "\" is not absolute", accepted);
   if (!std::filesystem::is_regular_file(path)) fail(where, "\"" + path + "\" does not exist", accepted);
+}
+
+void check_picture(const std::string& path, const std::string& where) {
+  if (!udim::is_set(path)) return check_file(path, where, "an image");
+  const std::string accepted = "the absolute path of an image, or of a UDIM set with at least one tile (name.1001.png)";
+  if (!std::filesystem::path(path).is_absolute()) fail(where, "\"" + path + "\" is not absolute", accepted);
+  if (udim::tiles(path).empty())
+    fail(where, "the UDIM set \"" + path + "\" has no tile (no file with 1001..1099 in place of <UDIM>)", accepted);
 }
 
 void rebuild_material(const UsdStageRefPtr& stage, const std::string& id, const JsObject& props,

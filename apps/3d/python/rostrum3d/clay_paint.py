@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 
-VERSION = "rostrum3d-claysurf@4"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it
+VERSION = "rostrum3d-claysurf@5"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it (5: no triangle left out)
 MAGIC, FORMAT = b"CLS1", 1
 STEP = 0.25                          # resample the path every STEP × reach in 3D ...
 MOST = 4000                          # ... and at most this many samples a stroke
