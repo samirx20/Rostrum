@@ -49,7 +49,7 @@ from rostrum_core.keys import key_id
 from . import aim, build, clay_detail, start_lights, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from rostrum_core.tree import walk
 
-from . import script_figure, script_ground, script_place, script_pose, script_rerun, script_shot
+from . import recipe, script_figure, script_garment, script_ground, script_place, script_pose, script_rerun, script_shot
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -487,6 +487,7 @@ class Build:
         script), else the document's own."""
         doc = self.doc
         if doc is not None:
+            script_rerun.rewind(doc, name)                   # an undo / redo of its own run: its record follows the scene
             script_rerun.guard(self)                         # a re-run leaving out most of what it made: said in the reply
             before = set(self.owned)
             script_rerun.remade(self)                        # made again under an id already in the scene: replaces it
@@ -608,17 +609,19 @@ def _import(name, *args, **kw):
 
 API = ["y = height of the base above the ground (mesh, import, group made in the scene); y_world= for the origin's world height",
        "group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, brightness= stops, at_distance=, replace_start_lights=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour|path, count=, spacingX=, columns=, radius=, surface=, path= (a text/svg/path2d mesh), alongPath=, pathShift=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|move|hide|colour, near=, field=sphere|plane|noise, radius=, amount=, axis=, seed=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "clay.layer(name, amount=1): the strokes after it go on a sculpt layer (None: the Base)", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour|path, count=, spacingX=, columns=, radius=, surface=, path= (a text/svg/path2d mesh), alongPath=, pathShift=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|move|hide|colour, near=, field=sphere|plane|noise, radius=, amount=, axis=, seed=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "clay.layer(name, amount=1): the strokes after it go on a sculpt layer (None: the Base)", "garment(id, pieces=[{name, outline=[[x, y] …], at=[x, y, z], turn=, wrap=} …], seams=[{a: [piece, edge], b: [piece, edge], flip=} …], sewTime=, **fields): a sewing pattern, cloth", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
        "item.set(**fields)", "item.key(field, {seconds: value} or [{\"t\": seconds, \"v\": value}], ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other, gap=) / place_on(other, beside=\"left\"|\"right\"|\"front\"|\"back\", gap=) / place_on(in_front_of=other) / place_on(clay or mesh, at=(x, y, z), normal=)",
-       "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)",
+       "import.part(path, material=, visible=)", "edit(id, **fields) or item(id): a handle on a thing by id (made earlier in the script, or in the scene: shot_1, ground …)", "remove(id, …)", "setting(name, default, min=, max=, label=, choices=[…]): a value a person can change (the script becomes a recipe)",
        "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "clay.pose(seconds, **{\"right hand\": (x, y, z) or {\"up\": m, \"out\": m, \"forward\": m}, \"head\": …}, holds=): one pose per call, chain for motion; names hand.R / right hand / picture-left hand", "clay.bend(joint, {seconds: (x, y, z) degrees})", "any item: attach_to=<item> (moves and bends with it)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
-def run_source(source: str, name: str, doc=None) -> dict:
+def run_source(source: str, name: str, doc=None, values: dict | None = None) -> dict:
     """Python source → the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing merged.
     With the open document (`doc`, as run_script passes it): edit / remove, and the new scene's things made again by id,
-    are taken over (Build.take_over) before the merge."""
+    are taken over (Build.take_over) before the merge. `values`: settings asked for this run (recipe.rerun); a script
+    declaring settings also makes its recipe (recipe.py)."""
     b = Build(_reserved(source), doc, name)
+    settings = recipe.Settings(doc, name, values)
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: script_shot.make(b, id, v),
@@ -627,6 +630,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              "clay": lambda id=None, **v: _clay(b, id, **v),
              "copies": lambda id=None, source=None, **v: _copies(b, id, source, **v),
+             "garment": lambda id=None, pieces=(), seams=(), **v: script_garment.make(b, id, pieces, seams, **v),
+             "setting": settings.take,
              "edit": lambda id, **v: b.edit(id, **v), "item": lambda id: b.edit(id), "remove": lambda *ids: b.remove(*ids),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
@@ -642,6 +647,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            () if "Did you mean" in str(e) else API) from e
     try:
+        if (made := settings.node(name, source)) is not None:     # a script with settings: its recipe, made with the rest
+            b.root[recipe.LIST] = [made]
         for clay_id in b.figures:
             node = next((n for n in walk(b.root, KIND.lists) if n.get("id") == clay_id), None)
             if node is not None:

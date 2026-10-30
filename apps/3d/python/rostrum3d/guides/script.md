@@ -110,6 +110,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `import_usd(id, file=, parts=[…], **fields)` | a 3D file by reference: USD, glTF / GLB, OBJ, FBX or Alembic (also a holder) |
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `copies(id, source, layout=, count=, **fields)` | one thing many times: `source` (an item or list made earlier in the same list) goes inside; or `with copies(...):` and make it inside (guide `copies`) |
+| `garment(id, pieces=[…], seams=[…], sewTime=, **fields)` | a garment from flat sewing-pattern pieces sewn at their edges; it is cloth, and its pieces' `at` are heights in the scene (it is not set on the ground) (guide `simulate` › Garments from patterns) |
 | `copies.effector(kind=, near=, radius=, amount=)` | change the copies near an item: `scale turn push colour` |
 | `clay(id, radius=, at=, to=, **fields)` | a clay starting as a ball of `radius` (a capsule from `at` to `to`); with neither, empty for `.lump` / `.draw`. No `at` / `y`: the ball stands on the ground, the clay's origin on the ground under it, so piece positions are heights above the ground; a piece below the ground lifts the figure (and what is attached) onto it (guide `sculpting`) |
 | `clay(id, draw=[(x, y, z) …], facing=, puff=)` / `clay(id, spin=[…], axis=)` | a clay made from a drawn outline or a spun profile, in the scene: it stands at the drawing's middle, its X along it |
@@ -172,6 +173,38 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
   A counted id (`mesh_1`) skips ids already in the scene.
 - Don't change an id's kind between runs (`mesh("a")` then `light("a")`): use a new id. If a person had edited the old item, the run is
   refused, naming the fields the new kind doesn't have; if nobody had, the item is rewritten in place as the new kind.
+
+## Recipes: settings a person can change
+
+A **setting** is a value at the top of a script that a person may want to change without reading the script: how many
+copies, a colour, a style. Declare it with `setting(...)`; the call gives the value to use:
+
+```python
+n = setting("count", 12, min=1, max=200, label="Copies")       # a number (a whole number when the default is one)
+tint = setting("tint", "#c33a2a", label="Colour")               # a colour "#rrggbb"
+style = setting("style", "round", choices=["round", "square"])  # a choice
+lid = setting("lid", True, label="Lid")                         # on / off
+title = setting("title", "Hello")                               # text
+for i in range(n):
+    mesh(f"post_{i}", shape="sphere" if style == "round" else "box", x=i * 0.3, material=material("paint", baseColor=tint))
+```
+
+A script with settings becomes a **recipe** in the scene, `recipe_<script name>` (`fence.py` gives `recipe_fence`): it keeps
+the script, its settings and their values. Change a setting and the script runs again with the new value, under its own
+name, through the same safe re-run as `run_script`:
+
+- **An agent**: `edit_recipe {"recipe": "recipe_fence", "set": {"count": 30}}`; `edit_recipe {}` lists the scene's recipes,
+  their settings, what each takes and what each made. Leaving out `set` runs the recipe again as it is.
+- **What it made is replaced, never doubled**: 12 copies set to 30 gives 30 copies, set back to 5 leaves 5. A post a person
+  moved by hand stays where they put it through every change.
+- **One undo step**: `edit_undo` brings the old value back with the old copies.
+- **A bad value is refused and changes nothing**, naming the setting and what it takes: `setting "count" is 500, out of range.
+  Accepted: a whole number from 1 to 200`.
+- **Re-running the script yourself** (`run_script`, same name): a setting keeps the value set in the recipe; the script's
+  default is used only when the setting is new or you changed its default in the script (changing the default is how a
+  script says "use this now"). Removing every `setting(...)` call removes the recipe; the things stay the script's.
+
+A setting's name is a short word (letters, digits, `_`, spaces), declared once; its kind comes from its default.
 
 ## Changing the new scene's own things (shot_1, ground, sky)
 

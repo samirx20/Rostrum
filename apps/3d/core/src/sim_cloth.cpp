@@ -2,7 +2,7 @@
 // A plane is one four-point face: it becomes a kClothGrid × kClothGrid grid (its corners blended, so a turned or stretched
 // plane stays that shape), the diagonals alternating so it folds the same way in every direction. Any other mesh is
 // triangulated (a fan per face, its winding kept) and every triangle split in four (shared edges split once) until no edge
-// is longer than 1/kClothGrid of its size.
+// is longer than 1/kClothGrid of its size. A garment (seams: the app made it fine already) is only triangulated.
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -98,7 +98,7 @@ void refine(Cloth& c, const std::vector<std::vector<int>>& faces) {
     return true;
   };
 
-  if (faces.size() == 1 && faces[0].size() == 4 && c.points.size() == 4 && valid(faces[0])) {
+  if (c.seams.empty() && faces.size() == 1 && faces[0].size() == 4 && c.points.size() == 4 && valid(faces[0])) {
     grid(c, faces[0]);
   } else {
     c.triangles.clear();
@@ -110,7 +110,7 @@ void refine(Cloth& c, const std::vector<std::vector<int>>& faces) {
       double longest2 = 0;
       for (const auto& t : c.triangles)
         for (int e = 0; e < 3; ++e) longest2 = std::max(longest2, dist2(c.points[size_t(t[e])], c.points[size_t(t[(e + 1) % 3])]));
-      if (longest2 <= most2 * 1.0001 || c.triangles.size() * 4 > kMaxClothTriangles) break;
+      if (!c.seams.empty() || longest2 <= most2 * 1.0001 || c.triangles.size() * 4 > kMaxClothTriangles) break;
       split(c);
     }
   }
@@ -137,6 +137,13 @@ void refine(Cloth& c, const std::vector<std::vector<int>>& faces) {
   c.points = std::move(pts);
   c.st = std::move(st);
   c.triangles = std::move(kept);
+  std::vector<std::array<int, 2>> sewn;
+  for (const auto& s : c.seams) {
+    const int a = s[0] >= 0 && size_t(s[0]) < renum.size() ? renum[size_t(s[0])] : -1;
+    const int b = s[1] >= 0 && size_t(s[1]) < renum.size() ? renum[size_t(s[1])] : -1;
+    if (a >= 0 && b >= 0 && a != b) sewn.push_back({a, b});
+  }
+  c.seams = std::move(sewn);
 }
 
 }  // namespace r3d::sim

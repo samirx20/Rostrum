@@ -5,6 +5,7 @@
 // (Jolt soft bodies don't collide with each other or with themselves: cloth_self.h keeps a cloth off itself).
 #include "sim.h"
 #include "cloth_self.h"
+#include "cloth_sew.h"
 #include "cloth_wind.h"
 
 #include <Jolt/Jolt.h>
@@ -528,6 +529,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   struct Edge { int a, b; double rest; };
   std::vector<JPH::BodyID> cloth_ids;
   std::vector<ClothSelf> cloth_self;  // each cloth kept off itself
+  std::vector<ClothSew> cloth_sew;    // a garment's seams pulled closed, then held
   std::vector<std::vector<Edge>> cloth_edges(cloths.size());
   std::vector<double> cloth_lowest(cloths.size());
   std::vector<std::vector<float>> cloth_held(cloths.size());  // a waiting cloth's own point weights (1 / mass), put back at its frame
@@ -536,6 +538,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
                                      JPH::Quat::sIdentity(), kCloth);
     sb.mNumIterations = kClothIterations;
+    if (!cl.seams.empty()) sb.mGravityFactor = 0;  // a garment floats while it is sewn (cloth_sew.h)
     sb.mFriction = float(std::max(0.0, cl.friction));
     sb.mRestitution = 0.0f;
     sb.mVertexRadius = float(cloth_gap(cl) * k);
@@ -544,6 +547,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
     cloth_ids.push_back(id);
     cloth_self.emplace_back(cl, k);
+    cloth_sew.emplace_back(cl, k);
     if (cl.wake > 0) cloth_held[c] = hold_cloth(physics, id);  // Falls from: every point held (as a pin) until its frame
     std::set<std::pair<int, int>> seen;
     for (const auto& t : cl.triangles)
@@ -591,7 +595,10 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
           throw Error("simulate: the physics ran out of room at frame " + std::to_string(setup.start + f) +
                       " (too many things touching at once): simulate fewer bodies, or give them Shape: Box");
         for (size_t c = 0; c < cloths.size(); ++c)
-          if (cloths[c].wake <= f) cloth_self[c].step(physics, cloth_ids[c]);
+          if (cloths[c].wake <= f) {
+            cloth_self[c].step(physics, cloth_ids[c]);
+            cloth_sew[c].step(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt), double(dt));
+          }
       }
     auto& row = out.frames[size_t(f)];
     row.resize(out.rows.size());

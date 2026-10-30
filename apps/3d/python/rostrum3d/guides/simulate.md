@@ -102,6 +102,50 @@ folds stay a simulation (`sim.to_keys` leaves it as it is; on a shot whose only 
 so, and the window offers no Turn into keys). While it is cloth, keys on its place are not used: it stays where it
 was at the first frame and the cloth moves inside it. Two cloths don't touch each other (two sheets pass through each other); one cloth does touch itself.
 
+## Garments from patterns
+
+A garment is made the way a tailor makes one: flat pieces of cloth cut to an outline, placed around a body, and sewn
+together at their edges. The simulation pulls each seam closed, then the cloth drapes on the body (set the body to
+**Stays still**). There is no screen for drawing pieces yet: this round it is an agent feature (a script's `garment(...)`,
+or the operations `garment.make`, `garment.piece`, `garment.sew`).
+
+**A piece** is `{"name", "outline", "at", "turn", "wrap"}`:
+
+| key | what it does |
+|---|---|
+| `name` | its own name in the garment (seams name it) |
+| `outline` | the flat shape, `[[x, y], …]` in metres, at least 3 points going once round without crossing (either way round). Its own x is across, y is up |
+| `at` | `[x, y, z]`: where the outline's origin (its 0, 0) sits, in the garment's space (the scene's, unless the garment is moved) |
+| `turn` | degrees about up: 0 faces the front (+z), 180 faces the back (−z), 90 / −90 a side |
+| `wrap` | metres: curves the piece around an upright cylinder of this radius behind it, so it starts already round the body instead of flat in front of it (0 = flat). About the body's radius plus a little |
+
+**Edges.** Edge `i` of a piece runs from its outline point `i` to the next one (the last edge back to point 0), counted in the
+order you wrote the outline. **A seam** is `{"a": [piece, edge], "b": [piece, edge]}`: those two edges are pulled together.
+The ends that start nearer each other are joined; add `"flip": true` to join each end to the other's far end instead (a
+seam that comes out twisted). Each edge is sewn to one other edge at most.
+
+**Placing pieces.** Start each piece a little off the body (a few centimetres) and not inside it; the seams close the gap.
+A front and a back piece usually share their side edges: a back written as the front's mirror (`[-x, y]` for each point),
+turned 180, has each edge at the same side as the front's edge of the same number. Then `sewTime` (Sewing time, seconds,
+0.05–5, default 0.5) says how long the seams take to close; after that they stay sewn. The rest is ordinary cloth:
+`clothWeight`, `stiffness`, `clothAir`, `pinned` (above).
+
+```python
+mesh("post", shape="cylinder", radius=0.12, height=1.2).simulate("still")
+panel = [[-0.16, 0], [0.16, 0], [0.16, 0.35], [-0.16, 0.35]]      # edges: 0 bottom, 1 right, 2 top, 3 left
+garment("wrapper", sewTime=0.6, pieces=[
+    {"name": "front", "outline": panel, "at": [0, 0.6, 0.15], "wrap": 0.15},
+    {"name": "back", "outline": panel, "at": [0, 0.6, -0.15], "turn": 180, "wrap": 0.15}],
+  seams=[{"a": ["front", 1], "b": ["back", 3]}, {"a": ["front", 3], "b": ["back", 1]}])
+```
+
+Here the front's right edge meets the back's left one, which after the turn is on the same side. Then `run_simulation`
+and `look_frame`. A mistake (a missing piece, an edge number past the outline, an outline that crosses itself, an edge
+sewn twice) fails saying which piece or seam and what is accepted. The garment is made into fine even triangles (about
+9000 points over the whole garment) when it is computed; the document keeps only the pieces and seams, so change a piece
+with `garment.piece` (same name: replaces it; `remove: true`) and a seam with `garment.sew` (`remove: true` unpicks it),
+or re-run the script.
+
 ## Compute it
 
 The `run_simulation` tool computes the whole shot as a job (`inspect_job` shows frame n of m; a dozen things take a second or two)

@@ -11,6 +11,8 @@ shot's start), only when it is above 0, so every result made before it keeps its
 
 Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "air" (0–4, drag: 1 room air), "pinned",
 "friction"}, and its Falls from as "wakeFrame" like a falling body's (held in its first shape until then); its compiled node and these settings are in the key like any body's.
+PR7: a sewing pattern's cloth also sends "seams" ([[i, j], …]: point pairs as the engine numbers its mesh's points, garment.engine_seams)
+and "sewTime" (seconds to pull them closed); only for a pattern, so every other stored result keeps its key.
 """
 from __future__ import annotations
 
@@ -20,8 +22,9 @@ import json
 from rostrum_core.cache import cache_key
 
 from . import fields as SF
+from .. import garment
 
-SIM_VERSION = 10                                 # the core's `sim` in its reply; bump both together
+SIM_VERSION = 15                                 # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
@@ -97,6 +100,10 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
                 body.update(wind=wind, windTurn=float(value(item, "clothWindTurn")))
             if (wake := _wake(item, info)) > 0:
                 body["wakeFrame"] = wake
+            if item.get("shape") == "pattern":                 # a pattern's own (PR7); seams only when it has some
+                body["sewTime"] = float(value(item, "sewTime"))
+                if seams := garment.engine_seams(item):
+                    body["seams"] = [list(p) for p in seams]
             reqs.append(body)
             recipe.append({"body": body, "node": _look_free(nodes[item["id"]])})
             continue

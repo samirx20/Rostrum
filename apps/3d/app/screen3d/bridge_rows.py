@@ -27,6 +27,15 @@ def _without_data(r):
     return {**r, "names": [n for n in names if n.get("group") not in DATA_GROUPS]} if isinstance(names, list) else r
 
 
+def _pattern_shape(rows, pattern: bool):
+    """A sewing pattern is made from its pieces (garment.make), never picked as a shape: a pattern shows no Shape row
+    (no other shape keeps its pieces), and another mesh's Shape doesn't offer it."""
+    if pattern:
+        return [r for r in rows if not (r.get("row") == "param" and r["id"] == "shape")]
+    return [{**r, "options": [o for o in r["options"] if o["value"] != "pattern"]}
+            if r.get("row") == "param" and r["id"] == "shape" else r for r in rows]
+
+
 class RowsMixin:
     FINAL_ONLY: dict = {}               # set by Bridge3D: fields the quick view can't show
     QUICK_APPROX: dict = {}             # set by Bridge3D: fields the quick view only hints at
@@ -101,6 +110,8 @@ class RowsMixin:
             return rows
         type_, doc_items = self.doc.item(self._sel)["type"], None
         rows = [_without_data(r) for r in rows if not _is_data(type_, r)]     # an editable mesh's points: data, not controls
+        if type_ == "mesh":
+            rows = _pattern_shape(rows, self.doc.item(self._sel).get("shape") == "pattern")
         buttons = self._hub.row_buttons() if hasattr(self, "_hub") else {}               # actions that sit on a row (Action.row): Lens, Focus on an item, bevel
         for r in rows:
             if r["row"] == "param":

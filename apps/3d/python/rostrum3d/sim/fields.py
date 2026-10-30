@@ -1,7 +1,7 @@
 """The Simulation fields (brief 25, SPEC §10): an item's group "Simulation" (what a body is made of and how it starts)
 and a shot's (the ground, the stored result's key, and, brief 26a, Timing and Simplify read off the stored result).
 Brief 26b: a shape (a `mesh` item) can also be Cloth, with Weight, Stiffness, Air and Pinned edge (for_type gives a type
-its own fields: only a mesh offers Cloth).
+its own fields: only a mesh offers Cloth). PR7: a sewing pattern's Cloth also has Sewing time (sewTime).
 
 All of them are still (never keyed) and none is sent to the core as a prop (compile.RESOLVED): the simulation reads them
 (sim/inputs.py). Only the item's `simulate` row shows while it is Off; the rest only while it Falls or Stays still.
@@ -79,6 +79,8 @@ CLOTH_ITEM = [
                 "curtain on its rail"),
         labels={"none": "None", "top": "Top", "bottom": "Bottom", "left": "Left", "right": "Right", "front": "Front",
                 "back": "Back"}),
+    N("sewTime", "Sewing time", "Simulation", 0.05, 5, 0.05, "s", S, {"all": [CLOTH, IS("shape", "pattern")]}, default=0.5,
+      help="How long the seams of a sewing pattern take to pull closed; after that they stay sewn"),
 ]
 NAMES = {p.name for p in ITEM} | {p.name for p in CLOTH_ITEM}
 

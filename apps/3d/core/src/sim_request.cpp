@@ -115,6 +115,16 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   if (r.has("air")) c.air = r.num("air");
   if (r.has("wind")) c.wind = r.num("wind");
   if (r.has("windTurn")) c.windTurn = r.num("windTurn");
+  if (r.has("sewTime")) c.sewTime = r.num("sewTime");
+  if (r.has("seams")) {  // PR7: [[a, b], …] point pairs into the mesh's points as sent
+    for (const JsValue& p : r.list("seams")) {
+      const JsArray* pair = p.IsArray() ? &p.GetJsArray() : nullptr;
+      if (!pair || pair->size() != 2 || !is_number((*pair)[0]) || !is_number((*pair)[1]))
+        fail(r.at("seams"), "holds " + p.GetTypeName() + ", not a pair", "[[a, b], …]: two point numbers of the mesh per pair");
+      c.seams.push_back({int(to_number((*pair)[0])), int(to_number((*pair)[1]))});
+    }
+    if (c.seams.empty()) fail(r.at("seams"), "is empty", "at least one [a, b] pair, or leave it out");
+  }
   const std::string pin = r.one_of("pinned", {"none", "top", "bottom", "left", "right", "front", "back"});
   const char* pins[] = {"none", "top", "bottom", "left", "right", "front", "back"};
   for (int k = 0; k < 7; ++k)
@@ -123,8 +133,35 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   if (c.stiffness < 0 || c.stiffness > 1) fail(r.at("stiffness"), "is outside 0..1", "0 (silk) .. 1 (thin card)");
   if (!(c.air >= 0 && c.air <= 4)) fail(r.at("air"), "is outside 0..4", "0 (no air) .. 1 (room air) .. 4");
   if (!(c.wind >= 0 && c.wind <= 5)) fail(r.at("wind"), "is outside 0..5", "0 (still air) .. 0.5 (a draught) .. 5 m/s");
+  if (!(c.sewTime >= 0.01 && c.sewTime <= 10)) fail(r.at("sewTime"), "is outside 0.01..10", "seconds to pull the seams closed, e.g. 0.5");
   r.finish();
   return c;
+}
+
+// One point per place: a shape's mesh may give a face's corners their own points (an editable mesh does, for its normals
+// and u v), which as cloth would be loose triangles that fall apart. Points at exactly the same place become one (the
+// first keeps its u v); faces and seam pairs follow.
+void weld(sim::Cloth& c, std::vector<std::vector<int>>& faces) {
+  std::map<std::array<double, 3>, int> at;
+  std::vector<int> to(c.points.size());
+  std::vector<sim::V3> pts;
+  std::vector<std::array<float, 2>> st;
+  for (size_t i = 0; i < c.points.size(); ++i) {
+    const auto [it, fresh] = at.emplace(c.points[i], int(pts.size()));
+    if (fresh) {
+      pts.push_back(c.points[i]);
+      st.push_back(c.st[i]);
+    }
+    to[i] = it->second;
+  }
+  if (pts.size() == c.points.size()) return;
+  for (auto& f : faces)
+    for (int& p : f)
+      if (p >= 0 && size_t(p) < to.size()) p = to[size_t(p)];
+  for (auto& s : c.seams)
+    for (int& p : s) p = to[size_t(p)];
+  c.points = std::move(pts);
+  c.st = std::move(st);
 }
 
 // A cloth item's mesh at `t`, refined, its points in world space; `to_local` takes them back to the item's own space.
@@ -149,6 +186,11 @@ sim::Cloth gather_cloth(sim::Cloth c, const UsdPrim& prim, UsdTimeCode t, UsdGeo
   c.st.assign(points.size(), {0.0f, 0.0f});
   std::vector<bool> has_st(points.size(), false);
   for (size_t i = 0; i < points.size(); ++i) c.points[i] = v3(GfVec3d(points[i]));
+  for (const auto& sp : c.seams)
+    for (int p : sp)
+      if (p < 0 || size_t(p) >= points.size())
+        throw Error("simulate: " + c.item + "'s seams name point " + std::to_string(p) + ", but its mesh has " +
+                    std::to_string(points.size()) + " points: the pattern and its mesh are out of step (compile the scene again)");
   std::vector<std::vector<int>> faces;
   size_t at = 0;
   for (int n : counts) {
@@ -165,6 +207,7 @@ sim::Cloth gather_cloth(sim::Cloth c, const UsdPrim& prim, UsdTimeCode t, UsdGeo
     faces.push_back(std::move(f));
     at += size_t(std::max(0, n));
   }
+  weld(c, faces);
   sim::refine(c, faces);
   if (c.triangles.empty())
     throw Error("simulate: " + c.item + " has no surface to drape (every face is flat to a line): give it a shape, or set Simulate to Off");
@@ -366,7 +409,8 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
     cloth_out.push_back(JsValue(JsObject{{"item", JsValue(cloths[c].item)}, {"file", JsValue(cf.u8string())},
                                          {"points", JsValue(int(cloths[c].points.size()))},
                                          {"triangles", JsValue(int(cloths[c].triangles.size()))},
-                                         {"refined", JsValue(cloths[c].refined)}}));
+                                         {"refined", JsValue(cloths[c].refined)},
+                                         {"seams", JsValue(int(cloths[c].seams.size()))}}));
   }
   JsArray rows;
   for (size_t j = 0; j < res.rows.size(); ++j) {
