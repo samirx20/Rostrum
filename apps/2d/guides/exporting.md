@@ -82,10 +82,10 @@ Only the settings that apply to the chosen format are shown.
    **A held moment costs almost nothing.** A frame where nothing on screen changes from the frame before (no key,
    no motion blur, no grain or video moving) is not drawn again: the MP4 gets the same picture again, the same pixels.
    Only the moving seconds cost drawing time.
-8. Agents: an MP4 export (`format: "mp4"`, or `what: "video"`) **returns at once** with a job id and draws in the
-   background from a copy of the document taken at the call, so edits made meanwhile are not in that file. Keep working
-   and ask `inspect_job` with the id (`wait_s` up to 25) for its progress and, once done, the finished reply. To wait in
-   the call instead, pass `wait_s` (seconds, up to 600). Other formats wait in the call by default (120 s). A piece that
+8. Agents: an export **waits for its file and answers once**, finished; if it takes longer than your program lets a
+   call run, the reply says how far it is and `inspect_job` with the id waits again. `wait_s: 0` returns the job id at
+   once and draws in the background from a copy of the document taken at the call (edits made meanwhile are not in
+   that file). A piece that
    fails to draw fails the whole export: nothing is written under the final name.
 
 Next: [first-animation.md](first-animation.md), [files.md](files.md).

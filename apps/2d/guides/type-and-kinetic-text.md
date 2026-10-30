@@ -200,6 +200,6 @@ over both.
 2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
 3. `look_frame` at the landing times and at a hold (`width=1920` for type edges).
 4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).
-5. Then `render_export` with `what: "video"` (it waits for its file in the same call, `wait_s`).
+5. Then `render_export` with `what: "video"` (it waits for its file in the same call).
 
 If a person moved something, a re-run reports it as held back. Leave it unless they asked you to put it back.

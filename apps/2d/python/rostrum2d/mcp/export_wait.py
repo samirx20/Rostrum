@@ -1,22 +1,21 @@
-"""render_export waits for its own job in the same call (`wait_s`), so the finished reply (the file, the checks it was
-asked for) comes back without polling; an mp4 by default does not wait (wait_s 0): it is drawn in the background from a
-copy of the document taken now, and the agent keeps working and asks inspect_job when it wants the file. In the benchmark one agent spent 22 calls on inspect_job for its
-renders. A failed or stopped job is an error here, as inspect_job's is (jobs.outcome); past `wait_s` the reply is the job's
-progress and its id, never a success."""
+"""render_export waits for its own job, so the finished reply (the file, the checks it was asked for) comes back once,
+without polling: by default as long as the calling program lets a call run (rostrum_core job_wait.budget: 25 min for
+Claude Code, ~50 s for a program we don't know); past it, how far it is, and inspect_job waits again. The server does
+the waiting (job_wait.finish, outside the one-writer lock); `wait_s` only says how long. `wait_s` 0 answers with the job
+id at once (an mp4 is drawn from a copy of the document taken now). In the benchmark one agent spent 22 calls on
+inspect_job for its renders. A failed or stopped job is an error, as inspect_job's is (jobs.outcome)."""
 from __future__ import annotations
 
 import dataclasses
-import time
 
-from rostrum_core.mcp.jobs import MAX_WAIT_S, outcome
+from rostrum_core.mcp import job_wait
 from rostrum_core.mcp.tools import _schema_of
 
 TOOLS = ("render_export",)
-WAIT_S, MOST_S = 120, 600
-BACKGROUND = ("mp4",)        # formats that return the job id at once unless wait_s is given (and what "video", an mp4 too)
+MOST_S = job_wait.MOST_S
 WAIT = {"wait_s": {"type": "number", "minimum": 0, "maximum": MOST_S,
-                   "description": f"Seconds to wait for the file in this call; 0: the job id at once. Default: 0 for an mp4 (format mp4 or what \"video\": it renders in "
-                                  f"the background while you keep working), {WAIT_S} for the other formats."}}
+                   "description": "Seconds to wait for the file in this call. Default: until it is finished (as long as your program lets a "
+                                  "call run; past it, inspect_job waits again); 0: the job id at once, it renders in the background."}}
 
 
 def with_wait(runtime) -> None:
@@ -28,21 +27,14 @@ def with_wait(runtime) -> None:
 
 def _waiting(fn):
     def run(ctx, args):
-        wait_s = args.get("wait_s", 0 if args.get("format") in BACKGROUND or args.get("what") == "video" else WAIT_S)
+        wait_s = args.get("wait_s", job_wait.budget(getattr(ctx, "who", None)))
         reply = fn(ctx, {k: v for k, v in args.items() if k != "wait_s"})
         job_id = reply.data.get("job_id") if isinstance(reply.data, dict) else None
-        if not job_id or wait_s <= 0:
-            if job_id:
-                reply.summary = (f"Exporting in the background (job {job_id}), from the document as it is now: later edits are "
-                                 f"not in this file. Keep working; inspect_job {{\"job_id\": \"{job_id}\", \"wait_s\": 25}} "
-                                 "says how far it is and gives the finished reply.")
-            return reply
-        until = time.monotonic() + wait_s
-        job = ctx.jobs.get(job_id)
-        while not job.finished.is_set() and (left := until - time.monotonic()) > 0:
-            job = ctx.jobs.wait(job_id, min(left, MAX_WAIT_S))
-        done = outcome(job, ctx.tool)           # failed / stopped: raised here, loudly
-        if job.status not in ("done",):
-            done.summary += f" Still running after {wait_s:g} s: inspect_job {{\"job_id\": \"{job_id}\", \"wait_s\": 25}} gives the finished reply."
-        return done
+        if job_id and wait_s <= 0:
+            reply.summary = (f"Exporting in the background (job {job_id}), from the document as it is now: later edits are "
+                             f"not in this file. Keep working; inspect_job {{\"job_id\": \"{job_id}\"}} waits for it and gives "
+                             "the finished reply (wait_s 0: how far it is).")
+        if job_id and hasattr(ctx, "wait_for"):
+            ctx.wait_for.append(wait_s)        # the server waits, after this call lets go of the document
+        return reply
     return run

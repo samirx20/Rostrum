@@ -73,8 +73,8 @@ def checked(job, frames: int, mp4: Path, shown: Path, data: dict, comp: dict, st
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."},
                                             **faults.NOTES}})
 def render_video(ctx, args):
-    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It returns at once with the job id
-    (`wait_s` waits for the file in the call); ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
+    """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. It waits for the file and answers once,
+    finished (past what your program lets a call run: how far it is, and inspect_job waits again; wait_s 0: the job id at once). A frame stuck over 2 minutes
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply

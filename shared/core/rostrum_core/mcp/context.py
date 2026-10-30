@@ -70,6 +70,7 @@ class ToolContext:
     notes: list = field(default_factory=list)   # `note`: choices the tool made for the caller, sent as warnings
     seen: list = field(default_factory=list)    # the documents the call was about: their kind's warnings are sent too
     asked_notes: bool = False   # the call passed `notes: true` (faults.py): run_script's look runs its checks only then
+    wait_for: list = field(default_factory=list)   # seconds a tool with its own wait_s asks the server to wait for its job (job_wait)
 
     def note(self, text: str):
         """Tell the caller about a choice made for them ("Composition \"film\" (the longest of 2)"); the server

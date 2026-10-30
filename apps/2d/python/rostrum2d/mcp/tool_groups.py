@@ -28,8 +28,8 @@ GROUPS = [
      {"layers": "run_import", "paint_picture": "run_paint_picture"}, "layers"),
     ("run_open_project", "The person's projects.",
      {"open": "run_open_project", "recent": "inspect_recent_projects"}, "open"),
-    ("render_export", "Export a composition. An mp4 returns at once with a job id (inspect_job follows it; `wait_s` waits in "
-     "the call) and redraws only what changed since the last export (a stopped export keeps the pieces it finished); other formats wait for their file. `notes: true` adds what the checks measured.",
+    ("render_export", "Export a composition. It waits for the file and answers once (a long one: inspect_job waits again; `wait_s` 0: the job id at once); "
+     "an mp4 redraws only what changed since the last export (a stopped export keeps the pieces it finished). `notes: true` adds what the checks measured.",
      {"file": "render_export", "video": "render_video"}, "file"),
 ]
 

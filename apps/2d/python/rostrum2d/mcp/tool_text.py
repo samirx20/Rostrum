@@ -64,7 +64,7 @@ ARG = {
     "stroke": "",
     "y": "",
     "x": "",
-    "wait": "Wait for the job: true (50 s) or seconds.",
+    "wait": "Renders wait for their file by default (a long one: inspect_job waits again); seconds: that long; false: the job id at once.",
     "item": "Document id, not a layer; default the open one.",
     "comp": "",
     "time": "",

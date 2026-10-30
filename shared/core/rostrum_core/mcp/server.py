@@ -44,6 +44,7 @@ class Runtime:
         if app.script_help:
             self.tools.described("run_script", app.script_help)
         self.jobs = jobs or InProcessJobs(log=bug.log)
+        self.waited: list = []                          # fn(ctx, args, reply) -> reply, for a job's finished reply (an app's clock)
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
         self._told = False                              # the first reply said what is open (call)
@@ -76,7 +77,12 @@ class Runtime:
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")
-            reply = job_wait.finish(self.jobs, reply, wait_s, name)   # outside the lock: a job never touches the document
+            wait_s = job_wait.seconds(wait_s, who, job_wait.by_default(name, tool.schema), ctx.wait_for)
+            done = job_wait.finish(self.jobs, reply, wait_s, name)   # outside the lock: a job never touches the document
+            if done is not reply:                        # the job's finished reply (or how far it got): as inspect_job's
+                for fn in self.waited:
+                    done = fn(ctx, checked, done)
+            reply = done
             said = ctx.notes + [w for d in ctx.seen for w in [*plugin_parts.missing_of(d), *d.kind.warnings(d.data)]]   # never silent (kind.warn, a plugin it lacks)
             reply.warnings.extend(n for n in dict.fromkeys(said) if n not in reply.warnings)
             return reply.to_dict(), reply.images

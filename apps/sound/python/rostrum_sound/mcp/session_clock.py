@@ -104,7 +104,17 @@ def with_clock(runtime, clock: Clock | None = None) -> Clock:
     runtime.app.state.clock = clock
     for name, tool in list(runtime.tools._tools.items()):
         runtime.tools._tools[name] = dataclasses.replace(tool, fn=_wrapped(tool, clock))
+    getattr(runtime, "waited", []).append(_finished(clock))
     return clock
+
+
+def _finished(clock: Clock):
+    """A render's finished reply (the server waited for its job, job_wait): taken in as inspect_job's, with its line."""
+    def fn(ctx, args, reply):
+        clock.noted("inspect_job", reply)
+        reply.summary = f"{reply.summary}\n{clock.line()}"
+        return reply
+    return fn
 
 
 def _wrapped(tool, clock: Clock):

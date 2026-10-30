@@ -47,13 +47,11 @@ def segments_said(g: dict) -> str:
     **faults.NOTES}})
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame.
-    mp4 returns at once with a job id and renders in the background from a copy of the document taken at the call (later
-    edits are not in the file): keep working, then inspect_job (wait_s up to 25) for the finished reply. Pass wait_s to
-    wait in the call instead. An mp4 is drawn in 2-second segments kept by their content: exporting again draws only the
+    It waits for the file and answers once, finished (a long one, past what your program lets a call run: how far it is,
+    and inspect_job waits again); wait_s 0 returns the job id at once and renders in the background from a copy of the
+    document taken at the call (later edits are not in the file). An mp4 is drawn in 2-second segments kept by their content: exporting again draws only the
     segments a change touches (a layer counts for the seconds between its start and end; one with no start / end, and
-    the frame, for all of them) and reuses the rest; the reply says how many were re-rendered and the time. Other formats
-    wait for their job in this call (wait_s, default 120 s) and answer with the finished file; past that with the job
-    id. The file is written under a .partial name and renamed once it
+    the frame, for all of them) and reuses the rest; the reply says how many were re-rendered and the time. The file is written under a .partial name and renamed once it
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
     before any job, as the Export button refuses it. It always writes what was asked, under the name

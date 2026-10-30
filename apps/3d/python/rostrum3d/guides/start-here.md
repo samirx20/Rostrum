@@ -19,7 +19,7 @@ is an operation, and every look draws the scene again from the document.
 5. **Re-run under the same name.** The re-run replaces what the script made (changed values, removed items) and keeps
    what a person moved by hand. A different name is a different script. If a re-run leaves out most of what the last
    one made, it still runs and the reply names what it removed (undo brings it back).
-6. **Render**: `render_still` or `render_video` (jobs: `wait: true`, or ask `inspect_job`). They always write what you
+6. **Render**: `render_still` or `render_video` (they wait for the file and answer once; a long one: `inspect_job` waits again). They always write what you
    asked, under the name you asked.
 
 Measurements, if you want them: pass `notes: true` on `look_frame`, `look_motion`, `run_script` (with `look`),
@@ -82,7 +82,7 @@ Run it (`run_script`, `name: "scene.py"`, `look: true`), look at the frame, chan
 
 How every reply works: it has `ok`, `summary` (read it first), `data` and `files`; a failure's `error` lists
 `accepted`, what would have worked. `inspect_*` reads, `edit_*` and `run_*` change the document, `look_*` sees,
-`render_*` makes files. Long work is a job: pass `wait: true`, or ask `inspect_job` (`wait_s` up to 25); `run_stop`
+`render_*` makes files. A render waits for its file and answers once; past what your program lets a call run it says how far and `inspect_job` waits again; `run_stop`
 stops it. Every tool, by verb, with its arguments: `inspect_tools`. Every tool in full: guide `tool-details`.
 
 **Never** guess a height or a camera position: things stand on the ground, frame by the subject, place by `place_on`,

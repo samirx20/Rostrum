@@ -9,7 +9,7 @@ from rostrum_core.mcp import short_text
 # By name, for every part with the argument; "" = no words (the name and type say it).
 ARG = {
     "item": "Document id, not an object; default the open scene.",
-    "wait": "Wait for the job: true (50 s) or seconds.",
+    "wait": "Renders wait for their file by default (a long one: inspect_job waits again); seconds: that long; false: the job id at once.",
     "at": "Seconds from the shot's start.",
     "frame": "",
     "start": "Seconds from the shot's start.",

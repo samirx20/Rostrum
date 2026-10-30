@@ -27,7 +27,7 @@ Check an import: `look_frame` at full width next to the source, `inspect_item` (
 
 ## Export
 
-`render_export` (MCP) exports any format below; `render_export` with `what: "video"` exports the project render as an **mp4** (H.264, Rec.709) of a composition, always a job: the call returns the job id at once and renders in the background (`wait_s` waits for the file in the call instead); `inspect_job` with `wait_s` to follow
+`render_export` (MCP) exports any format below; `render_export` with `what: "video"` exports the project render as an **mp4** (H.264, Rec.709) of a composition, a job the call waits for: it answers once with the finished file (a long one: how far, and `inspect_job` waits again; `wait_s: 0` returns the job id at once); `inspect_job` to follow
 it. In a project it lands in `renders/<item>/vNNN/` with a manifest Sound and the Editor can find; a failed export stays in a
 `.partial` folder and is never listed. `start` and `end` (seconds) pick a range.
 

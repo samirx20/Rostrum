@@ -6,7 +6,7 @@ import sys
 import pytest
 from rostrum_core import Who
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp import Runtime
+from rostrum_core.mcp import Runtime, job_wait
 from rostrum_core.mcp.context import ToolContext
 
 from rostrum2d import settings
@@ -76,5 +76,7 @@ def test_an_export_that_waits_fails_loudly(tmp_path):
     def broken(job):
         raise RostrumError(codes.RENDER_FAILED, "render_video", "frame 3", "could not be drawn")
     run = export_wait._waiting(lambda c, a: c.job("render_video main 0-4s", broken))
+    started = run(ctx, {"wait_s": 5})
+    assert ctx.wait_for == [5]                      # the server waits, outside the one-writer lock
     with pytest.raises(RostrumError, match="failed"):
-        run(ctx, {"wait_s": 5})
+        job_wait.finish(rt.jobs, started, ctx.wait_for[-1], "render_video")
