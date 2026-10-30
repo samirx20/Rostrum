@@ -86,8 +86,8 @@ and framed before you add anything. A script keeps all of it unless it replaces 
      Guide `painting`.
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
-5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` are jobs: they return a job id at once;
-   `inspect_job` with `wait_s` shows `frame n of m`. Draft a video with `quality: "fast"` first. `render_video` also makes a small
+5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` wait for their file and answer once,
+   finished (a long one: how far, and `inspect_job` waits again; it shows `frame n of m`). Draft a video with `quality: "fast"` first. `render_video` also makes a small
    `<name>-share.mp4` beside the mp4, and `output_folder` (+ `file_name`) copies both where a brief asks for them (checked before rendering).
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.

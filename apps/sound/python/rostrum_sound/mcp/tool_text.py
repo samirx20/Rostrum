@@ -35,7 +35,7 @@ SAY = {
     "render_voice_words": "Each spoken word's start and end.",
     "render_voice_estimate": "How long lines will take, before making them.",
     # render_mix's parts
-    "render_mix": "The next mix and stems (full length unless trim); `notes: true` adds the listening notes. To hear one moment first: render_audition.",
+    "render_mix": "The next mix and stems (full length unless trim), answered once they are written; `notes: true` adds the listening notes. To hear one moment first: render_audition.",
     "render_midi": "The notes as a MIDI file.",
     # run_open_project's parts
     "run_open_project": "Open a project folder (made when new).",
@@ -59,7 +59,7 @@ SAY = {
 # Argument words, by name, for every part that has the argument (the same words let tool_groups show them once).
 ARG = {
     "item": "Song id (optional with one open).",
-    "wait": "Wait: true (50 s) or seconds.",
+    "wait": "Renders wait for their file by default (a long one: inspect_job waits again); seconds: that long; false: the job id at once.",
     "wav": "A WAV instead of the last render.",
     "track": "One track's stem instead of the mix.",
     "start": "From here (a time); needs end.",

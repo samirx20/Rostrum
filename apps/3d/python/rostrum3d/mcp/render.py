@@ -174,7 +174,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
     """One final picture of a shot (png for people, exr with `passes` for the Editor), as a project render. `notes: true`
-    also lists what the checks measured (as look_frame). A job: inspect_job shows progress. Guide 'rendering'."""
+    also lists what the checks measured (as look_frame). It waits for its file and answers once, finished (a long one answers before your program would give up, says how far, and inspect_job waits again; `wait: false`: the job id at once). Guide 'rendering'."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, s = frame_of(ctx, info, args), render_settings(doc, info)
@@ -214,7 +214,7 @@ def render_still(ctx, args):
 def render_video(ctx, args):
     """An mp4 of a shot (or `start`–`end`), plus a small <name>-share.mp4; `exr` keeps EXR frames, `output_folder` copies
     the mp4 there. A stopped render continues from its finished frames when called again. `budget_min` measures first and
-    the reply says the estimate against it (it renders either way); `estimate_only` only measures. `notes: true` also lists what the checks measured on the first, middle and last frames. A job.
+    the reply says the estimate against it (it renders either way); `estimate_only` only measures. `notes: true` also lists what the checks measured on the first, middle and last frames. It waits for its file and answers once, finished (a long one answers before your program would give up, says how far, and inspect_job waits again; `wait: false`: the job id at once).
     Guide 'rendering'."""
     gate = Gate() if "budget_min" in args or args.get("estimate_only") else None
     reply = ctx.job(*video_job(ctx, args, gate))

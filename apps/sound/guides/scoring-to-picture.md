@@ -95,7 +95,7 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
 
 1. Before rendering, `look_arrangement`: per marker, which tracks start on it (within 10 ms) and how far off the
    others are, in ms and beats, with a picture of every part against the markers.
-2. `render_mix` (stems on), then `inspect_job` until done.
+2. `render_mix` (stems on); it answers once done.
 3. `look_music` (`what: "events"`) with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
    when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,

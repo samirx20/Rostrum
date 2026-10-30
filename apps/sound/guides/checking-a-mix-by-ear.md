@@ -11,7 +11,7 @@ order to use them in when checking a whole mix; the table of every tool and what
 
 `render_mix` with `notes: true` adds the closing `Notes (n)` line of measurements.
 
-`render_mix` with `stems: true`, then `inspect_job` until done. Every look tool reads the last render unless you pass
+`render_mix` with `stems: true` (it answers once the files are there). Every look tool reads the last render unless you pass
 `wav`; the ones that compare tracks (`look_sound` (`what: "levels"`), `look_sound` (`what: "clash"`), `look_sound` (`what: "low_end"`)) need the stems.
 
 ## A pass from the outside in
