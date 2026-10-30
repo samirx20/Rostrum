@@ -182,6 +182,8 @@ impl Walk<'_> {
         };
         let placed = Placed { transform, base };
         let local = Rect::new(0.0, 0.0, border.width(), border.height());
+        // Its own CSS clip-path clips it and what it holds, as the painter draws it.
+        let clip = blitz_paint::clip_path_bbox(node).map_or(clip, |c| clip.intersect(placed.bbox(c)));
         let overflow = *node.scrollable_overflow();
         if let Some(lid) = layer_id(node, self.attr).filter(|l| self.want.contains(l)) {
             self.places.push((lid.to_string(), Place { node: id, w: local.width(), h: local.height(), matrix: placed.matrix() }));

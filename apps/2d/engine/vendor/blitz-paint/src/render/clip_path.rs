@@ -53,7 +53,7 @@ impl ElementCx<'_, '_> {
             }
             ClipPath::Shape(basic_shape, geometry_box) => {
                 let reference_box = self.resolve_geometry_box(&geometry_box);
-                self.basic_shape_to_path(&basic_shape, reference_box)
+                Self::basic_shape_to_path(&basic_shape, reference_box)
             }
             ClipPath::Box(geometry_box) => {
                 let reference_box = self.resolve_geometry_box(&geometry_box);
@@ -105,7 +105,6 @@ impl ElementCx<'_, '_> {
 
     /// Convert a CSS basic-shape to a kurbo BezPath
     fn basic_shape_to_path(
-        &self,
         shape: &BasicShape,
         reference_box: ReferenceBox,
     ) -> Option<BezPath> {
@@ -211,6 +210,29 @@ impl ElementCx<'_, '_> {
                 }),
             },
         }
+    }
+}
+
+/// Rostrum patch (2D markup r3 bench): the bounding box of an element's CSS `clip-path`, in its border box's px at
+/// scale 1 (`None`: no clip-path, or a `url()` one, which is not drawn either), so the review boxes (boxes.rs) measure
+/// only the part a clipped element shows: a line revealed in strips is not seven whole lines.
+pub fn clip_path_bbox(node: &blitz_dom::Node) -> Option<Rect> {
+    let style = node.primary_styles()?;
+    let l = node.final_layout();
+    let (w, h) = (l.size.width as f64, l.size.height as f64);
+    let (bl, bt, br, bb) = (l.border.left as f64, l.border.top as f64, l.border.right as f64, l.border.bottom as f64);
+    let (pl, pt, pr, pb) = (l.padding.left as f64, l.padding.top as f64, l.padding.right as f64, l.padding.bottom as f64);
+    let reference = |g: &ShapeGeometryBox| match g {
+        ShapeGeometryBox::ShapeBox(ShapeBox::PaddingBox) => ReferenceBox { x: bl, y: bt, width: w - bl - br, height: h - bt - bb },
+        ShapeGeometryBox::FillBox | ShapeGeometryBox::ShapeBox(ShapeBox::ContentBox) => ReferenceBox {
+            x: bl + pl, y: bt + pt, width: w - bl - br - pl - pr, height: h - bt - bb - pt - pb,
+        },
+        _ => ReferenceBox { x: 0.0, y: 0.0, width: w, height: h },
+    };
+    match style.clone_clip_path() {
+        ClipPath::Shape(shape, g) => ElementCx::basic_shape_to_path(&shape, reference(&g)).map(|p| p.bounding_box()),
+        ClipPath::Box(g) => Some(Rect::from(reference(&g))),
+        _ => None,
     }
 }
 

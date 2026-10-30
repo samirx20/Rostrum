@@ -2,6 +2,7 @@ mod background;
 mod border;
 mod box_shadow;
 mod clip_path;
+pub use clip_path::clip_path_bbox;
 mod form_controls;
 mod mask;
 
