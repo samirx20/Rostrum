@@ -17,7 +17,7 @@ from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
 from ..listen import applied, asked_starts, fault_shape, squash, static_part, weakest
 from ..listen.faults import check as fault_check
-from . import export_target, pending_edits, session_clock, stop_limiter, tools_fit
+from . import export_target, pending_edits, range_target, session_clock, stop_limiter, tools_fit
 from .moments_arg import EXPECT, parse as parse_expect
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -144,8 +144,8 @@ def register(tools: Tools):
         "sampleRate": {"type": "integer", "enum": [r["id"] for r in deliver.RATES],
                        "description": "Hz: 44100 (music), 48000 (video), 96000 (high resolution; not for mp3). Default: the document's rate."},
         "trim": {"type": "boolean", "default": False, "description": "False (default): the song's full length as rendered. True: the silent end is cut: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length (with a `length`, never below it)."},
-        "from": {"description": "Only a part of the song: where the file starts (seconds, a beat or a marker, like any time). Needs `to`. The engine renders the part itself, mastered and measured on its own, so the loudness is the part's; the silent end is cut only if `trim` is true."},
-        "to": {"description": "Where the part ends (a time). Needs `from`."},
+        "from": {"description": "Only a part of the song: where the file starts: seconds (12.5), {\"bar\": 13}, {\"beat\": 48} or a marker (\"#chorus\", \"#chorus-2\"). Needs `to`. The engine renders the part itself, mastered and measured on its own, so the loudness is the part's; the silent end is cut only if `trim` is true."},
+        "to": {"description": "Where the part ends (the same forms as `from`: {\"bar\": 25} ends where bar 25 starts). Needs `from`."},
         "name": {"type": "string", "description": "The mix file's name without its type (\"Launch theme\" -> Launch theme.wav), as the Export sheet's name field. Default: <item>_mix. Characters a file name can't hold are replaced; stems keep their track names. Not for a listening check (solo / mute)."},
         "folder": {"type": "string", "description": "An absolute folder path (made when it is not there): the finished mix, under `name`, is also copied there (and the stems, in a folder beside it called \"<name> stems\"), so the file lands where you want it with no shell copy. The render stays in the project's renders/ as its next version; the reply's `copied` lists the new files."},
         **{"expect": {**EXPECT["expect"], "description": EXPECT["expect"]["description"] + " With `notes: true` the finished reply lists the three weakest of them "
@@ -188,7 +188,7 @@ def register(tools: Tools):
             moments, starts = ([], []) if partial else asked_moments(doc, args.get("expect"))   # a wrong expect answers now
             for k in ("from", "to"):
                 if k in args:
-                    options[k] = times.seconds(args[k], doc.data, k)
+                    options[k] = range_target._seconds(doc.data, args[k], f"render_mix › {k}")   # render_audition's forms
         deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers now, not after the render
 
         master_now = (doc.data.get("master") or [{}])[0] if master else {}
