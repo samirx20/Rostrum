@@ -77,7 +77,7 @@ def test_a_job_outlives_its_session_and_its_result_is_read_from_the_next(call):
     """Showreel, 2026-10-28: an export died at frame 562 of 2400 when its session ended. Ending a session with a job
     running keeps its server until the job ends; the next session reads the job's result."""
     run, folder = call
-    rc, out = run("::", "render_long")
+    rc, out = run("::", "render_long", '{"wait": false}')     # in the background: the session ends while it runs
     assert rc == 0, out
     job = re.search(r'"job_id": "(job_\w+)"', out).group(1)
     old = _record(folder)["pid"]

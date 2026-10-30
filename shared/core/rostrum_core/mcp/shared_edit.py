@@ -11,7 +11,8 @@ from pathlib import Path
 from ..errors import RostrumError, codes
 from .edit_summary import sentence, summarize
 from .faults import NOTES, asked
-from .jobs import MAX_WAIT_S, outcome
+from . import job_wait
+from .jobs import ENDED, outcome
 from .reply import Reply
 from .tools import Tools
 
@@ -96,15 +97,22 @@ def register(tools: Tools):
 
     @tools.tool("inspect_job", {"properties": {
         "job_id": {"type": "string", "description": "The job; without it, the whole queue in order."},
-        "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})
+        "wait_s": {"type": "number", "minimum": 0, "maximum": job_wait.MOST_S,
+                   "description": "Seconds to wait; default: until it is finished (as long as your program lets a call run); 0: how far it is, at once."}}})
     def inspect_job(ctx, args):
-        """A job's status, progress and result when done (other programs' jobs too, read-only); wait_s (up to 25) waits for it.
+        """A job's result once it is finished (other programs' jobs too, read-only): it waits for it, so one call is enough;
+        past what your program lets a call run it says how far, and the next call waits again. wait_s 0: progress at once.
         Without job_id: the queue in order (one heavy job runs at a time)."""
         if "job_id" not in args:
             jobs = [j.state() for j in ctx.jobs.listing()] if hasattr(ctx.jobs, "listing") else []
             return Reply(f"{len(jobs)} job{'s' * (len(jobs) != 1)}: " + ("; ".join(f"{j['job_id']} {j['label']} {j['status']}" for j in jobs) or "none"),
                          {"jobs": jobs})
-        return outcome(ctx.jobs.wait(args["job_id"], args.get("wait_s", 0)), ctx.tool)
+        wait_s = args.get("wait_s", job_wait.budget(ctx.who))
+        job = job_wait.until_ended(ctx.jobs, args["job_id"], wait_s)
+        done = outcome(job, ctx.tool)
+        if wait_s > 0 and job.status not in ENDED:
+            done.summary += job_wait.still_running(job, wait_s)
+        return done
 
     @tools.tool("run_stop", {"required": ["job_id"], "properties": {"job_id": {"type": "string"}}})
     def run_stop(ctx, args):

@@ -47,6 +47,7 @@ class Runtime:
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
         self._told = False                              # the first reply said what is open (call)
+        self.waited: list = []                          # fn(ctx, args, reply) -> reply, for a job's finished reply (an app's clock)
 
     def call(self, name: str, args: dict | None, who: Who) -> tuple[dict, list]:
         """Run one tool; the session's first reply starts with what is open and whose (App.opened, agent_start.py)."""
@@ -62,7 +63,7 @@ class Runtime:
         """Run one tool. Returns (reply dict, images). A failure is `ok: false`, never an exception."""
         try:
             tool = self.tools.get(name)
-            args, wait_s = job_wait.take(args) if job_wait.ours(tool.schema) else (args, 0)
+            args, wait_s = job_wait.take(args, who, job_wait.by_default(name, tool.schema)) if job_wait.ours(tool.schema) else (args, 0)
             checked = tool.check(args)
             group = self.groups.current(who, (args or {}).get("group"))
             ctx = ToolContext(self.app, who, group, self.jobs, name, self.tools)
@@ -73,7 +74,11 @@ class Runtime:
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")
-            reply = job_wait.finish(self.jobs, reply, wait_s, name)   # outside the lock: a job never touches the document
+            done = job_wait.finish(self.jobs, reply, ctx.wait_for[-1] if ctx.wait_for else wait_s, name)   # outside the lock: a job never touches the document
+            if done is not reply:                        # the job's finished reply (or how far it got): as inspect_job's
+                for fn in self.waited:
+                    done = fn(ctx, checked, done)
+            reply = done
             said = ctx.notes + [w for d in ctx.seen for w in [*plugin_parts.missing_of(d), *d.kind.warnings(d.data)]]   # never silent (kind.warn, a plugin it lacks)
             reply.warnings.extend(n for n in dict.fromkeys(said) if n not in reply.warnings)
             return reply.to_dict(), reply.images
