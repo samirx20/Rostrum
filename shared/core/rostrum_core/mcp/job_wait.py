@@ -67,17 +67,27 @@ def ours(schema: dict) -> bool:
     return bool((schema.get("properties", {}).get("wait") or {}).get(MARK))
 
 
-def take(args: dict | None, who=None, default: bool = False) -> tuple[dict | None, float]:
-    """The arguments without `wait`, and how many seconds to wait (0: don't). `default`: wait the budget when not given."""
+def take(args: dict | None) -> tuple[dict | None, float | bool | None]:
+    """The arguments without `wait`, and the wait as asked: None (not given), True (the budget) or seconds (0: don't)."""
     if not isinstance(args, dict) or "wait" not in args:
-        return args, (budget(who) if default else 0.0)
+        return args, None
     rest = {k: v for k, v in args.items() if k != "wait"}
     w = args["wait"]
     if w is True:
-        return rest, budget(who)
+        return rest, True
     if isinstance(w, (int, float)) and not isinstance(w, bool) and 0 <= w <= MOST_S:
         return rest, float(w)
     return (rest, 0.0) if w is False else (args, 0.0)   # out of range: left in, so the schema check names it
+
+
+def seconds(asked, who=None, default: bool = False, wait_for: list | None = None) -> float:
+    """How long to wait: what the tool itself said (wait_for: its own wait_s), else `wait` as taken, else the budget
+    when the tool waits by default (render_*), else 0."""
+    if wait_for:
+        return float(wait_for[-1])
+    if asked is True or (asked is None and default):
+        return budget(who)
+    return float(asked or 0.0)
 
 
 def until_ended(jobs, job_id: str, wait_s: float):
