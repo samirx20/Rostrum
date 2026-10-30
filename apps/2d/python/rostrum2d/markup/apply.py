@@ -80,6 +80,20 @@ def _css_transform(ch: dict) -> str:
     return " ".join(out)
 
 
+# CSS properties whose bare numbers have no unit (React's list, which agents write by habit); any other CSS property
+# given a bare number takes px, as in React: `left: 500` is 500px, never an invalid value the page drops silently.
+UNITLESS = {"opacity", "z-index", "font-weight", "line-height", "flex", "flex-grow", "flex-shrink", "order", "zoom",
+            "scale", "fill-opacity", "stroke-opacity", "stop-opacity", "flood-opacity", "stroke-miterlimit",
+            "animation-iteration-count", "column-count", "grid-row", "grid-column", "orphans", "widows", "tab-size",
+            "aspect-ratio", "font-size-adjust"}
+
+
+def _css_value(name: str, v) -> str:
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and not name.startswith("--") and name not in UNITLESS:
+        return _fmt(v) + "px"
+    return _fmt(v)
+
+
 def set_props(markup: str, ident: str, props: dict, missing: list | None = None) -> str:
     """`markup` with element `ident` given `props` ({name: value}); every element with that id (ids are meant to be
     unique). An id not found is added to `missing` (the caller says so, never silently)."""
@@ -98,7 +112,8 @@ def set_props(markup: str, ident: str, props: dict, missing: list | None = None)
             if k in CHANNELS:
                 ch[k] = v
             elif k.startswith("--") or k.startswith("style:") or (not svg and not k.startswith("attr:")):
-                css[k.removeprefix("style:")] = _fmt(v)
+                name = k.removeprefix("style:")
+                css[name] = _css_value(name, v)
             else:
                 k = k.removeprefix("attr:")
                 if k in named:

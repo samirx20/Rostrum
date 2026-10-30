@@ -108,7 +108,11 @@ _WORDS = [("light", lambda f, m: bool(f._light) or "data-light" in m, 'data-ligh
           ("motion blur", lambda f, m: bool(f.blur_samples), "film.blur()")]
 
 
-def _unused(film, markup: str) -> str:
+def _unused(film, t: float) -> str:
+    """`t`: a time to read the film's own markup at (before Rostrum's words are turned into filters)."""
+    def at(part):
+        return (part(t) if callable(part) else part) or ""
+    markup = at(film._scene) + at(film._overlay)
     left = [w for name, used, w in _WORDS if not used(film, markup)]
     return f" Engine words not in this film: {', '.join(left)} (look_film {{guide: \"<word>\"}})." if left else ""
 
@@ -150,7 +154,7 @@ def run_film(ctx, args):
     keyed = len(film._keys)
     return Reply(f'Film "{args["name"]}": {film.duration:g} s, {film.width}×{film.height} at {film.fps:g} fps, {keyed} keyed '
                  f'element{"s" * (keyed != 1)}{", motion blur on" if film.blur_samples else ""}; {len(times)} frames, '
-                 f'{ms:.0f} ms a frame.{_notes(film)}{_unused(film, mid)} Next: look_film at the moments that matter at full size '
+                 f'{ms:.0f} ms a frame.{_notes(film)}{_unused(film, times[len(times) // 2])} Next: look_film at the moments that matter at full size '
                  f'(at: [s]) and judge them as a client would, or across the film with notes (every: 2, notes: true); '
                  f'change the script and run_film again.',
                  {"script": str(path), "times": times, "msPerFrame": round(ms), "notes": film.notes}, files=[sheet], images=[sheet])

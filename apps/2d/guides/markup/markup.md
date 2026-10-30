@@ -29,8 +29,8 @@ Runs with `from rostrum2d.markup import *`, `math`, `random` in scope; must leav
 `film.key("#id", prop={t: value, t: (value, ease)}, …)` — a plain value is still.
 
 - Inside SVG a prop is an attribute (`cx`, `d`, `fill`, `stop-color`, `opacity`, `stroke-dashoffset` …); on HTML a
-  CSS property (`opacity`, `left`, `filter`, `clip-path`, `background` …). `"--name"`: a CSS variable. `style:` /
-  `attr:` prefixes force one; `_` in names is `-`.
+  CSS property (`opacity`, `left`, `filter`, `clip-path`, `background` …); a bare number on a CSS length is px
+  (`left: 500`), as in React. `"--name"`: a CSS variable. `style:` / `attr:` prefixes force one; `_` in names is `-`.
 - Transform channels `x y rotate scale scaleX scaleY skewX` are applied after the element's own `transform`, in its own
   units, about `origin` (default its own `0 0`; on HTML any transform-origin). A part drawn with its joint at its own
   `0 0` (`<g transform="translate(0 140)">`) turns about that joint.
