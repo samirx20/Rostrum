@@ -104,3 +104,31 @@ def test_usd_simple_shapes_show_in_final_as_in_quick(engine, tmp_path):
             px = round(w / 2 + x / 3.6 * w / 2)
             rows = seen[:, px - 4:px + 5].all(axis=1).sum()       # rows the shape fills across the column's middle
             assert rows >= 10, f"{renderer}: no shape at x {x} m ({rows} rows)"
+
+
+def test_usd_sphere_is_round_in_quick_and_final(engine, tmp_path):
+    # USD's own shape-to-mesh step made a file's Sphere ~10 sides round, faceted in both renderers; the core now makes it
+    # like its own sphere, 64 steps around (core/src/implicit_shapes.h). A 10-sided outline filling half the picture is
+    # ~5 % out of round (4-5 px here); 64 sides are well under a pixel.
+    (tmp_path / "ball.usda").write_text('#usda 1.0\n(\ndefaultPrim = "Ball"\nmetersPerUnit = 1\nupAxis = "Y"\n)\n'
+                                        'def Sphere "Ball"\n{\ndouble radius = 1\n}\n')
+    src = SUN + 'light("front", kind="distant", intensity=1)\n' + (f'import_usd("ball", file={str(tmp_path / "ball.usda")!r})\n'
+                 'cam = camera("cam", focalLength=50, sensorWidth=36, y=1, z=3.6)\n'
+                 'shot("hero", camera=cam, fps=24, start=0, end=1)\n')
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    w = h = 240
+    for renderer in ("storm", "cycles"):
+        a = render(engine, doc, renderer, w, h, tmp_path / f"{renderer}.png").astype(np.int32)
+        seen = np.abs(a - a[2, 2]).sum(axis=-1) > 24
+        ys, xs = np.nonzero(seen)
+        cy, cx = ys.mean(), xs.mean()
+        edge = []
+        for t in np.linspace(0, 2 * np.pi, 90, endpoint=False):     # the outline's distance from the middle, all round
+            r = np.arange(0, w / 2, 0.25)
+            px, py = np.round(cx + r * np.cos(t)).astype(int), np.round(cy + r * np.sin(t)).astype(int)
+            ok = (px >= 0) & (px < w) & (py >= 0) & (py < h)
+            inside = seen[py[ok], px[ok]]
+            edge.append(r[ok][np.flatnonzero(inside)[-1]] if inside.any() else 0)
+        assert min(edge) > 20, f"{renderer}: no ball seen"
+        assert max(edge) - min(edge) <= 2, f"{renderer}: outline {min(edge):.1f}-{max(edge):.1f} px from the middle"
