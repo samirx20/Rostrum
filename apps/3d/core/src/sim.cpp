@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <map>
 #include <optional>
 #include <mutex>
@@ -332,7 +333,7 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     const float e2 = e.LengthSq();
     if (e2 > 0 && areas > 0) b.mCompliance *= areas / e2;
   }
-  const std::vector<JPH::uint> seams = add_seam_edges(*s, c);
+  const std::vector<JPH::uint> seams = add_seam_edges(*s, c, stretch);
   SS::OptimizationResults moved;
   s->Optimize(moved);
   sew->emplace(s, seams, moved.mEdgeRemap, c);
@@ -653,6 +654,15 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         const float* a = &rows[at + size_t(e.a) * 3];
         const float* b = &rows[at + size_t(e.b) * 3];
         const double len = dist({a[0], a[1], a[2]}, {b[0], b[1], b[2]});
+        const auto sewn = [&](int p) {
+          return std::any_of(cl.seams.begin(), cl.seams.end(), [p](const auto& sp) { return sp[0] == p || sp[1] == p; });
+        };
+        if (len > kTear * e.rest + 1e-4 && (sewn(e.a) || sewn(e.b))) {  // a seam that can't close pulls the cloth beside it apart
+          char at_[64];
+          std::snprintf(at_, sizeof at_, "%.2f %.2f %.2f", double(a[0]), double(a[1]), double(a[2]));
+          throw Failure(cl, setup.start + f, std::string("tore beside a seam at ") + at_ + " m: the garment is too tight there to close round what is in it",
+                        "cut the pieces wider there (round the body plus some ease), or start them further from the body");
+        }
         if (len > kTear * e.rest + 1e-4)
           throw Failure(cl, setup.start + f, "tore apart (an edge stretched to " + std::to_string(int(len / std::max(1e-9, e.rest))) + " times its length)",
                         "check it doesn't start inside something, lower its Stiffness, or pin fewer points");

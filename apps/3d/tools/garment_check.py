@@ -4,8 +4,9 @@
 # own path (rostrum3d.sim.compute), the core's reply printed (points, triangles, seams kept, frameMs), then Quick (Storm)
 # stills at the start, while sewing, and at rest, plus a Final (Cycles) still of the last frame. Then: every seam pair is
 # joined at the last frame (all within 1 mm), the cloth has not torn (no triangle edge stretched past 1.3 of its pattern
-# length) and the shirt has not fallen off the stand. The arm bar (radius 3.5 cm) fits the sleeves (30 cm round); at 5 cm
-# (31.4 cm round) a sleeve could never close round it.
+# length) and the shirt has not fallen off the stand. The stand is cut smaller than the shirt, as a body is: its body 0.67 m
+# round under a 0.80 m chest, its arm bar (radius 3.5 cm) under 30 cm sleeves. The first stand (radius 14 cm, 0.78 m round
+# and an arm bar 31 cm round) was as big as the shirt, so its seams could never close (they rested ~6 mm apart).
 # The lead runs it:  heavy.ps1 run "hem: pr7 garment" gpu <venv python> apps\3d\tools\garment_check.py <out folder> [--video]
 # Exit 0 = every check passed; look at garment-*.png: a shirt hanging on the stand, closed at its seams, folds at the waist.
 import math
@@ -36,7 +37,7 @@ stand = material("stand", baseColor="#d9d4cc", roughness=0.6)
 cotton = material("cotton", baseColor="#3d6fb0", roughness=0.9, sheen=0.5)
 floor = material("floor", baseColor="#5d6670", roughness=0.7)
 mesh("ground", shape="plane", width=6, depth=6, material=floor)
-mesh("body", shape="capsule", radius=0.14, height=0.62, y=0.9, sz=0.75, material=stand).simulate("still")
+mesh("body", shape="capsule", radius=0.12, height=0.62, y=0.9, sz=0.75, material=stand).simulate("still")
 mesh("arms", shape="capsule", radius=0.035, height=0.74, rz=90, y_world=1.44, material=stand).simulate("still")
 mesh("pole", shape="cylinder", radius=0.025, height=0.9, material=stand).simulate("still")
 shirt = [[-0.2, 0], [0.2, 0], [0.2, 0.36], [0.36, 0.38], [0.36, 0.53], [0.08, 0.55], [0, 0.5], [-0.08, 0.55],

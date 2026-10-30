@@ -12,13 +12,13 @@ namespace {
 constexpr float kSewDamping = 0.9f;  // speed kept per step while sewing
 }  // namespace
 
-std::vector<JPH::uint> add_seam_edges(JPH::SoftBodySharedSettings& s, const Cloth& c) {
+std::vector<JPH::uint> add_seam_edges(JPH::SoftBodySharedSettings& s, const Cloth& c, float compliance) {
   std::vector<JPH::uint> out;
   for (const auto& p : c.seams) {
     if (p[0] < 0 || p[1] < 0 || size_t(p[0]) >= s.mVertices.size() || size_t(p[1]) >= s.mVertices.size()) continue;
     const JPH::Vec3 a(s.mVertices[size_t(p[0])].mPosition), b(s.mVertices[size_t(p[1])].mPosition);
     out.push_back(JPH::uint(s.mEdgeConstraints.size()));
-    s.mEdgeConstraints.emplace_back(JPH::uint32(p[0]), JPH::uint32(p[1]), 0.0f);  // compliance 0: as stiff as it gets
+    s.mEdgeConstraints.emplace_back(JPH::uint32(p[0]), JPH::uint32(p[1]), compliance);
     s.mEdgeConstraints.back().mRestLength = (b - a).Length();
   }
   return out;

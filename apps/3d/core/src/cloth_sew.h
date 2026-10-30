@@ -1,6 +1,6 @@
 // Sewing a garment (PR7, `seams` on a cloth): the pattern's pieces start apart around the body, flat or curved; each sewn pair
-// of points (one piece's edge to another's) is a cloth edge of the solver's own (sim.cpp `cloth_settings`), as stiff as the
-// solver allows, whose length shrinks evenly to nothing over the cloth's sewing time and then stays nothing: the solver pulls
+// of points (one piece's edge to another's) is a cloth edge of the solver's own (sim.cpp `cloth_settings`), as strong as the
+// cloth's own, whose length shrinks evenly to nothing over the cloth's sewing time and then stays nothing: the solver pulls
 // the pair together in the same passes that keep the cloth's own edges their length, so the cloth follows the seam instead of
 // tearing round it, and a closed seam is held shut every pass rather than pulled shut after the step.
 #pragma once
@@ -16,9 +16,11 @@
 
 namespace r3d::sim {
 
-// Adds one edge per seam pair to `s` (after CreateConstraints, before Optimize), its rest length the pair's starting gap.
+// Adds one edge per seam pair to `s` (after CreateConstraints, before Optimize), its rest length the pair's starting gap,
+// as stiff as the cloth's own edges (`compliance`: theirs): an infinitely stiff seam won wherever the cloth was snug round
+// the body (a sleeve on an arm) and the cloth beside it tore instead.
 // Returns their indices into s->mEdgeConstraints before Optimize (`ClothSew` follows Optimize's renumbering).
-std::vector<JPH::uint> add_seam_edges(JPH::SoftBodySharedSettings& s, const Cloth& c);
+std::vector<JPH::uint> add_seam_edges(JPH::SoftBodySharedSettings& s, const Cloth& c, float compliance);
 
 class ClothSew {
  public:
