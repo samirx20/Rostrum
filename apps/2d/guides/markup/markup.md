@@ -34,9 +34,10 @@ Runs with `from rostrum2d.markup import *`, `math`, `random` in scope; must leav
   `"blur(6px)"`, shadows, `polygon(…)`) blends number by number when both keys have the same shape, else holds.
 - Ease (the key's ease shapes the stretch arriving at it): `linear smooth easeIn easeOut easeInOut snappy natural
   heavy spring bounce hold`; `{"ease": "custom", "x1", "y1", "x2", "y2"}`; `{"ease": "spring", "bounce": .4}`.
-- In `scene(t)`: `keys({…})(t)`, `lerp(t, t0, t1, v0, v1, ease)`, `spring(t, start, bounce, speed)` (0→1),
+- In `scene(t)`: `keys({…})(t)`, `lerp(t, t0, t1, v0, v1, ease)`, `spring(t, start, bounce, speed)` (0→1, overshooting past 1 by `bounce`; settles in about 1/speed s),
   `wave(t, period, amount, phase)`, `clamp`, `mix(a, b, p)`.
-- A keyed id missing from the markup is named in the reply's notes.
+- Keys reach every element with that id, whether `scene(t)` returns it, a string scene holds it or the overlay does.
+  A keyed id missing from the markup is named in the reply's notes.
 
 ## Camera
 
@@ -68,7 +69,7 @@ this film's. `render_film` puts the project's main mix under the picture (`sound
 
 ## What the engine draws
 
-Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradients; CSS `filter`; 2D/3D transforms on
+Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradients; CSS `filter`; `backdrop-filter` (blur a little weaker than Chrome's); 2D/3D transforms on
 HTML; `clip-path` shapes; gradient `mask-image`; blend modes; CSS variables, `calc()`; text, `text-shadow`; SVG in
 `<img>`; emoji. In SVG: all shapes and paths, `viewBox`, gradients, `<use>`/`<symbol>`, nested transforms, dashes,
 opacity, blend, markers, `<textPath>`, `<style>` inside the `<svg>`.

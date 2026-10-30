@@ -113,7 +113,7 @@ tools.add("inspect_guide", _g.take("inspect_guide").fn,
 
 @tools.tool("run_film", {"properties": {
     "name": {"type": "string", "description": "The film's name (its script is saved as films/<name>.py; run again with the same name to replace it)."},
-    "code": {"type": "string", "description": "The whole Python script. It must leave `film = Film(...)` set up. Omit to re-run the saved script."},
+    "code": {"type": "string", "description": "The whole Python script; it replaces the saved one before it runs. It must leave `film = Film(...)` set up. Omit to re-run the saved script."},
     "file": {"type": "string", "description": "Or a script file you keep and edit yourself (absolute path to a .py); remembered for this name."},
     "at": {"type": "array", "items": {"type": "number"}, "description": "Seconds to show on the sheet (default: 8 across the film)."},
     "width": {"type": "integer", "description": "Sheet width px (default 1600)."}}, "required": ["name"]})
