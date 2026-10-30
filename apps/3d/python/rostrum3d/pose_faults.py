@@ -57,7 +57,7 @@ def pose_faults(track, info: dict, check: list[int]) -> list[dict]:
         fs = sorted(set(frames(info)) | set(check)) if len(check) > 1 else check
         posed = {f: PB.posed(track.fr, id_, balls, f) for f in fs}
         out += through_touch(track, info, id_, item, balls, posed, keyed)
-        out += _still(track, info, id_, item, balls, posed, keyed)
+        out += _still(track, info, id_, item, balls, posed, keyed) if len(fs) > 1 else []    # one frame can't say a whole motion is small
         out += wave_faults(track, info, id_, item, balls, posed, keyed)
         feats = _features(track, id_, balls, posed)
         out += _off_body(track, info, id_, posed, feats)

@@ -3,7 +3,7 @@ when a look / render call asks for them (`notes: true`) and listed at the end of
 the files or their names: anything here can be deliberate.
 
 The checks, each with a stable note id the agent can follow across re-runs:
-  dark:<shot> / blown:<shot>  the picture (its pixels): mean brightness under DARK_MEAN of full, or CLIPPED_PCT % of the pixels
+  dark:<shot> / blown:<shot>  the picture (its pixels): mean brightness under DARK_MEAN of full, or over CLIPPED_PCT % of the pixels
                               with a channel at white (facts.measure; the same numbers inspect_exposure gives).
   out_of_frame:<item>         a shown shape (not ground-sized) wholly outside the picture on every sampled frame.
   cut_edge:<item>             a shown shape whose projected box (through the shot camera) crosses the picture's edge while most
@@ -18,10 +18,12 @@ The checks, each with a stable note id the agent can follow across re-runs:
                               falling, has not landed yet (Drape, 3E round: "sheet floats 0.49 m above box" on a cloth's first
                               frame). A cloth's folds, and a fall not computed yet, aren't measured here: run_simulation's reply
                               says what each cloth ends on.
+  dark_subject:<item>         a subject's middle near-black in the picture though its own colour is not (light_faults.py).
   flat_light:<item>           the biggest subject's lit and dark sides under light_faults.FLAT_STOPS apart in the picture
                               (light_faults.py; first picture only, not Stylized).
   separated:<part> / leaves_frame:<item> / no_floor:<shot> / through_body / off_body / on_rim / reads_still, and cut_edge:<cloth|copies> from the stored simulation: from the
-                              document over the whole shot (rostrum3d/faults.py), in the same list.
+                              document over the whole shot (rostrum3d/faults.py), in the same list, with review_faults.py's camera_inside, empty_frame, fills_frame,
+                              lands_above, lands_in, slides, still and not_measured.
 """
 from __future__ import annotations
 
@@ -39,7 +41,7 @@ from .facts import measure
 from .shot import seconds
 
 DARK_MEAN = 0.08          # mean display brightness (0 black – 1 white) under this: the frame is nearly black
-CLIPPED_PCT = 40.0        # share of pixels with any channel at white above this: blown out
+CLIPPED_PCT = 10.0        # share of pixels with any channel at white above this: clipped highlights over that much of it
 GAP_M = 0.01              # 1 cm: lowest point this far above / below the ground
 MOST = 0.5                # a cut subject has at least this share of its projected box inside the picture
 MIN_CUT = 0.02            # ... and at least this share outside (a pixel's worth is not a cut)
@@ -61,7 +63,7 @@ def picture(png, shot: str, when: str) -> list[dict]:
     if mean < DARK_MEAN:
         out.append(F.note(f"dark:{shot}", f"mean brightness {mean:.2f} of 1 (under {DARK_MEAN:g}: nearly black)", when))
     if m["clipped_pct"] > CLIPPED_PCT:
-        out.append(F.note(f"blown:{shot}", f"{m['clipped_pct']:g} % of the picture is at white (over {CLIPPED_PCT:g} %)", when))
+        out.append(F.note(f"blown:{shot}", f"{m['clipped_pct']:g} % of the picture is clipped at white, no detail left (over {CLIPPED_PCT:g} %)", when))
     return out
 
 
@@ -146,10 +148,10 @@ def settled(per: dict | None, i: int) -> bool:
     return True
 
 
-def _frame_faults(data: dict, info: dict, f: int, folder, sim: dict | None = None, moving: set[str] = frozenset()) -> dict:
+def _frame_faults(data: dict, info: dict, f: int, folder, sim: dict | None = None, moving: set[str] = frozenset(), tr: Track | None = None) -> dict:
     """{'cut': [...], 'floating': {id: gap}, 'sinking': {id: depth}, 'judged': {ids}} at frame f; a simulated thing is
     judged for floating / sinking only where it has settled."""
-    tr = Track(data, info, range(f, f + 1), folder, sim)
+    tr = tr if tr is not None and f in tr.cams else Track(data, info, range(f, f + 1), folder, sim)
     shapes = {}
     for id_ in tr.ids():
         if tr.shown(id_, f):
@@ -176,7 +178,7 @@ def _frame_faults(data: dict, info: dict, f: int, folder, sim: dict | None = Non
     return out
 
 
-def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
+def scene(data: dict, info: dict, frames: list[int], folder=None, track: Track | None = None) -> list[dict]:
     """cut_edge (any sampled frame), floating and sinking (every sampled frame) from the scene's geometry through the shot camera."""
     if not _item(data, info.get("camera")):      # no camera item to look through: the engine names that itself, nothing to judge
         return []
@@ -184,7 +186,7 @@ def scene(data: dict, info: dict, frames: list[int], folder=None) -> list[dict]:
     per = []
     for f in frames:
         try:
-            per.append((f, _frame_faults(data, info, f, folder, sim, moving)))
+            per.append((f, _frame_faults(data, info, f, folder, sim, moving, track)))
         except ValueError:                       # something's size isn't known here (an import): nothing judged
             continue
     out, seen = [], set()
@@ -235,21 +237,37 @@ def _own_y(data: dict, id_: str) -> float:
 def check(data: dict, info: dict, frames: list[int], pngs: dict, folder=None, renderer: str | None = None) -> list[dict]:
     """Every fault of the shot at `frames`: pictures (`pngs`: {frame: path}, a frame may be missing) and geometry. Ids are unique.
     flat_light is judged on the first picture only (light_faults.py), never on a Stylized one."""
-    found = []
+    found, at = [], frames[0] if len(frames) == 1 else None
+    track = _shared(data, info, frames, folder, at)          # one read of the scene for every check (each frame resolved once)
     for f, png in pngs.items():
         found += picture(png, info["id"], when_of(info, f))
     if pngs and renderer != "stylized":
         f, png = next(iter(sorted(pngs.items())))
-        found += light_faults.flat(data, info, f, png, folder, when_of(info, f))
-    found += scene(data, info, frames, folder)
+        found += light_faults.flat(data, info, f, png, folder, when_of(info, f), track)
+        for g, p in sorted(pngs.items()):
+            found += light_faults.dark_subjects(data, info, g, p, folder, when_of(info, g), track)
+    found += scene(data, info, frames, folder, track)
     unique = {}
     for x in found:
         unique.setdefault(x["id"], x)
-    for x in doc_faults(data, info, folder, at=frames[0] if len(frames) == 1 else None):
+    for x in doc_faults(data, info, folder, at=at, track=track, pictures=bool(pngs)):
         unique[x["id"]] = x                      # a cloth's / copies' own points beat their box (same id), the rest are new
         if x["id"].startswith("leaves_frame:"):     # one fault per thing: leaving the picture says more than being cut on the way
             unique.pop("cut_edge:" + x["id"].split(":", 1)[1], None)
     return list(unique.values())
+
+
+def _shared(data: dict, info: dict, frames: list[int], folder, at: int | None) -> Track | None:
+    """A Track over every frame the checks read (the whole shot for a whole-shot look), the simulation laid in; None
+    when it can't be made (each check then makes its own, as before)."""
+    from rostrum3d.faults import samples
+    try:
+        sim, _ = _simulated(data, info, folder)
+        fs = sorted(set(frames) | set(samples(info, at)))
+        need = range(info["start"], info["end"] + 1) if at is None else range(fs[0], fs[-1] + 1)
+        return Track(data, info, need, folder, sim)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def sample(info: dict, count: int = 3) -> list[int]:

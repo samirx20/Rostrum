@@ -135,13 +135,14 @@ def _visible(cam, c, r, balls) -> tuple[float, dict]:
 
 def _blocker(o, p, balls) -> int | None:
     """The first ball the ray from o to p meets before p, or None."""
-    d = [b - a for a, b in zip(o, p)]
-    length = math.hypot(*d) or 1e-9
-    d = [x / length for x in d]
+    o0, o1, o2 = o                                     # plain floats, no lists: called ~5000 times a look
+    d0, d1, d2_ = p[0] - o0, p[1] - o1, p[2] - o2
+    length = math.hypot(d0, d1, d2_) or 1e-9
+    d0, d1, d2_ = d0 / length, d1 / length, d2_ / length
     for k, (q, r, _) in enumerate(balls):
-        oq = [b - a for a, b in zip(o, q)]
-        tc = sum(x * y for x, y in zip(oq, d))
-        d2 = sum(x * x for x in oq) - tc * tc
+        x, y, z = q[0] - o0, q[1] - o1, q[2] - o2
+        tc = x * d0 + y * d1 + z * d2_
+        d2 = x * x + y * y + z * z - tc * tc
         if d2 >= r * r:
             continue
         th = tc - math.sqrt(r * r - d2)
