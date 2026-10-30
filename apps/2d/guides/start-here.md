@@ -6,7 +6,8 @@ working on one page; the topic guides at the end hold the detail.
 
 ## The loop
 
-1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
+1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`, or `film.py` in the project folder), and change
+   it with your own tools. It is plain Python: any import, classes, `print` (it comes back in the reply).
 2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet, and names anything cut by the frame edge at its moments.
    Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
 3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look is

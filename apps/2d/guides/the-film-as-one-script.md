@@ -118,8 +118,8 @@ one item in the whole document.
 
 ## Your own helpers
 
-The script is ordinary Python (functions, dicts, loops, list comprehensions; no classes, no imports beyond `math` and a
-seeded `random`). Write the helpers your film repeats:
+The script is ordinary Python (functions, classes, any import; `random` is seeded, so a re-run gives the same film).
+Write the helpers your film repeats:
 
 ```python
 def rise(item, at, by=40, dur=0.6):

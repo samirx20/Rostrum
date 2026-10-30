@@ -9,8 +9,8 @@ person can pick, move and retime.
 
 Two ways in:
 
-- **A script** (`run_script`, `source`): the helpers below are already there, with `math`. Scripts can't import or open
-  files, so a table comes in as text (`parse_table`) or through `inspect_table`.
+- **A script** (`run_script`): the helpers below are already there, with `math`. A script is plain Python, so it may
+  `import numpy` / `csv` and open its own files; a table also comes in as text (`parse_table`) or through `inspect_table`.
 - **Full Python next to the document** (numpy, pandas, your own files): `from rostrum2d.plot import …` and
   `from rostrum2d.table import read_table`, compute, and write the script text that `run_script` takes (last section).
 

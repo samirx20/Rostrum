@@ -529,13 +529,10 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   lower at the same loudness; the drums still hit). Off (songs saved before 2026-10-25): the samples as recorded. A song saved with the old kit `"synth"` opens as `"drums"`.
   Common other names are read as these: `hihat` / `hh` / `closedHat` → `hat`, `openHihat` → `openHat`, `bd` →
   `kick`, `sd` → `snare`, `rimshot` / `sidestick` → `rim`, `handclap` → `clap` (any case, with or without - and _).
-- **Plain Python in a script:** `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `sorted`, `reversed`,
-  `enumerate`, `zip`, `list`, `dict`, `tuple`, `set`, `int`, `float`, `str`, `bool`, `isinstance`, `hasattr`, `any`,
-  `all`, `map`, `filter`, `divmod`, `pow`, and the modules `math` and `random` (`import` them or just use them; no
-  other imports). `random` starts from the same seed every run, so running the script again writes the same notes;
-  `random.seed(n)` gives another draw, and `r = random(7)` makes a second generator with its own seed
-  (`r.uniform(a, b)`, `r.randint(a, b)`, `r.choice(seq)`). A `class` is refused ("classes aren't allowed in
-  scripts; use functions and dicts"). `print(...)` lines come back in the reply's warnings, "print: …".
+- **Plain Python in a script:** any `import` (the standard library and the installed packages: `numpy`,
+  `dataclasses`, `itertools` …), classes and every built-in. `random` starts from the same seed every run, so running
+  the script again writes the same notes; it is Python's own (`random.seed(n)` gives another draw, `random.Random(7)` or
+  `r = random(7)` a second generator with its own seed). `print(...)` lines come back in the reply's warnings, "print: …".
 - **Before the render:** every reply warns, naming them, about a held note that ends at or before its start
   (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
   after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.

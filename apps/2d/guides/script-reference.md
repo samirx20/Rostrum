@@ -78,7 +78,7 @@ Run it again after editing it and:
 
 **Replace or add depends on the script's `name`.** Run under the **same `name`**, a script replaces and merges what it made before (a person's edits stay). Run under a **new `name`**, it adds a second copy beside the first, and the reply warns that it did. To change something an earlier script made, run under that script's name. A second script can't make a scene an earlier script made (`comp("main")` again) or key its layers (`layer("dot0")`): the refusal names the script that made them; put the lines in that script. When a check fails because two scripts made the same things (for instance "drawings must be at different frames, in order"), the refusal names the earlier script: run under its name to replace them.
 
-**Scripts cannot `import` anything but `math` and `random`, and cannot define classes.** `numpy`, `os` and the rest are refused. `math` and `random` are already there (`import math`, `import random` are fine), and so are these plain built-ins (and no others): `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `divmod`, `pow`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `any`, `all`, `list`, `dict`, `tuple`, `set`, `frozenset`, `float`, `int`, `str`, `bool`, `isinstance`, `chr`, `ord`, and the errors `ValueError`, `KeyError`, `IndexError`, `TypeError`, `ZeroDivisionError`. There is no `print` (look at what the script made with `inspect_item`, `look_motion`, `look_frame`). `random` is **seeded**: it gives the same numbers on every run, so a re-run gives the same piece. `random.uniform(a, b)`, `random.randint(a, b)`, `random.choice(seq)`, `random.random()` use the script's own generator; `r = random(7)` makes another with its own seed (`r.uniform(...)`, `r.randint(...)`, `r.choice(...)`), handy to give each item in a loop its own: `random(100 + i)`. A `class` is refused ("classes aren't allowed in scripts; use functions and dicts"). A field can be keyed from your own Python: `item.sample("y", lambda t: …, start=, end=)` writes one key per frame (a list of values works too). For maths and data, scripts also have `plot_area`, `curve_points`, `line_d`, `nice_ticks`, `view3d`, `parse_table` and the rest (`data-math-and-graphs`); numpy work happens in your own Python, which hands the script its numbers.
+**A script is plain Python:** any `import` (the standard library and the installed packages: `numpy`, `dataclasses`, `itertools` …), classes, and every built-in. `print(...)` lines come back in run_script's reply ("print: …", the first 40). `random` is **seeded**: it gives the same numbers on every run, so a re-run gives the same piece; it is Python's own (`random.uniform(a, b)`, `random.choice(seq)`, `random.Random(7)`, `random.seed(3)`), and `r = random(7)` is a short way to make another generator with its own seed, handy to give each item in a loop its own: `random(100 + i)`. The script runs inside Rostrum; it reaches files only when it opens them. A field can be keyed from your own Python: `item.sample("y", lambda t: …, start=, end=)` writes one key per frame (a list of values works too). For maths and data, scripts also have `plot_area`, `curve_points`, `line_d`, `nice_ticks`, `view3d`, `parse_table` and the rest (`data-math-and-graphs`); numpy work happens in your own Python, which hands the script its numbers.
 
 ```python
 comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
@@ -270,9 +270,9 @@ a group of path layers, one per symbol.
 
 ### What a script may use
 
-No `import` except `math` and `random` (seeded: the same numbers every run; `random(7)` is your own seeded generator
-with `.uniform` / `.randint` / `.choice` / `.random`) and no classes: use functions and dicts. An error names the line
-and what to write instead.
+Plain Python: any import, classes, every built-in; `print` comes back in the reply; `random` is seeded (the same
+numbers every run; `random(7)` or `random.Random(7)` is a generator with its own seed). An error names the line and what
+to write instead.
 
 ## Reading errors
 

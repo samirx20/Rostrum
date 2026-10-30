@@ -84,7 +84,9 @@ drums.hit("kick", at="#lift")
 master(loudness=-16, truePeak=-1)
 ```
 
-Run it as `{"name": "song", "look": true, "source": "<the script>"}`. Every script name (track, note, chord, hit, voice,
+Run it as `{"name": "song", "look": true, "source": "<the script>"}`. The text is kept as `<project>/scripts/song.py`
+(the reply says where): change that file with your own tools and run `{"name": "song"}` again, no need to resend it.
+A script is plain Python: any import (numpy, dataclasses …), classes, and `print` (it comes back in the reply). Every script name (track, note, chord, hit, voice,
 comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 
 ## The tools to start with
