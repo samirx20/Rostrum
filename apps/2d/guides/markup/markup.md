@@ -23,6 +23,8 @@ Runs with `from rostrum2d.markup import *`, `math`, `random` in scope; must leav
   `film.overlay(markup or fn)` — fixed to the screen.
 - Fonts by name (variable, weights 100–1000): Inter, Fraunces, Source Serif 4, Montserrat, Roboto Flex, Recursive,
   JetBrains Mono, Caveat.
+- Any Google Fonts family by name (`font-family`, or its fonts.googleapis.com `@import` URL; fetched once, then kept);
+  icons by name: Lucide / Tabler (`<i data-lucide="arrow-right">`, `<i class="ti ti-heart">`) become inline SVG.
 
 ## Keys
 

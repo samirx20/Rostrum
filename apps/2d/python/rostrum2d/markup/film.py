@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Callable
 
+from rostrum_core.byname import expand_icons
+
 from . import apply, grain as grain_mod, light as light_mod
 from .values import Keys
 
@@ -141,6 +143,7 @@ class Film:
     def markup(self, t: float, missing: list | None = None) -> str:
         world = self._scene(t) if callable(self._scene) else self._scene
         over = (self._overlay(t) if callable(self._overlay) else self._overlay) or ""
+        world, over = expand_icons(world), expand_icons(over)    # <i data-lucide="…"> / <i class="ti ti-…"> -> inline SVG
         for ident, props in self._props_at(t).items():       # keys reach the world and the overlay alike
             gone: list = []
             world = apply.set_props(world, ident, props, gone)

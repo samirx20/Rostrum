@@ -54,9 +54,9 @@ def _film(name: str, code: str | None, file: str | None = None):
     f = folder()
     link = runner.films_dir(f) / f"{name}.file"
     if file is not None:
-        p = Path(file)
-        if not p.is_absolute() or not p.is_file():
-            raise RostrumError(codes.NOT_FOUND, "film", "file", f"{file} is not an existing script (an absolute path to a .py)")
+        p = Path(file) if Path(file).is_absolute() else f / file          # relative: in the project folder
+        if not p.is_file():
+            raise RostrumError(codes.NOT_FOUND, "film", "file", f"{file} is not an existing script (a .py, absolute or in the project folder)")
         link.write_text(str(p), encoding="utf-8")
         path = p
     elif code is not None:

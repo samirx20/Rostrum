@@ -6,6 +6,8 @@ import base64
 from functools import lru_cache
 from pathlib import Path
 
+from rostrum_core.byname import face_css as google_face_css, families_in_css
+
 from .. import settings
 
 FAMILIES = {"Inter": "InterVariable", "Roboto Flex": "RobotoFlex", "Recursive": "Recursive", "Montserrat": "Montserrat",
@@ -34,6 +36,10 @@ def face_css(text: str = "") -> str:
             if p.is_file():
                 out.append(f'@font-face {{ font-family: "{family}"; font-weight: 100 1000; font-style: '
                            f'{"italic" if italic else "normal"}; src: url("data:font/ttf;base64,{_data(str(p))}"); }}')
+    for family, ask in families_in_css(text).items():       # any Google Fonts family by name (rostrum_core.byname)
+        if family not in FAMILIES:                           # italic faces only when asked, as above
+            italic = ask["italic"] if ask["italic"] is not None else (None if "italic" in text else False)
+            out.append(google_face_css(family, ask["weights"], italic))
     return "\n".join(out)
 
 

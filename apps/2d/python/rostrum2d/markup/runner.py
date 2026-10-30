@@ -5,6 +5,8 @@ from __future__ import annotations
 import traceback
 from pathlib import Path
 
+from rostrum_core import script_python
+
 from . import film as film_mod
 from .film import Film
 
@@ -34,8 +36,10 @@ def load(path: Path, folder: Path) -> Film:
     ns: dict = {"__name__": "film_script", "__file__": str(path)}
     exec(compile(PRELUDE, "<prelude>", "exec"), ns)
     film_mod.CURRENT_FOLDER = str(folder)
+    printed: list[str] = []
     try:
-        exec(compile(code, str(path), "exec"), ns)
+        with script_python.running(printed, str(path)) as ran:     # print → the reply's notes, never the server's channel
+            exec(compile(code, str(path), "exec"), ns)
     except SyntaxError as e:
         raise ScriptError(f"{path.name} line {e.lineno}: {e.msg}: {(e.text or '').strip()}") from None
     except Exception as e:
@@ -44,6 +48,7 @@ def load(path: Path, folder: Path) -> Film:
     if not isinstance(f, Film):
         raise ScriptError(f"{path.name} ran but made no `film`: end with film = Film(...) set up (inspect_guide 'markup')")
     f.folder = str(folder)
+    f.notes[:0] = [f"print: {line}" for line in printed] + script_python.exit_note(ran)
     return f
 
 
