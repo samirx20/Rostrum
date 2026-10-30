@@ -138,6 +138,32 @@ sim::Cloth cloth_settings(const JsValue& v, size_t i) {
   return c;
 }
 
+// One point per place: a shape's mesh may give a face's corners their own points (an editable mesh does, for its normals
+// and u v), which as cloth would be loose triangles that fall apart. Points at exactly the same place become one (the
+// first keeps its u v); faces and seam pairs follow.
+void weld(sim::Cloth& c, std::vector<std::vector<int>>& faces) {
+  std::map<std::array<double, 3>, int> at;
+  std::vector<int> to(c.points.size());
+  std::vector<sim::V3> pts;
+  std::vector<std::array<float, 2>> st;
+  for (size_t i = 0; i < c.points.size(); ++i) {
+    const auto [it, fresh] = at.emplace(c.points[i], int(pts.size()));
+    if (fresh) {
+      pts.push_back(c.points[i]);
+      st.push_back(c.st[i]);
+    }
+    to[i] = it->second;
+  }
+  if (pts.size() == c.points.size()) return;
+  for (auto& f : faces)
+    for (int& p : f)
+      if (p >= 0 && size_t(p) < to.size()) p = to[size_t(p)];
+  for (auto& s : c.seams)
+    for (int& p : s) p = to[size_t(p)];
+  c.points = std::move(pts);
+  c.st = std::move(st);
+}
+
 // A cloth item's mesh at `t`, refined, its points in world space; `to_local` takes them back to the item's own space.
 sim::Cloth gather_cloth(sim::Cloth c, const UsdPrim& prim, UsdTimeCode t, UsdGeomXformCache& xc, GfMatrix4d* to_local) {
   if (!prim.IsA<UsdGeomMesh>())
@@ -181,6 +207,7 @@ sim::Cloth gather_cloth(sim::Cloth c, const UsdPrim& prim, UsdTimeCode t, UsdGeo
     faces.push_back(std::move(f));
     at += size_t(std::max(0, n));
   }
+  weld(c, faces);
   sim::refine(c, faces);
   if (c.triangles.empty())
     throw Error("simulate: " + c.item + " has no surface to drape (every face is flat to a line): give it a shape, or set Simulate to Off");

@@ -88,7 +88,7 @@ def test_the_request_sends_seams_and_sewing_time_only_for_a_pattern_and_a_rerun_
     req, _ = sim_inputs(d.data, "s")
     body = {b["item"]: b for b in req["bodies"]}
     assert "seams" not in body["sheet"] and "sewTime" not in body["sheet"]          # older cloths keep their key
-    assert body["wrapper"]["sewTime"] == 0.6 and body["wrapper"]["seams"] == garment.make(d.item("wrapper"))["seams"]
+    assert body["wrapper"]["sewTime"] == 0.6 and body["wrapper"]["seams"] == garment.engine_seams(d.item("wrapper"))
     assert node["props"]["shape"] == "poly" and len(node["props"]["points"]) == len(garment.make(d.item("wrapper"))["points"])
     assert "pieces" not in node["props"] and set(node["props"]["faceCounts"]) == {3}
     d.apply({"op": "mesh.set", "target": ["wrapper"], "args": {"clothWeight": 0.4}}, SAM)

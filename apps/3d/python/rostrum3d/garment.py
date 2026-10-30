@@ -181,6 +181,17 @@ def make(item: dict) -> dict:
     return _made(item.get("pieces") or "", item.get("seams") or "")
 
 
+def engine_seams(item: dict) -> list[list[int]]:
+    """The seam pairs as the engine numbers the mesh's points: an editable mesh reaches it with each triangle's corners as
+    their own points, face by face (core poly.cpp `corners`), so point i is the first corner that names it (the engine
+    welds the corners of one place back into one point and carries the pairs along)."""
+    made = make(item)
+    first: dict[int, int] = {}
+    for k, p in enumerate(i for t in made["triangles"] for i in t):
+        first.setdefault(p, k)
+    return [[first[a], first[b]] for a, b in made["seams"]]
+
+
 def problems(item: dict) -> list[str]:
     """The document check's words for a pattern mesh (kind.py): empty when it can be made. A pattern is cloth or off."""
     if item.get("simulate", "off") not in ("off", "cloth"):

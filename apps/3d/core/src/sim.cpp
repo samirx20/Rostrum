@@ -597,7 +597,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
             cloth_self[c].step(physics, cloth_ids[c]);
-            cloth_sew[c].step(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt));
+            cloth_sew[c].step(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt), double(dt));
           }
       }
     auto& row = out.frames[size_t(f)];
