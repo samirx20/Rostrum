@@ -38,7 +38,7 @@ def _script_source(args) -> tuple[str, Path | None]:
     """run_script's text: `source`, or the file at `path` (exactly one of them). Returns (text, file or None)."""
     if ("source" in args) == ("path" in args):
         raise RostrumError(codes.BAD_ARGUMENT, "run_script", "the script", "needs exactly one of `source` or `path`"
-                           + (f' (no file "{args["name"]}" in the project's scripts folder yet)' if args.get("name") and "path" not in args else ""),
+                           + (f' (no file "{args["name"]}" in the project scripts folder yet)' if args.get("name") and "path" not in args else ""),
                            ["source", "path", "name of a file in <project>/scripts"],
                            'e.g. {"path": "C:/work/promo.py"}, {"name": "promo.py"}, or {"source": "comp(\\"main\\", ...)", "name": "promo.py"}')
     if "source" in args:
