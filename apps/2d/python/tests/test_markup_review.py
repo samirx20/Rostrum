@@ -34,7 +34,7 @@ def test_edge_cut_cover_and_empty_frame_are_said_with_their_times(session):
     out = review.notes(session, _film(), TIMES)
     said = "\n".join(out)
     assert any(n.startswith("#headline is cut by the left") and "to 4.5 s" in n for n in out), said
-    assert any(n.startswith("#pointer sits on the text of #total") and "to 2.5 s" in n for n in out), said
+    assert any(n.startswith("#pointer sits on #total") and "to 2.5 s" in n for n in out), said
     assert any("at 5.5 s is almost empty" in n and "background colour" in n for n in out), said
     assert not any("#headline" in n for n in out if n.startswith("#pointer")), said    # it passes clear of it
     assert len(out) <= review.MAX_LINES

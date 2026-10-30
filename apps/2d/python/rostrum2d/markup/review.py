@@ -19,6 +19,8 @@ from .render import TEXT_PREFIX, Session, stills as draw_stills
 MAX_LINES = 10
 EDGE_PX = 2.0             # glyphs further out than this count as cut
 COVER_SHARE = 0.10        # the part of a text's glyphs another element must cover,
+HIDDEN_SHARE = 0.9        # a text this much under one element is hidden by it (a screen over a screen), not marred
+HIDER_SIZE = 4.0          # ... by an element at least this many times its area
 SITS_ON = 0.5             # or the part of a smaller element that lies on the text
 WRAPPER_SHARE = 0.30      # a later element this big (of the frame) is taken for a layout box, not something on top
 EMPTY_SHARE = 0.98        # a frame this much one colour is "almost empty"
@@ -70,6 +72,8 @@ def _layout_notes(film: Film, times: list[float], frames: list[list[dict]]) -> l
                 continue
             g = _meet(g, _clip(under, frame))
             kin = _lineage(boxes, i)
+            if _hidden(boxes, i, g, kin, frame):
+                continue                            # under a later screen or panel: not seen, so not marred
             for j in range(i + 1, len(boxes)):
                 top = boxes[j]
                 if top["id"] in kin or not _measured(top) or under["id"] in _lineage(boxes, j):
@@ -80,11 +84,13 @@ def _layout_notes(film: Film, times: list[float], frames: list[list[dict]]) -> l
                 box = _meet(box, _clip(top, frame))
                 meet = _area(_meet(box, g))
                 share = meet / max(1.0, _area(g))
-                sits = meet >= SITS_ON * _area(box) > 0 and _area(box) < _area(g)
-                if share >= COVER_SHARE or sits:
+                sits = top.get("glyphs") is None and meet >= SITS_ON * _area(box) > 0 and _area(box) < _area(g)
+                screen = share > HIDDEN_SHARE and _area(box) >= HIDER_SIZE * _area(g)   # a screen over a screen
+                if (share >= COVER_SHARE and not screen) or sits:
                     key = (top["id"], under["id"], sits)
                     covers.setdefault(key, {})[t] = max(share, covers.get(key, {}).get(t, 0))
     out = []
+    cuts = _letters_together(cuts, names)
     for (ident, sides, text), at in cuts.items():
         px = max(at.values())
         what = f"{names[ident]} is cut by the {_sides(sides)}" if text else f"{names[ident]} runs past the {_sides(sides)}"
@@ -97,7 +103,7 @@ def _layout_notes(film: Film, times: list[float], frames: list[list[dict]]) -> l
         at = {t: 1 for _, a in unders for t in a}
         listed = ", ".join(names[u] for u, _ in unders[:4]) + (f" and {len(unders) - 4} more" if len(unders) > 4 else "")
         if sits:
-            out.append((2.5 + _weight(at, times), top, f"{names[top]} sits on the text of {listed} {_when(at, times)}"))
+            out.append((2.5 + _weight(at, times), top, f"{names[top]} sits on {listed} {_when(at, times)}"))
         else:
             share = max(max(a.values()) for _, a in unders)
             part = f" (up to {share * 100:.0f} % of its text)" if len(unders) == 1 and COVER_SHARE <= share <= 0.9 else ""
@@ -108,6 +114,36 @@ def _layout_notes(film: Film, times: list[float], frames: list[list[dict]]) -> l
     first = [n for n in out if not (n[1] in seen or seen.add(n[1]))]
     rest = [n for n in out if n not in first]
     return [(w, say) for w, _, say in first] + [(w - 10, say) for w, _, say in rest]
+
+
+def _hidden(boxes: list[dict], i: int, g, kin: set, frame) -> bool:
+    """Whether a later element much larger than this text (a screen, a panel; not a pointer or a badge, nor a
+    frame-sized layout box), not one of its own parents, lies over nearly all of it."""
+    for j in range(i + 1, len(boxes)):
+        top = boxes[j]
+        if top["id"] in kin or not _measured(top) or top.get("box") is None or boxes[i]["id"] in _lineage(boxes, j):
+            continue
+        box = _meet(top["box"], _clip(top, frame))
+        if (HIDER_SIZE * _area(g) <= _area(box) <= WRAPPER_SHARE * _area(frame)
+                and _area(_meet(box, g)) > HIDDEN_SHARE * max(1.0, _area(g))):
+            return True
+    return False
+
+
+def _letters_together(cuts: dict, names: dict) -> dict:
+    """Texts without an id cut on the same sides at the same times (split letters or words) as one text, in markup order."""
+    groups: dict[tuple, list] = {}
+    for (ident, sides, text), at in cuts.items():
+        if ident.startswith(TEXT_PREFIX):
+            groups.setdefault((sides, text, tuple(sorted(at))), []).append(ident)
+    out = {k: v for k, v in cuts.items() if not k[0].startswith(TEXT_PREFIX)}
+    for (sides, text, _), ids in groups.items():
+        ids.sort(key=lambda i: int(i[len(TEXT_PREFIX):]))
+        words = [names[i][len('the text "'):-1] for i in ids]
+        joined = ("" if all(len(w) <= 2 for w in words) else " ").join(words)
+        names[ids[0]] = f'the text "{joined if len(joined) <= 32 else joined[:30].rstrip() + "…"}"'
+        out[(ids[0], sides, text)] = {t: max(cuts[(i, sides, text)].get(t, 0) for i in ids) for t in cuts[(ids[0], sides, text)]}
+    return out
 
 
 def _measured(b: dict) -> bool:
