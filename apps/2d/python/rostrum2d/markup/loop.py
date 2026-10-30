@@ -42,9 +42,10 @@ def wrap(tools, review) -> None:
                                   f"({times[0]:g}–{times[-1]:g} s).")
                 if notes:
                     reply.summary += " Seen in those frames: " + "; ".join(notes) + "."
-            used = time.monotonic() - started[0]
+            used = time.monotonic() - started
+            spent = f" ({_said(exporting[0])} of it exporting)" if exporting[0] >= 1 else ""
             left = f" · {_said(max(0.0, budget * 60 - used))} of your {budget:g} min left" if budget else ""
-            reply.summary += f"\nSession {_said(used)} · {calls[0]} calls{left}"
+            reply.summary += f"\nSession {_said(used)}{spent} · {calls[0]} calls{left}"
             return reply
 
         tools._tools[t.name] = dataclasses.replace(t, fn=wrapped)
