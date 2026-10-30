@@ -15,7 +15,7 @@ render3d = ["numpy", "pillow", "OpenEXR>=3.3", "opencolorio>=2.5,<2.6"]   # 3D r
 test = ["pytest", "rostrum2d[io,render3d]"]
 
 [project.scripts]
-rostrum-2d-mcp = "rostrum2d.mcp.server:main"
+rostrum-2d-mcp = "rostrum2d.mcp.__main__:run"
 
 [project.entry-points."rostrum.links"]           # a shared marker following a 2D layer (rostrum_core.links)
 2d = "rostrum2d.links2d:time_of"

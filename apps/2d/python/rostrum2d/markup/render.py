@@ -5,6 +5,7 @@ a frame the engine refuses fails loudly, naming the time)."""
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import threading
 import time
@@ -17,6 +18,20 @@ from .runner import script_error
 
 class RenderError(RuntimeError):
     pass
+
+
+_TAG = re.compile(r"<[a-zA-Z][\w:-]*\b[^>]*>")
+_ID = re.compile(r"""\sid\s*=\s*(["'])([^"']+)\1""")
+
+
+def tag_layers(markup: str) -> str:
+    """Every element with an id also named data-layer-id=<its id>: what the engine's boxes reply reports (boxes.rs).
+    Only the frame request's copy is tagged, never the agent's markup."""
+    def one(m):
+        tag = m.group(0)
+        a = None if "data-layer-id" in tag else _ID.search(tag)
+        return tag if a is None else f"{tag[:a.end()]} data-layer-id={a.group(1)}{a.group(2)}{a.group(1)}{tag[a.end():]}"
+    return _TAG.sub(one, markup)
 
 
 class Session:
@@ -59,7 +74,9 @@ class Session:
         self.request({"open": req})
         self._open = want
 
-    def frame(self, film: Film, t: float, image: Path | None = None, encode: bool = False) -> dict:
+    def frame(self, film: Film, t: float, image: Path | None = None, encode: bool = False, boxes: bool = False) -> dict:
+        """Draw the film at t. `boxes`: the reply also carries every element with an id as laid out and painted
+        (camera included), in paint order: {id, parent, box, ink, clip, glyphs, opacity} in frame px (boxes.rs)."""
         missing: list = []
         try:
             stage = film.markup(t, missing)
@@ -71,7 +88,11 @@ class Session:
             if not any(n.startswith(note) for n in film.notes):
                 note += f" (first at {t:.2f} s)"
                 film.notes.append(note)
+        if boxes:
+            stage = tag_layers(stage)
         req = {"stage": stage, "index": round(t * film.fps)}
+        if boxes:
+            req["boxes"] = True
         if samples:
             req["samples"] = samples
         if image is not None:
@@ -94,14 +115,16 @@ class Session:
         self._log.close()
 
 
-def stills(session: Session, film: Film, times: list[float], folder: Path) -> list[tuple[Path, float]]:
+def stills(session: Session, film: Film, times: list[float], folder: Path, boxes: bool = False,
+           ext: str = "png") -> list[tuple]:
+    """A still per time into `folder`: [(path, t)], or with `boxes` [(path, t, boxes)] from the same drawing."""
     session.page(film)
     folder.mkdir(parents=True, exist_ok=True)
     out = []
     for t in times:
-        p = folder / f"t{t:07.3f}.png"
-        session.frame(film, t, p)
-        out.append((p, t))
+        p = folder / f"t{t:07.3f}.{ext}"
+        r = session.frame(film, t, p, boxes=boxes)
+        out.append((p, t, r.get("boxes") or []) if boxes else (p, t))
     return out
 
 

@@ -7,15 +7,16 @@ attribute or CSS value, a camera, light on shapes, true motion blur, lip sync an
     film.key("#sun", cy={0: 700, 2: (400, "snappy")}, fill={0: "#ff8a3d", 2: "#ffd36e"})
     film.camera(x={0: 960, 4: 1100}, zoom={0: 1, 4: (1.4, "smooth")})
     film.light(angle={0: -60, 30: 40})          # any data-light element is shaded by it
+    film.grain(amount=.12)                       # film grain on the whole frame (data-grain: one element)
 
 Per frame (`markup(t)`): the scene's markup at t → keys put on their elements → the light filters → the camera →
-the overlay (screen-fixed). The engine draws exactly that markup (rostrum2d-render serve, `frame {stage}`).
+the grain → the overlay (screen-fixed) → the whole-frame grain. The engine draws exactly that markup (rostrum2d-render serve, `frame {stage}`).
 """
 from __future__ import annotations
 
 from typing import Callable
 
-from . import apply, light as light_mod
+from . import apply, grain as grain_mod, light as light_mod
 from .values import Keys
 
 _CAM = ("x", "y", "zoom", "rotate")
@@ -42,6 +43,8 @@ class Film:
         self._keys: dict[str, dict[str, object]] = {}
         self._cam: dict[str, object] = {}
         self._light: dict[str, object] = {}
+        self._grain: dict[str, object] = {}
+        self._grain_frame = False
         self.blur_shutter, self.blur_samples = 0.0, 0
         self.notes: list[str] = []
         self.folder = CURRENT_FOLDER            # the project folder (markers, voice lines, sound)
@@ -96,6 +99,18 @@ class Film:
         self._light.update({k: _as_keys(v) for k, v in fields.items()})
         return self
 
+    def grain(self, frame: bool = True, **fields):
+        """Film grain (the engine's grain shader): amount (0.1 fine film, 0.4 rough), size (px), seed, colour (1: each
+        colour its own grain), smooth (0: square cells), still (1: the same each frame). Numbers may be keys. These
+        are also the settings every `data-grain` element starts from (its own data-grain="amount: .3" wins).
+        frame=True grains the whole frame (world and overlay, background included); frame=False only sets them."""
+        bad = set(fields) - set(grain_mod.DEFAULTS)
+        if bad:
+            raise ValueError(f"grain fields are {', '.join(grain_mod.DEFAULTS)}; not {', '.join(sorted(bad))}")
+        self._grain.update({k: _as_keys(v) for k, v in fields.items()})
+        self._grain_frame = bool(frame)
+        return self
+
     def blur(self, shutter: float = 180, samples: int = 8):
         """True motion blur: each frame is `samples` pictures across the shutter (degrees; 180 = half a frame), averaged.
         blur(0) turns it off."""
@@ -136,6 +151,12 @@ class Film:
             world = light_mod.apply(world, {k: v(t) for k, v in self._light.items()})
         elif "data-light" in world:
             world = light_mod.apply(world, {})
+        grain = {k: v(t) for k, v in self._grain.items()}
+        frame = round(t * self.fps)
+        if "data-grain" in world:
+            world = grain_mod.apply(world, grain, frame)
+        if "data-grain" in over:
+            over = grain_mod.apply(over, grain, frame)
         cam = {k: v(t) for k, v in self._cam.items()}
         if cam:
             w, h = self.width, self.height
@@ -143,6 +164,8 @@ class Film:
             tr = f"translate({w / 2:.3f}px, {h / 2:.3f}px) scale({z:.5f}) rotate({-r:.4f}deg) translate({-x:.3f}px, {-y:.3f}px)"
             world = (f'<div id="rostrum-camera" style="position:absolute; left:0; top:0; width:{w}px; height:{h}px; '
                      f'transform-origin: 0 0; transform: {tr}">{world}</div>')
+        if self._grain_frame:
+            return grain_mod.whole(world + over, grain, frame, self.width, self.height, self.background)
         return world + over
 
     def samples(self, t: float) -> list[str]:

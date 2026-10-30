@@ -1,4 +1,6 @@
 """Markup films (proof): keys land where an agent expects, values blend, light keeps an element's place. No engine."""
+import re
+
 from rostrum2d.markup import Film, Keys, mix
 from rostrum2d.markup import apply, light
 
@@ -37,5 +39,16 @@ def test_a_missing_id_is_reported_and_keys_reach_the_overlay():
 
 def test_a_lit_svg_keeps_its_class_and_place():
     out = light.apply('<svg class="layer" data-light width="10" height="10"><circle r="3"/></svg>', {})
-    assert '<div class="layer" style="filter: url(#rlight1)">' in out
+    assert out.split("</defs></svg>", 1)[1].startswith('<div class="layer" style="">')   # the class places the whole
+    assert "position: relative" not in out.split('class="layer"')[1].split(">")[0]          # never beaten by a style
+    assert "filter: url(#rlight1)" in out
     assert out.count("<circle") == 1 and out.endswith("</div>")
+
+
+def test_a_bare_number_on_a_css_length_is_px():
+    # `left: 500` written bare would be invalid CSS that the page drops without a word; React's rule makes it px
+    film = Film(100, 100, 30, 2)
+    film.scene('<div id="h"></div>')
+    film.key("#h", left={0: 0, 2: 100}, opacity=0.5, **{"--k": 3})
+    out = film.markup(1.0)
+    assert re.search(r"left: [\d.]+px;", out) and "opacity: 0.5;" in out and "--k: 3\"" in out
