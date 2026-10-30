@@ -19,6 +19,10 @@ keeps the server until they end. Ending the client would end the server and its 
 process tree), which lost a showreel export at frame 562 of 2400 (2026-10-28). Their ends stay in the job files, so
 inspect_job in the next session reads them (rostrum_core/mcp/job_files.py; the server tags its job files with
 ROSTRUM_CALL_SESSION, this session's key).
+
+Windows refuses to remove or swap a file another program has open this moment (call.py reads the record, a server
+rewrites its job files). Neither may end the session early: that ended the server with its job (1 test run in 3,
+2026-10-30), so the record goes before the stop is answered, and a job file being swapped counts as a live job.
 """
 from __future__ import annotations
 
@@ -44,10 +48,27 @@ def live_jobs(key: str) -> int:
     for p in d.glob("*.json") if d.is_dir() else []:
         try:
             state = json.loads(p.read_text(encoding="utf-8"))
+        except PermissionError:                          # Windows: being swapped for its newer state this moment
+            n += 1
+            continue
         except (OSError, ValueError):
             continue
         n += state.get("session") == key and state.get("status") in ("queued", "running")
     return n
+
+
+async def _remove(record: Path) -> None:
+    """Remove the record, so no new command finds this session (Windows: wait out a reader holding it this moment)."""
+    for _ in range(40):
+        try:
+            record.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            await anyio.sleep(0.025)
+        except OSError:
+            return
+    print(f"call_session: could not remove {record}; the next command finds no listener and starts afresh",
+          file=sys.stderr, flush=True)
 
 
 async def _answer(client: Client, req: dict) -> dict:
@@ -73,7 +94,7 @@ async def serve(record: Path, name: str, server: list[str]) -> None:
         async def end():
             """End once the server's jobs have ended (none: at once); meanwhile no new calls."""
             listening.cancel()
-            record.unlink(missing_ok=True)
+            await _remove(record)
             while (n := live_jobs(key)):
                 print(f"call_session: ending once {n} job(s) end", file=sys.stderr, flush=True)
                 await anyio.sleep(DRAIN_POLL_S)
@@ -100,6 +121,7 @@ async def serve(record: Path, name: str, server: list[str]) -> None:
                         async with busy:                         # one call at a time on the one session
                             last[0] = time.monotonic()
                             if req.get("op") == "stop":
+                                await _remove(record)            # gone before the caller hears "stopped"
                                 await stream.send((json.dumps({"stopped": True, "running": live_jobs(key)}) + "\n").encode())
                                 tg.start_soon(end)
                                 return
