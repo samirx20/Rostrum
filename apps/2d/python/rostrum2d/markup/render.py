@@ -67,8 +67,9 @@ class Session:
         except Exception as e:
             raise RenderError(script_error(e, t)) from None
         for m in dict.fromkeys(missing):
-            note = f'keys name "#{m}", but no element has id="{m}" (at {t:.2f} s)'
-            if note not in film.notes:
+            note = f'keys name "#{m}", but no element has id="{m}"'
+            if not any(n.startswith(note) for n in film.notes):
+                note += f" (first at {t:.2f} s)"
                 film.notes.append(note)
         req = {"stage": stage, "index": round(t * film.fps)}
         if samples:

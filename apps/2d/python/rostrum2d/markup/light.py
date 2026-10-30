@@ -99,7 +99,10 @@ def apply(markup: str, light: dict) -> str:
             # The engine drops a filtered <svg> picture: the filter goes on a box taking the svg's own place.
             end = _svg_end(markup, m.end())
             inner = rest[:sm.start()] + rest[sm.end():] if sm else rest
-            pieces += [markup[pos:m.start()], f'<div style="{own + "; " if own else ""}{style}">',
+            cm = re.search(r'\sclass\s*=\s*"([^"]*)"', inner)        # its class places it too: the box takes it
+            klass = f' class="{cm.group(1)}"' if cm else ""
+            inner = inner[:cm.start()] + inner[cm.end():] if cm else inner
+            pieces += [markup[pos:m.start()], f'<div{klass} style="{own + "; " if own else ""}{style}">',
                        f'<svg{inner} style="display:block">', markup[m.end():end], "</div>"]
             pos = end
             continue

@@ -125,8 +125,13 @@ class Film:
 
     def markup(self, t: float, missing: list | None = None) -> str:
         world = self._scene(t) if callable(self._scene) else self._scene
-        for ident, props in self._props_at(t).items():
-            world = apply.set_props(world, ident, props, missing)
+        over = (self._overlay(t) if callable(self._overlay) else self._overlay) or ""
+        for ident, props in self._props_at(t).items():       # keys reach the world and the overlay alike
+            gone: list = []
+            world = apply.set_props(world, ident, props, gone)
+            over = apply.set_props(over, ident, props, gone)
+            if len(gone) == 2 and missing is not None:
+                missing.append(ident)
         if self._light:
             world = light_mod.apply(world, {k: v(t) for k, v in self._light.items()})
         elif "data-light" in world:
@@ -138,8 +143,7 @@ class Film:
             tr = f"translate({w / 2:.3f}px, {h / 2:.3f}px) scale({z:.5f}) rotate({-r:.4f}deg) translate({-x:.3f}px, {-y:.3f}px)"
             world = (f'<div id="rostrum-camera" style="position:absolute; left:0; top:0; width:{w}px; height:{h}px; '
                      f'transform-origin: 0 0; transform: {tr}">{world}</div>')
-        over = self._overlay(t) if callable(self._overlay) else self._overlay
-        return world + (over or "")
+        return world + over
 
     def samples(self, t: float) -> list[str]:
         """The stage at each shutter sub-frame (motion blur), or [] when blur is off."""
