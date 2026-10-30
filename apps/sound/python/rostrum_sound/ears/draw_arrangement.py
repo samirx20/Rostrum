@@ -2,7 +2,7 @@
 as ticks, one lane per drum, clips as boxes, spoken lines as flags). Shade and thickness show each note's written
 level (velocity × the fader, its automation included); the left column names the track, its median level and the
 range it spans (highest note at the row's top edge, lowest at the bottom, or its drums by lane). Along the top:
-sections, markers (their lines drawn under the parts) and bar numbers; seconds along the bottom.
+sections, markers (their lines drawn under the parts), bar numbers and the chord symbols; seconds along the bottom.
 
 Drawn with Pillow (already loaded by the MCP layer), not matplotlib: the first look in a fresh server is under a second.
 """
@@ -75,7 +75,9 @@ def _step(span: float, px: float, min_px: float) -> float:
     return 1200
 
 
-def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = None, title: str = "arrangement"):
+def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = None, title: str = "arrangement",
+                        chords: list | None = None):
+    """`chords`: [[start_s, end_s, symbol]] drawn as a row under the bar numbers (ears/bar_text.py), when given."""
     end = arr["end"] if end is None else end
     end = end if end > start else start + 1.0
     rows = arr["tracks"]
@@ -84,7 +86,7 @@ def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = 
     f9, f10, f11, f12, f14 = _font(10), _font(11), _font(12), _font(13), _font(16)
     x0, x1 = GUTTER, W - PAD
     X = lambda t: x0 + (t - start) * (x1 - x0) / (end - start)
-    inside = lambda t: start - 1e-9 <= t <= end + 1e-9
+    inside = lambda t: start - 1e-6 <= t <= end + 1e-6
 
     # top band: title, key line, sections, markers (as many lanes as their labels need), bar numbers
     marks = [(name, at) for name, at in arr["markers"] if inside(at)]
@@ -97,7 +99,8 @@ def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = 
     y_sec = y_key + 22
     y_mark = y_sec + 20
     y_bar = y_mark + 16 * n_mlanes + 2
-    y_rows = y_bar + 18
+    y_chord = y_bar + 16
+    y_rows = y_chord + (18 if chords else 2)
     y_axis = y_rows + row_h * len(rows)
     H = y_axis + 30
     img = Image.new("RGB", (W, H), BG)
@@ -133,6 +136,22 @@ def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = 
             lab = str(num)
             tx = min(max(x - f9.getlength(lab) / 2, x0), x1 - f9.getlength(lab))
             d.text((tx, y_bar + 1), lab, fill=DIM, font=f9)
+
+    # chord symbols: a tick at every change, the name in full where it has room after the last one written
+    # (the bar_by_bar text names every one)
+    if chords:
+        d.text((PAD, y_chord + 1), "chords", fill=DIM, font=f9)
+        free = x0
+        for s, e, lab in chords:
+            if e <= start or s >= end:
+                continue
+            a = X(max(s, start))
+            if a >= free - 4:                           # never through a name already written
+                d.line([a, y_chord + 2, a, y_chord + 13], fill=DIM)
+            if a + 3 >= free:
+                text = _fit(lab, f11, x1 - a - 3)
+                d.text((a + 3, y_chord + 1), text, fill=TEXT, font=f11)
+                free = a + 3 + f11.getlength(text) + 6
 
     # markers: the line under the parts (a hit on the marker stays visible), the label in the top band
     for (name, at), lab, lane in zip(marks, mlabels, mlane):
