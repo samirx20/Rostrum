@@ -89,7 +89,9 @@ def test_usd_simple_shapes_show_in_final_as_in_quick(engine, tmp_path):
                    for s, x in zip(shapes, xs))
     (tmp_path / "shapes.usda").write_text('#usda 1.0\n(\ndefaultPrim = "row"\nmetersPerUnit = 1\nupAxis = "Y"\n)\n'
                                           f'def Xform "row"\n{{\n{body}}}\n')
-    src = SUN + (f'import_usd("row", file={str(tmp_path / "shapes.usda")!r})\n'
+    # lit from the camera's side too (SUN alone left their lower halves black on the black background), and each shape
+    # looked for anywhere in its column: an import stands on the ground, so the row sits above the picture's middle
+    src = SUN + 'light("front", kind="distant", intensity=1)\n' + (f'import_usd("row", file={str(tmp_path / "shapes.usda")!r})\n'
                  'cam = camera("cam", focalLength=30, sensorWidth=36, z=6.0)\n'
                  'shot("hero", camera=cam, fps=24, start=0, end=1)\n')
     doc = Document.new(KIND)
@@ -100,4 +102,5 @@ def test_usd_simple_shapes_show_in_final_as_in_quick(engine, tmp_path):
         seen = (np.abs(a - a[2, 2]).sum(axis=-1) > 24)          # not the empty background (its top-left corner)
         for x in xs:
             px = round(w / 2 + x / 3.6 * w / 2)
-            assert seen[h // 2 - 8:h // 2 + 8, px - 8:px + 8].mean() > 0.5, f"{renderer}: no shape at x {x} m"
+            rows = seen[:, px - 4:px + 5].all(axis=1).sum()       # rows the shape fills across the column's middle
+            assert rows >= 10, f"{renderer}: no shape at x {x} m ({rows} rows)"
