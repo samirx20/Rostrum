@@ -1,14 +1,18 @@
 # Markup films
 
 You draw in HTML + inline SVG + CSS, written from a Python script. Rostrum adds keys on any attribute or CSS value,
-a camera, light on shapes, motion blur, lip sync to RostrumSound voices, and the project's music and markers. Looks
-and the export draw the same frames. Sections: `inspect_guide {"topic": "markup", "section": "<heading>"}`.
+a camera, light and grain on shapes, motion blur, lip sync to RostrumSound voices, and the project's music and
+markers. Looks and the export draw the same frames. Any section: `look_film {guide: "<heading words>"}`.
 
 ## Loop
 
-`run_film {name, code}` (the whole script) or `{name, file}` (a .py you keep in your work folder and edit; a contact sheet back) → `look_film {name, at: [s]}` (full-size frames,
-~0.1–0.3 s each) → change, `run_film` again (same name; omit `code` to re-run) → `render_film {name, file}` →
-`look_film {name, every: 2}` to review the whole film, fix, render again.
+- `run_film {name, code}` (the whole script) or `{name, file}` (a .py you keep in your work folder and edit): a
+  contact sheet comes back.
+- `look_film {name, at: [s]}`: full-size frames, ~0.1–0.3 s each. `{every: 2, notes: true}`: a frame every 2 s
+  across the film, with what a client would notice (text cut by the edge or covered, near-empty or unmoving frames).
+- Change the script, `run_film` again (same name; omit `code` to re-run).
+- `render_film {name, file}`: the MP4 with the project's sound; a review sheet of the delivered film comes back.
+- Every reply ends with the time used (and left, when you have a time box).
 
 ## Script
 
@@ -47,11 +51,23 @@ size. Overlay markup is not moved.
 ## Light on shapes
 
 `film.light(angle, elevation, colour, shadow, strength, soft, cast, castBlur, castColour, castOpacity)` — numbers may
-be keys. Any HTML element (a `<div>`, or an `<svg>` as a whole) with `data-light` is shaded by the engine from its own
-silhouette as a lit form, and casts its shadow when `cast` > 0; `data-light="soft: 60; cast: 20"` overrides per
-element. `angle`: where the light is (0 above, 90 right). `elevation`: 90 = straight on (flat). `soft` px: how far
-in the shading reaches (small: an edge; about half the shape's width: a round form). Parts inside one `<svg>` are one
-silhouette; a part that should catch its own light goes in its own `<svg>` or `<div>`.
+be keys. An element with `data-light` is shaded by the engine from its own silhouette as a lit form, and casts its
+shadow when `cast` > 0; `data-light="soft: 60; cast: 20"` overrides per element. `angle`: where the light is (0 above,
+90 right). `elevation`: 90 = straight on (flat). `soft` px: how far in the shading reaches (small: an edge; about half
+the shape's width: a round form).
+- On an HTML element: that element and everything in it, one silhouette.
+- On an element inside an `<svg>` (`<g>`, `<path>`, … at any depth): that element alone, with its keyed transforms.
+- On an `<svg>` as a whole: each direct child of the svg is its own lit part (a child's own `data-light` adds to it).
+- Parts keep their paint order: a part in front casts onto what is under it.
+
+## Grain and texture
+
+`film.grain(amount, size, seed, colour, smooth, still, frame=True)` — the engine's film grain over the whole frame
+(background included); numbers may be keys. `frame=False`: only the settings `data-grain` elements start from.
+`data-grain="amount: .3; size: 2"` on any element (HTML, an `<svg>` as a whole, a lit element): grain on its own look,
+only where it is drawn. `amount`: strength (strongest in mid-tones). `size` px: grain cell size. `seed`: another
+equally random grain. `colour: 1`: each colour channel its own grain. `smooth: 0`: square cells. `still: 1`: the same
+grain every frame (a fixed texture); otherwise it changes each frame.
 
 ## Motion blur
 

@@ -13,6 +13,8 @@ import html
 import math
 import re
 
+from . import layers
+
 PROGRAM = """uniform shader src; uniform float4 box; uniform float e; uniform float k; uniform float2 ldir; uniform float elev;
 uniform float amount; uniform float3 hi; uniform float3 lo;
 half4 main(float2 p) {
@@ -66,7 +68,7 @@ def filter_svg(fid: str, s: dict) -> str:
                   f'<feGaussianBlur in="o" stdDeviation="{s["castBlur"]:g}" result="ob"/>',
                   f'<feFlood flood-color="{s["castColour"]}" flood-opacity="{s["castOpacity"]:g}" result="fc"/>',
                   '<feComposite in="fc" in2="ob" operator="in" result="sh"/>',
-                  '<feMerge><feMergeNode in="sh"/><feMergeNode in="shaded"/></feMerge>']
+                  '<feMerge result="out"><feMergeNode in="sh"/><feMergeNode in="shaded"/></feMerge>']
     return (f'<filter id="{fid}" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">'
             + "".join(parts) + "</filter>")
 
@@ -84,10 +86,35 @@ def _svg_end(markup: str, start: int) -> int:
     raise ValueError("a data-light <svg> has no closing </svg>")
 
 
+def _lit_svgs(markup: str, light: dict, defs: list) -> str:
+    """Every outermost <svg> holding a data-light (on itself or a part inside) split into stacked page layers, each lit
+    part filtered from its own silhouette (layers.py)."""
+    def filter_for(own: str) -> str:
+        fid = f"rlight{len(defs) + 1}"
+        defs.append(filter_svg(fid, {**DEFAULTS, **light, **_own(own)}))
+        return f"url(#{fid})"
+
+    pieces, pos = [], 0
+    for m in re.finditer(r"<svg\b((?:[^>\"']|\"[^\"]*\"|'[^']*')*?)(/?)>", markup):
+        if m.start() < pos or m.group(2):
+            continue                                 # inside an svg already passed, or empty
+        end = _svg_end(markup, m.end())
+        close = markup.rindex("</", 0, end)
+        whole = markup[m.start():end]
+        out = layers.split(m.group(1), markup[m.end():close], filter_for) if "data-light" in whole else None
+        pieces += [markup[pos:m.start()], whole if out is None else out]
+        pos = end
+    return "".join(pieces) + markup[pos:]
+
+
 def apply(markup: str, light: dict) -> str:
-    """Every `data-light` element of `markup` filtered by its light; the filters' <svg> put first. HTML elements only
-    (a div, or an inline <svg> as a whole): the engine's shader runs on page layers, not inside one SVG picture."""
-    defs, pieces, pos = [], [], 0
+    """Every `data-light` element of `markup` filtered by its light; the filters' <svg> put first. HTML elements are
+    filtered in place; an <svg> with lit parts (or lit as a whole: each direct child a part) is split into stacked
+    page layers first, since the engine's shader runs on page layers, not inside one SVG picture."""
+    defs: list = []
+    if "<svg" in markup:
+        markup = _lit_svgs(markup, light, defs)
+    pieces, pos = [], 0
     while (m := _TAG.search(markup, pos)) is not None:
         fid = f"rlight{len(defs) + 1}"
         defs.append(filter_svg(fid, {**DEFAULTS, **light, **_own(m.group(4))}))
@@ -95,17 +122,6 @@ def apply(markup: str, light: dict) -> str:
         style = f"filter: url(#{fid})"
         sm = re.search(r'\bstyle\s*=\s*"([^"]*)"', rest)
         own = sm.group(1).rstrip("; ") if sm else ""
-        if m.group(1).lower() == "svg":
-            # The engine drops a filtered <svg> picture: the filter goes on a box taking the svg's own place.
-            end = _svg_end(markup, m.end())
-            inner = rest[:sm.start()] + rest[sm.end():] if sm else rest
-            cm = re.search(r'\sclass\s*=\s*"([^"]*)"', inner)        # its class places it too: the box takes it
-            klass = f' class="{cm.group(1)}"' if cm else ""
-            inner = inner[:cm.start()] + inner[cm.end():] if cm else inner
-            pieces += [markup[pos:m.start()], f'<div{klass} style="{own + "; " if own else ""}{style}">',
-                       f'<svg{inner} style="display:block">', markup[m.end():end], "</div>"]
-            pos = end
-            continue
         rest = rest[:sm.start()] + f'style="{own}; {style}"' + rest[sm.end():] if sm else rest + f' style="{style}"'
         pieces += [markup[pos:m.start()], f"<{m.group(1)}{rest}{m.group(6)}>"]
         pos = m.end()

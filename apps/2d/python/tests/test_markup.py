@@ -37,5 +37,7 @@ def test_a_missing_id_is_reported_and_keys_reach_the_overlay():
 
 def test_a_lit_svg_keeps_its_class_and_place():
     out = light.apply('<svg class="layer" data-light width="10" height="10"><circle r="3"/></svg>', {})
-    assert '<div class="layer" style="filter: url(#rlight1)">' in out
+    assert out.split("</defs></svg>", 1)[1].startswith('<div class="layer" style="">')   # the class places the whole
+    assert "position: relative" not in out.split('class="layer"')[1].split(">")[0]          # never beaten by a style
+    assert "filter: url(#rlight1)" in out
     assert out.count("<circle") == 1 and out.endswith("</div>")
