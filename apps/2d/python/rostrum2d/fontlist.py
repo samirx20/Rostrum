@@ -6,11 +6,12 @@ sets all read this; nothing else scans a fonts folder.
 """
 from __future__ import annotations
 
+import difflib
 import json
 import subprocess
 from functools import lru_cache
 
-from rostrum_core.byname import google_family
+from rostrum_core.byname import google_families, google_family
 
 from .engine import EngineError, find_exe
 
@@ -55,11 +56,12 @@ def family(name: str) -> dict | None:
 
 
 def missing_words(name: str) -> str:
-    """'font "Helvetica" is not in the app or on this computer (close: Helvetica Neue …)', as the engine says it."""
+    """'font "Helvetica" is not in the app, on this computer or in Google Fonts (close: Helvetica Neue …; nearest Google Fonts: …)', as the engine says it."""
     word = name.lower().split()[0] if name.strip() else ""
     close = [f["family"] for f in families() if word and word in f["family"].lower()][:8]
+    near = difflib.get_close_matches(name, google_families(), n=5, cutoff=0.0)
     return (f'font "{name}" is not in the app, on this computer or in Google Fonts' + (f" (close: {', '.join(close)})" if close else "")
-            + "; inspect_fonts names every font there is")
+            + f"; nearest Google Fonts: {', '.join(near)}; inspect_fonts names every font there is")
 
 
 def refusal(name: str) -> str | None:
