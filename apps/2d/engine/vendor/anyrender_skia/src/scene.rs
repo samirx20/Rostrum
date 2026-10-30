@@ -1000,7 +1000,15 @@ impl PaintScene for SkiaScenePainter<'_> {
             }
         }
         put(count.offset(), moves.len() as f32);
-        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+        // A short streak (a move of a few px) reads its picture with Catmull-Rom: read smoothly (bilinear) at fractions
+        // of a px, a sharp edge softens by up to half a px more than the move blurs it (blur r7: Undertow r2's 150 px
+        // title under a slow zoom came out up to 27/255 off its sub-frames on every letter edge). A long streak's own
+        // blur hides that, and reads 4 px a move, not 16.
+        let sampling = if moves.len() <= SHARP_MOVES {
+            skia_safe::SamplingOptions::from(skia_safe::CubicResampler::catmull_rom())
+        } else {
+            skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None)
+        };
         let at = skia_safe::Matrix::translate(self.cache.cached_origin(k));
         let Some(child) = image.to_shader(Some((skia_safe::TileMode::Clamp, skia_safe::TileMode::Clamp)), sampling, Some(&at)) else { return false };
         let children = [skia_safe::runtime_effect::ChildPtr::Shader(child)];
@@ -2586,6 +2594,9 @@ fn runtime_window_filter(r: &anyrender::filters::RuntimeShaderFilter) -> Option<
     }
     filter
 }
+
+/// Most moves a streak reads its picture sharply at (`draw_cached_streak`): one move a px of its path (blurred.rs `taps`).
+const SHARP_MOVES: usize = 8;
 
 /// Most moves one streak averages (`draw_cached_streak`): the shader's loop bound and its `m` array (two rows a move).
 const STREAK_MOVES: usize = 128;

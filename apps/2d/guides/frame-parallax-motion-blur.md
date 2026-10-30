@@ -255,8 +255,8 @@ and so do moving layers far enough apart that their streaks never cross. A layer
 when the matte moves with it (a pan over a title and the water that reveals it).
 A layer that runs past the edge of the frame streaks what lies past it too, in the same single paint, unless it moves
 more than about 128 px while the shutter is open. A layer on Add, Screen or Multiply streaks the same way, laid on
-with its blend, and so does a glowing layer. A layer that only moves but blends otherwise (another blend mode, frosted
-glass, a glowing layer seen through a track matte), or that runs
+with its blend, and so does a glowing layer, seen through a track matte or not. A layer that only moves but blends
+otherwise (another blend mode, frosted glass), or that runs
 far past the edge that fast, is redrawn at each step without a new layout. A group whose children each move their own
 way (bubbles rising in a group the frame pans past) is painted once and smeared child by child; only when its children
 pass close enough to smear into each other is it redrawn at each step, each child moved to its place. Titles and paths
