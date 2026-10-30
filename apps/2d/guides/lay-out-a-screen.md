@@ -46,7 +46,7 @@ with column("menu", padding=24, gap=16, w=520):       # h left out: it fits what
   or `"right"` for another.
 - **x and y inside a box:** the box places the layer, so `x=` / `y=` there fail loudly. Add `apart=True` to the
   call to place a layer by hand at its own x / y (`shape("badge", x=300, y=-10, w=24, h=24, apart=True)`; it then takes
-  no room): a badge on a card, a pointer over a screen. Or leave x / y out and let the box place it. A box made outside any
+  no room): a badge on a card, a pointer over a screen. Or leave x / y out and let the box place it. Its x / y count from the box's top-left corner, in the box's px. Set apart with no x / y, it sits on the box's centre when the box's w and h are px you gave; in a box its layout sizes (`w="fill"`, a button) run_script's reply says where it went: give x / y, or, in a `stack` (a button), leave `apart` out and the stack centres it over the others (a label swapped in on a tap). A box made outside any
   box is placed by its `x`, `y` (its top-left); with no `x`, `y` it sits centred in its parent (the frame's middle).
 - `anchor="center"` (or `"top-left"`, `"top"`, `"left"`, `"bottom-center"` … any corner or side, or a pair `(0, 1)`;
   `origin=` is the same word) on any layer is the point its `x`, `y` place and its pivot for scale and turn:
