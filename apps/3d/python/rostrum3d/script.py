@@ -42,7 +42,7 @@ import ast
 import copy
 import math
 
-from rostrum_core import ids, nearest
+from rostrum_core import ids, nearest, script_python
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
@@ -55,9 +55,6 @@ from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
 from .resolve import Frames
 
-SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
-        for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
-                  "str", "sorted", "reversed", "sum", "isinstance", "tuple", "ValueError")}
 REFS = {p.name for ps in F.FIELDS.values() for p in ps if p.type == "text" and p.kind}   # fields naming another thing: an Item handle may be passed
 ID_LISTS = {"lightsOnly"}           # fields holding ids separated by spaces: an Item, or a list of Items / ids, may be passed
 CURVE = ("x1", "y1", "x2", "y2", "stiffness", "damping")      # a key's ease settings (custom curve, spring)
@@ -601,12 +598,6 @@ def _start(name, values: dict) -> dict:
     return start_values(key, values)
 
 
-def _import(name, *args, **kw):
-    if name == "math":
-        return math
-    raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, zip … are already there")
-
-
 API = ["y = height of the base above the ground (mesh, import, group made in the scene); y_world= for the origin's world height",
        "group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, brightness= stops, at_distance=, replace_start_lights=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
        "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface|pour|path, count=, spacingX=, columns=, radius=, surface=, path= (a text/svg/path2d mesh), alongPath=, pathShift=, seed=, varyMove=, varyTurn=, varyScale=, varyStart= (once it falls), pourTime=, pourSpeed=, pourSpread=)", "copies.effector(kind=scale|turn|push|move|hide|colour, near=, field=sphere|plane|noise, radius=, amount=, axis=, seed=)", "clay(id, radius=, at=, to=, **fields): a ball (a capsule with to=); no at / y: on the ground, positions = heights above it", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "clay.layer(name, amount=1): the strokes after it go on a sculpt layer (None: the Base)", "garment(id, pieces=[{name, outline=[[x, y] …], at=[x, y, z], turn=, wrap=} …], seams=[{a: [piece, edge], b: [piece, edge], flip=} …], sewTime=, **fields): a sewing pattern, cloth", "material(id, start=, **fields; stylized blocks: lines=True, linesWidth=, lightToColor=True, litColor=, shadowBelow=, halftone=True, halftoneSize= …)", "shot(id, camera=, fps=, start=, end=, frame=item_or_list, at=(1/3, 0.5), fill=0.6)", "shot.key(\"frame\", {seconds: {\"fill\": 0.4}})", "camera.take_view(pos, look_at)", "row([a, b, c], gap=0.1, centre=True, axis=\"x\", at=)",
@@ -622,7 +613,8 @@ def run_source(source: str, name: str, doc=None, values: dict | None = None) -> 
     declaring settings also makes its recipe (recipe.py)."""
     b = Build(_reserved(source), doc, name)
     settings = recipe.Settings(doc, name, values)
-    scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
+    printed: list[str] = []
+    scope = {**script_python.globals_for(name), "math": math,      # plain Python: any import, classes, a seeded random
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: script_shot.make(b, id, v),
              "row": lambda items, gap=0.1, centre=True, axis="x", at=None: script_place.row(
@@ -635,7 +627,9 @@ def run_source(source: str, name: str, doc=None, values: dict | None = None) -> 
              "edit": lambda id, **v: b.edit(id, **v), "item": lambda id: b.edit(id), "remove": lambda *ids: b.remove(*ids),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
-        exec(compile(source, name, "exec"), scope)
+        with script_python.running(printed, name) as ran:     # print → the reply; exit() ends the script there
+            exec(compile(source, name, "exec"), scope)
+        b.notes[:0] = [f"print: {line}" for line in printed] + script_python.exit_note(ran)
     except Exception as e:
         import traceback
         line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")

@@ -108,6 +108,35 @@ def _size(type_, axis, v, out, where):
                          + (' or "fit" (hug what is inside)' if type_ == "group" else ""))
 
 
+def css_sides(v, where, name) -> list[float]:
+    """A CSS list of 1 to 4 numbers as [top, right, bottom, left] (CSS's order: [a] all, [a, b] top-bottom and
+    left-right, [a, b, c] top, left-right, bottom)."""
+    if not (1 <= len(v) <= 4 and all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in v)):
+        raise ValueError(f"{where}: {name}={list(v)!r} is not a CSS list; write a number, or 1 to 4 numbers "
+                         "[top, right, bottom, left]")
+    a = [float(n) for n in v]
+    return {1: lambda: a * 4, 2: lambda: [a[0], a[1], a[0], a[1]], 3: lambda: [a[0], a[1], a[2], a[1]], 4: lambda: a}[len(a)]()
+
+
+def css_margin(build, v, where) -> dict:
+    """margin=[38, 0, 0, 0] as CSS: Margin is the least side and each side's extra goes in marginTop … marginLeft
+    (layout.py sends [top, right, bottom, left]); said in the reply when the sides differ."""
+    t, r, b, l = css_sides(v, where, "margin")
+    m = min(t, r, b, l)
+    out = {"margin": m, "marginTop": t - m, "marginRight": r - m, "marginBottom": b - m, "marginLeft": l - m}
+    if len({t, r, b, l}) > 1:
+        say(build, f"{where}: margin={list(v)!r} was read as CSS (top, right, bottom, left): top {t:g}, right {r:g}, "
+                   f"bottom {b:g}, left {l:g}")
+    return out
+
+
+def say(build, line: str) -> None:
+    """A line for run_script's reply saying how a common form was read (script_inert.notes sends them)."""
+    said = build.__dict__.setdefault("said", [])
+    if line not in said:
+        said.append(line)
+
+
 def prepare(build, type_: str, id_, values: dict) -> dict:
     """A layer call's arguments with the layout words turned into its fields."""
     where = f'{type_}("{id_}")' if id_ else f"{type_}(…)"
@@ -123,7 +152,10 @@ def prepare(build, type_: str, id_, values: dict) -> dict:
             if not inside and k != "apart":
                 raise ValueError(f"{where}: {k}= places a layer in a container; it is not inside one. Make it inside "
                                  "`with row(…)` / column / grid / stack (or a device's screen)")
-            out[CHILD[k]] = v
+            if k == "margin" and isinstance(v, (list, tuple)):
+                out.update(css_margin(build, v, where))
+            else:
+                out[CHILD[k]] = v
         elif k in ("w", "h", "width", "height"):
             _size(type_, k[0], v, out, where)
         elif type_ == "group" and k == "overflow":

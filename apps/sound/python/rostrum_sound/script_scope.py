@@ -1,54 +1,39 @@
-"""The plain Python a Sound script may use besides the song API: safe builtins, `math`, a seeded `random`, and `print`.
+"""The plain Python a Sound script has besides the song API: all of Python (rostrum_core/script_python.py: any import,
+classes, every built-in), `math`, a seeded `random`, and `print`.
 
-- `import math` / `import random` give the modules already in scope; any other import is refused, naming what is there.
 - `random` is seeded the same at the start of every run (seed 1), so a script run again writes the same notes and a
-  person's edits are kept; `random.seed(n)` gives another draw.
+  person's edits are kept; `random.seed(n)` gives another draw, `random.Random(n)` a generator of its own.
 - `print(...)` lines come back in run_script's reply (as warnings, the first 40), so a script can show what it computed.
 """
 from __future__ import annotations
 
-import builtins
 import math
 import threading
 
-from rostrum_core.seeded import SeededRandom, no_classes
+from rostrum_core import script_python
+from rostrum_core.seeded import SeededRandom
 
-NAMES = ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "tuple", "set", "float",
-         "int", "str", "bool", "sorted", "sum", "reversed", "isinstance", "hasattr", "any", "all", "map", "filter",
-         "divmod", "pow", "ValueError", "KeyError", "IndexError", "TypeError", "Exception")
-MODULES = {"math": math}
-PRINT_LIMIT = 40
+PRINT_LIMIT = script_python.PRINT_LIMIT
 _printed = threading.local()
-
-
-def _import(name, *args, **kw):
-    if name in _printed.modules:
-        return _printed.modules[name]
-    raise ImportError(f"scripts can't import {name!r}; math and random (seeded) are already there, and range, len, "
-                      "min, max, round, sorted, sum, isinstance, any, all …")
-
-
-def _print(*args, sep=" ", end="", **kw):
-    lines = _printed.lines
-    if len(lines) < PRINT_LIMIT:
-        lines.append(sep.join(str(a) for a in args))
-    elif len(lines) == PRINT_LIMIT:
-        lines.append("… (more print lines left out)")
 
 
 def say(message: str) -> None:
     """A note from a helper to the script's reply (the same list `print` fills); nowhere to say it outside a run."""
     if hasattr(_printed, "lines"):
-        _print(message)
+        script_python.Lines(_printed.lines, PRINT_LIMIT).add(str(message))
 
 
-def scope() -> dict:
-    """A fresh scope for one run: builtins, math, random seeded at 1, and an empty print list (read with `printed`)."""
-    rnd = SeededRandom(1)
+def scope(name: str = "song.py") -> dict:
+    """A fresh scope for one run: Python's built-ins, math, random seeded at 1, and an empty print list (read with `printed`)."""
     _printed.lines = []
-    _printed.modules = {**MODULES, "random": rnd}
-    safe = {n: getattr(builtins, n) for n in NAMES}
-    return {"__builtins__": {**safe, "__import__": _import, "print": _print, "__build_class__": no_classes}, "math": math, "random": rnd}
+    return {**script_python.globals_for(name, SeededRandom(1)), "math": math}
+
+
+def running(name: str):
+    """Around the script's exec: what it prints goes to this run's list; exit() ends it there (script_python.running)."""
+    if not hasattr(_printed, "lines"):
+        _printed.lines = []
+    return script_python.running(_printed.lines, name, PRINT_LIMIT)
 
 
 def forget_printed():

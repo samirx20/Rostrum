@@ -6,7 +6,9 @@ is an operation, and every look draws the scene again from the document.
 
 ## The loop
 
-1. **Write ONE script** for the whole scene (Python, the helpers in guide `script`). Keep it in a .py file.
+1. **Write ONE script** for the whole scene (plain Python: any import, classes, `print`; the helpers in guide `script`).
+   Text sent as `source` is kept as `<project>/scripts/<name>` (the reply says where): change that file with your own
+   tools and run `{"name": "scene.py"}` again, no need to resend it.
 2. **Run it with a look**: `run_script` with `path` (or `source`), a stable `name` and `look: true`. The reply carries
    the picture through the shot's camera.
 3. **Look at the picture and judge it yourself.** `look_frame` is the main check: the live preview, what the window shows (Storm, 960×540, under

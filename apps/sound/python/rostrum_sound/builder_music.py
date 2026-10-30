@@ -83,9 +83,34 @@ class MusicMap:
         """The key from `at` on ("D minor", "F# major", "Bb dorian"): for agents and the screen, not heard."""
         self._add("keys", "key", {"key": key, "at": at}, id, f"key {key!r}")
 
-    def section(self, name, at, end, id=None):
-        """A named part of the song ("verse") from `at` to `end`."""
+    def section(self, name, at, end=None, id=None):
+        """A named part of the song ("verse") from `at` to `end`. No `end`: it runs to where the next section starts,
+        or to the song's end (filled in when the song is made: `close_sections`, said in the reply)."""
         self._add("sections", "section", {"name": name, "at": at, "end": end}, id, f"section {name}")
+        if end is None:
+            self.__dict__.setdefault("open_sections", []).append(self.root["sections"][-1])
+
+    def close_sections(self):
+        """Each section written without an end gets the next section's start (in time), else the song's length."""
+        open_ = self.__dict__.pop("open_sections", [])
+        if not open_:
+            return
+        root = {**self.root, "markers": self.marks()}
+        starts = sorted(((markers.seconds_of(root, s["at"]), s) for s in self.root.get("sections", [])), key=lambda p: p[0])
+        told = []
+        for sec in open_:
+            begin = markers.seconds_of(root, sec["at"])
+            after = next((s for t, s in starts if t > begin + 1e-9), None)
+            if after is not None:
+                sec["end"] = after["at"]
+                told.append(f'"{sec["name"]}" to where "{after["name"]}" starts')
+            elif self.root.get("length") is not None:
+                sec["end"] = self.root["length"]
+                told.append(f'"{sec["name"]}" to the end of the song')
+            else:
+                raise RostrumError(codes.BAD_ARGUMENT, f"section {sec['name']}", "end", "is not given, and no section "
+                                   "follows it and the song has no length to run to", ["end=bar(17)", "length(bar(33)) first"])
+        self.tell("open sections", "A section without end= runs on: " + ", ".join(told) + ".")
 
     def import_midi(self, path, song_map=True) -> list:
         """A MIDI file's tracks (notes; channel 10 as drum hits), markers and sections, and with song_map its tempo

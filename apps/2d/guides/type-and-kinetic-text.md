@@ -181,7 +181,7 @@ Two kinds of font can be named:
 
 `inspect_fonts` lists the families shipped with Rostrum2D (the same on every computer) with their real weights, range
 and whether they have an italic, and how many are installed on this computer; `search="serif"` (part of a name) lists
-the matching ones, installed too, and `all: true` every one. (A scene script can't import modules beyond `math` and `random`: pick the family with `inspect_fonts`, then write its name in the script.) A font installed while
+the matching ones, installed too, and `all: true` every one. (Pick the family with `inspect_fonts`, then write its name in the script.) A font installed while
 the app runs shows after a restart.
 
 **A missing font is never swapped.** Setting a font that isn't there is refused at once, naming the closest names. A

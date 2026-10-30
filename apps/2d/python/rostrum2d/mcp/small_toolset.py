@@ -45,12 +45,11 @@ def wanted() -> bool:
 @dataclasses.dataclass(frozen=True)
 class _Open(Tool):
     """look / run_script: with `check` / `do` the other arguments belong to that part, whose own schema checks them."""
-    def check(self, args):
+    def check(self, args, notes=None):
         args = args or {}
         part = "check" in args or "do" in args
         own = {k: v for k, v in args.items() if k in self.schema["properties"] and not (part and k not in ("check", "do", "times", "project"))}
-        Tool.check(self, own)
-        return dict(args or {})
+        return {**args, **Tool.check(self, own, notes)}      # own arguments as read ("24" for a number: 24, said)
 
 
 def as_tool(ctx, name: str):
@@ -137,7 +136,7 @@ def _run_script(full: Tools):
         args = dict(args)
         if "project" in args:
             opened = opener.fn(as_tool(ctx, "run_open_project"), opener.check({"folder": args.pop("project")}))
-            if not any(k in args for k in ("source", "path", "do")):
+            if not any(k in args for k in ("source", "path", "name", "do")):
                 return opened
         if "do" in args:
             return _part(ctx, does, args.pop("do"), args, "run_script", "do")

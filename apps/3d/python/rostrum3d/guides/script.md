@@ -270,8 +270,9 @@ Materials and shots always go to the top level, even when made inside a `with`.
 
 ## Inside the script
 
-Python as usual (loops, functions, f-strings, `math`). Available: `range len min max abs round enumerate zip list dict tuple float int str sorted reversed sum isinstance`
-and `import math`. Nothing else: no files, no other imports, no `print`. A script can't read the document, so it can't base a value on what a person did.
+Plain Python: any import (the standard library and the installed packages: `numpy`, `dataclasses` …), classes, every built-in.
+`print(...)` lines come back in the reply ("print: …"). `random` is seeded the same every run, so a re-run makes the same scene
+(`random.Random(7)` or `random.seed(3)` for another draw). A script can't read the document, so it can't base a value on what a person did.
 
 ## Errors
 

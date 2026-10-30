@@ -39,6 +39,18 @@ BUILT_IN_ALIASES = {
     "tenorSax": "saxophone", "glassMarimba": "marimba", "pad": "warmPad",
 }
 BUILT_INS = [*(n for g in BUILT_IN_GROUPS.values() for n in g), *BUILT_IN_ALIASES]
+# General MIDI and other common names with no recording of their own, played by the plainly nearest one (a script is
+# told which: builder.Song.track). Kept small: a name with no honest near sound (harpsichord, accordion …) is still refused.
+NEAREST_BUILT_IN = {
+    "celesta": "glockenspiel", "musicBox": "glockenspiel", "chimes": "tubularBells",
+    "brightAcousticPiano": "piano", "acousticGrandPiano": "piano", "honkyTonkPiano": "piano",
+    "electricGrandPiano": "electricPiano", "electricPiano1": "electricPiano", "electricPiano2": "electricPiano",
+    "stringEnsemble": "strings", "stringEnsemble1": "strings", "stringEnsemble2": "strings", "tremoloStrings": "strings",
+    "orchestralHarp": "harp", "frenchHorn": "horn", "frenchHorns": "horn", "brassSection": "brass",
+    "altoSax": "saxophone", "sopranoSax": "saxophone", "baritoneSax": "saxophone", "englishHorn": "oboe",
+    "acousticBass": "uprightBass", "fingerBass": "bass", "pickedBass": "bass", "electricBassFinger": "bass",
+    "electricBassPick": "bass", "synthBass": "subBass", "choir": "choirPad", "choirAahs": "choirPad", "voiceOohs": "choirPad",
+}
 DEFAULT_BUILT_IN = "piano"
 # The plain names that are synthesized (an analog preset or a classic voice): any key plays; the rest are recordings with a range.
 SYNTHESIZED = [*BUILT_IN_GROUPS["Synth"], *BUILT_IN_GROUPS["Classic (synthesized)"]]
@@ -133,6 +145,14 @@ def near_names(field: str, value, options: list[str]) -> list[str]:
     found += [o for o in options if o not in found and len(key) >= 3 and (key in _loose(o) or _loose(o) in key)]
     found += [o for o in difflib.get_close_matches(str(value), options, n=3, cutoff=0.5) if o not in found]
     return found[:4]
+
+
+def nearest_built_in(name) -> str | None:
+    """The built-in sound that plainly stands in for a common name Rostrum has no recording of ("celesta": glockenspiel),
+    or None (a listed name, or one with no near sound)."""
+    if not isinstance(name, str) or _loose(name) in {_loose(o) for o in BUILT_INS}:
+        return None
+    return {_loose(k): v for k, v in NEAREST_BUILT_IN.items()}.get(_loose(name))
 
 
 def read_sound(fields: dict) -> dict:

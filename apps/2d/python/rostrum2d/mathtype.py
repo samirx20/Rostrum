@@ -11,9 +11,42 @@ Ids: `<id>_<n>_<what>`, n counting from 1 in reading order (left to right), what
 from __future__ import annotations
 
 import math
+import re
 import unicodedata
 
 MAX_CHARS = 600
+
+# LaTeX's sized delimiters (\big( \Big[ \bigg\{ \Bigg| and their l / r / m forms), which mathtext doesn't know: drawn
+# as \left / \right around an invisible strut of the height LaTeX gives them (LaTeX: about 1.2, 1.8, 2.4, 3 times a
+# plain bracket; here 1.35, 1.73, 2.38, 2.91), and the strut's width taken back (`hspace`, measured on the STIX fonts)
+# so the bracket sits as close to its neighbour as a plain one.
+_P = r"\phantom{|}"
+_G = lambda a, b: r"\genfrac{}{}{0}{}{" + a + "}{" + b + "}"  # noqa: E731
+_STRUT = {"big": (_G(_P, _P), 0.317), "Big": (_G(_G(_P, _P), _P), 0.36),
+          "bigg": (_G(_G(_G(_P, _P), _P), _G(_P, _P)), 0.383),
+          "Bigg": (_G(_G(_G(_P, _P), _G(_P, _P)), _G(_G(_P, _P), _P)), 0.397)}
+_SIZED = re.compile(r"\\(Bigg|bigg|Big|big)([lrm]?)(?![a-zA-Z])\s*(\\[a-zA-Z]+|\\[{}|]|[()\[\]|/.])")
+_DELIMS = {"(", ")", "[", "]", "|", "/", ".", r"\{", r"\}", r"\|", r"\langle", r"\rangle", r"\lfloor", r"\rfloor",
+           r"\lceil", r"\rceil", r"\vert", r"\Vert", r"\backslash", r"\lvert", r"\rvert", r"\lVert", r"\rVert"}
+_CLOSING = {")", "]", r"\}", r"\rangle", r"\rfloor", r"\rceil", r"\rvert", r"\rVert"}
+_PLAIN = {r"\lvert": "|", r"\rvert": "|", r"\lVert": r"\|", r"\rVert": r"\|"}
+
+
+def sized_delimiters(tex: str) -> tuple[str, int]:
+    r"""`tex` with each LaTeX sized delimiter (\Big( …) as mathtext can draw it, and how many there were."""
+    def one(m):
+        size, side, d = m.groups()
+        if d not in _DELIMS:
+            return m.group(0)                    # not a delimiter: left for the parser to name
+        strut, back = _STRUT[size]
+        if d == ".":                             # \big. : no bracket
+            return ""
+        opening = side == "l" or (not side and d not in _CLOSING)
+        d = _PLAIN.get(d, d)
+        if opening:
+            return rf"\left{d}{strut}\right.\hspace{{-{back}}}"
+        return rf"\hspace{{-{back}}}\left.{strut}\right{d}"
+    return _SIZED.subn(one, tex)
 
 _SLUG = {"=": "equal", "+": "plus", "-": "minus", "\u2212": "minus", "(": "lparen", ")": "rparen", "[": "lbracket", "]": "rbracket",
          "/": "slash", ",": "comma", ".": "dot", "<": "less", ">": "greater", "\u00d7": "times", "\u00b1": "plusminus",
@@ -87,7 +120,7 @@ def math_parts(tex: str, size: float = 64, x: float = 0, y: float = 0) -> list[t
     from matplotlib.font_manager import FontProperties
     from matplotlib.ft2font import LoadFlags
     from matplotlib.mathtext import MathTextParser
-    s = tex.strip()
+    s = sized_delimiters(tex.strip())[0]
     if not (s.startswith("$") and s.endswith("$") and len(s) > 1):
         s = f"${s}$"
     try:
@@ -160,6 +193,10 @@ def for_script(layer) -> dict:
         if tex is None:
             raise ValueError('math_text(id, tex, x=, y=, size=, color=): give the formula, e.g. math_text("eq", r"\\frac{1}{2}")')
         parts = math_parts(tex, size)
+        if sized_delimiters(tex)[1]:             # \Big( …: drawn at LaTeX's heights, said
+            from .script_layout import say
+            say(getattr(layer, "__self__", None), (f'math_text "{id}"' if id else "math_text") +
+                r": LaTeX's sized brackets (\big, \Big, \bigg, \Bigg) were drawn at about LaTeX's heights")
         w = h = 0.0
         for _what, d in parts:
             x1, y1 = pathdata.bounds(pathdata.commands(d))[2:]

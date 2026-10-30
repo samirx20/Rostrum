@@ -23,7 +23,7 @@ with column("list", x=240, y=180, w=600, gap=18, padding=0):
 
 In the settings panel (and as fields: `layout`, `gap`, `padding`, `paddingX` / `paddingY`, `justify`, `align`, `wrap`,
 `columns`, `columnsTemplate`, `rowGap`, `sizeW` / `sizeH` fixed, fit, fill or percent, `hugPin`) it is the group's
-Auto layout section; a layer in it has `layoutGrow`, `layoutShrink`, `alignSelf`, `margin`, `colSpan`, `shiftX` /
+Auto layout section; a layer in it has `layoutGrow`, `layoutShrink`, `alignSelf`, `margin` (one number, or a CSS list `[top, right, bottom, left]`: kept as `margin` plus `marginTop` … `marginLeft`), `colSpan`, `shiftX` /
 `shiftY` and `layoutApart` (set apart: placed by its own `x`, `y`, a badge on a card). `hugPin` (on at first): a group
 that fits its content grows right and down from its top-left, as a design tool's frame.
 
