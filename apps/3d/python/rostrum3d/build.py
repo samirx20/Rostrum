@@ -32,6 +32,8 @@ def fill(item: dict, values: dict, where: str, unused: list | None = None) -> di
     and the rest is written, without it (an operation call) the call fails naming it."""
     type_ = item["type"]
     known = [p.name for p in F.FIELDS[type_]]
+    if unused is not None and "aim" in values and "aim" in known:
+        values = aim_form(item["id"], values, unused)
     before = {k: item[k] for k in values if k in item}
     for k, v in values.items():
         if k == "name":
@@ -51,6 +53,24 @@ def fill(item: dict, values: dict, where: str, unused: list | None = None) -> di
         item.pop(k, None) if k not in before else item.__setitem__(k, before[k])
         unused.append(not_used(item, k))
     return item
+
+
+def aim_form(id_: str, values: dict, notes: list) -> dict:
+    """A script's aim= given as what to aim at (aim="bottle", aim=bottle, aim=(0, 1, 0)), as agents write it on a light
+    or camera, read as .aim(...) does: aim="item" with aimItem, or aim="point" with aimX/Y/Z; said in the reply."""
+    v = values["aim"]
+    if isinstance(v, str) and v in ("none", "point", "item"):
+        return values
+    out = dict(values)
+    if isinstance(v, (tuple, list)) and len(v) == 3 and all(isinstance(c, (int, float)) for c in v):
+        out.update(aim="point", aimX=float(v[0]), aimY=float(v[1]), aimZ=float(v[2]))
+        notes.append(f"{id_}: aim={tuple(v)!r} was read as .aim({tuple(v)!r}): it points at that spot every frame")
+        return out
+    target = v if isinstance(v, str) else getattr(v, "id", None)
+    if isinstance(target, str) and target:
+        out.update(aim="item", aimItem=target)
+        notes.append(f'{id_}: aim="{target}" was read as .aim({target}): it points at {target} every frame')
+    return out
 
 
 def not_used(item: dict, field: str) -> str:
