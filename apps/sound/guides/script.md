@@ -68,7 +68,8 @@ s.note("A4", at="#drop+5", end="#end")                    # ends ON the marker "
 d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")   # drums: see Notes
 v = track("door"); v.clip(r"C:\...\door.wav", at=3.0, in_=0.42, length=1.2)
 s.effect("reverb", space="hall", mix=0.3)
-s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
+s.automate("volume", [(0, 0.2), ("#drop", 0.9)])        # the fader over time (same gain as volume=)
+s.set(volume=0.6)                                         # a track's level: its fader, a gain 0 to 4 (1 = level-matched, 0.5 ≈ -6 dB); s.volume = 0.6 is the same
 master(loudness=-16, truePeak=-1)                         # a loudness target turns normalize on; the ceiling is held
 for i in range(8):
     s.note("A4", at=bar(2) + i * beats(0.5), dur=beats(0.5))   # beat arithmetic: a time + a length is a time
@@ -386,7 +387,16 @@ vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (
 vln.bend([(bar(5), -0.25), (bar(5) + beats(1), 0)], range=2)  # pitch wheel -1 … 1 (× range semitones, 2 unless set)
 keys = track("keys", builtIn="piano")      # perform=False plays every note exactly as written (guide: writing-parts)
 keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
-vln.shape("vol", 0.6, 1.2, over=(bar(9), "#climax"), curve="late")   # velocities x 0.6 -> 1.2 along the span; notes before it x 0.6, after it x 1.2; long notes swell inside
+vln.shape("vol", 0.6, 1.2, over=(bar(9), "#climax"), curve="late")   # velocities x 0.6 -> 1.2 along the span; notes before it x 0.6, after it x 1.2
+```
+
+What `shape("vol", ...)` does to a note: its velocity is multiplied by the curve's value **at the note's start**. A note
+longer than a beat also gets its own `dynamics` (0 … 2) following the curve from there, as a ratio to that start value:
+it can at most double inside itself, and a note that starts where the curve is 0 stays silent for its whole length. To
+swell inside held notes from nothing, use the track's `dynamics` lane (`vln.dynamics([(bar(9), 0.0), ("#climax", 1.0)])`,
+CC 11, multiplies every sounding note as it plays) or a note's own `dynamics=[(0, 0.0), (1, 1.0)]`.
+
+```python
 vln.shape("bright", 0.2, 1, over=(bar(9), bar(13)))   # one lowpass on the track opening (0 ≈ 250 Hz … 1 = 20 kHz, or Hz)
 vln.shape("art", "", "tremolo", over=(bar(13), bar(15)))   # notes switch where the curve passes its middle ("" = main file)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel; louder is also brighter

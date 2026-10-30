@@ -184,7 +184,7 @@ def arrangement_picture(png, arr: dict, start: float = 0.0, end: float | None = 
                     d.text((GUTTER - 6 - f9.getlength(_fit(dr, f9, 70)), yc - 6), _fit(dr, f9, 70), fill=DIM, font=f9)
             if not show:
                 d.text((PAD, top + 36), _fit(", ".join(drums), f9, GUTTER - PAD - 6), fill=DIM, font=f9)
-            for s, dr, level in t["hits"]:
+            for s, dr, level, _ in t["hits"]:
                 if not inside(s):
                     continue
                 a = _amount(level)

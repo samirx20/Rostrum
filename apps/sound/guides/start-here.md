@@ -96,6 +96,10 @@ comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 - `inspect_guide`: these guides by `topic` (`{"topic": "script"}`); with no topic, the list.
 - `render_mix`: the delivered file and stems (full length); it lands on the master's loudness target and says how much limiting that took.
 
+A track's level is its fader, `volume` (a gain: 1 = as the instrument was level-matched, 0 to 4; 0.5 ≈ -6 dB):
+`track("keys", builtIn="piano", volume=0.6)` or later `keys.set(volume=0.6)` (`keys.volume = 0.6` is the same);
+over time, `keys.automate("volume", [(0, 0.3), ("#lift", 1.0)])`. A note's or hit's `vel` (0 to 1) is how hard it is played.
+
 Speech under music: `track("vo", role="dialogue")`, then `music.duck()` dips under every dialogue track for whole lines.
 Every other tool: `inspect_tools`. `edit_document` is for one-off touch-ups on a song no script owns.
 

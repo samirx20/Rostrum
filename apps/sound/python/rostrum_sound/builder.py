@@ -5,7 +5,7 @@ the rest come from content (`doc/ids.py`) when the tree is made, after tempo and
 """
 from __future__ import annotations
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, did_you_mean
 
 from . import expression as EX
 from . import names, script_ops
@@ -41,6 +41,18 @@ class Track(Routing, Inserts):
         facts = item_facts({"type": "track", "automation": [{"lane": k} for k in self.lanes]})
         self.fields = checked("track", fields, f"track {self.id}", self.fields, facts)
         return self
+
+    def __setattr__(self, name, value):
+        """t.volume = 0.5 is t.set(volume=0.5); any other name fails (nothing set on a track is silently dropped)."""
+        if name in self.OWN or name.startswith("_"):
+            return object.__setattr__(self, name, value)
+        params = [p.name for p in FD.params("track")]
+        if name not in params:
+            raise RostrumError(codes.BAD_ARGUMENT, f"track {self.id}", f"track.{name} = …", "is not a track field",
+                               params, did_you_mean(name, params))
+        self.set(**{name: value})
+
+    OWN = {"song", "id", "notes", "hits", "clips", "human", "phrases", "shapes", "where", "effects", "lanes", "fields"}
 
     def __getattr__(self, verb):           # t.feel(swing=0.55): the document's own track.<verb> (script_ops.py)
         if verb.startswith("_") or (call := script_ops.method(self, verb)) is None:

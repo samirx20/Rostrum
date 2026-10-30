@@ -46,7 +46,7 @@ def _clip_len(c: dict) -> float:
 
 
 def read(data: dict) -> dict:
-    """{tracks: [{id, volume, automated, notes: [[start, end, midi, vel, level]], hits: [[t, drum, level]],
+    """{tracks: [{id, volume, automated, notes: [[start, end, midi, vel, level]], hits: [[t, drum, level, vel]],
     clips: [[start, end, level]]}], markers, sections, bars (every bar line, the
     closing one included), bar_count, end, key (the first, for note names)}.
     A level is the written loudness as a gain: velocity × the track's fader at that time (its volume automation, if
@@ -64,8 +64,8 @@ def read(data: dict) -> dict:
             v = float(n.get("vel", 0.8) or 0.8)
             for m in keys.midis(n["pitch"]):
                 notes.append([s, e, m, v, v * vol(s)])
-        hits = [[s, str(h["drum"]), float(h.get("vel", 0.85) if h.get("vel") is not None else 0.85) * vol(s)]
-                for h in t.get("hits", []) for s in [times.seconds(h["at"], data, h["id"])]]
+        hits = [[s, str(h["drum"]), v * vol(s), v] for h in t.get("hits", [])
+                for s, v in [(times.seconds(h["at"], data, h["id"]), float(h.get("vel", 0.85) if h.get("vel") is not None else 0.85))]]
         clips = [[s, s + _clip_len(c), float(c.get("volume", 1) if c.get("volume") is not None else 1) * vol(s)]
                  for c in t.get("clips", []) for s in [times.seconds(c["at"], data, c["id"])]]
         lines = [[times.seconds(x["at"], data, x["id"]), str(x.get("text", ""))[:24]] for x in t.get("lines", [])]
