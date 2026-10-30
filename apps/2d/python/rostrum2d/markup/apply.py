@@ -2,7 +2,8 @@
 
 Which kind a property is, by the element: inside SVG (an SVG tag) a property is an attribute (cx, d, fill,
 stop-color, opacity, …); on an HTML element it is a CSS property (opacity, background, filter, left, …). A name
-starting with "--" is always a CSS variable, "style:" forces CSS and "attr:" forces an attribute. The transform
+starting with "--" is always a CSS variable, "data-" always an attribute, "style:" forces CSS and "attr:" forces an
+attribute. The transform
 channels x, y, rotate, scale, scaleX, scaleY, skewX are composed in that order AFTER the element's own transform, so
 in its own units: a part drawn as <g transform="translate(0 140)"> (its joint at its own 0 0) turns about that joint.
 `origin` moves the pivot ("cx cy" in the element's own SVG units; any CSS transform-origin on HTML).
@@ -111,7 +112,7 @@ def set_props(markup: str, ident: str, props: dict, missing: list | None = None)
         for k, v in props.items():
             if k in CHANNELS:
                 ch[k] = v
-            elif k.startswith("--") or k.startswith("style:") or (not svg and not k.startswith("attr:")):
+            elif k.startswith("--") or k.startswith("style:") or (not svg and not k.startswith(("attr:", "data-"))):
                 name = k.removeprefix("style:")
                 css[name] = _css_value(name, v)
             else:

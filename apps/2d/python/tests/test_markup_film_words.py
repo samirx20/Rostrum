@@ -21,3 +21,10 @@ def test_blur_samples_stay_inside_their_shot():
     f.scene(lambda t: f"<p>{'A' if t < 2 else 'B'}</p>")
     f.blur(360, 5).cut(2)
     assert all("A" in m for m in f.samples(1.99)) and all("B" in m for m in f.samples(2.0))
+
+
+def test_data_depth_keys_are_attributes_on_html_too():
+    f = Film(duration=2)
+    f.scene('<div id="hills" data-depth="0.3" style="position:absolute"></div>')
+    f.key("#hills", data_depth={0: 0.3, 2: (0.7, "linear")})
+    assert 'data-depth="0.5"' in f.markup(1.0)

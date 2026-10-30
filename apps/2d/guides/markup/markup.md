@@ -54,8 +54,22 @@ draw); inside `scene(t)` the same t always draws the same numbers.
 
 ## Camera
 
-`film.camera(x=, y=, zoom=, rotate=)` — values or keys; x, y = the world point at the frame's centre; zoom 1 = actual
-size. Overlay markup is not moved.
+`film.camera(x=, y=, zoom=, rotate=, focus=, aperture=)` — values or keys; x, y = the world point at the frame's
+centre; zoom 1 = actual size. Overlay markup is not moved. focus / aperture: see Depth and focus.
+
+## Depth and focus
+
+`data-depth="d"` puts an element of the scene at depth d for the camera (the overlay has no depth). 1 = the world
+(no data-depth); 0 = fixed to the screen; between 0 and 1 = further away, moving less; above 1 = in front, moving more.
+The camera moves a depth-d element by d times its offset from the frame's centre and zooms it by zoom ** d; rotate
+turns every depth alike.
+- Read on a top-level element of the scene, and on a direct child of a top-level `<svg>` (`<g data-depth=".3">`).
+  Deeper inside, the element moves with its parent.
+- Each run of elements at one depth is its own box at the frame's top-left, in paint order: place them with
+  `position: absolute` or as a full-frame `<svg>` (normal flow starts again at the top-left in each box).
+- Keyable: `film.key("#hills", data_depth={0: .3, 4: .6})`. Light and grain work on parts at any depth.
+- `film.camera(focus=, aperture=)` — depth of field: each depth blurred by |d − focus| × aperture px (both may be keys;
+  without both, no blur).
 
 ## Light on shapes
 
@@ -91,9 +105,10 @@ The server works on the project your RostrumSound server has open: music, voice 
 this film's. `render_film` puts the project's main mix under the picture (`sound: false` for none); a missing or
 empty song exports silent. Any audio file you make goes in through RostrumSound's script (`track(...).clip(file, at=s)`).
 
-- `mouth = film.lipsync("voice:<line id>", at=seconds)` (or a WAV path) → `mouth(t)`: `"X"` rest, `A` lips pressed
-  (M B P), `B` slightly open, teeth together, `C` open, `D` wide open, `E` rounded, `F` puckered (oo, W), `G` teeth on
-  lip (F V), `H` tongue up (L). `mouth.words`: each word's start/end; `mouth.talking(t)`.
+- `mouth = film.lipsync("voice:<line id>", at=seconds)` (or a WAV path; `pronounce={"word": "ARPAbet"}` for a word
+  the dictionary lacks) → `mouth(t)`: `"X"` rest, `A` lips pressed (M B P), `B` slightly open, teeth together, `C`
+  open, `D` wide open, `E` rounded, `F` puckered (oo, W), `G` teeth on lip (F V), `H` tongue up (L).
+  `mouth.words`: each word's start/end; `mouth.talking(t)`.
 - `film.marker("name")`, `film.marker("name+0.5")`: seconds of a project marker.
 
 ## What the engine draws

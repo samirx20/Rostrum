@@ -105,6 +105,7 @@ def _review(film, times: list[float], frames: list[Path]) -> list[str]:
 _WORDS = [("light", lambda f, m: bool(f._light) or "data-light" in m, 'data-light / film.light()'),
           ("grain", lambda f, m: bool(getattr(f, "_grain", None)) or "data-grain" in m, 'data-grain / film.grain()'),
           ("camera", lambda f, m: bool(f._cam), "film.camera()"),
+          ("depth", lambda f, m: "data-depth" in m, "data-depth / camera(focus=, aperture=)"),
           ("motion blur", lambda f, m: bool(f.blur_samples), "film.blur()")]
 
 

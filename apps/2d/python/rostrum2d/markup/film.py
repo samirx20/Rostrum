@@ -9,8 +9,8 @@ attribute or CSS value, a camera, light on shapes, true motion blur, lip sync an
     film.light(angle={0: -60, 30: 40})          # any data-light element is shaded by it
     film.grain(amount=.12)                       # film grain on the whole frame (data-grain: one element)
 
-Per frame (`markup(t)`): the scene's markup at t → keys put on their elements → the light filters → the camera →
-the grain → the overlay (screen-fixed) → the whole-frame grain. The engine draws exactly that markup (rostrum2d-render serve, `frame {stage}`).
+Per frame (`markup(t)`): the scene's markup at t → keys put on their elements → the camera (each data-depth at its
+own depth) → the light filters → the grain → the overlay (screen-fixed) → the whole-frame grain. The engine draws exactly that markup (rostrum2d-render serve, `frame {stage}`).
 """
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ from typing import Callable
 
 from rostrum_core.byname import expand_icons
 
-from . import apply, grain as grain_mod, light as light_mod, normal
+from . import apply, depth, grain as grain_mod, light as light_mod, normal
 from .values import Keys
 
-_CAM = ("x", "y", "zoom", "rotate")
+_CAM = ("x", "y", "zoom", "rotate", "focus", "aperture")
 CURRENT_FOLDER = None                           # the project folder a script runs in (runner.py sets it)
 
 
@@ -92,7 +92,8 @@ class Film:
 
     def camera(self, **fields):
         """The camera: x, y (the world point at the frame's centre; default the frame's centre), zoom (1 = the world at
-        its own size), rotate (degrees). Each a value or keys {t: value}."""
+        its own size), rotate (degrees), focus (a depth) and aperture (px of blur per unit of depth away from focus).
+        Each a value or keys {t: value}. Elements with data-depth move by their depth (depth.py)."""
         bad = set(fields) - set(_CAM)
         if bad:
             raise ValueError(f"camera fields are {', '.join(_CAM)}; not {', '.join(sorted(bad))}")
@@ -149,13 +150,14 @@ class Film:
         from rostrum_core import markers
         return markers.at(self.folder, ref)
 
-    def lipsync(self, source: str, at: float = 0.0, text: str | None = None) -> "Mouth":
+    def lipsync(self, source: str, at: float = 0.0, text: str | None = None, pronounce: dict | None = None) -> "Mouth":
         """Mouth shapes for a voice clip: "voice:<line id>" (a RostrumSound voice line of this project) or a WAV path,
-        starting at `at` s. Returns mouth(t) -> "X" (rest) or "A".."H" (Preston Blair shapes; look_film {guide: "sound"})."""
+        starting at `at` s; `pronounce` {"word": "ARPAbet"} for words the dictionary lacks. Returns mouth(t) -> "X"
+        (rest) or "A".."H" (Preston Blair shapes; look_film {guide: "sound"})."""
         from rostrum_core.lipsync.track import track
         from ..lipsync import voice_line
         wav, words = voice_line.resolve(source, self.folder, "lipsync")
-        out = track(wav, at, self.fps, text=text or words)
+        out = track(wav, at, self.fps, text=text or words, pronounce=pronounce)
         return Mouth(out["cues"], out["words"])
 
     # --- per frame ---
@@ -182,6 +184,9 @@ class Film:
             if len(gone) == 2 and missing is not None:
                 missing.append(ident)
         world, over = normal.svg_color(world), normal.svg_color(over)
+        cam = {k: v(t) for k, v in self._cam.items()}
+        if cam:                                 # first, so a lit or grained part keeps its depth (depth.py)
+            world = depth.camera_wrap(world, cam, self.width, self.height)
         if self._light:
             world = light_mod.apply(world, {k: v(t) for k, v in self._light.items()})
         elif "data-light" in world:
@@ -192,13 +197,6 @@ class Film:
             world = grain_mod.apply(world, grain, frame)
         if "data-grain" in over:
             over = grain_mod.apply(over, grain, frame)
-        cam = {k: v(t) for k, v in self._cam.items()}
-        if cam:
-            w, h = self.width, self.height
-            x, y, z, r = cam.get("x", w / 2), cam.get("y", h / 2), cam.get("zoom", 1), cam.get("rotate", 0)
-            tr = f"translate({w / 2:.3f}px, {h / 2:.3f}px) scale({z:.5f}) rotate({-r:.4f}deg) translate({-x:.3f}px, {-y:.3f}px)"
-            world = (f'<div id="rostrum-camera" style="position:absolute; left:0; top:0; width:{w}px; height:{h}px; '
-                     f'transform-origin: 0 0; transform: {tr}">{world}</div>')
         if self._grain_frame:
             return grain_mod.whole(world + over, grain, frame, self.width, self.height, self.background)
         return world + over
