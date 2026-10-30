@@ -176,3 +176,11 @@ def test_an_asked_moment_with_nothing_weak_still_gets_its_line():
     y = (0.05 * np.sin(2 * np.pi * 220 * t) * (1 + 3 * (t >= 20))).astype("float32")
     said = lines((y, sr), [{"at": 20.0, "kind": "lift"}], found=[])
     assert len(said) == 1 and "lift" in said[0] and "LU" in said[0]
+
+
+def test_an_auditions_offset_puts_song_time_in_the_words(tmp_path):
+    """render_audition measures a stretch from 34 s: its notes say 36.00 s, not the stretch's own 2.00 s."""
+    y = 0.05 * np.sin(2 * np.pi * 220 * np.arange(SR * 4) / SR)
+    sf.write(tmp_path / "s.wav", np.stack([y, y], axis=1), SR, subtype="PCM_24")
+    f = check(str(tmp_path / "s.wav"), [{"at": 2.0, "kind": "hit"}], whole=False, offset=34.0)["faults"][0]
+    assert f["at_s"] == 36.0 and "36.00 s" in f["words"]
