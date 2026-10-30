@@ -259,8 +259,11 @@ and back, so `time` lands exactly at `at` and the tempo held before `ramp_from` 
 beats at `a` bpm the music takes `60 * n / a` seconds; a glide out to `p` and back takes `60 * n * ln(p/a) / (p - a)`, and
 `land` solves `p`. It moves the time by about half the peak change: bar 21 at 132 bpm is at 36.36 s, so landing it
 on 36.0 s (0.36 s early) over bars 15-21 (24 beats, 10.9 s) needs about 3.3 % on average, a peak near 7 %: the reply
-says "tempo 132 -> 141.2 -> 132 bpm over bar 15 - bar 21". Past 8 % it is refused and names a ramp long enough. Best
-where the music can lean in (a build, a run-up); write `tempo(...)` and the other tempo changes first, then `land`.
+says "tempo 132 -> 141.2 -> 132 bpm over bar 15 - bar 21". Past 8 % it is refused and names a ramp long enough. The
+direction follows the times, not the music: a bar that falls before `at` is slowed into it (the stretch plays under
+the held tempo: the same bar landed on 36.72 s, 0.36 s late, says "132 -> 123.7 -> 132"), one that falls after it is
+sped up. Best where the music can lean in (a build, a run-up); write `tempo(...)` and the other tempo changes first,
+then `land`. To play a tempo you choose (a section faster from bar 10), write it with `tempo_change(bar(10), 140)` and land the sync moment with the ways above.
 
 **By name.** `downbeat` and `land` take a marker for `at` (the song's, the script's or the project's: `at="#logo lands"`,
 `"#logo lands-0.25"`, `"#logo lands" + beats(1)`), and `seconds_of("#logo lands")` gives its seconds. The marker is read
@@ -381,7 +384,7 @@ vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (
 vln.bend([(bar(5), -0.25), (bar(5) + beats(1), 0)], range=2)  # pitch wheel -1 … 1 (× range semitones, 2 unless set)
 keys = track("keys", builtIn="piano")      # perform=False plays every note exactly as written (guide: writing-parts)
 keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
-vln.shape("vol", 0.6, 1.2, over=(bar(9), "#climax"), curve="late")   # velocities x 0.6 -> 1.2 along the span (held after); long notes swell inside
+vln.shape("vol", 0.6, 1.2, over=(bar(9), "#climax"), curve="late")   # velocities x 0.6 -> 1.2 along the span; notes before it x 0.6, after it x 1.2; long notes swell inside
 vln.shape("bright", 0.2, 1, over=(bar(9), bar(13)))   # one lowpass on the track opening (0 ≈ 250 Hz … 1 = 20 kHz, or Hz)
 vln.shape("art", "", "tremolo", over=(bar(13), bar(15)))   # notes switch where the curve passes its middle ("" = main file)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel; louder is also brighter

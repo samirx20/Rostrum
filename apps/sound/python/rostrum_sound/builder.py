@@ -119,7 +119,8 @@ class Track(Routing, Inserts):
         return self
 
     def shape(self, what, from_, to, over, curve="linear"):
-        """Volume ("vol"), brightness ("bright") or articulation ("art") along over=(start, end): `shape.py`."""
+        """Volume ("vol"), brightness ("bright") or articulation ("art") along over=(start, end): `shape.py`. The
+        whole track is changed: before its first shape of a kind the value holds at from_, after the last at to."""
         self.shapes.append(SH.make(what, from_, to, over, curve, self.fields, f"track {self.id} › shape"))
         return self
 

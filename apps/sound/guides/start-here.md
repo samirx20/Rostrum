@@ -62,7 +62,8 @@ To hear one part's share, `solo` or `mute` it and compare the rows. A start in a
   writes plain notes you can edit.
 - **Keep a part moving:** `strings.shape("vol", 0.4, 1.0, over=(bar(1), "#climax"), curve="late")` plays it softer to
   louder (loud sample layers come in on the way up, held chords swell); `"bright"` opens a lowpass, `"art"` switches
-  articulation. A part that never changes in a build shows as a note when notes are asked
+  articulation. It changes the whole part, not only `over`: notes before it play at `from_` (here x 0.4), notes after
+  it at `to`. A part that never changes in a build shows as a note when notes are asked
   (`inspect_guide 'writing-music'` › Keep it moving).
 - **The ending:** `ending("ring", at="#end")` lands every part together on the home chord and sets the length so it
   rings out (a length the script set before stays); `"button"` is a short hit, `"fade"` a written fade. The reply says where it lands, where the ring dies and
