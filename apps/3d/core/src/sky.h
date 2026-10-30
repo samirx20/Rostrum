@@ -1,7 +1,7 @@
 // The scene's own dome as the viewport's sky and light (Storm). Lights follow UsdLux's units (H19, light check): a
 // dome's light is its picture × colour × intensity × 2^exposure (× its colour temperature), so a dome of intensity 1
-// is seen as its picture's own values. Storm is handed the dome only as this picture, already multiplied, made once
-// into the core's cache; the scene's dome prim itself is kept from Storm (storm_lights.cpp), which would light twice.
+// is seen as its picture's own values. Storm reads a dome only as a picture, in those units, and ignores the dome's
+// colour, intensity and exposure; so it is handed the picture already multiplied, made once into the core's cache.
 // (Cycles gets the same picture; cycles_lights.h says why.)
 // For Storm the picture's sun is first taken out and handed over as a distant light with a shadow (dome_sun.h,
 // storm_sun.h); the stylized renderer has no such light, so it keeps the whole picture.

@@ -51,10 +51,6 @@ class StormLights final : public HdSingleInputFilteringSceneIndexBase {
 
   HdSceneIndexPrim GetPrim(const SdfPath& path) const override {
     HdSceneIndexPrim prim = _GetInputSceneIndex()->GetPrim(path);
-    // the scene's dome reaches Storm only as the viewport light light_raster hands it (sky.h). Read here too, Storm made
-    // a second dome (colour × intensity, ambient 0.2) that a material-less item's fallback shading added on top of the
-    // first: such items came out ~2.3x too bright and greyed in Quick (3d-shapes-smooth); a preview surface counts one
-    if (prim.primType == HdPrimTypeTokens->domeLight) return {TfToken(), nullptr};
     if ((prim.primType == HdPrimTypeTokens->rectLight || prim.primType == HdPrimTypeTokens->diskLight) && prim.dataSource)
       return lambert(prim);
     if (prim.primType != HdPrimTypeTokens->sphereLight || !prim.dataSource) return prim;
@@ -90,8 +86,7 @@ class StormLights final : public HdSingleInputFilteringSceneIndexBase {
   void _PrimsAdded(const HdSceneIndexBase&, const HdSceneIndexObserver::AddedPrimEntries& e) override {
     HdSceneIndexObserver::AddedPrimEntries out(e);  // Storm makes its light by the type it is added with
     for (auto& a : out)
-      if (a.primType == HdPrimTypeTokens->domeLight) a.primType = TfToken();  // never a Storm dome (GetPrim)
-      else if (a.primType == HdPrimTypeTokens->sphereLight) a.primType = GetPrim(a.primPath).primType;
+      if (a.primType == HdPrimTypeTokens->sphereLight) a.primType = GetPrim(a.primPath).primType;
     _SendPrimsAdded(out);
   }
   void _PrimsRemoved(const HdSceneIndexBase&, const HdSceneIndexObserver::RemovedPrimEntries& e) override {
