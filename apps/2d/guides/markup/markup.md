@@ -115,18 +115,21 @@ empty song exports silent. Any audio file you make goes in through RostrumSound'
 
 ## What the engine draws
 
-Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradients; CSS `filter`; `backdrop-filter` (blur a little weaker than Chrome's); 2D/3D transforms on
+Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradients; CSS `filter`; `backdrop-filter`; 2D/3D transforms on
 HTML; `clip-path` shapes; gradient `mask-image`; blend modes; CSS variables, `calc()`; text, `text-shadow`; SVG in
 `<img>`; emoji. In SVG: all shapes and paths, `viewBox`, gradients, `<use>`/`<symbol>`, nested transforms, dashes,
 opacity, blend, markers, `<textPath>`, `<style>` inside the `<svg>`; `currentColor` at any depth (from CSS `color`
 on a parent, a part's style or its `color=` attribute); `<mask>` (luminance or `mask-type="alpha"`, any content, its
 units and region) and `<clipPath>` (shapes, `<text>`, `clipPathUnits`, a clip on the clip), keys included; CSS
-`mask: url(#id)` and `clip-path: url(#id)` on HTML.
+`mask: url(#id)` and `clip-path: url(#id)` on HTML. SVG `<filter>` as `filter=` on shapes, groups and text inside
+an `<svg>` and as CSS `filter: url(#id)` on HTML: feGaussianBlur, feOffset, feFlood, feComposite, feMerge, feBlend,
+feColorMatrix, feComponentTransfer, feDropShadow, feMorphology, feTurbulence, feDisplacementMap; region, units,
+subregions, `color-interpolation-filters`, keys included.
 
 Not yet (run_film's notes name them when used), and what works instead:
-- `filter=` on a shape inside an `<svg>`, `<pattern>`: put the filter on the `<svg>` or a `<div>` as
-  `style="filter:url(#id)"`; stack `<svg>`s when one part needs its own.
-- `feDropShadow`: CSS `drop-shadow()` or blur + offset + flood + composite + merge.
+- `<pattern>`: CSS backgrounds or shapes repeated in Python.
+- feDiffuseLighting, feSpecularLighting, feConvolveMatrix, feTile (each passes its input through); feImage in a
+  `filter=` inside an `<svg>` (on a `<div>`'s `filter: url(#id)` it is drawn).
 - CSS `transform` in a style inside SVG: the `transform` attribute (keys write it).
 - `<foreignObject>`, `-webkit-text-fill-color`, `text-overflow: ellipsis`, repeating picture backgrounds,
   page CSS aimed at SVG shapes (put it
