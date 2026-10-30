@@ -394,10 +394,12 @@ whose faces have their own corner points, as an editable mesh's do, was loose tr
 `"seams": [[a, b], …]` (point pairs into its mesh's points as the stage holds them, before the weld; a point out of range
 is an error) and `"sewTime"` (seconds, 0.01..10, default 0.5). Its mesh is then only triangulated, never split (the app
 triangulates the pattern at its own spacing); pairs follow the weld and the renumbering. For the first `sewTime` seconds
-after it starts moving (its `wakeFrame`) the cloth has no gravity and its points keep 0.9 of their speed per physics step;
-each pair is given the speed towards each other that brings its gap to its starting gap × the share of the sewing time
-left at the end of the next step (by weight), so the solver carries the cloth round it. Afterwards gravity is back and a
-pair still apart keeps closing by speed and is moved together by 2 mm a step until within 2 mm (known open: most pairs then rest a few mm apart); from then on it is one point (one place and speed every step).
+after it starts moving (its `wakeFrame`) the cloth has no gravity and its points keep 0.9 of their speed per physics step.
+Each pair is an edge of the cloth solver's own, as stiff as it allows (`sim` 16): its length is its starting gap × the
+share of the sewing time left at the end of the step, solved in the same passes as the cloth's own edges, so the cloth
+follows the seam instead of tearing round it. Afterwards gravity is back and every seam's length is nothing: the pair is
+held joined every pass (within 1 mm on the shirt check, `apps/3d/tools/garment_check.py`). A seam the body really holds
+apart (a sleeve narrower than the arm it goes round) still can't close; the body wins.
 Self-collision leaves pairs that sit close across a seam. The reply's cloth entry gives `"seams"`: the pairs kept.
 
 `<folder>/cloth_<item>.bin`, little-endian: `"RCL1"`, int32 points, triangles, frames (`end - start + 1`), start; int32 × 3
@@ -442,6 +444,7 @@ header is an error naming `<id>.cloth.file`.
 - **v1.24** (Sam brief 25): request `simulate` (§ Simulation: rigid bodies with Jolt Physics 5.6.0, `bodies.bin`, loud failures with `item`, `copy`, `frame`, `fix`); a `copies` node's `sim` (a stored fall); `info` gives `jolt` and `sim`.
 - **v1.26** (Hem brief 23): material `blocks` (a MaterialX document: Storm through MaterialX, Cycles through its own nodes; § Materials › Blocks).
 - **v1.35** (Hem PR7): garments: a cloth body's `seams` and `sewTime` (§ Simulation › Garments); its reply's `seams`; every cloth's coincident points welded (`sim` 15).
+  `sim` 16 (Hem, 2026-10-30): seams are edges of the cloth solver, their length shrinking to nothing over the sewing time; every pair joins (was ~6 mm apart).
 - **v1.34** (Hem PR6): UDIM tile sets: every material picture field takes a `<UDIM>` set (valid with at least one tile; Cycles' image node gets the tiles found as `tiles`); imports of OBJ / FBX / glTF write a base-colour picture that is one tile of a set (`name.1001.png` or `name_1001.png` with another tile beside it) as the set, and keep a `<UDIM>` name written in the file, its `UsdUVTexture` also given `tiles` (Cycles loads only listed tiles; Storm finds them itself) (core/src/udim.h). A USD file imported by reference keeps its own textures as written: a `<UDIM>` set there shows in Quick; in Final only when its texture node lists `tiles`.
 - **v1.33** (Hem PR4 finish): request `geometry` also answers for a top-level `clay`: its surface as drawn now (posed, layers in), welded into one closed triangle mesh in the clay's own space (the Cycles whole, `clay_whole.h`, welded first when its blocks changed); refused while a stroke is on its preview. "Make a clean mesh" (`rostrum3d/remesh.py`) starts from it.
 - **v1.32** (Hem PR3 leftovers): a copies item's `pathShift` may be keyed (`anim.pathShift`) and takes any number.

@@ -3,10 +3,12 @@
 # round the body, sewn at the sides, under the arms and on the shoulders. The simulation is computed through the document's
 # own path (rostrum3d.sim.compute), the core's reply printed (points, triangles, seams kept, frameMs), then Quick (Storm)
 # stills at the start, while sewing, and at rest, plus a Final (Cycles) still of the last frame. Then: every seam pair is
-# closed at the last frame (the median pair less than one triangle apart; the share joined and the widest are printed) and
-# the shirt has not fallen off the stand.
+# joined at the last frame (all within 1 mm), the cloth has not torn (no triangle edge stretched past 1.3 of its pattern
+# length) and the shirt has not fallen off the stand. The arm bar (radius 3.5 cm) fits the sleeves (30 cm round); at 5 cm
+# (31.4 cm round) a sleeve could never close round it.
 # The lead runs it:  heavy.ps1 run "hem: pr7 garment" gpu <venv python> apps\3d\tools\garment_check.py <out folder> [--video]
 # Exit 0 = every check passed; look at garment-*.png: a shirt hanging on the stand, closed at its seams, folds at the waist.
+import math
 import shutil
 import struct
 import subprocess
@@ -35,7 +37,7 @@ cotton = material("cotton", baseColor="#3d6fb0", roughness=0.9, sheen=0.5)
 floor = material("floor", baseColor="#5d6670", roughness=0.7)
 mesh("ground", shape="plane", width=6, depth=6, material=floor)
 mesh("body", shape="capsule", radius=0.14, height=0.62, y=0.9, sz=0.75, material=stand).simulate("still")
-mesh("arms", shape="capsule", radius=0.05, height=0.74, rz=90, y_world=1.44, material=stand).simulate("still")
+mesh("arms", shape="capsule", radius=0.035, height=0.74, rz=90, y_world=1.44, material=stand).simulate("still")
 mesh("pole", shape="cylinder", radius=0.025, height=0.9, material=stand).simulate("still")
 shirt = [[-0.2, 0], [0.2, 0], [0.2, 0.36], [0.36, 0.38], [0.36, 0.53], [0.08, 0.55], [0, 0.5], [-0.08, 0.55],
          [-0.36, 0.53], [-0.36, 0.38], [-0.2, 0.36]]
@@ -87,12 +89,18 @@ def main():
     stored = {}                     # the engine numbers points in the order the triangles first name them (weld, refine)
     for p in (i for t in made["triangles"] for i in t):
         stored.setdefault(p, len(stored))
-    gaps = sorted(max(abs(pts[stored[a]][k] - pts[stored[b]][k]) for k in range(3)) for a, b in made["seams"])
-    shut = sum(g <= 0.002 for g in gaps) / len(gaps)
-    print(f"seams at the last frame: {shut:.0%} of the pairs joined (within 2 mm), median gap {gaps[len(gaps) // 2] * 1000:.2f} mm, "
-          f"widest {gaps[-1] * 1000:.1f} mm (a pair the stand holds apart stays open)")
-    if gaps[len(gaps) // 2] > made["spacing"]:        # KNOWN OPEN: pairs rest a few mm apart rather than joined (cloth_sew.cpp)
-        fails.append(f"the seams are open: median gap {gaps[len(gaps) // 2] * 1000:.1f} mm, more than one triangle")
+    gaps = sorted(math.dist(pts[stored[a]], pts[stored[b]]) for a, b in made["seams"])
+    shut = sum(g <= 0.001 for g in gaps) / len(gaps)
+    print(f"seams at the last frame: {shut:.0%} of the pairs joined (within 1 mm), median gap {gaps[len(gaps) // 2] * 1000:.2f} mm, "
+          f"widest {gaps[-1] * 1000:.2f} mm")
+    if gaps[-1] > 0.001:
+        fails.append(f"a seam is open: widest gap {gaps[-1] * 1000:.1f} mm, more than 1 mm")
+    rest = made["points"]
+    stretch = sorted(math.dist(pts[stored[t[e]]], pts[stored[t[(e + 1) % 3]]]) / max(1e-9, math.dist(rest[t[e]], rest[t[(e + 1) % 3]]))
+                     for t in made["triangles"] for e in range(3))
+    print(f"cloth stretch at the last frame: most {stretch[-1]:.3f}, 99 % under {stretch[int(len(stretch) * 0.99)]:.3f} of the pattern")
+    if stretch[-1] > 1.3:
+        fails.append(f"the cloth tore: an edge is {stretch[-1]:.2f} times its pattern length")
     top = max(p[1] for p in pts)
     print(f"the shirt's highest point at the end: {top:.3f} m (the shoulders are at about 1.5 m)")
     if top < 1.35:

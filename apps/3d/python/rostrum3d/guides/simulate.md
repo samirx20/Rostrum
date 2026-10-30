@@ -127,7 +127,9 @@ seam that comes out twisted). Each edge is sewn to one other edge at most.
 **Placing pieces.** Start each piece a little off the body (a few centimetres) and not inside it; the seams close the gap.
 A front and a back piece usually share their side edges: a back written as the front's mirror (`[-x, y]` for each point),
 turned 180, has each edge at the same side as the front's edge of the same number. Then `sewTime` (Sewing time, seconds,
-0.05–5, default 0.5) says how long the seams take to close; after that they stay sewn. The rest is ordinary cloth:
+0.05–5, default 0.5) says how long the seams take to close; after that they stay sewn, the two edges joined. A seam
+closes only if the cloth can reach round what is in it: a sleeve whose two edges together are shorter than round the arm
+stays open under the arm (cut it wider). The rest is ordinary cloth:
 `clothWeight`, `stiffness`, `clothAir`, `pinned` (above).
 
 ```python

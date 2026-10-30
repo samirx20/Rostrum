@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 15; // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 16; // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;

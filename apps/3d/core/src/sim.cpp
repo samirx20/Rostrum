@@ -34,6 +34,7 @@
 #include <chrono>
 #include <cmath>
 #include <map>
+#include <optional>
 #include <mutex>
 #include <set>
 
@@ -270,7 +271,8 @@ void release_cloth(JPH::PhysicsSystem& physics, JPH::BodyID id, const std::vecto
   }
 }
 
-JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
+// `sew`: the cloth's seams as edges of its own (cloth_sew.h), made from what this returns
+JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame, std::optional<ClothSew>* sew) {
   // each point carries its triangles' weight by the angle it holds in each (the angles of a triangle add up to π, so the whole
   // weight is kept): an even third gave the grid's 8-triangle points twice the weight of its 4-triangle ones, a checkerboard
   // that rippled the free edges into steps
@@ -330,7 +332,10 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     const float e2 = e.LengthSq();
     if (e2 > 0 && areas > 0) b.mCompliance *= areas / e2;
   }
-  s->Optimize();
+  const std::vector<JPH::uint> seams = add_seam_edges(*s, c);
+  SS::OptimizationResults moved;
+  s->Optimize(moved);
+  sew->emplace(s, seams, moved.mEdgeRemap, c);
   return s;
 }
 
@@ -529,13 +534,13 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   struct Edge { int a, b; double rest; };
   std::vector<JPH::BodyID> cloth_ids;
   std::vector<ClothSelf> cloth_self;  // each cloth kept off itself
-  std::vector<ClothSew> cloth_sew;    // a garment's seams pulled closed, then held
+  std::vector<std::optional<ClothSew>> cloth_sew(cloths.size());  // a garment's seams closed by the solver, then held
   std::vector<std::vector<Edge>> cloth_edges(cloths.size());
   std::vector<double> cloth_lowest(cloths.size());
   std::vector<std::vector<float>> cloth_held(cloths.size());  // a waiting cloth's own point weights (1 / mass), put back at its frame
   for (size_t c = 0; c < cloths.size(); ++c) {
     const Cloth& cl = cloths[c];
-    JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
+    JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start, &cloth_sew[c]), JPH::RVec3::sZero(),
                                      JPH::Quat::sIdentity(), kCloth);
     sb.mNumIterations = kClothIterations;
     if (!cl.seams.empty()) sb.mGravityFactor = 0;  // a garment floats while it is sewn (cloth_sew.h)
@@ -547,7 +552,6 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
     cloth_ids.push_back(id);
     cloth_self.emplace_back(cl, k);
-    cloth_sew.emplace_back(cl, k);
     if (cl.wake > 0) cloth_held[c] = hold_cloth(physics, id);  // Falls from: every point held (as a pin) until its frame
     std::set<std::pair<int, int>> seen;
     for (const auto& t : cl.triangles)
@@ -587,6 +591,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       for (int s = 0; s < steps; ++s) {
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
+            cloth_sew[c]->before(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt));
             air_drag(physics, cloth_ids[c], cloths[c], k, double(dt));
             cloth_wind(physics, bi, cloth_ids[c], cloths[c], k, double(dt), (double(f - 1) * steps + s + 1) * double(dt));
           }
@@ -597,7 +602,6 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
             cloth_self[c].step(physics, cloth_ids[c]);
-            cloth_sew[c].step(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt), double(dt));
           }
       }
     auto& row = out.frames[size_t(f)];
