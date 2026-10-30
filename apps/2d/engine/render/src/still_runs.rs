@@ -19,15 +19,14 @@ pub fn regroups(piece: &str) -> bool {
 /// linear in the layer's picture) and nothing in it reads what is under it (frosted glass) or is drawn apart (held,
 /// tapped). A layer that glows from its own picture (`data-glow`) is kept too: its glow adds onto its own isolated
 /// group, so the picture is linear (blur r6: the 2-6/255 it was off came from the painter's halved blurs, fixed in
-/// anyrender_skia `gaussian_blur`). Not one seen through a track matte: on Undertow r2's title, the matted water and
-/// the text after it came out up to 33/255 off the painted steps, with its glow or without; not yet traced.
+/// anyrender_skia `gaussian_blur`), seen through a track matte or not (blur r7: a matted layer kept is the painted
+/// steps' picture exactly; the up to 33/255 its letter edges were off was the streak reading its picture smoothly at
+/// fractions of a px, now read sharply for short streaks: anyrender_skia `draw_cached_streak`).
 /// Blends inside the layer stay inside it: its element is a stacking context (it is always moved by a transform), an
 /// isolated group for them (blitz-paint blend.rs).
 pub fn keeps(piece: &str, blend: &str) -> bool {
-    let glows_matted = piece.contains("data-glow") && piece.contains("data-track-matte");
     regroups(piece)
         || matches!(blend, "normal" | "plus-lighter" | "screen" | "multiply")
-            && !glows_matted
             && !["backdrop-filter", "data-shutter-held", "data-tap"].iter().any(|k| piece.contains(k))
 }
 
@@ -60,7 +59,7 @@ mod tests {
         assert!(super::keeps(add, "plus-lighter") && super::keeps(add, "multiply"));
         assert!(!super::keeps(add, "overlay"), "an overlay's average isn't the average laid on");
         assert!(super::keeps("<div data-glow=\"8 1\" style=\"\"></div>", "normal"), "a glow is one picture");
-        assert!(!super::keeps("<div data-track-matte=\"alpha\"><div></div><div data-glow=\"8 1\"></div></div>", "normal"), "KNOWN OPEN: not seen through a matte");
+        assert!(super::keeps("<div data-track-matte=\"alpha\"><div></div><div data-glow=\"8 1\"></div></div>", "normal"), "a glow seen through a matte too");
         assert!(!super::keeps("<div style=\"backdrop-filter:blur(4px);\"></div>", "normal"));
     }
 
