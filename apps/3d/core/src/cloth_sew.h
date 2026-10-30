@@ -26,28 +26,21 @@ class ClothSew {
  public:
   // `s`: the cloth's own settings (shared with its body), `edges`: add_seam_edges' indices, `remap`: Optimize's edge remap
   ClothSew(JPH::Ref<JPH::SoftBodySharedSettings> s, const std::vector<JPH::uint>& edges, const JPH::Array<JPH::uint>& remap,
-           const Cloth& c, double k);  // k: the world's scale
+           const Cloth& c, double k);  // k: the world's scale (unused for now)
   // Before each physics step. `t`: seconds since the cloth started moving (its Falls from), at the end of this step. While
   // sewing (the first `sewTime` seconds) the cloth floats (no gravity) and every point keeps 0.9 of its speed per step, so the
   // pieces close round the body instead of falling past it; each seam's length is set to its share of the starting gap left
   // at the end of the step, but never more than a quarter of a cloth edge shorter than it is now (a seam held open pulls
   // gently and keeps pulling, instead of tearing the cloth). Afterwards gravity is back and every seam's length is nothing,
-  // reached the same way. A pair that has met (within 1 mm) holds like thread from then on: length nothing, as stiff as the
-  // solver allows, so the garment's weight can't pull it open again.
+  // reached the same way.
   void before(JPH::PhysicsSystem& physics, JPH::BodyID id, double t);
   bool sewing(double t) const { return !seams_.empty() && t < time_; }
 
  private:
-  struct Seam {
-    JPH::uint edge;
-    float gap;         // the starting length, scaled
-    float compliance;  // the cloth's own, while closing
-    bool met = false;  // within 1 mm once: held shut from then on
-  };
+  struct Seam { JPH::uint edge; float gap; };  // gap: the starting length, scaled
   JPH::Ref<JPH::SoftBodySharedSettings> s_;
   std::vector<Seam> seams_;
   double time_ = 0;
-  float met_ = 0;   // scaled: 1 mm
   float most_ = 0;  // scaled: the most a seam asks to shorten in one step from where it is
 };
 
