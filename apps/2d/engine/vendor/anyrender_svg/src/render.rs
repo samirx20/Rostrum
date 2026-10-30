@@ -1,7 +1,7 @@
 // Copyright 2024 the Vello Authors
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use crate::util;
+use crate::{filter, util};
 use anyrender::PaintScene;
 use anyrender::filters::color_transformation::ColorMatrix;
 use anyrender::filters::{Filter, FilterEffect};
@@ -96,8 +96,27 @@ fn render_group_as<S: PaintScene, F: FnMut(&mut S, &usvg::Node)>(
                     false
                 };
 
+                // Rostrum patch (2D SVG filters): `filter=` (upstream drew none). Filters come before clipping, masking and
+                // opacity, so their layers sit inside the one above, each in the group's user space (where usvg put the
+                // filter's region, subregions and lengths); with several filters the first runs first (innermost). What
+                // the first one reads is cut to its region, as SourceGraphic is.
+                let filters: Vec<(Arc<Filter>, Rect)> = if as_clip {
+                    vec![]
+                } else {
+                    g.filters().iter().filter_map(|f| Some((Arc::new(filter::convert(f)?), filter::rect(f.rect())))).collect()
+                };
+                for (graph, region) in filters.iter().rev() {
+                    scene.push_layer(Fill::NonZero, Mix::Normal, 1.0, ts, region, Some(graph.clone()), None);
+                }
+                if let Some((_, region)) = filters.first() {
+                    scene.push_clip_layer(Fill::NonZero, ts, region);
+                }
+
                 render_group_as(scene, g, Affine::IDENTITY, global_transform, error_handler, as_clip);
 
+                for _ in 0..filters.len() + usize::from(!filters.is_empty()) {
+                    scene.pop_layer();
+                }
                 if let Some(clip) = drawn_clip {
                     apply_clip(scene, clip, ts, error_handler);
                 }

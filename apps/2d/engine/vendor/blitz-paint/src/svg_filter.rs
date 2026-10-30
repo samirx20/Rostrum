@@ -13,6 +13,7 @@ use anyrender::filters::composite::{ArithmeticCompositeOperator, CompositeOperat
 use anyrender::filters::displacement::{ColorChannel, DisplacementMapFilter};
 use anyrender::filters::morphology::{MorphologyFilter, MorphologyOperator};
 use anyrender::filters::turbulence::{TurbulenceFilter, TurbulenceType};
+use anyrender::filters::interpolation::{FilterColorSpace, SpacedFilter};
 use anyrender::filters::{images, ExternalImageSource, Filter, FilterEffect, FilterId, FilterInput, FilterInputs, FilterSource, RuntimeShaderFilter};
 use blitz_dom::{BaseDocument, Node};
 use kurbo::{Rect, Vec2};
@@ -24,6 +25,34 @@ fn attr<'a>(n: &'a Node, name: &str) -> Option<&'a str> {
 
 fn num(n: &Node, name: &str, default: f32) -> f32 {
     attr(n, name).and_then(|v| v.split(|c: char| c == ',' || c.is_whitespace()).find(|s| !s.is_empty())?.parse().ok()).unwrap_or(default)
+}
+
+/// The second of a number pair (`stdDeviation="x y"`), else the first.
+fn num_y(n: &Node, name: &str, default: f32) -> f32 {
+    attr(n, name).map(numbers).and_then(|v| v.get(1).or(v.first()).copied()).unwrap_or(default)
+}
+
+/// An feBlend `mode` (Compositing and Blending's names).
+fn blend_mode(v: Option<&str>) -> peniko::Mix {
+    use peniko::Mix;
+    match v.unwrap_or("normal") {
+        "multiply" => Mix::Multiply,
+        "screen" => Mix::Screen,
+        "overlay" => Mix::Overlay,
+        "darken" => Mix::Darken,
+        "lighten" => Mix::Lighten,
+        "color-dodge" => Mix::ColorDodge,
+        "color-burn" => Mix::ColorBurn,
+        "hard-light" => Mix::HardLight,
+        "soft-light" => Mix::SoftLight,
+        "difference" => Mix::Difference,
+        "exclusion" => Mix::Exclusion,
+        "hue" => Mix::Hue,
+        "saturation" => Mix::Saturation,
+        "color" => Mix::Color,
+        "luminosity" => Mix::Luminosity,
+        _ => Mix::Normal,
+    }
 }
 
 fn numbers(v: &str) -> Vec<f32> {
@@ -160,6 +189,10 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
     if local(filter) != "filter" {
         return None;
     }
+    // Rostrum patch (2D SVG filters): each primitive in its `color-interpolation-filters` space (its own, else the
+    // filter's; linearRGB unless sRGB, as browsers), its inputs re-encoded once and the output back to the working space.
+    let mut g = SpacedFilter::new();
+    let filter_space = attr(filter, "color-interpolation-filters");
     let mut graph = Filter::empty();
     // Rostrum patch: a declared filter region (objectBoundingBox units: fractions or percentages of the box) crops
     // every primitive; a filter without one stays unbounded.
@@ -191,6 +224,12 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
         };
         let one = FilterInputs { primary: input("in"), secondary: None };
         let two = FilterInputs { primary: input("in"), secondary: input("in2") };
+        let space = match attr(n, "color-interpolation-filters").or(filter_space).map(str::trim) {
+            Some("sRGB") | Some("auto") => FilterColorSpace::Srgb,
+            _ => FilterColorSpace::LinearRgb,
+        };
+        // `None`: the primitive reads and writes the working space as it is; `Some(Working)`: it makes values there.
+        let mut made_in = Some(space);
         let (effect, inputs) = match name.as_str() {
             "feColorMatrix" => (FilterEffect::ColorMatrix(color_matrix(n)), one),
             "feComponentTransfer" => {
@@ -218,20 +257,37 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
                 };
                 (FilterEffect::Composite(op), two)
             }
-            "feGaussianBlur" => (FilterEffect::blur(num(n, "stdDeviation", 0.0) * s), one),
+            "feGaussianBlur" => (FilterEffect::blur_xy(num(n, "stdDeviation", 0.0) * s, num_y(n, "stdDeviation", 0.0) * s), one),
+            "feBlend" => (FilterEffect::Blend(blend_mode(attr(n, "mode"))), two),
+            "feDropShadow" => {
+                // feGaussianBlur of the input's alpha, feOffset, feFlood, feComposite in, merged under the input.
+                let i = one.primary.unwrap_or(FilterInput::Source(FilterSource::SourceGraphic));
+                let alpha_only = ColorMatrix([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+                let a = g.add(FilterEffect::ColorMatrix(alpha_only), FilterInputs::single(i.clone()), Some(space));
+                let (sx, sy) = (num(n, "stdDeviation", 2.0) * s, num_y(n, "stdDeviation", 2.0) * s);
+                let b = g.add(FilterEffect::blur_xy(sx, sy), FilterInputs::single(FilterInput::Result(a)), Some(space));
+                let o = g.add(FilterEffect::Offset(Vec2::new((num(n, "dx", 2.0) * s) as f64, (num(n, "dy", 2.0) * s) as f64)), FilterInputs::single(FilterInput::Result(b)), Some(space));
+                let f = g.add_source(FilterEffect::Flood(color(attr(n, "flood-color"), num(n, "flood-opacity", 1.0))), FilterColorSpace::Working);
+                let sh = g.add(FilterEffect::Composite(CompositeOperator::In), FilterInputs::dual(FilterInput::Result(f), FilterInput::Result(o)), Some(space));
+                (FilterEffect::Composite(CompositeOperator::Over), FilterInputs::dual(i, FilterInput::Result(sh)))
+            }
             "feDisplacementMap" => (
                 FilterEffect::DisplacementMap(DisplacementMapFilter { scale: num(n, "scale", 0.0) * s, x_channel: channel(attr(n, "xChannelSelector")), y_channel: channel(attr(n, "yChannelSelector")) }),
                 two,
             ),
             "feMorphology" => (
-                FilterEffect::Morphology(MorphologyFilter { operator: if attr(n, "operator") == Some("dilate") { MorphologyOperator::Dilate } else { MorphologyOperator::Erode }, radius: num(n, "radius", 0.0) * s }),
+                FilterEffect::Morphology(MorphologyFilter { operator: if attr(n, "operator") == Some("dilate") { MorphologyOperator::Dilate } else { MorphologyOperator::Erode }, radius: num(n, "radius", 0.0) * s, radius_y: None }),
                 one,
             ),
-            "feFlood" => (FilterEffect::Flood(color(attr(n, "flood-color"), num(n, "flood-opacity", 1.0))), FilterInputs::NONE),
+            "feFlood" => {
+                made_in = Some(FilterColorSpace::Working);
+                (FilterEffect::Flood(color(attr(n, "flood-color"), num(n, "flood-opacity", 1.0))), FilterInputs::NONE)
+            }
             "feOffset" => (FilterEffect::Offset(Vec2::new((num(n, "dx", 0.0) * s) as f64, (num(n, "dy", 0.0) * s) as f64)), one),
             "feTurbulence" => (
                 FilterEffect::Turbulence(TurbulenceFilter {
                     base_frequency: num(n, "baseFrequency", 0.0) / s,
+                    base_frequency_y: Some(num_y(n, "baseFrequency", 0.0) / s).filter(|&y| y != num(n, "baseFrequency", 0.0) / s),
                     num_octaves: num(n, "numOctaves", 1.0) as u32,
                     seed: num(n, "seed", 0.0) as u32,
                     turbulence_type: if attr(n, "type") == Some("fractalNoise") { TurbulenceType::FractalNoise } else { TurbulenceType::Turbulence },
@@ -252,6 +308,7 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
                 let w = length(attr(n, "width"), bbox.width(), bbox.width());
                 let h = length(attr(n, "height"), bbox.height(), bbox.height());
                 let t = [(w / img.width as f64) as f32, 0.0, 0.0, (h / img.height as f64) as f32, x as f32, y as f32];
+                made_in = None;
                 (FilterEffect::Image(ExternalImageSource { image_id: image, transform: Some(t) }), FilterInputs::NONE)
             }
             // Rostrum patch (round 5): a GPU shader primitive (Motion's raster effects, src/engine/effects/sksl.ts).
@@ -280,6 +337,7 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
                         None => anyrender::filters::shader_errors::push(format!("the {} effect's image \"{}\" could not be read or decoded", attr(n, "effect").unwrap_or("?"), href.chars().take(120).collect::<String>())),
                     }
                 }
+                made_in = None;
                 (FilterEffect::RuntimeShader(RuntimeShaderFilter { program, uniforms, sample_radius: num(n, "radius", 0.0) * s, grow: num(n, "grow", 0.0) * s, images: child_images }), if attr(n, "in2").is_some() { two } else { one })
             }
             "feMerge" => {
@@ -297,32 +355,41 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
                     };
                     acc = Some(match acc {
                         None => src.unwrap_or(FilterInput::Source(FilterSource::SourceGraphic)),
-                        Some(below) => FilterInput::Result(graph.add(FilterEffect::Composite(CompositeOperator::Over), FilterInputs { primary: src, secondary: Some(below) })),
+                        Some(below) => FilterInput::Result(g.add(FilterEffect::Composite(CompositeOperator::Over), FilterInputs { primary: src, secondary: Some(below) }, Some(space))),
                     });
                 }
-                match acc {
-                    Some(FilterInput::Result(id)) => {
-                        roi(&mut graph, n, id, bbox);
-                        if let Some(r) = attr(n, "result") {
-                            named.insert(r.to_string(), id);
-                        }
-                        last = Some(id);
-                        graph.set_output(id);
-                        continue;
-                    }
-                    _ => continue,
+                // One node: the node itself, re-encoded into the merge's space.
+                let id = match acc {
+                    Some(FilterInput::Result(id)) => id,
+                    Some(single) => g.add(FilterEffect::Offset(Vec2::ZERO), FilterInputs::single(single), Some(space)),
+                    None => continue,
+                };
+                roi(&mut graph, n, id, bbox);
+                if let Some(r) = attr(n, "result") {
+                    named.insert(r.to_string(), id);
                 }
+                last = Some(id);
+                continue;
             }
             _ => continue,
         };
-        let fid = graph.add(effect, inputs);
+        let fid = match (made_in, inputs == FilterInputs::NONE) {
+            (Some(space), true) => g.add_source(effect, space),
+            (made_in, _) => g.add(effect, inputs, made_in),
+        };
         roi(&mut graph, n, fid, bbox);
         if let Some(r) = attr(n, "result") {
             named.insert(r.to_string(), fid);
         }
         last = Some(fid);
-        graph.set_output(fid);
     }
+    // The primitives' graph, with the region and crops gathered on `graph`.
+    let out = last?;
+    let region = graph.region;
+    let crops = std::mem::take(&mut graph.crops);
+    graph = g.finish(out);
+    graph.region = region;
+    graph.crops = crops;
     // Rostrum patch (X6): `data-tap="<result> <file>|…"`: buffers the renderer writes to the comp's node cache (scene.rs).
     for entry in attr(filter, "data-tap").unwrap_or("").split('|').filter(|e| !e.trim().is_empty()) {
         if let Some((name, file)) = entry.trim().split_once(' ') {
@@ -331,5 +398,5 @@ pub(crate) fn svg_filter(dom: &BaseDocument, id: &str, bbox: Rect, view: Rect, s
             }
         }
     }
-    last.map(|_| graph)
+    Some(graph)
 }

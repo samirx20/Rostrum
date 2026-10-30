@@ -576,8 +576,11 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                 // "what is behind, filtered" into exactly the box. The opacity / filter layer below never
                 // carries the backdrop, so its expanded clip (overflowing children) cannot spread it
                 // across the canvas (each glass card used to blur everything painted before it).
+                // Rostrum patch (2D SVG filters): an opaque element's filtered backdrop replaces what is behind it in its box
+                // (copied, not drawn over): where the backdrop is see-through, the sharp original showed through the blur.
                 if let Some(backdrop) = backdrop_filter {
-                    let pushed = self.layer_manager.maybe_push_layer(scene, true, opacity, cx.transform, &cx.frame.border_box_path(), None, Some(backdrop));
+                    let replace = (opacity >= 1.0).then_some(peniko::BlendMode::new(peniko::Mix::Normal, peniko::Compose::Copy));
+                    let pushed = self.layer_manager.maybe_push_blend_layer(scene, true, opacity, replace, cx.transform, &cx.frame.border_box_path(), None, Some(backdrop));
                     self.layer_manager.maybe_pop_layer(scene, pushed);
                 }
                 let backdrop_filter: Option<Arc<anyrender::Filter>> = None;

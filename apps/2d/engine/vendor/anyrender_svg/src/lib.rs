@@ -3,7 +3,7 @@
 
 //! Render an SVG into any impl of [`anyrender::PaintScene`].
 //!
-//! This currently lacks support for some important SVG features. Known missing features include: filter effects, group backgrounds
+//! This currently lacks support for some important SVG features. Known missing features include: group backgrounds
 //! path shape-rendering, and patterns.
 
 // LINEBENDER LINT SET - lib.rs - v1
@@ -21,6 +21,7 @@
 #![cfg_attr(test, allow(unused_crate_dependencies))] // Some dev dependencies are only used in tests
 
 mod error;
+mod filter;
 mod render;
 mod util;
 
