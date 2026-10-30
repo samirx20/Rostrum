@@ -181,7 +181,9 @@ colour is already on the keys.
 
 **One call: `ending(kind, at="#end")`.** Write it anywhere in the script; it is applied when the script ends, after every
 note is written. Every part playing in the 2 bars before `at` (or `parts=[piano, strings]`) lands together on `at`;
-notes ringing across `at` end on it, notes and hits starting after it are dropped, and the song's `length` and Ring out
+on those parts notes ringing across `at` end on it and notes and hits starting after it are dropped (the reply names
+each, by track and time). With `parts` given, the tracks left out are not touched: a chord they play on `at` is
+yours and stays. The song's `length` and Ring out
 are set so the end can't be cut or left silent by accident (it sets the length only when the script set none; a `length(...)` set before stays). Which ending fits the piece is yours to choose:
 
 | Call | What it writes |
