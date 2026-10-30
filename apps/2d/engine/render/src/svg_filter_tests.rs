@@ -110,7 +110,8 @@ fn fe_blend_multiplies_two_inputs() {
 #[test]
 fn a_blur_with_two_deviations_spreads_only_down() {
     let px = svg("<filter id=\"f\"><feGaussianBlur stdDeviation=\"0 8\"/></filter>", "<rect x=\"60\" y=\"30\" width=\"80\" height=\"40\" fill=\"#fff\" filter=\"url(#f)\"/>");
-    assert!(at(&px, 100, 25)[0] > 40, "above the shape: {:?}", at(&px, 100, 25));
+    // The default region (−10 % … 120 % of the box) reaches 4 px above it.
+    assert!(at(&px, 100, 27)[0] > 40, "above the shape: {:?}", at(&px, 100, 27));
     assert!(at(&px, 55, 50)[0] < 3, "beside the shape: {:?}", at(&px, 55, 50));
 }
 
