@@ -49,11 +49,24 @@ def session() -> render.Session:
     return s
 
 
-def _film(name: str, code: str | None):
+def _film(name: str, code: str | None, file: str | None = None):
+    """The film `name`: its script sent as `code` (saved as films/<name>.py), a `file` the agent keeps and edits
+    itself (remembered for the name), or the last one it ran."""
     f = folder()
-    path = runner.save(f, name, code) if code is not None else runner.films_dir(f) / f"{name}.py"
+    link = runner.films_dir(f) / f"{name}.file"
+    if file is not None:
+        p = Path(file)
+        if not p.is_absolute() or not p.is_file():
+            raise RostrumError(codes.NOT_FOUND, "film", "file", f"{file} is not an existing script (an absolute path to a .py)")
+        link.write_text(str(p), encoding="utf-8")
+        path = p
+    elif code is not None:
+        link.unlink(missing_ok=True)
+        path = runner.save(f, name, code)
+    else:
+        path = Path(link.read_text(encoding="utf-8").strip()) if link.is_file() else runner.films_dir(f) / f"{name}.py"
     if not path.is_file():
-        raise RostrumError(codes.NOT_FOUND, "film", f'"{name}"', "has no script yet: send its code with run_film")
+        raise RostrumError(codes.NOT_FOUND, "film", f'"{name}"', "has no script yet: send its code or file with run_film")
     try:
         return runner.load(path, f), path
     except runner.ScriptError as e:
@@ -101,12 +114,13 @@ tools.add("inspect_guide", _g.take("inspect_guide").fn,
 @tools.tool("run_film", {"properties": {
     "name": {"type": "string", "description": "The film's name (its script is saved as films/<name>.py; run again with the same name to replace it)."},
     "code": {"type": "string", "description": "The whole Python script. It must leave `film = Film(...)` set up. Omit to re-run the saved script."},
+    "file": {"type": "string", "description": "Or a script file you keep and edit yourself (absolute path to a .py); remembered for this name."},
     "at": {"type": "array", "items": {"type": "number"}, "description": "Seconds to show on the sheet (default: 8 across the film)."},
     "width": {"type": "integer", "description": "Sheet width px (default 1600)."}}, "required": ["name"]})
 def run_film(ctx, args):
     """Save and run a markup film script (HTML + inline SVG + CSS from Python; inspect_guide 'markup') and see it: a
     contact sheet of frames drawn by the engine. Errors name the script line."""
-    film, path = _film(args["name"], args.get("code"))
+    film, path = _film(args["name"], args.get("code"), args.get("file"))
     times = _times(film, args, 8)
     sheet, ms = _sheet(film, times, args["name"], args.get("width", 1600), 4)
     from .gaps import notes

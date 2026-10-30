@@ -6,7 +6,7 @@ and the export draw the same frames. Sections: `inspect_guide {"topic": "markup"
 
 ## Loop
 
-`run_film {name, code}` (the whole script; a contact sheet back) → `look_film {name, at: [s]}` (full-size frames,
+`run_film {name, code}` (the whole script) or `{name, file}` (a .py you keep in your work folder and edit; a contact sheet back) → `look_film {name, at: [s]}` (full-size frames,
 ~0.1–0.3 s each) → change, `run_film` again (same name; omit `code` to re-run) → `render_film {name, file}` →
 `look_film {name, every: 2}` to review the whole film, fix, render again.
 
