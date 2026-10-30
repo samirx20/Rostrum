@@ -103,6 +103,10 @@ CHILD_PLACE = [
     _c("alignSelf", ["auto"] + ALIGNS, "Align itself", "auto", PLACED, {"auto": "As the group", **ALIGN_WORDS},
        imp="deep", help="Its own place across the row or column, instead of the group's Align"),
     _n("margin", "Margin", 0.0, PLACED, lo=-20000, imp="deep", help="Extra space round it, all round"),
+    *(_n(f"margin{side}", f"More margin {side.lower()}", 0.0, PLACED, imp="deep",
+         help=f"Space added to Margin on its {side.lower()} side only (a CSS margin list [top, right, bottom, left] "
+              "is kept as Margin plus these)")
+      for side in ("Top", "Right", "Bottom", "Left")),
     _n("colSpan", "Columns spanned", 1, PLACED, lo=1, hi=100, unit="", integer=True, imp="deep",
        help="In a grid: how many columns it covers"),
     Param.number("shiftX", label="Shift X", group=G, min=-20000, max=20000, step=1, unit="px", default=0.0,

@@ -350,8 +350,8 @@ class FrameItem(Item):
         script_frame.run(self._b, self.node, "frame.cut", script_frame.args_of(items, at=at, to=to, rect=rect, pad=pad, keep_rotation=keep_rotation, keep=keep))
         return self
 
-    def home(self, at=0) -> "FrameItem":
-        script_frame.run(self._b, self.node, "frame.home", {"at": at})
+    def home(self, at=0, ease=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.home", {"at": at, **({"ease": ease} if ease else {})})
         return self
 
 
@@ -385,6 +385,8 @@ class Build:
         if isinstance(values.get("fill"), Painted):         # fill=painted(grain, fit="tile", …): a painted fill, the fields below
             values = {**{k: v for k, v in values.items() if k != "fill"}, **values["fill"].fields()}
         values = script_time.fill(self, node, values)        # start= / end= on a marker ("#reveal+0.5", script_time.py)
+        if isinstance(values.get("dash"), (list, tuple)) and F.param(node["type"], "gap") is not None:
+            values = _dashes(self, node, values)            # dash=[8, 4]: SVG's dash list as dash and gap, said
         if node["type"] == "text":
             values = text_runs.split(node, values)          # body=["… ", ("words", {"color": …}), …]: styled runs
         params = F.FIELDS[node["type"]]
@@ -483,6 +485,21 @@ class Build:
         return made
 
 
+def _dashes(b, node, values: dict) -> dict:
+    """dash=[8, 4] as SVG / CSS write it (stroke-dasharray: dash, gap; one number is both; a list repeating one pair is
+    that pair) -> dash and gap. A list of more than one dash length can't be drawn with one dash and one gap: refused."""
+    v, where = list(values["dash"]), f'{node["id"]}.dash'
+    pair = v * 2 if len(v) % 2 else v
+    ok = pair and all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in pair)
+    if not ok or any(pair[i] != pair[i % 2] for i in range(len(pair))):
+        raise ValueError(f"{where}: dash={v!r} has more than one dash length; a stroke here has one dash and one gap: "
+                         "write dash=8, gap=4 (or dash=[8, 4])")
+    if "gap" in values and float(values["gap"]) != float(pair[1]):
+        raise ValueError(f"{where}: dash={v!r} gives the gap too, and gap={values['gap']!r} says another; give one")
+    script_layout.say(b, f"{where}: dash={v!r} was read as SVG / CSS dashes: dash {pair[0]:g}, gap {pair[1]:g}")
+    return {**values, "dash": float(pair[0]), "gap": float(pair[1])}
+
+
 def _hint(word, options) -> str:
     h = did_you_mean(word, options)
     return f" {h}" if h else ""
@@ -579,7 +596,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
 API = ["brief(\"the brief's own words\"): stored on the document; a final export's keep quotes it", "comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
-       "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
+       "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=, ease=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
        "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text(id, body=[\"plain \", (\"words\", {\"color\": …, \"weight\": …}), …]): styled runs in one text; text.run(\"words\").key(\"color\" | \"weight\" | \"scale\" | \"opacity\", {…}) (guide styled-words)", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",

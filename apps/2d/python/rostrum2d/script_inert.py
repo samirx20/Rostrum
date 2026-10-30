@@ -64,7 +64,8 @@ def _parents(node: dict, parent, out: dict) -> None:
 
 
 def notes(build) -> list[str]:
-    """One line per field given where it does nothing, naming the items (run_script shows them in its reply)."""
+    """One line per field given where it does nothing, naming the items (run_script shows them in its reply); first,
+    the lines saying how a common form was read (a CSS margin list, dash=[8, 8] …: script_layout.say)."""
     up: dict = {}
     _parents(build.root, None, up)
     found: dict[tuple, list[str]] = {}
@@ -92,4 +93,4 @@ def notes(build) -> list[str]:
         who = ", ".join(ids[:SHOWN]) + (f" and {len(ids) - SHOWN} more" if len(ids) > SHOWN else "")
         tail = f"; {INSTEAD[name]}" if name in INSTEAD else ""
         out.append(f"{name} on {who} does nothing there: a {kind}'s {name} applies only when {needs}{tail}.")
-    return out
+    return list(getattr(build, "said", [])) + out

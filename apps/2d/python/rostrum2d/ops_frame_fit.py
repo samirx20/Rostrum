@@ -234,8 +234,9 @@ def frame_cut(ctx, targets, args):
 
 @R.operation("frame.home", "Put the frame back home: its centre at home, zoom 1, no turn. A still field changes; an "
              "animated one gets a key at `at`. Already home at `at`: keyed there all the same (and at 0 s where it was, "
-             "after 0 s), a hold the next fit or key moves on from, never a refusal.", target=TYPE, label="Frame home",
-             importance="secondary", valid_when=UNLOCKED, params=[AT])
+             "after 0 s), a hold the next fit or key moves on from, never a refusal. `ease` shapes the move home, as "
+             "frame.fit's.", target=TYPE, label="Frame home",
+             importance="secondary", valid_when=UNLOCKED, params=[AT, EASE])
 def frame_home(ctx, targets, args):
     for fid in targets:
         frame = ctx.item(fid)
@@ -245,13 +246,18 @@ def frame_home(ctx, targets, args):
         now = _now(_scene(ctx, fid)[1], t)
         home = {"x": float(frame.get("homeX", 960.0)), "y": float(frame.get("homeY", 540.0)), "zoom": 1.0, "rotation": 0.0}
         there = all(abs(now[f] - v) < 1e-6 for f, v in home.items())
+        ease = args.get("ease")
         for f, v in home.items():
             if keys_of(frame, f) or (there and f in MOVE):     # (a turn nobody asked for is never keyed)
                 if not keys_of(frame, f) and t > 0:
-                    _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)))
+                    _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)), **({"ease": ease} if ease else {}))
+                elif ease:
+                    _ease_into(ctx, frame, fid, f, t, ease)
                 _key(ctx, fid, f, at, v)
             else:
                 ctx.set(fid, f, v)
+        if ease:
+            _steady(ctx, fid, t)
 
 
 def away(frame: dict) -> bool:

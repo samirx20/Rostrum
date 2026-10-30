@@ -188,7 +188,10 @@ class Plan:
             style["justifySelf"] = _CELL.get(g["align"], "start")
         if p["alignSelf"] != "auto":
             style["alignSelf"] = p["alignSelf"]
-        if p["margin"]:
+        sides = [p.get(f"margin{s}", 0.0) for s in ("Top", "Right", "Bottom", "Left")]
+        if any(sides):                           # a CSS list's sides: [top, right, bottom, left]
+            style["margin"] = [p["margin"] + v for v in sides]
+        elif p["margin"]:
             style["margin"] = p["margin"]
         if kind == "grid" and p["colSpan"] > 1:
             style["colSpan"] = int(p["colSpan"])
