@@ -34,8 +34,10 @@ class Tool:
     def verb(self) -> str:
         return self.name.split("_", 1)[0]
 
-    def check(self, args: dict | None):
-        """Check arguments before anything runs. Returns the model instance, or the plain dict."""
+    def check(self, args: dict | None, notes: list | None = None):
+        """Check arguments before anything runs. Returns the model instance, or the plain dict. A number or true/false
+        written as text ("24", "true"), where the argument is a number or a yes/no and never text, is read as one, and
+        said in `notes` (the reply's warnings)."""
         args = {} if args is None else args
         if not isinstance(args, dict):
             raise _bad(self, "arguments", f"must be an object, not {type(args).__name__}", [])
@@ -43,6 +45,7 @@ class Tool:
         for key in args:
             if key not in props:
                 raise _bad(self, f'"{key}"', "is not an argument of this tool", sorted(props), did_you_mean(key, props))
+        args = plain_values(props, args, notes)
         errors = sorted(jsonschema.Draft202012Validator(self.schema).iter_errors(args), key=lambda e: list(map(str, e.path)))
         if errors:
             e = errors[0]
@@ -52,6 +55,43 @@ class Tool:
             subject = f'argument "{where}"' if where else "arguments"
             raise _bad(self, subject, e.message, accepted)
         return self.model.model_validate(args) if self.model is not None else args
+
+
+_INT = re.compile(r"^[+-]?\d+$")
+_NUM = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
+
+
+def _types(spec: dict) -> set[str]:
+    """The JSON types one argument's schema allows (its `type`, or each `anyOf` / `oneOf` choice's)."""
+    t = spec.get("type")
+    out = set(t) if isinstance(t, list) else {t} if t else set()
+    for choice in spec.get("anyOf", []) + spec.get("oneOf", []):
+        out |= _types(choice)
+    return out
+
+
+def plain_values(props: dict, args: dict, notes: list | None = None) -> dict:
+    """Agents often write a number or a yes/no as JSON text: "24", "0.5", "true". Where an argument takes a number or
+    true/false and never text, such a string is read as the value it plainly is (said in `notes`); anything else
+    is left for the schema check to refuse."""
+    out = dict(args)
+    for key, v in args.items():
+        kinds = _types(props.get(key) or {})
+        if not isinstance(v, str) or "string" in kinds or not kinds:
+            continue
+        s = v.strip()
+        if "boolean" in kinds and s.lower() in ("true", "false"):
+            new = s.lower() == "true"
+        elif "integer" in kinds and _INT.match(s):
+            new = int(s)
+        elif "number" in kinds and _NUM.match(s):
+            new = int(s) if _INT.match(s) else float(s)
+        else:
+            continue
+        out[key] = new
+        if notes is not None:
+            notes.append(f'"{key}" came as text ("{v}"); read as {str(new).lower() if isinstance(new, bool) else new}.')
+    return out
 
 
 def _bad(tool: Tool, subject: str, problem: str, accepted, hint: str | None = None) -> RostrumError:

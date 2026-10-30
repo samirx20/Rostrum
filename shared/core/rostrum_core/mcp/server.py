@@ -63,9 +63,12 @@ class Runtime:
         try:
             tool = self.tools.get(name)
             args, wait_s = job_wait.take(args) if job_wait.ours(tool.schema) else (args, 0)
-            checked = tool.check(args)
+            read_as = []                                 # "24" read as 24 for a number argument: said in the reply
+            checked = tool.check(args, read_as)
             group = self.groups.current(who, (args or {}).get("group"))
             ctx = ToolContext(self.app, who, group, self.jobs, name, self.tools)
+            for n in read_as:
+                ctx.note(n)
             with self._one_at_a_time:
                 for doc in list(self.app.documents.values()):   # a window may have changed it: read its steps first
                     if getattr(doc, "live", None) is not None:
