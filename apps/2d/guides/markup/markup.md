@@ -98,6 +98,8 @@ grain every frame (a fixed texture); otherwise it changes each frame.
 `shutter` may be keys (`{0: 180, 12: 0}`: off from 12 s). The samples are separate pictures: something moving
 further in one frame than its own size ÷ samples shows as that many copies (`look_film {motion: true}` shows it).
 `film.cut(t, …)`: hard cuts; a frame's samples never reach across one.
+`data-blur="off"` on an element draws it sharp (its own keys held at the frame's moment; a moving parent still carries
+it) while the rest keeps the film's blur; `data-blur="90"` gives it its own shutter in degrees.
 
 ## Sound, voices, markers
 
