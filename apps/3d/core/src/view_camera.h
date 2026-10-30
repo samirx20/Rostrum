@@ -34,6 +34,13 @@ struct Lens {
 ViewCamera read_view_camera(const Args& a, const std::function<PXR_NS::SdfPath(const std::string&)>& scene_camera);
 // the frustum for a width x height picture at `frame` (a scene camera keeps its sensor width, as in render)
 PXR_NS::GfFrustum frustum_of(const PXR_NS::UsdStageRefPtr& stage, const ViewCamera& c, int frame, int w, int h);
+// Shapes the scene camera's sensor like a width x height picture: its height = its width x h / w at `frame`, written
+// on the stage's session layer (the document's own camera is untouched) and only when it differs. Every renderer then
+// frames the camera alike, whatever its window policy: Storm keeps the sensor's width (frustum_of above, and the
+// engine's override window policy), but Cycles' Hydra camera ignores that override and always fits the whole sensor
+// into the picture (its hydra/camera.cpp keeps CameraUtilFit), so a picture wider than the sensor (a 2.39:1 render of a
+// camera with the default 16:9 sensor) showed more at the sides in Final than in Quick. Called before each draw.
+void shape_sensor(const PXR_NS::UsdStageRefPtr& stage, const PXR_NS::SdfPath& camera, int frame, int w, int h);
 // the scene camera's lens when its depth of field is on (f-stop above 0); none for the free camera
 std::optional<Lens> lens_of(const PXR_NS::UsdStageRefPtr& stage, const ViewCamera& c, int frame);
 

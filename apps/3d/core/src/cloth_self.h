@@ -29,6 +29,7 @@ class ClothSelf {
  private:
   std::vector<std::array<float, 3>> rest_;  // the first shape, scaled
   std::vector<int> sewn_;                   // a garment's point sewn to this one (cloth_sew.h), else -1
+  std::vector<int> across_;                 // the partner of the sewn point nearest this one (itself if sewn), else -1
   double h_ = 0;
   bool own(size_t i, size_t j, float own2) const;  // neighbours in the first shape
   // scratch, kept between steps

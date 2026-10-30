@@ -30,6 +30,7 @@
 #include "storm_programs.h"
 #include "storm_sun.h"
 #include "studio.h"
+#include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -289,6 +290,7 @@ Framebuffer& Hydra::mask_framebuffer(int w, int h) {
 Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int frame, int w, int h,
                     const DrawSettings& s, GpuMemWatch& mem, Aovs* aovs) {
   const UsdGeomCamera cam = camera_at(stage_, camera);
+  shape_sensor(stage_, camera, frame, w, h);  // Cycles ignores the window policy set below (view_camera.h)
   TfErrorMark mark;
   auto& e = engine(renderer);
   if (!s.aovs.empty() && renderer != "cycles")
@@ -462,6 +464,7 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
     e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
   } else {  // exactly as draw(): the camera's own path, so its lens and depth of field are Cycles' own
     camera_at(stage_, camera);
+    shape_sensor(stage_, camera, frame, w, h);  // as draw(): Cycles fits the whole sensor (view_camera.h)
     e.SetCameraPath(camera);
     e.SetOverrideWindowPolicy(CameraUtilMatchHorizontally);
   }

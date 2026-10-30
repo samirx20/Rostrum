@@ -33,7 +33,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <map>
+#include <optional>
 #include <mutex>
 #include <set>
 
@@ -270,7 +272,8 @@ void release_cloth(JPH::PhysicsSystem& physics, JPH::BodyID id, const std::vecto
   }
 }
 
-JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
+// `sew`: the cloth's seams as edges of its own (cloth_sew.h), made from what this returns
+JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame, std::optional<ClothSew>* sew) {
   // each point carries its triangles' weight by the angle it holds in each (the angles of a triangle add up to π, so the whole
   // weight is kept): an even third gave the grid's 8-triangle points twice the weight of its 4-triangle ones, a checkerboard
   // that rippled the free edges into steps
@@ -330,7 +333,10 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
     const float e2 = e.LengthSq();
     if (e2 > 0 && areas > 0) b.mCompliance *= areas / e2;
   }
-  s->Optimize();
+  const std::vector<JPH::uint> seams = add_seam_edges(*s, c, stretch);
+  SS::OptimizationResults moved;
+  s->Optimize(moved);
+  sew->emplace(s, seams, moved.mEdgeRemap, c, k);
   return s;
 }
 
@@ -529,13 +535,13 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
   struct Edge { int a, b; double rest; };
   std::vector<JPH::BodyID> cloth_ids;
   std::vector<ClothSelf> cloth_self;  // each cloth kept off itself
-  std::vector<ClothSew> cloth_sew;    // a garment's seams pulled closed, then held
+  std::vector<std::optional<ClothSew>> cloth_sew(cloths.size());  // a garment's seams closed by the solver, then held
   std::vector<std::vector<Edge>> cloth_edges(cloths.size());
   std::vector<double> cloth_lowest(cloths.size());
   std::vector<std::vector<float>> cloth_held(cloths.size());  // a waiting cloth's own point weights (1 / mass), put back at its frame
   for (size_t c = 0; c < cloths.size(); ++c) {
     const Cloth& cl = cloths[c];
-    JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
+    JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start, &cloth_sew[c]), JPH::RVec3::sZero(),
                                      JPH::Quat::sIdentity(), kCloth);
     sb.mNumIterations = kClothIterations;
     if (!cl.seams.empty()) sb.mGravityFactor = 0;  // a garment floats while it is sewn (cloth_sew.h)
@@ -547,7 +553,6 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
     if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
     cloth_ids.push_back(id);
     cloth_self.emplace_back(cl, k);
-    cloth_sew.emplace_back(cl, k);
     if (cl.wake > 0) cloth_held[c] = hold_cloth(physics, id);  // Falls from: every point held (as a pin) until its frame
     std::set<std::pair<int, int>> seen;
     for (const auto& t : cl.triangles)
@@ -587,6 +592,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
       for (int s = 0; s < steps; ++s) {
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
+            cloth_sew[c]->before(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt));
             air_drag(physics, cloth_ids[c], cloths[c], k, double(dt));
             cloth_wind(physics, bi, cloth_ids[c], cloths[c], k, double(dt), (double(f - 1) * steps + s + 1) * double(dt));
           }
@@ -597,7 +603,6 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
             cloth_self[c].step(physics, cloth_ids[c]);
-            cloth_sew[c].step(physics, cloth_ids[c], (double(f - std::max(1, cloths[c].wake)) * steps + s + 1) * double(dt), double(dt));
           }
       }
     auto& row = out.frames[size_t(f)];
@@ -649,6 +654,15 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         const float* a = &rows[at + size_t(e.a) * 3];
         const float* b = &rows[at + size_t(e.b) * 3];
         const double len = dist({a[0], a[1], a[2]}, {b[0], b[1], b[2]});
+        const auto sewn = [&](int p) {
+          return std::any_of(cl.seams.begin(), cl.seams.end(), [p](const auto& sp) { return sp[0] == p || sp[1] == p; });
+        };
+        if (len > kTear * e.rest + 1e-4 && (sewn(e.a) || sewn(e.b))) {  // a seam that can't close pulls the cloth beside it apart
+          char at_[64];
+          std::snprintf(at_, sizeof at_, "%.2f %.2f %.2f", double(a[0]), double(a[1]), double(a[2]));
+          throw Failure(cl, setup.start + f, std::string("tore beside a seam at ") + at_ + " m: the garment is too tight there to close round what is in it",
+                        "cut the pieces wider there (round the body plus some ease), or start them further from the body");
+        }
         if (len > kTear * e.rest + 1e-4)
           throw Failure(cl, setup.start + f, "tore apart (an edge stretched to " + std::to_string(int(len / std::max(1e-9, e.rest))) + " times its length)",
                         "check it doesn't start inside something, lower its Stiffness, or pin fewer points");

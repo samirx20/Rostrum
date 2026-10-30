@@ -2,9 +2,11 @@
 
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/imaging/cameraUtil/conformWindow.h>
+#include <pxr/usd/usd/editContext.h>
 #include <pxr/usd/usdGeom/camera.h>
 
 #include <algorithm>
+#include <cmath>
 
 #include "error.h"
 
@@ -62,6 +64,20 @@ GfFrustum frustum_of(const UsdStageRefPtr& stage, const ViewCamera& c, int frame
   f.SetPositionAndRotationFromMatrix(view.GetInverse());
   f.SetPerspective(c.fov, aspect, std::max(1e-4, dist * 0.002), dist * 2000);
   return f;
+}
+
+void shape_sensor(const UsdStageRefPtr& stage, const SdfPath& camera, int frame, int w, int h) {
+  const UsdGeomCamera cam(stage->GetPrimAtPath(camera));
+  if (!cam || w <= 0 || h <= 0) return;
+  float width = 0, height = 0;
+  cam.GetHorizontalApertureAttr().Get(&width, UsdTimeCode(frame));
+  cam.GetVerticalApertureAttr().Get(&height, UsdTimeCode(frame));
+  const float want = float(double(width) * h / w);
+  if (width <= 0 || std::abs(height - want) <= 1e-6f * want) return;
+  // a default value on the session layer outranks the camera's own value and its keys (an animated sensor is
+  // shaped again at each frame drawn)
+  const UsdEditContext session(stage, stage->GetSessionLayer());
+  cam.GetVerticalApertureAttr().Set(want);
 }
 
 std::optional<Lens> lens_of(const UsdStageRefPtr& stage, const ViewCamera& c, int frame) {

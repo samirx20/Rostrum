@@ -40,6 +40,21 @@ ClothSelf::ClothSelf(const Cloth& c, double k) {
   if (e.empty()) return;
   std::nth_element(e.begin(), e.begin() + long(e.size() / 2), e.end());
   h_ = kThick * e[e.size() / 2] * k;
+  // each point's nearest sewn point within a neighbour's reach, in the first shape (a sewn point is its own): a closed seam
+  // brings the points beside it on both pieces together too, and pushing those apart tore the cloth along the seam
+  across_.assign(rest_.size(), -1);
+  const float own2 = float(kOwn * kOwn * h_ * h_);
+  std::vector<size_t> sewn;
+  for (size_t i = 0; i < sewn_.size(); ++i)
+    if (sewn_[i] >= 0) sewn.push_back(i);
+  for (size_t i = 0; i < rest_.size() && !sewn.empty(); ++i) {
+    float best = own2;
+    for (size_t q : sewn) {
+      const auto &a = rest_[i], &b = rest_[q];
+      const float d2 = (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]);
+      if (d2 < best) { best = d2; across_[i] = sewn_[q]; }
+    }
+  }
 }
 
 bool ClothSelf::own(size_t i, size_t j, float own2) const {
@@ -89,8 +104,8 @@ void ClothSelf::step(JPH::PhysicsSystem& physics, JPH::BodyID id) {
             const uint32_t j = sorted_[s];
             if (j == i || cell_[j] != q || (j < i && v[j].mInvMass > 0)) continue;  // each free pair once
             if ((v[i].mPosition - v[j].mPosition).LengthSq() > reach2) continue;
-            if (own(i, j, own2) || (sewn_[i] >= 0 && own(size_t(sewn_[i]), j, own2)) ||
-                (sewn_[j] >= 0 && own(i, size_t(sewn_[j]), own2)))
+            if (own(i, j, own2) || (across_[i] >= 0 && own(size_t(across_[i]), j, own2)) ||
+                (across_[j] >= 0 && own(i, size_t(across_[j]), own2)))
               continue;
             pairs_.push_back({uint32_t(i), j});
           }
