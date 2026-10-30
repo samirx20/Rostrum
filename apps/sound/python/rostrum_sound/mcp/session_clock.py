@@ -4,7 +4,8 @@ with notes names the quick tools and says how much time is left. Agents that can
 (the fair Sound benchmark: 3 of 15 minutes); this is the time and the facts, never a verdict. 2D's clock is the model
 (apps/2d/.../session_clock.py): its looks are pictures, Sound's are the listening tools.
 
-The session starts at the first tool call. ROSTRUM_SESSION_BUDGET_MIN (minutes), when set, adds how many are left."""
+The session starts when the server does (with the agent's session, so the first script's writing counts and 2D's
+clock, started the same way, agrees); a Clock made without a server starts at its first call. ROSTRUM_SESSION_BUDGET_MIN (minutes), when set, adds how many are left."""
 from __future__ import annotations
 
 import dataclasses
@@ -58,7 +59,7 @@ class Clock:
         return 0 if left is None or left <= 0 else int(left // ((render_s or self.render_s or 30.0) + PASS_S))
 
     def line(self) -> str:
-        parts = [f"Session {said_time(self.elapsed())} of real time since your first call (your thinking included)",
+        parts = [f"Session {said_time(self.elapsed())} of real time since it started (your thinking included)",
                  f"{self.calls} call{'s' * (self.calls != 1)}"]
         if self.renders:
             parts.append(f"{self.renders} render{'s' * (self.renders != 1)}, {self.edits_since_render} edit{'s' * (self.edits_since_render != 1)} since the last"
@@ -101,6 +102,7 @@ def _budget() -> float | None:
 def with_clock(runtime, clock: Clock | None = None) -> Clock:
     """Every tool's reply ends with the clock line; the clock is `app.state.clock`, where render_mix reads it for its fix pass."""
     clock = clock or Clock(budget_min=_budget())
+    clock.started = clock.now() if clock.started is None else clock.started      # the server starts with the session
     runtime.app.state.clock = clock
     for name, tool in list(runtime.tools._tools.items()):
         runtime.tools._tools[name] = dataclasses.replace(tool, fn=_wrapped(tool, clock))
