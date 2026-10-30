@@ -3,9 +3,9 @@
 Which kind a property is, by the element: inside SVG (an SVG tag) a property is an attribute (cx, d, fill,
 stop-color, opacity, …); on an HTML element it is a CSS property (opacity, background, filter, left, …). A name
 starting with "--" is always a CSS variable, "style:" forces CSS and "attr:" forces an attribute. The transform
-channels x, y, rotate, scale, scaleX, scaleY, skewX are composed in that order in the parent's space, about the
-element's `origin` channel ("cx cy" in SVG user units, any CSS transform-origin on HTML), before the element's own
-transform: keys move a part wherever it was drawn.
+channels x, y, rotate, scale, scaleX, scaleY, skewX are composed in that order AFTER the element's own transform, so
+in its own units: a part drawn as <g transform="translate(0 140)"> (its joint at its own 0 0) turns about that joint.
+`origin` moves the pivot ("cx cy" in the element's own SVG units; any CSS transform-origin on HTML).
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def _svg_transform(ch: dict, own: str) -> str:
         turn.append(f"skewX({_fmt(ch['skewX'])})")
     if turn:
         out += [f"translate({ox} {oy})", *turn, f"translate({-float(ox):g} {-float(oy):g})"]
-    return " ".join(out + ([own] if own else []))
+    return " ".join(([own] if own else []) + out)
 
 
 def _css_transform(ch: dict) -> str:
