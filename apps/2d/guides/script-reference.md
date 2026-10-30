@@ -229,7 +229,7 @@ Everything a script can call, by job. The details and techniques are in the topi
 `f = frame()`; `f.key("x", {0: 960, 4: 2600})`; `f.fit(["hills", "tree"], at=4)` frames layers as they show then
 (depth counted); `f.fit(rect=(x, y, w, h), at=4, ease="easeInOut")` (ease: how it moves into that framing, the zoom's; x and y follow it so the
 subject stays in the picture all the way; a fit where it already is changes nothing); `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))` or `f.cut(at="#logo lands")`
-jumps it; `f.home(at=8)`. The same as the operations `frame.fit`, `frame.cut`, `frame.home` (target `"frame"`).
+jumps it; `f.home(at=8, ease="easeInOut")`. The same as the operations `frame.fit`, `frame.cut`, `frame.home` (target `"frame"`).
 
 ### Drawings (guide `drawing-and-frame-by-frame`)
 
