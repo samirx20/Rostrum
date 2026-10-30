@@ -8,7 +8,10 @@ set HERE=%~dp0
 if "%ROSTRUM3D_SDK%"=="" set ROSTRUM3D_SDK=%USERPROFILE%\.rostrum\libs\3d\5.2.2-cycles-a456b76-r5\sdk
 if "%QT_DIR%"=="" set QT_DIR=%USERPROFILE%\.rostrum\libs\qt\6.12.0-msvc2022_64
 if "%R3D_VIEW%"=="" set R3D_VIEW=ON
+rem Compile cache (sccache) only where it is installed; a fresh clone builds without it.
+set R3D_LAUNCH=
+if exist "%USERPROFILE%\.rostrum\tools\bin\sccache.exe" set R3D_LAUNCH=-DCMAKE_C_COMPILER_LAUNCHER=%USERPROFILE%\.rostrum\tools\bin\sccache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=%USERPROFILE%\.rostrum\tools\bin\sccache.exe
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
-cmake -S "%HERE%." -B "%HERE%.build\obj" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUNDLE="%ROSTRUM3D_SDK%" -DCMAKE_INSTALL_PREFIX="%HERE%.build\install" -DCMAKE_PREFIX_PATH="%QT_DIR%" -DR3D_VIEW=%R3D_VIEW% -DCMAKE_C_COMPILER_LAUNCHER=%USERPROFILE%\.rostrum\tools\bin\sccache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=%USERPROFILE%\.rostrum\tools\bin\sccache.exe || exit /b 1
+cmake -S "%HERE%." -B "%HERE%.build\obj" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUNDLE="%ROSTRUM3D_SDK%" -DCMAKE_INSTALL_PREFIX="%HERE%.build\install" -DCMAKE_PREFIX_PATH="%QT_DIR%" -DR3D_VIEW=%R3D_VIEW% %R3D_LAUNCH% || exit /b 1
 cmake --build "%HERE%.build\obj" -j 4 || exit /b 1
 cmake --install "%HERE%.build\obj" || exit /b 1

@@ -1,4 +1,0 @@
-# Shared compile cache (Sam approved 2026-10-30): every worktree's engine build reuses what any other build already
-# compiled. sccache (Mozilla, Apache-2.0) lives in C:\Users\Sam\.rostrum\tools\bin.
-[build]
-rustc-wrapper = "C:/Users/Sam/.rostrum/tools/bin/sccache.exe"
