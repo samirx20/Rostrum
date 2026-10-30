@@ -92,7 +92,8 @@ this film's. `render_film` puts the project's main mix under the picture (`sound
 Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradients; CSS `filter`; `backdrop-filter` (blur a little weaker than Chrome's); 2D/3D transforms on
 HTML; `clip-path` shapes; gradient `mask-image`; blend modes; CSS variables, `calc()`; text, `text-shadow`; SVG in
 `<img>`; emoji. In SVG: all shapes and paths, `viewBox`, gradients, `<use>`/`<symbol>`, nested transforms, dashes,
-opacity, blend, markers, `<textPath>`, `<style>` inside the `<svg>`.
+opacity, blend, markers, `<textPath>`, `<style>` inside the `<svg>`; `currentColor` at any depth (from CSS `color`
+on a parent, a part's style or its `color=` attribute).
 
 Not yet (run_film's notes name them when used), and what works instead:
 - `filter=` / `mask=` on a shape inside an `<svg>`, `<pattern>`: put the filter on the `<svg>` or a `<div>` as
@@ -100,5 +101,5 @@ Not yet (run_film's notes name them when used), and what works instead:
 - `feDropShadow`: CSS `drop-shadow()` or blur + offset + flood + composite + merge.
 - CSS `transform` in a style inside SVG: the `transform` attribute (keys write it).
 - `<foreignObject>`, `-webkit-text-fill-color`, `text-overflow: ellipsis`, repeating picture backgrounds,
-  `currentColor` below the outer `<svg>`, `clipPathUnits="objectBoundingBox"`, page CSS aimed at SVG shapes (put it
+  `clipPathUnits="objectBoundingBox"`, page CSS aimed at SVG shapes (put it
   in a `<style>` inside the `<svg>`).

@@ -18,7 +18,7 @@ from typing import Callable
 
 from rostrum_core.byname import expand_icons
 
-from . import apply, grain as grain_mod, light as light_mod
+from . import apply, grain as grain_mod, light as light_mod, normal
 from .values import Keys
 
 _CAM = ("x", "y", "zoom", "rotate")
@@ -160,6 +160,7 @@ class Film:
             over = apply.set_props(over, ident, props, gone)
             if len(gone) == 2 and missing is not None:
                 missing.append(ident)
+        world, over = normal.svg_color(world), normal.svg_color(over)
         if self._light:
             world = light_mod.apply(world, {k: v(t) for k, v in self._light.items()})
         elif "data-light" in world:
