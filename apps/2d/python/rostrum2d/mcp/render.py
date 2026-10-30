@@ -46,7 +46,7 @@ def scene_later(doc, comp_id: str, span: tuple[float, float] | None = None, fram
                                  "them, not when a script adds them. They are kept, so the next look at the same paint is quick."]
         if span and span[0] == span[1] and comp and not frames:      # one frame (look_frame): a subject cut by the frame edge is said in its reply
             try:
-                scene["warnings"] = [*scene.get("warnings", []), *edge_cut.warnings_at(data, comp, span[0])]
+                scene["warnings"] = [*scene.get("warnings", []), *edge_cut.warnings_at(data, played(comp, times), span[0])]
             except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
                 scene["warnings"] = [*scene.get("warnings", []), f"(The frame-edge check could not run: {e}.)"]
         return scene
@@ -65,12 +65,23 @@ def look_scene(doc, comp_id: str, at: float | None = None, times: list[float] | 
     scene = warm.scene(doc, comp_id, (comp or {}).get("duration", 5.0), times if times is not None else None if at is None else [at])
     if at is None or comp is None:
         return scene
-    cut = edge_warnings(doc.data, comp, at)
+    try:
+        cut = edge_warnings(doc.data, played(comp, markers.times(doc.folder) if doc.folder else None), at)
+    except RostrumError as e:       # a marker that is gone: the drawing says so; the check names its own failure
+        cut = [f"(The frame-edge check could not run: {e.line()})"]
     return {**scene, "warnings": [*scene.get("warnings", []), *cut]} if cut else scene
 
 
+def played(comp: dict, times: dict | None) -> dict:
+    """The composition as it plays: keys and layers timed on a shared marker in composition seconds (retime.py). The
+    frame-edge check reads boxes from keys, and one key on a marker ("#pay+0.3") switched it off for every look."""
+    from rostrum2d import retime
+    return retime.timed(comp, times, comp.get("fps", 30))
+
+
 def edge_warnings(doc_data: dict, comp: dict, at: float) -> list[str]:
-    """One frame's look: a subject cut by the frame edge at `at`, in words (edge_cut.py); its own failure said, never raised."""
+    """One frame's look: a subject cut by the frame edge at `at`, in words (edge_cut.py); its own failure said, never raised.
+    `comp` as it plays (played(), or pick.doc_and_comp's)."""
     try:
         return edge_cut.warnings_at(doc_data, comp, at)
     except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
