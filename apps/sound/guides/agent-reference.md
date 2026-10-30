@@ -9,7 +9,7 @@ which `what`. Each tool's full words: `inspect_guide 'tools-in-detail'`.
 1. **Write the whole piece as one Python script** (tempo map, sections, markers for the sync points, every track's notes,
    dynamics and effects, the mix, the master target) and run it with `run_script`, **one `name` for the song**.
 2. **See and hear it.** `look_arrangement` draws the written song (no render); `render_audition` hears any stretch in about a second
-   (`{"from": {"bar": 9}, "to": {"bar": 11}}`, `solo` / `mute`; the reply reads it as numbers: loudness and bands per row, the mix's hits, each part's level and starts, what is written and sounding there; `look: true` for its picture, `notes: true` for the asked moments measured); judge it yourself.
+   (`{"from": {"bar": 9}, "to": {"bar": 11}}`, `solo` / `mute`; the reply reads it as numbers: loudness and bands per row, the mix's hits, each part's level and sharp attacks (a part's "starts": soft or legato parts show few; the Written lines count the notes), what is written and sounding there; `look: true` for its picture, `notes: true` for the asked moments measured); judge it yourself.
    Measurements for the whole mix (loudness, the weakest asked moments, "tempo far from the brief's" with `expect`: `{"kind": "tempo", "bpm": 96}`) come with `render_mix` `notes: true`.
 3. **Edit the script and run it again under the same name.** A removed track, note, effect or marker disappears, a new
    tempo moves everything written in beats, nothing is copied. A **new name** that makes the same tracks is refused, naming the script to run under.
@@ -127,6 +127,14 @@ with `name` (one instrument), `inspect_engine` what `instrument` (its recorded r
 | `studio` | recorded studio kit |
 | `jazz` | recorded jazz kit played with brushes: brush snare, stir (`stir`), ride, hats |
 | `classic` | the synthesized kit (kick, snare, clap, hat, openHat, cymbal, tom, rim) |
+
+### Hit names (`drum=` of a hit)
+
+- Hit names, `classic` kit: `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal`, `tom`, `rim`.
+- Hit names, `drums`, `studio` and `jazz` kits (General MIDI): `kick`, `kick2`, `rim`, `snare`, `clap`, `snare2`, `hat`, `pedalHat`, `openHat`, `lowTom`, `floorTom`, `tomLow`, `tom`, `midTom`, `tomHigh`, `highTom`, `crash`, `cymbal`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, `stir`, `shaker`.
+- Written another way is read as the same drum (case, spaces, `-` and `_` do not matter): `hihat`, `hh`, `closedHat` = `hat`; `openHihat` = `openHat`; `bd`, `bassDrum` = `kick`; `sd` = `snare`; `sidestick` = `rim`; `handclap` = `clap`.
+- `crash`, `ride`, `splash`, `china` exist on the recorded kits only; on `classic` the one cymbal is `cymbal`, and the toms are the one `tom`. A name a kit does not have is flagged by the check, with the nearest drum that kit has and the names it accepts.
+- A test keeps these two lists equal to the engine's (`tests/test_sound_names.py`).
 
 Levels: every plain name starts level-matched for the part it suits (`inspect_engine` with `name` gives its starting level in dB;
 `look_sound` levels gives each track's `volume_db` against it). Matching is by loudness of a typical phrase, so a quiet, sparse part

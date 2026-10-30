@@ -94,7 +94,9 @@ comp, bass_line, drum_grid, duck, send …) is in `inspect_guide 'script'`.
 - `look_sound`: the mix as numbers: loudness and measured faults (default), each track's level, low end, clashes, spectrum, stereo.
 - `look_music`: the music as facts: where sounds start against `expect`, beats and swing, pitch, key and chords.
 - `inspect_guide`: these guides by `topic` (`{"topic": "script"}`); with no topic, the list.
-- `render_mix`: the delivered file and stems (full length); it lands on the master's loudness target and says how much limiting that took.
+- `render_mix`: the delivered file and stems (full length); it aims at the master's loudness target and says how much limiting that took.
+  A new song's master limits the loudest moment by at most 2 dB (`maxLimit`), so a mix with a big peak can land under the target: the
+  reply says by how much, and `edit_loudness` measures what reaches it (agent-reference › Loudness).
 
 A track's level is its fader, `volume` (a gain: 1 = as the instrument was level-matched, 0 to 4; 0.5 ≈ -6 dB):
 `track("keys", builtIn="piano", volume=0.6)` or later `keys.set(volume=0.6)` (`keys.volume = 0.6` is the same);

@@ -14,6 +14,7 @@ from rostrum_sound.mcp import session_clock
 
 SOUND = Path(__file__).resolve().parents[2]
 ENGINE_NAMES = (SOUND / "engine" / "src" / "contract" / "names_instruments.rs").read_text(encoding="utf-8")
+ENGINE_GM = (SOUND / "engine" / "src" / "contract" / "names.rs").read_text(encoding="utf-8")
 GUIDE = (SOUND / "guides" / "agent-reference.md").read_text(encoding="utf-8")
 
 
@@ -39,6 +40,16 @@ def test_names_py_the_guide_and_the_engine_table_list_the_same_names():
     assert set(names.BUILT_INS) == built_in
     assert set(names.KITS) == kits
     assert _guide_names() == built_in | kits, sorted(_guide_names() ^ (built_in | kits))
+
+
+def test_the_guides_hit_names_are_the_engines_for_each_kit():
+    section = GUIDE.split("### Hit names", 1)[1].split("\n##", 1)[0].split("\nLevels:", 1)[0]
+    lines = {k: re.findall(r"`(\w+)`", next(l for l in section.splitlines() if l.startswith(f"- Hit names, {k}")).split(":", 1)[1])
+             for k in ("`classic` kit", "`drums`, `studio` and `jazz` kits")}
+    engine_gm = re.findall(r'\("(\w+)", \d+\)', ENGINE_GM)
+    engine_classic = re.search(r"pub const SYNTH_DRUMS: &\[&str\] = &\[([^\]]*)\]", ENGINE_GM).group(1)
+    assert lines["`classic` kit"] == re.findall(r'"(\w+)"', engine_classic) == names.SYNTH_DRUMS
+    assert lines["`drums`, `studio` and `jazz` kits"] == engine_gm == names.GM_DRUMS
 
 
 def _script_error(source: str) -> str:

@@ -42,7 +42,7 @@ SAY = {
     "inspect_recent_projects": "The person's recent songs.",
     # tools on their own
     "edit_loudness": "When reaching the loudness target took heavy limiting: measured ways to need less, each with ready ops; `apply` makes one: {\"apply\": \"best\"}. Always a job (it re-renders to search, with or without `apply`): read it with inspect_job wait_s.",
-    "render_audition": "Hear any stretch of the song in about a second (from/to or at ± around, solo/mute), read as numbers: loudness and bands per step, hits, each part's level and starts, the notes there (look: true for its picture), or try an instrument, kit, file or a track's notes; the song is unchanged.",
+    "render_audition": "Hear any stretch of the song in about a second (from/to or at ± around, solo/mute), read as numbers: loudness and bands per step, hits, each part's level and sharp attacks, the notes there (look: true for its picture), or try an instrument, kit, file or a track's notes; the song is unchanged.",
     "look_arrangement": "See the written song in 0.05 s, no render: a picture (a row per track: notes by pitch, shaded by level; bars, sections, markers), each track's level and range, and who starts on each marker; no render.",
     "inspect_diagnose": "Everything broken in a song (missing files, past the end, out of range …), each with its fix.",
     "look_video": "The picture the sound is for: frames, a contact sheet, or motion with sudden stops.",
