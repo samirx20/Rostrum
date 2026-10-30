@@ -162,6 +162,13 @@ class Cache:
         meta = folder / ENTRY
         if not meta.is_file():
             return None
+        try:                                            # a clean-up from outside can take some files and leave the rest
+            files = json.loads(meta.read_text(encoding="utf-8")).get("files", [])
+        except (OSError, ValueError):
+            files = None
+        if files is None or any(not (folder / f).exists() for f in files):
+            shutil.rmtree(folder, ignore_errors=True)   # half an entry is a miss: it is made again
+            return None
         os.utime(meta, (self.clock(), self.clock()))
         return folder
 
