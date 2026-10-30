@@ -49,7 +49,7 @@ Motion blur never crosses a cut.
 | `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
 | `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. Already home there: x, y and zoom are keyed there (a hold). |
 
-In a script: `f.fit(["hills", "tree"], at=4, ease="easeInOut")`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
+In a script: `f.fit(["hills", "tree"], at=4, ease="easeInOut")`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins). A fit's move zooms about one point that holds still in the picture, as a real camera does: x and y get the curve that matches the zoom's ease (a `custom` curve on their keys), so a deep push from the wide shot onto a small part travels steadily onto it and never swings off it mid-move (the same ease on all three threw the subject past the frame edge half way).
 A fit where the frame already is is no error. After 0 s its place is keyed there all the same (and at 0 s where it
 was, if that field had no keys yet): a hold the next fit moves on from. Only at 0 s on a still frame is nothing keyed.
 `f.home(at=…)` on a frame already home holds it the same way (x, y and zoom keyed there), never a refusal. So shots
@@ -260,7 +260,9 @@ otherwise (another blend mode, frosted glass), or that runs
 far past the edge that fast, is redrawn at each step without a new layout. A group whose children each move their own
 way (bubbles rising in a group the frame pans past) is painted once and smeared child by child; only when its children
 pass close enough to smear into each other is it redrawn at each step, each child moved to its place. Titles and paths
-streak like any other layer, their size read from the frame's layout. A fade or a colour
+streak like any other layer, their size read from the frame's layout. A layer or group of any size streaks the same
+way (a depth layer as tall as the whole descent needs no splitting into bands), and a final-quality look at any width
+draws every layer the export draws. A fade or a colour
 change within one step is taken at the frame's time. Only a layer whose shape changes while the shutter is open (a path
 changing shape, letters playing their keys, a layer whose matte changes or slides across it, a group whose children
 change more than their place) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising

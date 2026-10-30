@@ -56,6 +56,8 @@ def centre(build, type_: str, values: dict) -> dict:
     """`values` with x / y the parent's centre where they are left out: the comp's (width / 2, height / 2) or a sized
     group's box (w / 2, h / 2, in its px). Inside a container the layout places it; a drawing places its canvas itself."""
     h = build.holders[-1]
+    if in_layout(build) and values.get("apart") and not {"x", "y"} <= values.keys() and boxed(build):
+        return {"x": h["w"] / 2, "y": h["h"] / 2, **values}     # set apart in a container of a set size: on its centre
     if in_layout(build) or type_ in ("drawing", "rig") or h["type"] not in ("comp", "group") or {"x", "y"} <= values.keys():
         return values
     if h["type"] == "comp":
@@ -67,6 +69,27 @@ def centre(build, type_: str, values: dict) -> dict:
     else:       # an unsized group fits around what is inside at its end: a layer left alone sits on the group's x / y
         cx, cy = h["anchorX"] * h["w"], h["anchorY"] * h["h"]
     return {"x": cx, "y": cy, **values}
+
+
+def boxed(build) -> bool:
+    """The group layers are made in now has a size the script set in px on both sides (not fill / fit / a share)."""
+    h = build.holders[-1]
+    return h["id"] in build.sized and h.get("sizeW", "fixed") == "fixed" and h.get("sizeH", "fixed") == "fixed"
+
+
+def loose(build, values: dict) -> bool:
+    """A layer set apart in a container its layout sizes, with no x / y: it sits at its own x / y counted from the
+    container's top-left, which the script can't know (a "Paid" label made in a button sat 900 px off it, unseen)."""
+    return in_layout(build) and bool(values.get("apart")) and not {"x", "y"} <= values.keys() and not boxed(build)
+
+
+def loose_note(node: dict, holder: dict) -> str:
+    """run_script's line for a `loose` layer: where it went and what places it."""
+    hid, kind = holder["id"], holder.get("layout", "")
+    tail = f', or leave apart out: the {kind} centres it over the others' if kind == "stack" else ""
+    return (f'{node["type"]} "{node["id"]}" is set apart in {kind} "{hid}" with no x= / y=, so it sits at x {node.get("x", 0):g}, '
+            f'y {node.get("y", 0):g} counted from the top-left corner of "{hid}", likely outside it (its size comes from its layout, so '
+            f'the script cannot tell its centre). Give x= and y= in "{hid}" px (look_frame what "layout" has its box){tail}.')
 
 
 def _size(type_, axis, v, out, where):

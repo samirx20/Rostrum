@@ -89,7 +89,9 @@ def test_a_script_fits_in_time_order_with_an_eased_move():
     d.run_script("s.py", run_source(src, "s.py"))
     xs = sorted((k["t"], k["v"], k["ease"]) for k in d.item("frame")["keys"] if k["prop"] == "x")
     assert [t for t, _, _ in xs] == [0.0, 1, 2, 5]
-    assert xs[1][1] == xs[2][1] and xs[2][2] == "easeInOut"          # held 1 s to 2 s, then the eased move to 5 s
+    zs = sorted((k["t"], k["ease"]) for k in d.item("frame")["keys"] if k["prop"] == "zoom")
+    assert xs[1][1] == xs[2][1] and zs[2][1] == "easeInOut"          # held 1 s to 2 s, then the eased move to 5 s
+    assert xs[2][2] == "custom"                                      # the centre follows that zoom (frame/push.py)
     assert value_at(d.item("frame"), "x", 1.5) == xs[1][1]
 
 
@@ -108,3 +110,22 @@ def test_the_cameras_tools_write_no_keys_that_do_nothing():
     d.apply({"op": "key.add", "target": "far", "args": {"prop": "opacity", "t": 1, "v": 1}}, SAM)
     said = [p["message"] for p in diagnose.problems(d.item("film")) if p["kind"] == "unused-keys"]
     assert said and "far.opacity" not in said[0] and "opacity" in said[0]
+
+
+def test_a_deep_push_onto_a_small_part_keeps_it_in_the_picture_all_the_way():
+    """A fit from the wide shot onto a small part keyed x, y and zoom with one ease: half way the subject swung out
+    past the frame edge (to x ~5100 on a 1920 frame; both Tally runs had a blank frame mid-push). The centre now
+    follows the zoom (frame/push.py): the subject travels steadily to the middle, never past where it started."""
+    d = Document.new(KIND)
+    d.apply([{"op": "comp.add", "args": {"id": "film"}},
+             {"op": "layer.add", "target": "film", "args": {"type": "shape", "id": "phone"}},
+             {"op": "shape.set", "target": "phone", "args": {"x": 1700, "y": 900, "w": 60, "h": 40}}], SAM)
+    d.apply({"op": "frame.fit", "target": "frame", "args": {"to": "items", "ids": ["phone"], "at": 3, "pad": 0.1}}, SAM)
+    comp, gone = d.item("film"), []
+    for i in range(31):
+        m = view.layer_matrix(comp, view.shot(comp, i / 10), {"depth": 0})
+        gone.append(abs(m[0] * 1700 + m[2] * 900 + m[4] - 960))
+    assert max(gone) <= gone[0] + 1 and gone[-1] < 1
+    assert all(b <= a + 25 for a, b in zip(gone, gone[1:]))            # on its way in, never back out
+    x_key = next(k for k in d.item("frame")["keys"] if k["prop"] == "x" and k["t"] == 0.0)
+    assert x_key["ease"] == "custom"                                 # ordinary keys a person can still drag

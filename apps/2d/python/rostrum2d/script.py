@@ -370,6 +370,7 @@ class Build:
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
         self.sized = set()          # groups whose script gave a size (w or h): never refitted
         self.pointed = set()        # unsized groups whose script gave x / y: their children count from that point
+        self.loose: list = []       # (layer, container): set apart with no x / y where the layout sizes the box
         self.counts: dict[str, int] = {}     # type -> the last counted N (new_id)
         self.given: dict[str, tuple] = {}    # item id -> (node, the fields the script gave it): script_inert.py
 
@@ -479,6 +480,7 @@ class Build:
         if values.get("ridePath"):         # rides a path: the path places it, its own x / y are an offset (as layer.ride
             values = {**values, "x": values.get("x", 0.0), "y": values.get("y", 0.0)}     # sets), 0 when the script gave none
         pointed = type_ == "group" and bool({"x", "y"} & values.keys()) and not ({"w", "h", "layout"} & values.keys())             and not script_layout.in_layout(self) and not ({"anchorX", "anchorY", "origin", "anchor"} & values.keys())
+        loose = script_layout.loose(self, values)                    # set apart where its place can't be known: said
         values = script_layout.centre(self, type_, values)           # no x / y: the parent's centre
         if type_ == "group":        # a script's hugging group grows around its anchor; keeping top-left is the canvas's
             values.setdefault("hugPin", False)
@@ -486,6 +488,8 @@ class Build:
         made = self.add(type_, id, values, self.holders[-1]["layers"])
         if pointed:
             self.pointed.add(made.id)   # group("arm", x=520, y=650): a child at (0, 80) sits 80 px below that point
+        if loose:
+            self.loose.append((made.node, self.holders[-1]))
         return made
 
 
@@ -587,7 +591,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
         script_time.publish(b)                       # last: the script's markers only once everything else passed
     except Exception as e:
         raise _failed(e, name, scope) from e
-    return Tree(b.root, script_inert.notes(b))
+    return Tree(b.root, script_inert.notes(b) + [script_layout.loose_note(n, h) for n, h in b.loose])
 
 
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document

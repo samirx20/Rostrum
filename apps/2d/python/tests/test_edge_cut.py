@@ -30,3 +30,15 @@ def test_a_soft_blurred_blob_past_the_edge_is_atmosphere_not_a_cut_subject():
     comp = {"id": "c", "type": "comp", "width": 1920, "height": 1080, "duration": 2, "layers": [
         {"id": "blob", "type": "shape", "x": 100, "y": 100, "w": 800, "h": 800, "effects": [{"type": "blur", "radius": 90}]}]}
     assert edge_cut.soft(comp["layers"][0]) and not edge_cut.soft({"effects": [{"type": "blur", "radius": 4}]})
+
+
+def test_a_key_timed_on_a_marker_keeps_the_check_on_for_frames_and_sheets():
+    """One key on a marker ("#drop+0.2") made every look reply "the frame-edge check could not run" (a Tally run lost
+    every cut warning): the check reads the composition as it plays. A contact sheet names cuts at its moments too."""
+    from rostrum2d.mcp import render, script_look
+    hero = {**COMP, "id": "film", "type": "comp", "layers": [{"id": "hero", "type": "shape", "shape": "rect", "x": 500, "y": 400,
+            "w": 200, "h": 300, "keys": [{"id": "a", "prop": "opacity", "t": "#drop+0.2", "v": 1}]}]}
+    played = render.played(hero, {"drop": 1.0})
+    assert "hero (shape) cut at the bottom edge" in render.edge_warnings({}, played, 1.0)[0]
+    said = script_look.sheet_cuts({}, played, [0.5, 1.0, 2.0])
+    assert len(said) == 1 and "hero (shape) cut at the bottom edge" in said[0] and "0.5–2 s" in said[0]

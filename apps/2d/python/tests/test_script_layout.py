@@ -75,3 +75,23 @@ def test_a_device_screen_is_a_column_with_no_white_box_unless_asked():
     d = items('device("phone", screen="#ffffff", overflow="hidden")\n')
     s = d["phone_screen"]
     assert (s["background"], s["bgColor"], s["clip"]) == (True, "#ffffff", True)
+
+
+def test_a_label_set_apart_in_a_button_shows_on_it_or_the_reply_says_where_it_went():
+    """Both Tally runs added a "Paid" text inside a button with apart=True and no x / y: it sat at the picture's centre
+    counted from the button's corner, ~900 px off it, and nothing said so. In a box of a set size it now sits on the
+    box's centre; in one its layout sizes, run_script's notes say where it went and what places it."""
+    tree = run_source(HEAD + '''
+with column("sheet", anchor="top-left", x=600, y=300, w=400, h=300, padding=28):
+    button("Pay", id="pay", w="fill", h=58)
+    button("Fixed", id="fixed", w=200, h=58)
+with layer("pay"):
+    text("paid", body="Paid", apart=True)
+with layer("fixed"):
+    text("ok", body="OK", apart=True)
+''', "s.py")
+    ok = next(c for c in tree["comps"][0]["layers"][1]["layers"][1]["layers"] if c["id"] == "ok")
+    assert (ok["x"], ok["y"]) == (100, 29)
+    said = [n for n in tree.notes if '"paid"' in n]
+    assert len(said) == 1 and 'stack "pay"' in said[0] and "x 960, y 540" in said[0] and "leave apart out" in said[0]
+    assert not [n for n in tree.notes if '"ok"' in n]
