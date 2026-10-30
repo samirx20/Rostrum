@@ -167,3 +167,12 @@ def test_a_stronger_attack_just_before_a_climax_takes_the_moment(tmp_path):
     assert f and abs(f[0]["measured"]["rival_s"] - 9.1) < 0.05 and "moment(" in f[0]["words"], r["words"]
     clean = check(_piece(tmp_path / "clear.wav", hit_amp=1.5, gap_before=0.5), [{"at": 10.0, "kind": "hit"}], whole=False)
     assert "early_rival" not in kinds(clean)
+
+
+def test_an_asked_moment_with_nothing_weak_still_gets_its_line():
+    """a1: expect ["#lift"] printed "Weakest moments (1 asked):" over an empty list; a passing lift says its rise."""
+    sr = 48000
+    t = np.arange(30 * sr) / sr
+    y = (0.05 * np.sin(2 * np.pi * 220 * t) * (1 + 3 * (t >= 20))).astype("float32")
+    said = lines((y, sr), [{"at": 20.0, "kind": "lift"}], found=[])
+    assert len(said) == 1 and "lift" in said[0] and "LU" in said[0]
