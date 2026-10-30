@@ -102,7 +102,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `item.place_on(other, beside="left"\|"right"\|"front"\|"back", gap=)` / `place_on(in_front_of=other)` | next to it on that world side, lined up with its middle, its base level with its base, `gap` metres between |
 | `row([a, b, c], gap=0.1, centre=True, axis="x", at=)` | side by side in that order, the row's middle on 0 (or `at`), all on the ground |
 | `cam.take_view(pos, look_at)` | the camera stands at `pos` and aims at `look_at` (a point or an item) |
-| `shot(id, camera=, frame=item_or_list, at=(x, y), fill=)` / `shot.key("frame", {t: {"fill": …}})` | frame the subject: its middle at `at` (picture fractions from left / top), its height `fill` of the picture; keyed = a push-in |
+| `shot(id, camera=, frame=item_or_list, at=(x, y), fill=)` / `shot.key("frame", {t: {"fill": …}})` | frame the subject: its middle at `at` (picture fractions from left / top), its height `fill` of the picture; keyed = a push-in. Any item: an import is measured from its file |
 | `item.place_on(clay or mesh, at=(x, y, z), normal=)` | stand a mesh on that surface at a world point (`normal` left out: straight out from its upright middle line); on a clay with Mirror on, off its middle (farther than its own half size), it also gets its mirrored copy `<id>_mirrored`, which follows it; on a clay it also follows the clay's pose (`follow=<clay>`, `followPose=True`). From a pixel of a look instead: the tool `edit_place_on` |
 | `light(id, kind=, **fields)` | `rect disk strip sphere spot distant dome` |
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |

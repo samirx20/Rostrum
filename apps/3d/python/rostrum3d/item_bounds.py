@@ -4,18 +4,23 @@ A shape of fixed form (box, sphere, cylinder, cone, capsule, plane, disc, torus)
 editable mesh, an outline (text, logo, drawing) or a combine asks the engine for its built mesh (the same hook
 mesh.edit uses: ops_mesh.use_engine); a clay is the points its pieces reach (clay_detail.reach); a light or a camera
 is its place; a group or a rig is everything in it; a copies item is what its copies take as the engine draws them then
-(laid out, held, keyed or fallen: the core's `copies_box`). Each box goes through the item's world transform at the time
-asked, so a moving item is framed where it is then. An imported file has no size the Python side knows: refused loudly.
+(laid out, held, keyed or fallen: the core's `copies_box`); an import is the bounds the engine reads in its file (its
+prim, or the file's default prim; the engine's inspect_usd, the same read import.add lands it by), in the file's own
+numbers, carried by the import's scale and turn. Each box goes through the item's world transform at the time asked,
+so a moving item is framed where it is then.
 """
 from __future__ import annotations
+
+import os
 
 from . import aim, clay_detail
 from .resolve import Frames
 
 POINTS = ("light", "camera")
 HOLDERS = ("group", "rig")
-MEASURED = ("group", "rig", "mesh", "combine", "clay", "copies", "light", "camera")   # what world_box can measure
+MEASURED = ("group", "rig", "mesh", "combine", "clay", "copies", "import", "light", "camera")   # what world_box can measure
 
+_FILES: dict = {}          # file -> ((file, mtime, size), the engine's inspect_usd answer)
 _COPIES = None            # (doc, copies id, t seconds) -> (lo, hi) world, or None when it has no copies (use_engine)
 
 
@@ -65,6 +70,24 @@ def _shape_box(v: dict):
     return [-x for x in h], h
 
 
+def _import_box(item: dict):
+    """(lo, hi) of an import in its own space (the file's numbers; the item's sx/rx carry its unit rescale and Z-up turn)."""
+    from . import ops_import
+    if ops_import._INSPECT is None:
+        raise ValueError(f'"{item["id"]}" is measured from its file, which the engine reads, and no engine is running here')
+    try:
+        st = os.stat(item["file"])
+        stamp = (item["file"], st.st_mtime_ns, st.st_size)
+    except OSError:
+        stamp = None                         # the engine says what is wrong with the path
+    if stamp is None or _FILES.get(item["file"], (None,))[0] != stamp:   # a framed push-in measures it once
+        _FILES[item["file"]] = (stamp, ops_import._INSPECT(item["file"]))
+    box = ops_import.file_bounds(_FILES[item["file"]][1], item.get("prim", ""))
+    if box is None:
+        raise ValueError(f'"{item["id"]}": nothing in {item["file"]} {item.get("prim") or "(its default prim)"} has a size')
+    return box
+
+
 def _corners(lo, hi):
     return [[(lo, hi)[i >> k & 1][k] for k in range(3)] for i in range(8)]
 
@@ -99,6 +122,8 @@ def _own_points(doc: dict, fr: Frames, id_: str, f: int) -> list[list[float]]:
         box = _shape_box(fr.values(id_, f)) or _built(doc, id_)
     elif kind == "combine":
         box = _built(doc, id_)
+    elif kind == "import":
+        box = _import_box(item)
     else:
         raise ValueError(f'"{id_}" is a {kind}: its size isn\'t known here, so it can\'t be framed')
     return [aim.point(world, c) for c in _corners(*box)] if box else []

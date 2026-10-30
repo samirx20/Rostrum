@@ -53,3 +53,34 @@ def test_keep_size_and_a_file_without_a_unit_are_not_rescaled(doc):
     doc.apply({"op": "import.add", "args": {"id": "b", "file": "C:/x/crate.obj"}}, SAM)
     assert doc.item("a")["sy"] == doc.item("b")["sy"] == 1.0
     assert ops_import.unit_note(doc.item("a")) == ops_import.unit_note(doc.item("b")) == ""
+
+
+def test_framing_measures_an_import_by_its_file_carried_by_its_scale_and_turn(doc):
+    from rostrum3d import item_bounds
+    doc.apply({"op": "import.add", "args": {"id": "crate", "file": "C:/x/crate.fbx", "x": 1.0, "y": 0.6}}, SAM)
+    lo, hi = item_bounds.world_box(doc.data, ["crate"])
+    assert lo == pytest.approx([0.8, 0.6, -0.2]) and hi == pytest.approx([1.2, 1.05, 0.2])   # 40 x 45 x 40 cm on its base
+    ops_import.use_inspect(lambda file: {**CRATE, "metersPerUnit": 1.0, "upAxis": "Z", "defaultPrim": "/tower", "prims": [
+        {"path": "/tower", "type": "Xform", "bounds": [[0, 0, 0], [1, 1, 3]]},
+        {"path": "/tower/Top", "type": "Sphere", "bounds": [[0, 0, 2], [1, 1, 3]]}]})
+    doc.apply({"op": "import.add", "args": {"id": "tower", "file": "C:/x/tower.usda"}}, SAM)
+    lo, hi = item_bounds.world_box(doc.data, ["tower"])
+    assert hi[1] - lo[1] == pytest.approx(3.0) and lo[1] == pytest.approx(0.0)              # Z-up stood upright, 3 m tall
+    doc.apply({"op": "import.add", "args": {"id": "top", "file": "C:/x/tower.usda", "prim": "/tower/Top"}}, SAM)
+    lo, hi = item_bounds.world_box(doc.data, ["top"])
+    assert hi[1] - lo[1] == pytest.approx(1.0)                                                # its own prim only
+
+
+def test_a_shot_frames_an_import_as_it_frames_a_box_of_the_same_size():
+    ops_import.use_inspect(lambda file: CRATE)
+    try:
+        cams = []
+        for subject in ('import_usd("it", file="C:/x/crate.fbx", x=1.0)',
+                        'mesh("it", shape="box", width=0.4, height=0.45, depth=0.4, x=1.0)'):
+            d = Document.new(KIND)
+            d.run_script("s.py", run_source(subject + '\ncam = camera("cam", z=3)\n'
+                                            'shot("hero", camera=cam, end=1, frame="it", at=(1/3, 0.5), fill=0.5)\n', "s.py"))
+            cams.append([d.item("cam")[k] for k in "xyz"])
+    finally:
+        ops_import.use_inspect(None)
+    assert cams[0] == pytest.approx(cams[1], abs=1e-6) and cams[0] != pytest.approx([0, 0, 3])
