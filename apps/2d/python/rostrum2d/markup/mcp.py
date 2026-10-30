@@ -1,10 +1,9 @@
-"""The markup film MCP server (proof, 2026-10-30): `python -m rostrum2d.markup.mcp`. Its own server, so the document
-path's tools are untouched (brief: the proof's path behind its own tool). Four tools:
+"""rostrum-2d, the 2D agent surface (2026-10-30): markup films behind three tools. `python -m rostrum2d.mcp` starts it
+(ROSTRUM2D_TOOLSET=classic starts the older 28-tool document server, kept for comparison only).
 
     run_film      save + run a film script, answer with a contact sheet
-    look_film     frames at any times (the live engine, ~0.1-0.3 s a frame), a sheet or full-size stills
-    render_film   the MP4, every frame, with the project's sound (RostrumSound's main mix) under it
-    inspect_guide the 'markup' guide (apps/2d/guides/markup/)
+    look_film     frames at any times (the live engine, ~0.1-0.3 s a frame), a sheet, review notes, or a guide section
+    render_film   the MP4, every frame, with the project's sound (RostrumSound's main mix) under it, and a review sheet
 
 The project folder is the one this agent session's other Rostrum apps opened (agent_last.film), so voice lines,
 music and markers made in RostrumSound are this film's; else a scratch project of its own.
@@ -18,16 +17,16 @@ from pathlib import Path
 from rostrum_core import agent_last, agent_start
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import App, Guides, Reply, Runtime, Tools, build_server
-from rostrum_core.mcp import shared_inspect
 from rostrum_core.mcp.sheet import contact_sheet, scaled_copy, tile_width
 
 from . import render, runner
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides" / "markup"
-INSTRUCTIONS = ("rostrum-2d-markup makes 2D films written as HTML + inline SVG + CSS from Python: keys on any attribute or "
-                "CSS value, a camera, light on shapes, true motion blur, lip sync to RostrumSound voices. Read "
-                "inspect_guide 'markup' first. Loop: run_film (a contact sheet comes back), look_film at the moments that "
-                "matter at full size, change the script, run_film again under the same name; render_film to deliver.")
+INSTRUCTIONS = ("rostrum-2d makes 2D films written as HTML + inline SVG + CSS from Python: keys on any attribute or "
+                "CSS value, a camera, light and grain on shapes, true motion blur, lip sync to RostrumSound voices. Read "
+                "look_film {guide: true} first (one short page). Loop: run_film (a contact sheet comes back), look_film at the "
+                "moments that matter at full size, change the script, run_film again under the same name; render_film to "
+                "deliver. Every reply ends with a clock line.")
 _STATE: dict = {"session": None, "folder": None}
 
 
@@ -73,7 +72,8 @@ def _film(name: str, code: str | None, file: str | None = None):
         raise RostrumError(codes.BAD_ARGUMENT, "film script", name, str(e)) from None
 
 
-def _sheet(film, times: list[float], name: str, width: int, cols: int) -> tuple[Path, float]:
+def _sheet(film, times: list[float], name: str, width: int, cols: int) -> tuple[Path, float, list[Path]]:
+    """The frames at `times` as one picture (a still or a contact sheet), ms a frame, and each frame's full-size file."""
     out = folder() / "looks" / f"{name}-{datetime.now():%H%M%S%f}"
     t0 = time.perf_counter()
     try:
@@ -81,13 +81,36 @@ def _sheet(film, times: list[float], name: str, width: int, cols: int) -> tuple[
     except render.RenderError as e:
         raise RostrumError(codes.RENDER_FAILED, "look", name, str(e)) from None
     ms = (time.perf_counter() - t0) * 1000 / max(1, len(times))
+    frames = [p for p, _ in shots]
     if len(shots) == 1:
         p = out / "look.png"
         scaled_copy(shots[0][0], width, p)
-        return p, ms
+        return p, ms, frames
     sheet = out / "sheet.png"
     contact_sheet([(p, f"{t:.2f} s") for p, t in shots], tile_width(width, cols), cols, sheet)
-    return sheet, ms
+    return sheet, ms, frames
+
+
+def _review(film, times: list[float], frames: list[Path]) -> list[str]:
+    """Plain observations on these frames (cut edges, covered text, near-empty or unmoving stretches): information only."""
+    from . import review
+    try:
+        return review.notes(session(), film, times, frames)
+    except render.RenderError as e:
+        raise RostrumError(codes.RENDER_FAILED, "look", "notes", str(e)) from None
+
+
+# The engine's own words (what a browser can't draw from the same markup), named in run_film's reply while a film
+# doesn't use them yet: information, never a prompt (the bench: 1 of 7 final scripts used any).
+_WORDS = [("light", lambda f, m: bool(f._light) or "data-light" in m, 'data-light / film.light()'),
+          ("grain", lambda f, m: bool(getattr(f, "_grain", None)) or "data-grain" in m, 'data-grain / film.grain()'),
+          ("camera", lambda f, m: bool(f._cam), "film.camera()"),
+          ("motion blur", lambda f, m: bool(f.blur_samples), "film.blur()")]
+
+
+def _unused(film, markup: str) -> str:
+    left = [w for name, used, w in _WORDS if not used(film, markup)]
+    return f" Engine words not in this film: {', '.join(left)} (look_film {{guide: \"<word>\"}})." if left else ""
 
 
 def _times(film, args, default_n: int) -> list[float]:
@@ -104,11 +127,7 @@ def _notes(film) -> str:
 
 
 tools = Tools()
-_g = Tools()
-shared_inspect.register(_g)
-tools.add("inspect_guide", _g.take("inspect_guide").fn,
-          {"properties": {"topic": {"type": "string"}, "section": {"type": "string"}}},
-          "A how-to guide: {\"topic\": \"markup\"} first. No topic: the list.")
+GUIDE = "markup"
 
 
 @tools.tool("run_film", {"properties": {
@@ -118,20 +137,22 @@ tools.add("inspect_guide", _g.take("inspect_guide").fn,
     "at": {"type": "array", "items": {"type": "number"}, "description": "Seconds to show on the sheet (default: 8 across the film)."},
     "width": {"type": "integer", "description": "Sheet width px (default 1600)."}}, "required": ["name"]})
 def run_film(ctx, args):
-    """Save and run a markup film script (HTML + inline SVG + CSS from Python; inspect_guide 'markup') and see it: a
+    """Save and run a markup film script (HTML + inline SVG + CSS from Python; look_film {guide: true}) and see it: a
     contact sheet of frames drawn by the engine. Errors name the script line."""
     film, path = _film(args["name"], args.get("code"), args.get("file"))
     times = _times(film, args, 8)
-    sheet, ms = _sheet(film, times, args["name"], args.get("width", 1600), 4)
+    sheet, ms, _ = _sheet(film, times, args["name"], args.get("width", 1600), 4)
     from .gaps import notes
-    for n in notes(film.markup(times[len(times) // 2])):
+    mid = film.markup(times[len(times) // 2])
+    for n in notes(mid):
         if n not in film.notes:
             film.notes.append(n)
     keyed = len(film._keys)
     return Reply(f'Film "{args["name"]}": {film.duration:g} s, {film.width}×{film.height} at {film.fps:g} fps, {keyed} keyed '
                  f'element{"s" * (keyed != 1)}{", motion blur on" if film.blur_samples else ""}; {len(times)} frames, '
-                 f'{ms:.0f} ms a frame.{_notes(film)} Next: look_film at the moments that matter at full size '
-                 f'(at: [s], width 1920) and judge them as a client would; change the script and run_film again.',
+                 f'{ms:.0f} ms a frame.{_notes(film)}{_unused(film, mid)} Next: look_film at the moments that matter at full size '
+                 f'(at: [s]) and judge them as a client would, or across the film with notes (every: 2, notes: true); '
+                 f'change the script and run_film again.',
                  {"script": str(path), "times": times, "msPerFrame": round(ms), "notes": film.notes}, files=[sheet], images=[sheet])
 
 
@@ -139,17 +160,31 @@ def run_film(ctx, args):
     "name": {"type": "string"},
     "at": {"type": "array", "items": {"type": "number"}, "description": "Seconds. One time: one full-size still."},
     "every": {"type": "number", "description": "A frame every N seconds across the whole film (a review sheet)."},
+    "notes": {"type": "boolean", "description": "Also say what these frames show that a client would notice: text cut by the frame edge, text covered by another element, near-empty frames, stretches where nothing moves."},
+    "guide": {"type": ["boolean", "string"], "description": "Read the guide instead: true for the start page, or a section's heading words (\"keys\", \"light\", \"sound\")."},
     "width": {"type": "integer", "description": "Picture width px (default: 1920 for one still, 1600 for a sheet)."},
-    "columns": {"type": "integer", "description": "Sheet columns (default 3)."}}, "required": ["name"]})
+    "columns": {"type": "integer", "description": "Sheet columns (default 3)."}}})
 def look_film(ctx, args):
     """See the film as the export will draw it (same engine, same frame): one still at full size, a few chosen times, or
-    a frame every N seconds across the whole film to review it end to end. Changes nothing."""
+    a frame every N seconds across the whole film to review it end to end; notes say what a client would notice. Or
+    read the guide. Changes nothing."""
+    if args.get("guide") not in (None, False):
+        g, sec = ctx.app.guides, args["guide"]
+        text = g.part(GUIDE, None if sec is True or sec in ("", "start") else str(sec), cap=2600)
+        text = text.replace('Ask with `section` (words of its heading), or section: "all".',
+                            'Ask with look_film {guide: "<heading words>"}, or guide: "all".')
+        return Reply(text, {"guide": GUIDE, "section": None if sec is True else sec})
+    if not args.get("name"):
+        raise RostrumError(codes.BAD_ARGUMENT, "look_film", "name", "names the film to look at (or send guide)")
     film, _ = _film(args["name"], None)
     times = _times(film, args, 12)
     width = args.get("width", 1920 if len(times) == 1 else 1600)
-    pic, ms = _sheet(film, times, args["name"], width, args.get("columns", 3))
+    pic, ms, frames = _sheet(film, times, args["name"], width, args.get("columns", 3))
+    seen = _review(film, times, frames) if args.get("notes") else []
+    said = (" Seen: " + "; ".join(seen) + ".") if seen else (" Seen: nothing cut, covered or empty in these frames." if args.get("notes") else "")
     return Reply(f'{len(times)} frame{"s" * (len(times) != 1)} of "{args["name"]}" at {", ".join(f"{t:g}" for t in times)} s, '
-                 f'{ms:.0f} ms a frame.{_notes(film)}', {"times": times, "msPerFrame": round(ms)}, files=[pic], images=[pic])
+                 f'{ms:.0f} ms a frame.{said}{_notes(film)}', {"times": times, "msPerFrame": round(ms), "seen": seen},
+                 files=[pic], images=[pic])
 
 
 @tools.tool("render_film", {"properties": {
@@ -174,6 +209,10 @@ def render_film(ctx, args):
     # The mix is made before any frame is drawn: a song that can't be mixed fails now, not after the whole picture.
     from ..io import export_sound
     wav, silent_why = None, ""
+    if song:                                    # an empty song (nothing written in it yet): picture only, said plainly
+        from rostrum_sound import soundtrack
+        if not (soundtrack.facts(str(f), song["id"]) or {}).get("seconds"):
+            song, silent_why = None, f' Silent: the project\'s song "{song.get("name", song["id"])}" in RostrumSound has no sound yet.'
     if song:
         try:
             wav = export_sound.mix(str(f), song["id"])
@@ -200,16 +239,17 @@ def render_film(ctx, args):
 def main():
     import anyio
     from mcp.server.stdio import stdio_server
-    app = App("rostrum-2d-markup", {}, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES))
+    app = App("rostrum-2d", {}, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES))
     rt = Runtime(app)
     rt.tools = tools
     from . import loop
-    if loop.on():
-        def review(name):
-            film, _ = _film(name, None)
-            times = [round(t, 2) for t in _times(film, {"every": loop.REVIEW_EVERY}, 12)]
-            return _sheet(film, times, name, 1600, 4)[0], times
-        loop.wrap(tools, review)
+
+    def review(name):
+        film, _ = _film(name, None)
+        times = [round(t, 2) for t in _times(film, {"every": loop.REVIEW_EVERY}, 12)]
+        png, _, frames = _sheet(film, times, name, 1600, 4)
+        return png, times, _review(film, times, frames)
+    loop.wrap(tools, review)
     server = build_server(app, runtime=rt)
 
     async def serve():
