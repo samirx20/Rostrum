@@ -118,11 +118,21 @@ def depth(a: Placed, b: Placed):
     return best
 
 
+_KEEP = ("shape", "radius", "height", "tube", "width", "depth")
+
+
 def placed(fr, id_: str, f: int) -> Placed | None:
+    """Its form at frame f; one Placed per item while its form and place stay the same (kept on `fr`: a still box is
+    worked out once for every frame the checks read)."""
     item = fr.items[id_]
     if item["type"] != "mesh" or item.get("shape") not in FORMS:
         return None
-    return Placed(fr.values(id_, f), fr.world(id_, f))
+    v, world = fr.values(id_, f), fr.world(id_, f)
+    key = (id_, repr(world), tuple(v.get(k) for k in _KEEP))
+    memo = fr.__dict__.setdefault("_placed", {})
+    if key not in memo:
+        memo[key] = Placed(v, world)
+    return memo[key]
 
 
 def contact_faults(track, info: dict, check: list[int]) -> list[dict]:
