@@ -137,7 +137,7 @@ def _run_script(full: Tools):
         args = dict(args)
         if "project" in args:
             opened = opener.fn(as_tool(ctx, "run_open_project"), opener.check({"folder": args.pop("project")}))
-            if not any(k in args for k in ("source", "path", "do")):
+            if not any(k in args for k in ("source", "path", "name", "do")):
                 return opened
         if "do" in args:
             return _part(ctx, does, args.pop("do"), args, "run_script", "do")

@@ -32,13 +32,14 @@ import re
 import sys
 import threading
 
-from rostrum_core import RostrumError, codes, did_you_mean, nearest
+from rostrum_core import RostrumError, codes, did_you_mean, nearest, script_python
 from rostrum_core.merge import check_output
 
 from . import expression as EX
 from .builder import Song, Track
 from .doc import KIND, meter
 from . import script_build, script_ending, script_moment, script_ops, script_scope, script_seconds, script_sync, writing
+from .script_scope import say
 from .script_time import Beat, Beats, plain, until
 
 _asked = threading.local()
@@ -130,9 +131,12 @@ def run_source(source: str, name: str, doc=None) -> dict:
     song = Song()
     _asked.markers = []
     song.known = list(doc.data.get("markers", [])) if doc is not None else []
-    names = {**script_scope.scope(), **scope(song)}
+    names = {**script_scope.scope(name), **scope(song)}
     try:
-        exec(compile(source, name, "exec"), names)
+        with script_scope.running(name) as ran:            # print → the reply; exit() ends the script there
+            exec(compile(source, name, "exec"), names)
+        for line in script_python.exit_note(ran):
+            say(line)
         script_sync.check(song)            # every downbeat / land still lands on the finished tempo map
         script_ending.apply(song)          # ending(...): the parts land, what runs past is trimmed, the length set
         script_moment.apply(song)          # each moment's rest / stop / choke / swell / strike, on every note written

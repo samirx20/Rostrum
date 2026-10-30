@@ -13,6 +13,7 @@ from .edit_summary import sentence, summarize
 from .faults import NOTES, asked
 from .jobs import MAX_WAIT_S, outcome
 from .reply import Reply
+from .script_files import resolve as resolve_script, save as save_script
 from .tools import Tools
 
 _ITEM = {"item": {"type": "string", "description": "Project item id; default the open document."}}
@@ -36,13 +37,16 @@ def _new_advice(doc, before: set) -> list[str]:
 def _script_source(args) -> tuple[str, Path | None]:
     """run_script's text: `source`, or the file at `path` (exactly one of them). Returns (text, file or None)."""
     if ("source" in args) == ("path" in args):
-        raise RostrumError(codes.BAD_ARGUMENT, "run_script", "the script", "needs exactly one of `source` or `path`",
-                           ["source", "path"], 'e.g. {"path": "C:/work/promo.py"}, or {"source": "comp(\\"main\\", ...)", "name": "promo.py"}')
+        raise RostrumError(codes.BAD_ARGUMENT, "run_script", "the script", "needs exactly one of `source` or `path`"
+                           + (f' (no file "{args["name"]}" in the project's scripts folder yet)' if args.get("name") and "path" not in args else ""),
+                           ["source", "path", "name of a file in <project>/scripts"],
+                           'e.g. {"path": "C:/work/promo.py"}, {"name": "promo.py"}, or {"source": "comp(\\"main\\", ...)", "name": "promo.py"}')
     if "source" in args:
         return args["source"], None
     file = Path(args["path"])
     if not file.is_absolute() or not file.is_file():
-        raise RostrumError(codes.NOT_FOUND, "run_script", f'"{file}"', "is not a script file", ["an absolute path to a .py file"],
+        raise RostrumError(codes.NOT_FOUND, "run_script", f'"{file}"', "is not a script file",
+                           ["a path to a .py file (absolute, or in the project folder)"],
                            "Write the script to a file first, or pass its text as `source`.")
     return file.read_text(encoding="utf-8"), file
 
@@ -68,18 +72,23 @@ def register(tools: Tools):
 
     @tools.tool("run_script", {"properties": {
         **_ITEM, "source": {"type": "string", "description": "The script as text (Python). Give `source` or `path`."},
-        "path": {"type": "string", "description": "A .py file to run instead of `source` (absolute path)."},
-        "name": {"type": "string", "default": "agent_script.py", "description": "Same name = replaces what that script made (a person's edits stay); a new name adds a second copy. Default: the file name."},
+        "path": {"type": "string", "description": "A .py file to run instead of `source`: absolute, or in the project folder."},
+        "name": {"type": "string", "default": "agent_script.py", "description": "Same name = replaces what that script made (a person's edits stay); a new name adds a second copy. Default: the file name. Only a name: runs <project>/scripts/<name>."},
         "force": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string"}}],
                   "description": "Overwrite values someone else changed since this script's last run: true for all, or the keys the reply named."},
         "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def run_script(ctx, args):
         """Run a Python script that builds the document tree and merge it in: {"path": "C:/work/promo.py"} runs a file, {"source": "...", "name": "promo.py"} runs text.
+        Plain Python: any import (numpy, dataclasses …), classes, print (comes back in the reply); `random` is seeded the same every run.
+        Text sent as `source` is saved as <project>/scripts/<name>: edit that file with your own tools and run {"name": "promo.py"}, no need to resend it.
         What a person moved by hand stays; held-back values are listed. Run again under the same `name` it replaces what it made (the file name, with `path`); under a new name it adds a second copy."""
         if ctx.app.run_source is None:
             raise RostrumError(codes.BAD_ARGUMENT, "", "this app", "has no script layer wired to the server")
+        args = resolve_script(ctx, args)                 # a relative path, or only a name: the file in the project
         source, file = _script_source(args)
         doc, name = ctx.document(args.get("item")), args.get("name") or (file.name if file else "agent_script.py")
+        if said := save_script(ctx, args, name):         # inline text kept as a file the agent can edit
+            ctx.note(said)
         run = ctx.app.run_source
         tree = run(source, name, doc) if getattr(run, "wants_doc", False) else run(source, name)
         advised = set(doc.kind.advice(doc.data))

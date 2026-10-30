@@ -15,7 +15,7 @@ import dataclasses
 from pathlib import Path
 
 from rostrum_core import RostrumError, agent_start, codes
-from rostrum_core.mcp import Reply, Tools, open_folder
+from rostrum_core.mcp import Reply, Tools, open_folder, script_files
 
 from .. import KIND
 from .. import lastproject as last
@@ -127,6 +127,7 @@ def with_script_print(runtime) -> None:
     old = runtime.tools.get("run_script")
 
     def run_script(ctx, args):
+        args = script_files.resolve(ctx, args)           # a relative path, or only a name: the file in <project>/scripts
         script_twins.refuse_second_copy(ctx.document(args.get("item")), args)
         script_shared.publish(ctx, ctx.document(args.get("item")), args)      # marker(..., shared=True), before the merge
         script_scope.forget_printed()         # after the check: its dry run printed too
