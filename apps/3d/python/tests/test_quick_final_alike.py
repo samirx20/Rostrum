@@ -39,8 +39,6 @@ def render(engine, doc, renderer, w, h, out):
     return np.asarray(Image.open(out).convert("RGB"))
 
 
-# KNOWN OPEN (3d-seams-final, 2026-10-30): the fix in fcdebf92 builds but changes nothing in the pictures
-@pytest.mark.xfail(reason="KNOWN OPEN: Final still differs from Quick", strict=False)
 def test_an_imported_texture_is_as_bright_in_final_as_in_quick(engine, tmp_path):
     from PIL import Image
     Image.new("RGB", (8, 8), (128, 128, 128)).save(tmp_path / "grey.png")  # sRGB 128 = 0.22 linear (0.5 if undecoded)
@@ -61,8 +59,6 @@ def test_an_imported_texture_is_as_bright_in_final_as_in_quick(engine, tmp_path)
     assert abs(q / f - 1) <= 0.15, f"quick {q:.4f} against final {f:.4f} (x{q / f:.2f}): the texture's colour space differs"
 
 
-# KNOWN OPEN (3d-seams-final, 2026-10-30): the fix in fcdebf92 builds but changes nothing in the pictures
-@pytest.mark.xfail(reason="KNOWN OPEN: Final still differs from Quick", strict=False)
 def test_a_wide_picture_frames_the_camera_alike(engine, tmp_path):
     # a white post near each side of the picture, on black: where its middle lands must match to a couple of pixels
     src = ('white = material("white", baseColor="#000000", emissionColor="#ffffff", emissionStrength=4)\n'
