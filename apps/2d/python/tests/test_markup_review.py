@@ -62,3 +62,15 @@ def test_parked_inside_a_clipping_parent_is_not_cut(session):
     said = "\n".join(out)
     assert not any("#sheet" in n for n in out), said
     assert any(n.startswith('the text "CH 02" is cut by the top edge') for n in out), said
+
+
+def test_parts_inside_an_svg_are_measured(session):
+    film = Film(480, 270, fps=30, duration=1, background="#0d0f14")
+    film.scene('<svg id="pic" width="480" height="270" viewBox="0 0 240 135" style="position:absolute; left:0; top:0">'
+               '<text x="20" y="70" font-size="30" fill="#fff">TITLE</text>'
+               '<circle id="ball" cx="60" cy="60" r="12" fill="#f80"/>'
+               '<text x="200" y="120" font-size="20" fill="#fff">EDGE</text></svg>')
+    out = review.notes(session, film, [0.5])
+    said = "\n".join(out)
+    assert any(n.startswith('#ball sits on the text "TITLE"') or n.startswith('#ball covers the text "TITLE"') for n in out), said
+    assert any(n.startswith('the text "EDGE" is cut by the right edge') for n in out), said
