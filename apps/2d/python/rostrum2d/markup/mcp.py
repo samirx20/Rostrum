@@ -203,6 +203,13 @@ def main():
     app = App("rostrum-2d-markup", {}, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES))
     rt = Runtime(app)
     rt.tools = tools
+    from . import loop
+    if loop.on():
+        def review(name):
+            film, _ = _film(name, None)
+            times = [round(t, 2) for t in _times(film, {"every": loop.REVIEW_EVERY}, 12)]
+            return _sheet(film, times, name, 1600, 4)[0], times
+        loop.wrap(tools, review)
     server = build_server(app, runtime=rt)
 
     async def serve():
