@@ -102,7 +102,7 @@ refused, never dropped.
 | every layer | `x`, `y` (where its anchor sits, px; −20000 to 20000, so a tall parallax world or a long camera travel fits in that range: scale the world down or shorten the travel), `scale`, `scaleX`/`scaleY` (stretch one way; negative mirrors; key `scaleX` to squash), `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
 | `comp` | `width`, `height`, `fps`, `duration` (s), `background`, `shutter` (motion blur angle, 0 = off), `shutterSamples`, `workStart` / `workEnd` (the work area the screen shows on its ruler, s; 0 = none; export a part with `start` / `end`) |
 | `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
-| `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
+| `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them; any Google Fonts family by name too), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
 | `path` | `d` (any SVG path data: M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z, so reading it back shows those), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` + `gap` (px; `dash=0` = solid; key `dashOffset` to march) |
 | `drawing` | `w`, `h` (its canvas, px), `eachFrame`, `loop`, `drawnSoFar` (0–1: key 0 → 1 to paint its strokes on in the order they were painted) |
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
@@ -176,6 +176,8 @@ Everything a script can call, by job. The details and techniques are in the topi
 - `shape(id, **fields)`, `text(id, **fields)`, `image(id, **fields)`, `path(id, **fields)`, `group(id, **fields)`: the
   layers. Layers made inside `with group(...):` go in it, and their `x`, `y` are then in the group's box.
 - `layer("id")` gives back an item made earlier in the script.
+- `icon(name, id=, size=24, color=, stroke_width=, **group fields)`: icons by name (Lucide, then Tabler: `"arrow-right"`,
+  `"tabler:heart-filled"`, `"ArrowRight"`) as a group of path layers.
 - Fields: `x`, `y` (the anchor, default the centre), `w`, `h`, `scale`, `rotation`, `opacity` 0–1. Shape:
   `shape="rect" | "ellipse" …`, `fill`, `radius`, `filled`, `stroke="#fff"`, `strokeWidth`. Text: `body`, `size`,
   `weight`, `color`, `align` (a text's `x` is its left edge, middle or right edge as `align` says). Path: `d` (SVG; with

@@ -48,7 +48,7 @@ def refusal(missing: dict[str, str]) -> str:
 def stand_in(node: dict, label: str, engine_props) -> dict:
     """The text's node as a group at its place (its transform, timing and animation) holding a dashed red box and the
     font's name; `engine_props(type, given)`: scene.py's props filler."""
-    w, h = textsize.size(node["props"])           # (measured in the stand-in font: textsize.key)
+    w, h = textsize.size({**node["props"], "italic": False})   # in the stand-in font (textsize.key), upright: it may lack an italic
     w, h = max(w, 40.0), max(h, 24.0)
     group = engine_props("group", {**node["props"], "w": w, "h": h})
     anim = {k: v for k, v in node.get("anim", {}).items() if k in group}

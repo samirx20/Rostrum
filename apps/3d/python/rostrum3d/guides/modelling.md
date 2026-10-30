@@ -37,7 +37,7 @@ direction** (`normal`) under any pixel, so an agent can do what the screen does.
 
 ## Text and logos
 
-`text` (the words, `font`, `size` = the em in metres, `weight`, `tracking`, `lineHeight`, `align`), `svg` (`svgFile` or
+`text` (the words, `font` (shipped, any Google Fonts family by name, or a .ttf path), `size` = the em in metres, `weight`, `tracking`, `lineHeight`, `align`), `svg` (`svgFile` or
 `pathData`, `svgWidth`) and `path2d` (`doc2d` + `layer`: a path layer of a 2D item in this project, linked) are flat
 outlines pushed out `depth` along their own +Z (the front), with a rounded edge `bevel`. Text is centred on its origin.
 

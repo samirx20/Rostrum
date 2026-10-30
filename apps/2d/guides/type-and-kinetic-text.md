@@ -12,7 +12,7 @@ below is a field (`inspect_item id=title` lists them with what is valid right no
 | Field | What it does |
 |---|---|
 | `body`, `size` (px), `color` | The words, how big, what colour. |
-| `font` | A family name: one shipped with Rostrum2D or installed on this computer (`inspect_fonts` lists them). A name that is neither is refused when it is set, never drawn in another font. |
+| `font` | A family name: one shipped with Rostrum2D, installed on this computer (`inspect_fonts` lists them), or any Google Fonts family by name (fetched once, then kept). A name that is none of these is refused when it is set, never drawn in another font. |
 | `weight`, `stretch` | The weight (a variable font's `wght`, any value in its range; a family of separate weights, such as Arial, is drawn in its nearest weight, so use one `inspect_fonts` lists) and the width (`wdth`, in %). |
 | `italic` | The family's own italic (on / off). Refused if the family has none. |
 | `slant`, `grade` | The font's `slnt` and `GRAD` axes, set only when not 0. |

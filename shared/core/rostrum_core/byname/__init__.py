@@ -7,8 +7,9 @@ github.com/google/fonts into the shared cache and kept. A name that doesn't exis
 """
 from .icons import IconNotFound, icon, icon_names, icon_sets
 from .icon_paths import icon_paths
+from .icons_html import expand_icons
 from .fonts import FontNeedsInternet, FontNotFound, font_files, google_family, google_families
 from .fonts_css import engine_font, face_css, families_in_css, google_css_url
 
-__all__ = ["icon", "icon_paths", "icon_names", "icon_sets", "IconNotFound", "font_files", "google_family", "google_families",
+__all__ = ["icon", "icon_paths", "expand_icons", "icon_names", "icon_sets", "IconNotFound", "font_files", "google_family", "google_families",
            "FontNotFound", "FontNeedsInternet", "engine_font", "face_css", "families_in_css", "google_css_url"]
