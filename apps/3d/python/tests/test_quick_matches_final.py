@@ -63,3 +63,36 @@ def test_quick_lights_the_floor_like_final(engine, kind, tmp_path):
     q, f = patch(linear(quick)), patch(linear(Image.open(png).convert("RGB")))
     assert f > 0.05, f"{kind}: Final left the floor black ({f})"
     assert abs(q / f - 1) <= tolerance, f"{kind}: quick {q:.4f} against final {f:.4f} (x{q / f:.2f})"
+
+
+def test_quick_colours_an_item_without_material_like_final(engine, tmp_path):
+    # An item with only a colour (an import's displayColor, no material) is drawn by Storm's fallback shading. It added
+    # Storm's own copy of the scene dome on top of the sky handed over, plus a shiny default material's grey: ~2.3x too
+    # bright and washed out in Quick (core/src/storm_lights.cpp, hydra.cpp matte). A card lying flat sees the whole sky
+    # in both renderers, so it must match; walls and undersides differ (Storm's sky has no shadow, the report says).
+    from PIL import Image
+    (tmp_path / "card.usda").write_text('#usda 1.0\n(\ndefaultPrim = "Card"\nmetersPerUnit = 1\nupAxis = "Y"\n)\n'
+                                        'def Plane "Card"\n{\nuniform token axis = "Y"\ndouble width = 4\ndouble length = 4\n'
+                                        'color3f[] primvars:displayColor = [(0.8, 0.25, 0.2)]\n}\n')
+    src = ('light("sky", kind="dome", intensity=0.5)\n'
+           f'import_usd("card", file={str(tmp_path / "card.usda")!r}, y=0.01)\n'
+           'cam = camera("cam", focalLength=30, y=3.0, z=3.0).aim((0, 0, 0))\n'
+           'shot("hero", camera=cam, fps=24, start=0, end=1)\n')
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    engine.load(describe(doc.data, "hero"))
+    look = {"view": "Un-tone-mapped"}
+    v, w, h, stride, _ = engine.view(camera="cam", frame=0, width=W, height=H, renderer="storm", ao=0, dof=False,
+                                     studio=0, **look)
+    try:
+        quick = np.frombuffer(v, np.uint8).reshape(h, stride)[:, :w * 4].reshape(h, w, 4).copy()
+    finally:
+        v.release()
+    png = tmp_path / "final.png"
+    engine.render(camera="cam", renderer="cycles", frame=0, width=W, height=H, samples=64, png=str(png), **look)
+    rgb = [linear(a)[H // 2 - 10:H // 2 + 10, W // 2 - 15:W // 2 + 15].reshape(-1, 3).mean(axis=0)
+           for a in (quick, Image.open(png).convert("RGB"))]
+    (qr, qg, _), (fr, fg, _) = rgb
+    assert fr > 0.05, f"Final left the card dark ({rgb[1]})"
+    assert abs(qg / qr - fg / fr) <= 0.05, f"greyed: green/red quick {qg / qr:.3f}, final {fg / fr:.3f}"
+    assert abs(qr / fr - 1) <= 0.15, f"red quick {qr:.4f} against final {fr:.4f} (x{qr / fr:.2f})"

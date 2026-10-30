@@ -141,7 +141,7 @@ class Hydra::Engine : public UsdImagingGLEngine {
                     const GfFrustum& view, std::optional<StormSun>* sun_out = nullptr) {
     const auto sky = scene_lights ? scene_sky(stage, frame, storm) : std::nullopt;
     SetLightingState(sky ? (stylized ? GlfSimpleLightVector{} : GlfSimpleLightVector{sky->dome}) : std::move(fallback),
-                     GlfSimpleMaterial(), GfVec4f(0, 0, 0, 1));
+                     matte(), GfVec4f(0, 0, 0, 1));
     show_sky(sky && sky->seen);  // a dome the camera doesn't see still lights (its seenByCamera)
     if (storm) {
       const std::optional<StormSun> sun = sky ? sky->sun : std::nullopt;
@@ -150,6 +150,18 @@ class Hydra::Engine : public UsdImagingGLEngine {
       if (sun_out) *sun_out = sun;
     }
     return bool(sky);
+  }
+  // A material-less item's look in Storm (its fallback shading reads this material): matte, as Cycles' default surface
+  // (a diffuse of the item's colour). GlfSimpleMaterial's own ambient 0.2 and specular 0.5 greyed such items and gave
+  // them highlights Final doesn't have; items with a material ignore it.
+  static const GlfSimpleMaterial& matte() {
+    static const GlfSimpleMaterial m = [] {
+      GlfSimpleMaterial g;
+      g.SetAmbient(GfVec4f(0, 0, 0, 1));
+      g.SetSpecular(GfVec4f(0, 0, 0, 1));
+      return g;
+    }();
+    return m;
   }
   bool storm = false;  // set when made: Storm alone gets the sun light (storm_sun.h)
   bool stylized = false;  // set when made: reads the scene's dome itself (light_raster)
