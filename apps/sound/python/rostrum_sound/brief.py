@@ -48,6 +48,9 @@ register("fade_ending", ["fade out", "fades out", "fade-out", "fading out", "fad
 register("hard_stop", ["hard stop", "stops dead", "dead stop", "cut off", "cuts off", "abrupt end", "abrupt ending",
                        "ends abruptly", "hard cut", "cut to silence", "stops mid", "mid note", "mid-note"], "a hard stop")
 register("loop", ["loop", "loops", "loopable", "looping", "seamless loop", "loops seamlessly"], "a loop")
+register("thin_ending", [re.compile(r"\b(?:alone|solo|by itself|on its own)\b.*\bend(?:s|ing)?\b"),
+                         re.compile(r"\bend(?:s|ing)?\b.*\b(?:alone|solo|by itself|on its own)\b")],
+         "an ending on fewer parts (\"the piano alone ends it\")")
 register("open_ending", ["unresolved", "open ending", "open end", "ends open", "left hanging", "hangs", "unfinished",
                          "question mark", "ends on a question"], "an open, unresolved ending")
 # bad_ending (listen/end_check.py: one fault for every way an ending fails) may be kept only when the brief asks for that
@@ -67,12 +70,23 @@ def text(data: dict | None) -> str:
     return b.strip() if isinstance(b, str) else ""
 
 
+NOT = {"no", "not", "without", "never", "nor", "avoid", "avoiding", "t", "zero", "non", "neither", "instead"}   # "don't" -> "don t"
+NOT_REACH = 3        # a negating word up to this many words before a phrase undoes it: "no build", "without any big build"
+
+
 def _has(phrase: str, word) -> bool:
-    """Whether the normalised `phrase` holds `word` (a phrase, whole words) or matches its pattern."""
+    """Whether the normalised `phrase` holds `word` (a phrase, whole words) or matches its pattern. A phrase negated
+    just before it ("no build", "never builds") is not asked: a7's "(no build, no drop)" read as asking for a build."""
     if isinstance(word, re.Pattern):
         return bool(word.search(phrase))
     w = norm(word)
-    return bool(w) and f" {w} " in f" {phrase} "
+    if not w:
+        return False
+    said, ws = phrase.split(), w.split()
+    for i in range(len(said) - len(ws) + 1):
+        if said[i:i + len(ws)] == ws and not NOT & set(said[max(0, i - NOT_REACH):i]):
+            return True
+    return False
 
 
 def holds(kind: str, phrase: str) -> bool:
