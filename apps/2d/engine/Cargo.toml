@@ -24,7 +24,7 @@ debug = 0
 opt-level = 3
 codegen-units = 16
 
-# Our fork of Blitz, AnyRender, Parley and usvg (MIT / Apache-2.0, licences kept). What each patch fixes is
+# Our fork of Blitz, AnyRender (and its SVG painter), Parley and usvg (MIT / Apache-2.0, licences kept). What each patch fixes is
 # in vendor/PATCHES.md. Only these exact versions are patched.
 [patch.crates-io]
 usvg = { path = "vendor/usvg" }
@@ -32,4 +32,5 @@ blitz-paint = { path = "vendor/blitz-paint" }
 blitz-dom = { path = "vendor/blitz-dom" }
 anyrender_skia = { path = "vendor/anyrender_skia" }
 anyrender = { path = "vendor/anyrender" }
+anyrender_svg = { path = "vendor/anyrender_svg" }
 parley = { path = "vendor/parley" }

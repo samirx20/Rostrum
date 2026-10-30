@@ -35,14 +35,35 @@ use tracing::warn;
 const ALMOST_OPAQUE: f32 = 1.0 - f32::EPSILON;
 
 impl ElementCx<'_, '_> {
-    /// Whether the element has any CSS `mask-image` layers
+    /// Whether the element has any CSS `mask-image` layers, or (Rostrum patch, 2D SVG masks) a `mask` /
+    /// `mask-image` or `clip-path` naming an SVG `<mask>` / `<clipPath>` by `url(#id)` (Stylo for Servo holds
+    /// neither the shorthand's url nor a clip-path url, so the shim's copy is read).
     pub(super) fn has_css_mask(&self) -> bool {
+        self.has_mask_image() || crate::filters::url_ref_id(self.node, "clip-path").is_some()
+    }
+
+    fn has_mask_image(&self) -> bool {
         self.style
             .get_svg()
             .mask_image
             .0
             .iter()
             .any(|image| !matches!(image, GenericImage::None))
+            || crate::filters::url_ref_id(self.node, "mask-image").is_some()
+    }
+
+    /// Rostrum patch (2D SVG masks): the SVG `<mask>` / `<clipPath>` `property` names by `url(#id)`, as a
+    /// standalone tree of the border box's size whose alpha is how much of the box shows, with the box.
+    #[cfg(feature = "svg")]
+    fn svg_ref(&self, property: &str) -> Option<(std::sync::Arc<usvg::Tree>, kurbo::Rect)> {
+        let id = crate::filters::url_ref_id(self.node, property)?;
+        let bb = self.frame.border_box;
+        let tree = blitz_dom::util::svg_mask_tree(self.context.dom, &id, (bb.width() / self.scale) as f32, (bb.height() / self.scale) as f32)?;
+        Some((tree, bb))
+    }
+    #[cfg(not(feature = "svg"))]
+    fn svg_ref(&self, _property: &str) -> Option<((), kurbo::Rect)> {
+        None
     }
 
     /// If the element has a CSS mask, push an isolation layer for the masked content
@@ -75,17 +96,27 @@ impl ElementCx<'_, '_> {
             return;
         }
 
-        scene.push_layer(
-            Fill::NonZero,
-            BlendMode::new(Mix::Normal, Compose::DestIn),
-            1.0,
-            self.transform,
-            &self.frame.border_box_path(),
-            None,
-            None,
-        );
-        self.draw_css_mask(scene);
-        scene.pop_layer(); // Mask (DestIn) layer
+        if self.has_mask_image() {
+            scene.push_layer(
+                Fill::NonZero,
+                BlendMode::new(Mix::Normal, Compose::DestIn),
+                1.0,
+                self.transform,
+                &self.frame.border_box_path(),
+                None,
+                None,
+            );
+            self.draw_css_mask(scene);
+            scene.pop_layer(); // Mask (DestIn) layer
+        }
+        // Rostrum patch (2D SVG masks): `clip-path: url(#id)` keeps the content where the SVG clip path covers.
+        #[cfg(feature = "svg")]
+        if let Some((tree, bb)) = self.svg_ref("clip-path") {
+            scene.push_layer(Fill::NonZero, BlendMode::new(Mix::Normal, Compose::DestIn), 1.0, kurbo::Affine::IDENTITY, &kurbo::Rect::new(-1e7, -1e7, 1e7, 1e7), None, None);
+            let transform = self.transform * kurbo::Affine::translate((bb.x0, bb.y0)) * kurbo::Affine::scale(self.scale);
+            anyrender_svg::render_svg_tree(scene, &tree, transform);
+            scene.pop_layer();
+        }
         scene.pop_layer(); // Isolation layer
     }
 
@@ -138,14 +169,8 @@ impl ElementCx<'_, '_> {
                 None,
             );
             // Rostrum proof patch: url(#id) naming an SVG <mask> draws that mask's content.
-            #[cfg(feature = "svg")]
-            let svg_mask = crate::filters::url_ref_id(self.node, "mask-image").and_then(|id| {
-                let bb = self.frame.border_box;
-                let tree = blitz_dom::util::svg_mask_tree(self.context.dom, &id, (bb.width() / self.scale) as f32, (bb.height() / self.scale) as f32)?;
-                Some((tree, bb))
-            });
-            #[cfg(not(feature = "svg"))]
-            let svg_mask: Option<((), kurbo::Rect)> = None;
+            // Rostrum patch (2D SVG masks): a `<clipPath>` named here masks too; the tree's alpha is the mask.
+            let svg_mask = self.svg_ref("mask-image");
             match svg_mask {
                 #[cfg(feature = "svg")]
                 Some((tree, bb)) => {

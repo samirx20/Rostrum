@@ -57,34 +57,45 @@ pub(crate) fn add_svg_font(bytes: &[u8]) {
     Arc::make_mut(&mut db).load_font_data(bytes.to_vec());
 }
 
-/// Rostrum proof patch: the content of an SVG `<mask>` element as a standalone SVG of the masked box's
-/// size (userSpaceOnUse: the box's own coordinates), with the sibling `<filter>`s it may reference. A
-/// luminance mask (the SVG default) is turned into alpha with luminanceToAlpha.
+/// Rostrum proof patch: an SVG `<mask>` or `<clipPath>` (by id, anywhere in the page) as a standalone SVG of the
+/// masked box's size whose alpha is how much of the box shows: a box-sized rectangle drawn through it (`mask` /
+/// `clip-path="url(#id)"`), so the SVG painter does the luminance, units, region and nesting exactly as for shapes
+/// inside an `<svg>` (objectBoundingBox = the element's box; userSpaceOnUse = its own px). The definitions at the
+/// top of its `<svg>` (`<defs>`, gradients, filters, other masks and clips) come along for what it references. `None`: no such element.
+/// (Before 2D SVG masks: luminance went through a filter the SVG painter never drew, and clip paths not at all.)
 #[cfg(feature = "svg")]
 pub fn svg_mask_tree(doc: &crate::BaseDocument, id: &str, width: f32, height: f32) -> Option<Arc<usvg::Tree>> {
-    let mask = doc.get_node(doc.get_element_by_id(id)?)?;
-    if &*mask.element_data()?.name.local != "mask" {
-        return None;
-    }
-    let attr = |name: &str| mask.attrs()?.iter().find(|a| &*a.name.local == name).map(|a| a.value.to_string());
-    let alpha = attr("mask-type").as_deref() == Some("alpha")
-        || attr("style").is_some_and(|s| s.replace(' ', "").contains("mask-type:alpha"));
-    let mut filters = String::new();
-    if let Some(parent) = mask.parent.and_then(|p| doc.get_node(p)) {
-        for &c in &parent.children {
-            let n = doc.get_node(c)?;
-            if n.element_data().is_some_and(|e| &*e.name.local == "filter") {
-                filters.push_str(&n.svg_source());
+    let el = doc.get_node(doc.get_element_by_id(id)?)?;
+    let attribute = match &*el.element_data()?.name.local {
+        "mask" => "mask",
+        n if n.eq_ignore_ascii_case("clippath") => "clip-path",
+        _ => return None,
+    };
+    // The whole <svg> the element sits in (its defs: gradients, filters, nested masks and clips by id).
+    let parent = |n: &crate::Node| n.parent.and_then(|p| doc.get_node(p));
+    let mut svg = parent(el)?;
+    while !svg.element_data().is_some_and(|e| &*e.name.local == "svg") {
+        match parent(svg) {
+            Some(p) => svg = p,
+            None => {
+                svg = parent(el)?;
+                break;
             }
         }
     }
-    let content: String = mask.children.iter().filter_map(|&c| doc.get_node(c)).map(|n| n.svg_source()).collect();
-    let body = if alpha {
-        content
-    } else {
-        format!(r#"<filter id="__rostrum_l2a" filterUnits="userSpaceOnUse" x="-10000" y="-10000" width="20000" height="20000"><feColorMatrix type="luminanceToAlpha"/></filter><g filter="url(#__rostrum_l2a)">{content}</g>"#)
-    };
-    let source = format!(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="{height}" overflow="visible"><defs>{filters}</defs>{body}</svg>"#);
+    const DEFS: [&str; 10] = ["defs", "mask", "clippath", "lineargradient", "radialgradient", "filter", "pattern", "symbol", "style", "image"];
+    let mut defs: String = svg
+        .children
+        .iter()
+        .filter_map(|&c| doc.get_node(c))
+        .filter(|n| n.element_data().is_some_and(|e| DEFS.iter().any(|d| (&*e.name.local).eq_ignore_ascii_case(d))))
+        .map(|n| n.svg_source())
+        .collect();
+    defs.push_str(&el.svg_source()); // wherever it sits (a duplicate id is the same definition)
+    let id = id.replace('"', "&quot;");
+    let source = format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="{height}" overflow="visible"><defs>{defs}</defs><rect width="{width}" height="{height}" fill="#fff" {attribute}="url(#{id})"/></svg>"##
+    );
     parse_svg_image(source.as_bytes()).ok().map(|svg| svg.tree)
 }
 

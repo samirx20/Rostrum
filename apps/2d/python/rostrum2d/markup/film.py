@@ -18,7 +18,7 @@ from typing import Callable
 
 from rostrum_core.byname import expand_icons
 
-from . import apply, depth, grain as grain_mod, light as light_mod, normal
+from . import apply, blur, depth, grain as grain_mod, light as light_mod, normal
 from .values import Keys
 
 _CAM = ("x", "y", "zoom", "rotate", "focus", "aperture")
@@ -211,7 +211,13 @@ class Film:
         span = shutter / 360 / self.fps
         lo = max([c for c in self._cuts if c <= t], default=float("-inf"))
         hi = min([c for c in self._cuts if c > t], default=float("inf")) - 1e-6
-        return [self.markup(min(max(t + span * (i / (n - 1) - 0.5), lo), hi)) for i in range(n)]
+        clamp = lambda x: min(max(x, lo), hi)
+        out = [self.markup(clamp(t + span * (i / (n - 1) - 0.5))) for i in range(n)]
+        if not any("data-blur" in m for m in out):
+            return out
+        moments: dict[float, str] = {}             # data-blur elements: each drawn at its own moment (blur.py)
+        at = lambda frames: moments.get(frames) or moments.setdefault(frames, self.markup(clamp(t + frames / self.fps)))
+        return [blur.swap(m, i / (n - 1) - 0.5, at) for i, m in enumerate(out)]
 
     def shell(self) -> str:
         """The page every frame's markup goes into: the app's fonts, the agent's CSS, the stage."""

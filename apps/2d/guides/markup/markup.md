@@ -98,6 +98,8 @@ grain every frame (a fixed texture); otherwise it changes each frame.
 `shutter` may be keys (`{0: 180, 12: 0}`: off from 12 s). The samples are separate pictures: something moving
 further in one frame than its own size ÷ samples shows as that many copies (`look_film {motion: true}` shows it).
 `film.cut(t, …)`: hard cuts; a frame's samples never reach across one.
+`data-blur="off"` on an element draws it sharp (its own keys held at the frame's moment; a moving parent still carries
+it) while the rest keeps the film's blur; `data-blur="90"` gives it its own shutter in degrees.
 
 ## Sound, voices, markers
 
@@ -117,16 +119,15 @@ Like a browser: flexbox, grid, absolute layout; radius, box-shadow; CSS gradient
 HTML; `clip-path` shapes; gradient `mask-image`; blend modes; CSS variables, `calc()`; text, `text-shadow`; SVG in
 `<img>`; emoji. In SVG: all shapes and paths, `viewBox`, gradients, `<use>`/`<symbol>`, nested transforms, dashes,
 opacity, blend, markers, `<textPath>`, `<style>` inside the `<svg>`; `currentColor` at any depth (from CSS `color`
-on a parent, a part's style or its `color=` attribute).
+on a parent, a part's style or its `color=` attribute); `<mask>` (luminance or `mask-type="alpha"`, any content, its
+units and region) and `<clipPath>` (shapes, `<text>`, `clipPathUnits`, a clip on the clip), keys included; CSS
+`mask: url(#id)` and `clip-path: url(#id)` on HTML.
 
 Not yet (run_film's notes name them when used), and what works instead:
-- `filter=` / `mask=` on a shape inside an `<svg>`, `<pattern>`: put the filter on the `<svg>` or a `<div>` as
+- `filter=` on a shape inside an `<svg>`, `<pattern>`: put the filter on the `<svg>` or a `<div>` as
   `style="filter:url(#id)"`; stack `<svg>`s when one part needs its own.
-- SVG masks (`mask=`, CSS `mask: url(#id)`, which hides the element) and a `<clipPath>` made of `<text>`: for words
-  cut out of a picture, a gradient or moving shapes, CSS `background-clip: text` on an HTML element (its background
-  shows through the letters; key its `background-position` or layers); gradient `mask-image` for fades.
 - `feDropShadow`: CSS `drop-shadow()` or blur + offset + flood + composite + merge.
 - CSS `transform` in a style inside SVG: the `transform` attribute (keys write it).
 - `<foreignObject>`, `-webkit-text-fill-color`, `text-overflow: ellipsis`, repeating picture backgrounds,
-  `clipPathUnits="objectBoundingBox"`, page CSS aimed at SVG shapes (put it
+  page CSS aimed at SVG shapes (put it
   in a `<style>` inside the `<svg>`).

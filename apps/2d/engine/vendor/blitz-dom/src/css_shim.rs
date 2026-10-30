@@ -35,12 +35,14 @@ pub enum Shim {
     Filter,
     /// `backdrop-filter` / `-webkit-backdrop-filter` (for `url(#id)`)
     BackdropFilter,
-    /// `mask-image` / `-webkit-mask-image` (for `url(#id)`)
+    /// `mask-image` / `-webkit-mask-image`, and the `mask` / `-webkit-mask` shorthands (for `url(#id)`)
     MaskImage,
+    /// `clip-path` / `-webkit-clip-path` (for `url(#id)`; Rostrum patch, 2D SVG masks)
+    ClipPath,
 }
 
 impl Shim {
-    const ALL: [Shim; 6] = [Shim::TextStroke, Shim::PaintOrder, Shim::BackgroundClip, Shim::Filter, Shim::BackdropFilter, Shim::MaskImage];
+    const ALL: [Shim; 7] = [Shim::TextStroke, Shim::PaintOrder, Shim::BackgroundClip, Shim::Filter, Shim::BackdropFilter, Shim::MaskImage, Shim::ClipPath];
 
     /// The shim a CSS property feeds as it is (`-webkit-background-clip` → BackgroundClip).
     pub fn of(property: &str) -> Option<Shim> {
@@ -52,7 +54,7 @@ impl Shim {
 
     /// The custom property's name as an atom (interned once).
     fn atom(self) -> &'static Atom {
-        static ATOMS: LazyLock<[Atom; 6]> = LazyLock::new(|| Shim::ALL.map(|s| Atom::from(s.name())));
+        static ATOMS: LazyLock<[Atom; 7]> = LazyLock::new(|| Shim::ALL.map(|s| Atom::from(s.name())));
         &ATOMS[self as usize]
     }
 
@@ -65,6 +67,7 @@ impl Shim {
             Shim::Filter => "rostrum-filter",
             Shim::BackdropFilter => "rostrum-backdrop-filter",
             Shim::MaskImage => "rostrum-mask-image",
+            Shim::ClipPath => "rostrum-clip-path",
         }
     }
 
@@ -81,7 +84,7 @@ enum Feed {
 }
 
 /// The CSS properties the shim watches (lower case).
-const PROPERTIES: [(&str, Feed); 10] = [
+const PROPERTIES: [(&str, Feed); 14] = [
     ("-webkit-text-stroke", Feed::Copy(Shim::TextStroke)),
     ("paint-order", Feed::Copy(Shim::PaintOrder)),
     ("background-clip", Feed::Copy(Shim::BackgroundClip)),
@@ -92,10 +95,14 @@ const PROPERTIES: [(&str, Feed); 10] = [
     ("-webkit-backdrop-filter", Feed::Copy(Shim::BackdropFilter)),
     ("mask-image", Feed::Copy(Shim::MaskImage)),
     ("-webkit-mask-image", Feed::Copy(Shim::MaskImage)),
+    ("mask", Feed::Copy(Shim::MaskImage)),
+    ("-webkit-mask", Feed::Copy(Shim::MaskImage)),
+    ("clip-path", Feed::Copy(Shim::ClipPath)),
+    ("-webkit-clip-path", Feed::Copy(Shim::ClipPath)),
 ];
 
 /// Text worth tokenizing: it names a watched property somewhere (ASCII case-insensitive).
-const NEEDLES: [&str; 5] = ["stroke", "paint-order", "background", "filter", "mask-image"];
+const NEEDLES: [&str; 6] = ["stroke", "paint-order", "background", "filter", "mask", "clip-path"];
 
 /// Register every shim's custom property with its real property's inheritance (call once per Stylist,
 /// before styling).
