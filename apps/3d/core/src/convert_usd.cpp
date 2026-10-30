@@ -24,6 +24,7 @@
 #include <functional>
 
 #include "error.h"
+#include "material_nodes.h"
 #include "udim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -119,6 +120,48 @@ void write_mesh_sample(UsdGeomMesh mesh, const MeshArrays& m, UsdTimeCode time, 
   }
 }
 
+namespace {
+// A textured import's Cycles graph (its "cycles" surface; Storm keeps the preview graph above). This Cycles reads an
+// 8-bit picture undecoded whatever UsdUVTexture's sourceColorSpace says (material_nodes.cpp, 3d-cl4), so an imported
+// sRGB base colour came out washed out in Final beside the right colour in Quick. cycles_image decodes it once, as
+// it does for a scripted material's texture; the rest are the preview graph's values.
+void write_cycles_surface(const UsdStageRefPtr& stage, const UsdShadeMaterial& mat, const MaterialDesc& d,
+                          const std::string& file) {
+  const SdfPath path = mat.GetPath();
+  const SdfValueTypeName kFloat = SdfValueTypeNames->Float, kColor = SdfValueTypeNames->Color3f,
+                         kStr = SdfValueTypeNames->String;
+  UsdShadeShader c = shader(stage, path, "Cycles", "cycles_principled_bsdf");
+  set(c, "metallic", kFloat, d.metallic);
+  set(c, "roughness", kFloat, d.roughness);
+  set(c, "ior", kFloat, 1.5f);  // UsdPreviewSurface's
+  set(c, "emission_color", kColor, d.emissive);
+  set(c, "emission_strength", kFloat, 1.0f);
+  UsdShadeShader colour = cycles_image(stage, path, "CyclesBaseColor", Picture{{file}, 0}, true);
+  UsdShadeShader tint = shader(stage, path, "CyclesBaseTint", "cycles_mix_color");  // the colour factor, as `scale`
+  set(tint, "blend_type", kStr, std::string("multiply"));
+  set(tint, "fac", kFloat, 1.0f);
+  link(tint, "a", kColor, colour, "color", kColor);
+  set(tint, "b", kColor, d.base_color);
+  link(c, "base_color", kColor, tint, "result", kColor);
+  if (d.opacity < 1.0f || d.opacity_threshold > 0.0f) {  // the picture's alpha, as the preview graph's opacity
+    UsdShadeShader image(stage->GetPrimAtPath(path.AppendChild(TfToken("CyclesBaseColor"))));
+    UsdShadeShader alpha = shader(stage, path, "CyclesAlpha", "cycles_math");
+    set(alpha, "math_type", kStr, std::string("multiply"));
+    link(alpha, "value1", kFloat, image, "alpha", kFloat);
+    set(alpha, "value2", kFloat, d.opacity);
+    if (d.opacity_threshold > 0.0f) {  // cut out: whole or nothing
+      UsdShadeShader cut = shader(stage, path, "CyclesCutOut", "cycles_math");
+      set(cut, "math_type", kStr, std::string("greater_than"));
+      link(cut, "value1", kFloat, alpha, "value", kFloat);
+      set(cut, "value2", kFloat, d.opacity_threshold);
+      alpha = cut;
+    }
+    link(c, "alpha", kFloat, alpha, "value", kFloat);
+  }
+  mat.CreateSurfaceOutput(TfToken("cycles")).ConnectToSource(c.CreateOutput(TfToken("BSDF"), SdfValueTypeNames->Token));
+}
+}  // namespace
+
 UsdShadeMaterial write_material(const UsdStageRefPtr& stage, const MaterialDesc& d, Names& names) {
   const SdfPath scope = stage->GetDefaultPrim().GetPath().AppendChild(TfToken("Materials"));
   if (!stage->GetPrimAtPath(scope)) UsdGeomScope::Define(stage, scope);
@@ -164,6 +207,7 @@ UsdShadeMaterial write_material(const UsdStageRefPtr& stage, const MaterialDesc&
     // the texture's alpha only where the material is see-through or cut out (else an opaque PNG's alpha is noise)
     if (d.opacity < 1.0f || d.opacity_threshold > 0.0f)
       opacity.ConnectToSource(tex.CreateOutput(TfToken("a"), SdfValueTypeNames->Float));
+    write_cycles_surface(stage, mat, d, file);
   }
   return mat;
 }
