@@ -14,7 +14,7 @@ from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import film_faults, look_empty, look_quality, render, review
+from . import edge_cut, film_faults, look_empty, look_quality, render, review
 from .look import SHEET_WIDTH
 from .pick import doc_and_comp
 
@@ -33,6 +33,17 @@ def moments(look, duration: float, fps: float) -> tuple[list[float], list[str]]:
     warn = [f'look: {", ".join(f"{t:g}" for t in past)} s {"is" if len(past) == 1 else "are"} past the end of the film ({duration:g} s), left out'
             + ("" if out else f"; looked at {SPREAD} moments spread over the film instead")] if past else []
     return out or spread, warn
+
+
+def sheet_cuts(doc_data: dict, comp: dict, times: list[float]) -> list[str]:
+    """What is cut by the frame edge at the sheet's moments, as look_frame says it for one (edge_cut.py; boxes, no
+    drawing): the contact sheet is the look agents use most, and its reply named no cut (a phone's sides lost on every
+    push-in went unsaid). A fact, never a gate; the check's own failure is said, never raised."""
+    try:
+        rigs, notes = edge_cut.rig_boxes(doc_data, comp, times)
+        return [s for s in (edge_cut.tell(edge_cut.scan(comp, times, rigs, 0.0)),) if s] + notes
+    except Exception as e:      # noqa: BLE001  (the look still stands)
+        return [f"(The frame-edge check could not run: {e}.)"]
 
 
 def after_run(ctx, doc, look, reply: Reply) -> Reply:
@@ -71,10 +82,11 @@ def _looked(ctx, doc, look, reply: Reply) -> Reply:
             w, h = sheet.contact_sheet([(png, f"{t:.2f} s   f{round(t * fps)}") for t, png in tiles], tile_w, cols, dest)
             pixels = look_empty.scan_pngs(tiny, every, duration) if noting else []
         rows = review.ranked(pixels + found, duration)
+        cut = [] if noting else sheet_cuts(doc.data, comp, times)       # with notes, the cuts are among them
         return Reply("", {"times": times, "sheet": str(dest), "width": w, "height": h, "comp": comp["id"],
                           **({"notes": [{k: r[k] for k in ("kind", "rank_kind", "start", "end", "text", "id", "ids") if k in r} for r in rows],
                               "info": [r["text"] for r in measured]} if noting else {})},
-                     [dest], [dest], scene.get("warnings", []) + notes)
+                     [dest], [dest], scene.get("warnings", []) + cut + notes)
 
     got = ctx.long(f'run_script look {comp["id"]}', job_fn)
     reply.warnings += [w for w in got.warnings if w not in reply.warnings]

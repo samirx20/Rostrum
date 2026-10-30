@@ -27,6 +27,12 @@ use crate::scene::sk_peniko::color4f_from_alpha_color;
 pub struct SkiaSceneCache {
     /// Base 4x4 matrices (3D transforms) every draw is mapped by: the product, innermost last.
     pub(crate) base_3d: Vec<skia_safe::M44>,
+    /// Rostrum patch (blur r8): how many of `base_3d` (the first) are the paint's root view (`set_root_view`,
+    /// `set_root_matrix`), not a layer's 3D transform: a top-level layer under a view is still top-level (`begin_kept`).
+    root_bases: usize,
+    /// Rostrum patch (blur r8): a top-level layer's kept picture was refused this paint (`begin_kept`): the layer was
+    /// drawn on the canvas instead, so its picture would be missing; `take_kept` says so (and clears it, as the pictures).
+    kept_refused: Option<usize>,
     paint: Paint,
     dash_intervals: Vec<f32>,
     #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -155,6 +161,7 @@ impl SkiaSceneCache {
             let m = [scale, 0.0, 0.0, -x0 * scale, 0.0, scale, 0.0, -y0 * scale, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
             self.base_3d.push(skia_safe::M44::row_major(&m));
         }
+        self.root_bases = self.base_3d.len();
     }
 
     /// Rostrum patch (warm-up): any matrix as the view under every draw of the next paint (a turned or tilted one), so
@@ -163,13 +170,20 @@ impl SkiaSceneCache {
     pub fn set_root_matrix(&mut self, m: skia_safe::M44) {
         self.base_3d.clear();
         self.base_3d.push(m);
+        self.root_bases = 1;
     }
 
     /// Increment the generation on the caches. Should be called once per frame.
     /// Rostrum patch (streak blur, one paint): the pictures the last paint drew into (`begin_kept`), in number order
     /// (a number it skipped is None), each with where its top-left px lies in the frame (device px).
-    pub fn take_kept(&mut self) -> Vec<Option<(skia_safe::Image, (i32, i32))>> {
-        std::mem::take(&mut self.kept).into_iter().map(|s| s.map(|(mut s, at)| (s.image_snapshot(), at))).collect()
+    /// Err when a layer asked to be kept was drawn on the canvas instead (`begin_kept` refused it): its picture would be
+    /// missing from the frame, never silently.
+    pub fn take_kept(&mut self) -> Result<Vec<Option<(skia_safe::Image, (i32, i32))>>, String> {
+        let kept = std::mem::take(&mut self.kept).into_iter().map(|s| s.map(|(mut s, at)| (s.image_snapshot(), at))).collect();
+        match self.kept_refused.take() {
+            Some(k) => Err(format!("motion blur: kept picture {k} could not be drawn (a layer inside a 3D plane or another kept picture)")),
+            None => Ok(kept),
+        }
     }
 
     /// Where kept picture `k`'s top-left px lies in the frame (device px).
@@ -229,6 +243,8 @@ impl Default for SkiaSceneCache {
     fn default() -> Self {
         Self {
             base_3d: Vec::new(),
+            root_bases: 0,
+            kept_refused: None,
             paint: Paint::default(),
             dash_intervals: Vec::new(),
             #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -1021,8 +1037,10 @@ impl PaintScene for SkiaScenePainter<'_> {
     }
 
     fn begin_kept(&mut self, k: usize) -> bool {
-        // Only between top-level layers: not inside a kept picture, a capture or a layer of a 3D plane.
-        if self.cache.kept_prev.is_some() || !self.cache.base_3d.is_empty() {
+        // Only between top-level layers: not inside a kept picture or a layer of a 3D plane. The paint's own view (a
+        // smaller or zoomed-in picture: `set_root_view`) is no 3D plane: a view's kept pictures are device px, as its streaks.
+        if self.cache.kept_prev.is_some() || self.cache.base_3d.len() > self.cache.root_bases || self.cache.flats.iter().any(Option::is_some) {
+            self.cache.kept_refused = Some(k);
             return false;
         }
         if self.cache.kept.len() <= k {

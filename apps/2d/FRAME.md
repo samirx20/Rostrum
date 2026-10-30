@@ -63,7 +63,7 @@ stays on it, so moving the marker moves the framing or the cut.
 
 **The keying rule of a fit:** x, y and zoom (and rotation when the turn isn't kept) get a key at `at`; a field with no
 keys yet is also keyed at 0 s with its value now, so the frame starts where it was and arrives there. At 0 s with no
-keys the still values just change (the frame moves for the whole piece). A fit or cut on a field driven by an
+keys the still values just change (the frame moves for the whole piece). A push zooms about one point that holds still in the picture, as a real camera does: x and y get the curve that matches the zoom's ease (a `custom` curve on their keys), so a deep push from the wide shot onto a small part travels steadily onto it and never swings off it mid-move (the same ease on all three threw the subject past the frame edge half way). A fit or cut on a field driven by an
 expression, on a frame riding a path, with a locked or pinned layer, unknown or no `ids`, a rectangle with no area, or a
 zoom outside 0.01 to 100 is refused, naming the item and field.
 

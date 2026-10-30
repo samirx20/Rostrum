@@ -7,6 +7,7 @@ Another app never compiles, mixes or plays a song itself: it asks here, and Soun
     soundtrack.grid(root, end)                  # {"bpm", "beatsPerBar", "changes", "beats": [s…], "bars": [s…]}
     soundtrack.stamp(folder, song["id"])        # changes whenever the song or the project's markers change
     soundtrack.facts(folder, "")                # what plays, for agents: item, name, seconds, bpm, bars, markers
+    soundtrack.silent(folder, song["id"])       # True: the song has nothing to play yet (a fresh, empty song)
 
 Which song: the scene names one (`soundtrack`, a Sound item id); empty = the project's first Sound item by name.
 A named item that is not a Sound item of the project is a loud error naming those that are.
@@ -53,6 +54,18 @@ def stamp(folder, item: str) -> tuple:
     f = Path(folder) / project.item(folder, item)["file"]
     st = f.stat()
     return item, st.st_mtime_ns, st.st_size, shared.version(folder)
+
+
+def silent(folder, item: str) -> bool:
+    """The song has nothing to play yet: no length set and no track holds a note, hit or clip (the engine refuses such a
+    schedule: "has no sound and no length", contract/schedule.rs). A fresh project's empty song: another app's export
+    goes out without sound then, instead of failing on it after drawing every frame."""
+    root = read(folder, item)
+    with markers.project(folder):
+        schedule = compile_doc(root)
+    if schedule.get("length"):
+        return False
+    return not any(t.get(k) for t in schedule.get("tracks", []) for k in ("notes", "hits", "clips"))
 
 
 def _engine_id(engine) -> str:

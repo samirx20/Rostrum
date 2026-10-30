@@ -99,7 +99,7 @@ each move is its average picture laid on once (`still_runs.rs` `keeps`; blends i
 an isolated group). A layer that glows from its own picture streaks as one picture too (its glow adds onto its own
 isolated group), seen through a track matte or not. A short streak (a move of up to 8 px) reads its picture sharply
 (Catmull-Rom, anyrender `draw_cached_streak`): read smoothly at fractions of a px, a big sharp title under a slow zoom
-came out softer than its sub-frames by up to 27/255 on every letter edge. A layer that only moves but blends otherwise
+came out softer than its sub-frames by up to 27/255 on every letter edge. Kept pictures are made under a smaller or zoomed view too (a final look narrower than the comp, the playing canvas): they are device px, as the streaks that read them; a layer asked to be kept that can't be (inside a 3D plane) fails the frame, never draws as nothing. A layer that only moves but blends otherwise
 (another blend mode, frosted glass) is painted as laid out, moved to each sub-frame (one per px of its path), over the layers under it and
 averaged: no layout per step. A group the same in every sub-frame but for its own place and its children's, each child
 only moving its own way (bubbles rising in a group the frame pans past: `streak.rs` `split`), is painted once as one

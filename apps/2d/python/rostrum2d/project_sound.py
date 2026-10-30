@@ -99,7 +99,9 @@ def _seen(p: Path) -> tuple[int, int]:
 
 def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
     """The Sound item an export puts under its picture, or None (silent). `asked` None = the default: on for an MP4 when
-    the project has sound. Asked for where there is none is a loud error, never a silent file."""
+    the project has sound. Asked for where there is no song is a loud error, never a silent file. A song with nothing
+    in it yet (a fresh project's: Sound and 2D share one) exports picture-only, said by `why_silent`, decided here before
+    a frame is drawn: such an export used to fail on the song after drawing every frame."""
     if asked is False or (asked is None and fmt != "mp4"):
         return None
     s = song(folder, chosen)
@@ -107,7 +109,25 @@ def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
         from rostrum_core import RostrumError, codes
         raise RostrumError(codes.BAD_ARGUMENT, "export", "sound", "was asked, but the project has no RostrumSound item",
                            hint="Make the sound in RostrumSound first, or export without sound.")
-    return s["id"] if s else None
+    return s["id"] if s and not empty(folder, s["id"]) else None
+
+
+def empty(folder, item: str) -> bool:
+    """The song `item` has nothing to play yet (rostrum_sound.soundtrack.silent)."""
+    from rostrum_sound import soundtrack
+    return soundtrack.silent(folder, item)
+
+
+def why_silent(folder, chosen: str = "") -> str:
+    """What a silent export's reply says: no song in the project, or its song still empty (and how to make the music),
+    or the export asked for none (`sound: false`) while a song plays here."""
+    s = song(folder, chosen) if folder else None
+    then = " " + where_the_music_is(folder) + " The next export here puts that mix under the picture."
+    if s is None:
+        return "It is silent: this project has no RostrumSound song." + then
+    if empty(folder, s["id"]):
+        return f'It is silent: the song "{s["name"]}" has nothing in it yet (no notes, hits or clips), so the picture went out alone.' + then
+    return f'It is silent: it was exported with sound false; the song "{s["name"]}" goes under the next export without it.'
 
 
 def check_before_export(folder, item: str | None, where: str) -> None:
