@@ -69,8 +69,9 @@ target_include_directories(r3d_core SYSTEM PRIVATE
   ${BUNDLE}/openexr/include ${BUNDLE}/fmt/include ${BUNDLE}/opencolorio/include ${BUNDLE}/openvdb/include)
 target_compile_definitions(r3d_core PRIVATE NOMINMAX _USE_MATH_DEFINES WIN32_LEAN_AND_MEAN OPENVDB_DLL
   __TBB_show_deprecation_message_atomic_H __TBB_show_deprecation_message_task_H)
-# /Zi: symbols in .pdb files (the live view's crash report names functions); the code is the same Release code
-target_compile_options(r3d_core PRIVATE /EHsc /bigobj /Zc:inline- /utf-8 /W3 /wd4244 /wd4267 /wd4305 /wd4251 /Zi)
+# /Z7: symbols in the objects, gathered into .pdb files by the linker (the live view's crash report names functions); the
+# code is the same Release code. Not /Zi: its one shared .pdb per target can't be written through the compile cache (sccache)
+target_compile_options(r3d_core PRIVATE /EHsc /bigobj /Zc:inline- /utf-8 /W3 /wd4244 /wd4267 /wd4305 /wd4251 /Z7)
 target_link_directories(r3d_core PUBLIC ${BUNDLE}/python/313/libs ${BUNDLE}/tbb/lib)
 target_link_libraries(r3d_core PUBLIC
   ${BUNDLE}/usd/lib/usd_ms.lib ${BUNDLE}/tbb/lib/tbb.lib ${BUNDLE}/epoxy/lib/epoxy.lib
@@ -100,7 +101,7 @@ if(R3D_VIEW)
     SOURCES view/viewport_item.cpp view/viewport_item.h view/crash_report.cpp)
   target_include_directories(rostrum3dview PRIVATE view)
   target_compile_definitions(rostrum3dview PRIVATE NOMINMAX QT_NO_KEYWORDS)
-  target_compile_options(rostrum3dview PRIVATE /utf-8 /Zi)
+  target_compile_options(rostrum3dview PRIVATE /utf-8 /Z7)
   target_link_options(rostrum3dview PRIVATE /DEBUG /OPT:REF /OPT:ICF)
   target_link_libraries(rostrum3dview PRIVATE r3d_core Qt6::Gui Qt6::GuiPrivate Qt6::Qml Qt6::Quick dbghelp)
   install(TARGETS rostrum3dview RUNTIME DESTINATION qml/Rostrum3DView LIBRARY DESTINATION qml/Rostrum3DView)

@@ -24,6 +24,7 @@
 #include "cycles_paths.h"
 #include "dome_cycles.h"
 #include "error.h"
+#include "implicit_shapes.h"
 #include "light_to_color.h"
 #include "sky.h"
 #include "storm_lights.h"
@@ -188,6 +189,7 @@ void register_scene_fixes() {
   register_cycles_dome_fix();
   register_cycles_lights();
   clay::register_cycles_clay_whole();
+  register_implicit_shapes();
   register_storm_sun();
   register_storm_lights();
 }

@@ -77,3 +77,27 @@ def test_a_wide_picture_frames_the_camera_alike(engine, tmp_path):
         cols.append((xs[xs < w / 2].mean(), xs[xs >= w / 2].mean()))
     (ql, qr), (fl, fr) = cols
     assert abs(ql - fl) <= 2 and abs(qr - fr) <= 2, f"posts at quick {ql:.1f}/{qr:.1f}, final {fl:.1f}/{fr:.1f} px"
+
+
+def test_usd_simple_shapes_show_in_final_as_in_quick(engine, tmp_path):
+    # Cycles' Hydra plug-in draws only meshes: a file's Sphere / Cube / … came out empty in Final (core/src/implicit_shapes.h)
+    shapes = ['Sphere "s" { double radius = 0.3', 'Cube "c" { double size = 0.6', 'Cylinder "y" { double radius = 0.3\n'
+              'double height = 0.6', 'Cone "o" { double radius = 0.3\ndouble height = 0.6', 'Capsule "k" { double radius = 0.2\n'
+              'double height = 0.3', 'Plane "p" { double width = 0.6\ndouble length = 0.6']
+    xs = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
+    body = "".join(f'def {s}\ndouble3 xformOp:translate = ({x}, 0, 0)\nuniform token[] xformOpOrder = ["xformOp:translate"]\n}}\n'
+                   for s, x in zip(shapes, xs))
+    (tmp_path / "shapes.usda").write_text('#usda 1.0\n(\ndefaultPrim = "row"\nmetersPerUnit = 1\nupAxis = "Y"\n)\n'
+                                          f'def Xform "row"\n{{\n{body}}}\n')
+    src = SUN + (f'import_usd("row", file={str(tmp_path / "shapes.usda")!r})\n'
+                 'cam = camera("cam", focalLength=30, sensorWidth=36, z=6.0)\n'
+                 'shot("hero", camera=cam, fps=24, start=0, end=1)\n')
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source(src, "s.py"))
+    w, h = 320, 180
+    for renderer in ("storm", "cycles"):
+        a = render(engine, doc, renderer, w, h, tmp_path / f"{renderer}.png").astype(np.int32)
+        seen = (np.abs(a - a[2, 2]).sum(axis=-1) > 24)          # not the empty background (its top-left corner)
+        for x in xs:
+            px = round(w / 2 + x / 3.6 * w / 2)
+            assert seen[h // 2 - 8:h // 2 + 8, px - 8:px + 8].mean() > 0.5, f"{renderer}: no shape at x {x} m"

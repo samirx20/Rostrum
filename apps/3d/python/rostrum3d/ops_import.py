@@ -87,12 +87,11 @@ def part_names(paths: list[str]) -> dict[str, str]:
     return {p: n if taken.count(n) == 1 else p.replace("/", " › ") for p, n in short.items()}
 
 
-def _bounds(info: dict):
-    root = info.get("defaultPrim") or ""
-    for p in info.get("prims", []):
-        if p["path"] == root and p.get("bounds"):
-            return p["bounds"]
-    return None
+def file_bounds(info: dict, prim: str = ""):
+    """(lo, hi) of what an import brings in, in the file's own space (the engine's inspect_usd answer): the bounds of
+    its `prim` (the import's field), or of the file's default prim when that is ""; None when it has no size."""
+    path = prim or info.get("defaultPrim") or ""
+    return next((p["bounds"] for p in info.get("prims", []) if p["path"] == path and p.get("bounds")), None)
 
 
 def _turn_x(v, degrees):
@@ -119,7 +118,7 @@ def read_file(values: dict, keep_size: bool = False) -> tuple[dict, list[str]]:
     scale = 1.0 if keep_size or not info.get("unitsKnown", True) else unit
     rx = -90.0 if info.get("upAxis") == "Z" and "rx" not in values else values.get("rx", 0.0)
     out.update(sx=scale, sy=scale, sz=scale, rx=rx, fileUnit=scale)
-    if (bounds := _bounds(info)) is not None:
+    if (bounds := file_bounds(info, values.get("prim", ""))) is not None:
         off = base_offset(bounds, scale, rx)
         out.update({k: values.get(k, 0.0) - o for k, o in zip("xyz", off)})
     return out, _parts(info)
@@ -172,7 +171,7 @@ def import_keep_size(ctx, targets, args):
         for k, v in scales.items():
             ctx.set(t, k, v / unit)
         ctx.set(t, "fileUnit", 1.0)
-        bounds = _bounds(_INSPECT(item["file"])) if _INSPECT is not None else None
+        bounds = file_bounds(_INSPECT(item["file"]), item.get("prim", "")) if _INSPECT is not None else None
         if bounds is not None:          # grow around the base: it stays where it stood
             now, then = (base_offset(bounds, scales["sy"] * f, item.get("rx", 0.0)) for f in (1.0, 1 / unit))
             for k, a, b in zip("xyz", now, then):
