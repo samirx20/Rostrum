@@ -91,6 +91,9 @@ def _sheet(film, times: list[float], name: str, width: int, cols: int) -> tuple[
     return sheet, ms, frames
 
 
+_UNMEASURED = " Shapes inside an <svg> are not measured one by one: judge their edges in the pictures."
+
+
 def _review(film, times: list[float], frames: list[Path]) -> list[str]:
     """Plain observations on these frames (cut edges, covered text, near-empty or unmoving stretches): information only."""
     from . import review
@@ -185,7 +188,10 @@ def look_film(ctx, args):
     width = args.get("width", 1920 if len(times) == 1 else 1600)
     pic, ms, frames = _sheet(film, times, args["name"], width, args.get("columns", 3))
     seen = _review(film, times, frames) if args.get("notes") else []
-    said = (" Seen: " + "; ".join(seen) + ".") if seen else (" Seen: nothing cut, covered or empty in these frames." if args.get("notes") else "")
+    # What the notes measure: HTML elements with an id; shapes inside an <svg> only as the whole <svg> (the engine's
+    # boxes stop there), so a cut clock drawn in SVG goes unsaid; the line says so rather than "nothing is cut".
+    said = (" Seen: " + "; ".join(seen) + "." + _UNMEASURED) if seen else (
+        " Seen: no HTML text or box with an id is cut, covered or empty in these frames." + _UNMEASURED if args.get("notes") else "")
     return Reply(f'{len(times)} frame{"s" * (len(times) != 1)} of "{args["name"]}" at {", ".join(f"{t:g}" for t in times)} s, '
                  f'{ms:.0f} ms a frame.{said}{_notes(film)}', {"times": times, "msPerFrame": round(ms), "seen": seen},
                  files=[pic], images=[pic])
