@@ -36,7 +36,7 @@ def segments_said(g: dict) -> str:
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
     **exporting.QUALITY_ARGS,
     **exporting.GIF_ARGS,
-    "sound": {"type": "boolean", "description": "mp4 only: put the project's sound under the picture (the scene's soundtrack, else the project's main mix, mixed by RostrumSound's engine and cut to start..end). Default: on for mp4 when the project has sound. If the mix or putting it under the picture fails, the export fails; never a silent file."},
+    "sound": {"type": "boolean", "description": "mp4 only: put the project's sound under the picture (the scene's soundtrack, else the project's main mix, mixed by RostrumSound's engine and cut to start..end). Default: on for mp4 when the project has sound. A song with nothing in it yet exports picture-only, and the reply says so. If the mix or putting it under the picture fails, the export fails; never a silent file."},
     "time": {"type": "number", "minimum": 0, "description": "png only: one picture at this time (seconds), instead of start / end."},
     **export_area.ARGS,
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
