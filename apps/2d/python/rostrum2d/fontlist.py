@@ -10,6 +10,8 @@ import json
 import subprocess
 from functools import lru_cache
 
+from rostrum_core.byname import google_family
+
 from .engine import EngineError, find_exe
 
 
@@ -56,15 +58,16 @@ def missing_words(name: str) -> str:
     """'font "Helvetica" is not in the app or on this computer (close: Helvetica Neue …)', as the engine says it."""
     word = name.lower().split()[0] if name.strip() else ""
     close = [f["family"] for f in families() if word and word in f["family"].lower()][:8]
-    return (f'font "{name}" is not in the app or on this computer' + (f" (close: {', '.join(close)})" if close else "")
+    return (f'font "{name}" is not in the app, on this computer or in Google Fonts' + (f" (close: {', '.join(close)})" if close else "")
             + "; inspect_fonts names every font there is")
 
 
 def refusal(name: str) -> str | None:
     """Why an operation may not set this font, or None. No engine built: no check (nothing can be drawn then, and
-    the look tools say so)."""
+    the look tools say so). A Google Fonts family is a font there is: fetched the first time a scene draws it
+    (missing_font.trouble)."""
     try:
-        return None if name in names() else missing_words(name)
+        return None if name in names() or google_family(name) else missing_words(name)
     except (EngineError, OSError):
         return None
 

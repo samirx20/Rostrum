@@ -106,7 +106,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
         node = _render3d(node, item, fps, where)
-    if item["type"] == "text" and (font := missing_font.trouble(item)):
+    if item["type"] == "text" and (font := missing_font.trouble(item, where.setdefault("fonts", {}))):
         node = _font_stand_in(node, item, font, where)
     return _posed(node, step, vis, fps, until)
 
@@ -267,4 +267,5 @@ def finish(node: dict, where: dict) -> dict:
                            "use a font this computer lacks: " + missing_font.refusal(where["missing_fonts"]),
                            hint="Pick another font for them (font.replace), or install it.")
     node["layers"] = sorted(node.get("layers", []), key=lambda n: n["type"] != "camera")   # the frame first (the contract)
-    return {"format": FORMAT, "version": VERSION, "comp": node, **({"warnings": where["warnings"]} if where.get("warnings") else {})}
+    return {"format": FORMAT, "version": VERSION, "comp": node, **({"fonts": where["fonts"]} if where.get("fonts") else {}),
+            **({"warnings": where["warnings"]} if where.get("warnings") else {})}

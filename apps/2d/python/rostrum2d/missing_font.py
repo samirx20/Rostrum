@@ -6,23 +6,38 @@ never written with a stand-in in it. The Problems list says it in words (diagnos
 """
 from __future__ import annotations
 
+from rostrum_core.byname import FontNeedsInternet, engine_font, google_family
+from rostrum_core.byname.fonts import faces
+
 from . import fields as F, fontlist, textsize
 from .engine import EngineError
 
 RED = "#e5484d"
 
 
-def trouble(item: dict) -> str | None:
+def trouble(item: dict, fonts: dict | None = None) -> str | None:
     """The family this text names that the app and this computer lack (or whose italic it lacks), else None. No engine
-    built: None (nothing can be drawn then, and the look tools say so)."""
+    built: None (nothing can be drawn then, and the look tools say so). A Google Fonts family is fetched once into the
+    shared cache (rostrum_core.byname) and added to `fonts` (the scene's own fonts, family -> file)."""
     family = item.get("font", F.defaults("text")["font"])
     try:
         if family not in fontlist.names():
-            return family
+            return _google(family, bool(item.get("italic")), fonts) if google_family(family) else family
         fam = fontlist.family(family)
         return f"{family} (no italic)" if item.get("italic") and fam is not None and not fam["italic"] else None
     except (EngineError, OSError):
         return None
+
+
+def _google(family: str, italic: bool, fonts: dict | None) -> str | None:
+    try:
+        path = engine_font(family)
+        has_italic = any(f["italic"] for f in faces(family))
+    except FontNeedsInternet:
+        return f"{family} (needs the internet once)"
+    if fonts is not None:
+        fonts[family] = str(path)
+    return f"{family} (no italic)" if italic and not has_italic else None
 
 
 def refusal(missing: dict[str, str]) -> str:
