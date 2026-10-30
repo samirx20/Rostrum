@@ -149,10 +149,7 @@ def stop(key: str) -> int:
     if not s:
         print(f"No session {key} is running.")
         return 0
-    running = s.ask({"op": "stop"}).get("running", 0)
-    until = time.monotonic() + 15
-    while _read(folder() / f"{key}.json") and time.monotonic() < until:   # gone at once (it takes no more calls)
-        time.sleep(0.1)
+    running = s.ask({"op": "stop"}).get("running", 0)   # its record is gone by the reply: it takes no more calls
     if running:
         print(f"Session {key} takes no more calls; it ends (process {record['pid']}) with its server once its {running} "
               "running job(s) end. inspect_job with a job's id in a new session reads it, then its result.")
