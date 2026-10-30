@@ -98,6 +98,50 @@ def _can_move(fr, id_: str, sim: dict | None) -> bool:
     return bool(fr.parent.get(id_)) and _can_move(fr, fr.parent[id_], sim)
 
 
+def _state(fr, ids, keyed, bones, f):
+    return {i: (fr.world(i, f), {p: fr.values(i, f).get(p) for p in keyed[i]},
+                skin.transforms(bones[i], fr.held(i, f) / fr.fps, fr.stack) if i in bones else None) for i in ids}
+
+
+def _same(a: dict, b: dict) -> bool:
+    for i, (m, vals, bs) in a.items():
+        n, wv, cs = b[i]
+        if _differs(m, n) or _other(vals, wv) or (bs is not None and any(_differs(x, y) for x, y in zip(bs, cs))):
+            return False
+    return True
+
+
+def still_stretches(data: dict, info: dict, folder=None, sim: dict | None = None, fr=None) -> list[dict]:
+    """still:<shot>@<s>: a stretch of STILL_S or more inside the shot (not its end: frozen_end) where nothing moves at all.
+    With a cloth or falling copies, only after their stored motion ends (their points are not compared frame to frame)."""
+    from .motion_track import Track
+    s0, s1, fps = info["start"], info["end"], info["fps"]
+    if (s1 - s0) / fps <= STILL_S:
+        return []
+    if fr is None or fr.frames.start > s0 or fr.frames.stop <= s1:
+        fr = Track(data, info, range(s1, s1 + 1), folder, sim).fr
+    ids = [i for i in fr.items if fr.items[i]["type"] != "material" and _can_move(fr, i, sim)]
+    keyed = {i: [p for p in animated(fr.items[i]) if p not in _PLACE] for i in ids}
+    bones = {i: skin.bones_of(fr.items[i]) for i in ids if fr.items[i]["type"] == "clay" and fr.items[i].get("bones")}
+    try:
+        moved = _sim_end(data, info, folder, fr)
+    except Exception:  # noqa: BLE001
+        moved = None
+    frames = list(range(moved[0] if moved else s0, s1 + 1, STEP))
+    states = [_state(fr, ids, keyed, bones, f) for f in frames]
+    out, a = [], 0
+    for k in range(1, len(frames) + 1):
+        if k < len(frames) and _same(states[k - 1], states[k]):
+            continue
+        f0, f1 = frames[a], frames[k - 1]
+        if (f1 - f0) / fps >= STILL_S and f1 + STEP <= s1:          # a still end is frozen_end's
+            x = (f0 - s0) / fps
+            out.append(F.note(f"still:{info['id']}@{x:.1f}", f"nothing moves from {x:.1f} s to {(f1 - s0) / fps:.1f} s "
+                              f"({(f1 - f0) / fps:.1f} s still)", f"frame {f0}, {x:.2f} s"))
+        a = k
+    return out
+
+
 def frozen_end(data: dict, info: dict, folder=None, sim: dict | None = None, fr=None) -> list[dict]:
     """[the frozen_end fault] or []. `fr`: the look's resolved Frames when they cover the whole shot (shared cache)."""
     from .motion_track import Track

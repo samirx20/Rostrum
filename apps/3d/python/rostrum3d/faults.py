@@ -29,11 +29,12 @@ import re
 
 from rostrum_core.mcp import faults as F
 
+from . import review_faults as R
 from .backdrop import backdrop_edge
 from .contact_faults import contact_faults
 from .motion_track import Camera, Track
 from .pose_faults import pose_faults
-from .still_faults import frozen_end
+from .still_faults import frozen_end, still_stretches
 
 SAMPLES = 10            # frames looked at over a shot (look_frame: the frame and its neighbours)
 TOUCH_M = 0.005         # boxes closer than this touch
@@ -105,21 +106,25 @@ def _linked(track: Track, a: str, b: str) -> bool:
     return (pa is not None and pa == pb) or pa == b or pb == a
 
 
-def doc_faults(data: dict, info: dict, folder=None, at: int | None = None, track: Track | None = None) -> list[dict]:
-    """The notes; [] when nothing was measured or the shot can't be measured (a check never breaks its reply)."""
+def doc_faults(data: dict, info: dict, folder=None, at: int | None = None, track: Track | None = None,
+               pictures: bool | None = None) -> list[dict]:
+    """The notes; [] when nothing was measured or the shot can't be measured (a check never breaks its reply).
+    `pictures`: whether the caller measured pictures too (False adds that to not_measured; None: not said)."""
     from .mcp import motion_sim
     fs = samples(info, at)
     try:
         sim = motion_sim.moves(data, info, folder)
-        if track is None or not all(f in track.cams for f in fs):
-            track = Track(data, info, range(fs[0], fs[-1] + 1), folder, sim)
-        found = _faults(track, info, fs, at)
+        need = range(info["start"], info["end"] + 1) if at is None else range(fs[0], fs[-1] + 1)   # landings read every frame
+        if track is None or not all(f in track.cams for f in need):
+            track = Track(data, info, need, folder, sim)
+        found = _faults(track, info, fs, at, pictures)
     except Exception:  # noqa: BLE001
         return []
-    try:                                                   # a whole-shot fault: not on one frame's look or a still render
-        found += frozen_end(data, info, folder, sim, track.fr) if at is None else []
-    except Exception:  # noqa: BLE001
-        pass
+    for whole in (frozen_end, still_stretches) if at is None else ():   # whole-shot faults: not on one frame's look or a still render
+        try:
+            found += whole(data, info, folder, sim, track.fr)
+        except Exception:  # noqa: BLE001
+            pass
     try:
         from .sim.sim_faults import sim_faults
         found += sim_faults(data, info, folder, fs, at)
@@ -128,7 +133,7 @@ def doc_faults(data: dict, info: dict, folder=None, at: int | None = None, track
     return found
 
 
-def _faults(track: Track, info: dict, fs: list[int], at: int | None) -> list[dict]:
+def _faults(track: Track, info: dict, fs: list[int], at: int | None, pictures: bool | None = None) -> list[dict]:
     boxes: dict[str, dict[int, tuple]] = {}
     for id_ in track.ids():
         if id_ in track.skipped or track.fr.items[id_]["type"] not in ("mesh", "combine", "clay"):
@@ -137,10 +142,11 @@ def _faults(track: Track, info: dict, fs: list[int], at: int | None) -> list[dic
         if all(r["solid"] and r["shown"] for r in rows.values()):
             boxes[id_] = {f: (_box(r["solid"]), r["solid"]) for f, r in rows.items()}
     if not boxes:
-        return []
+        return R.not_measured(track, info, boxes, pictures is not False, at is None)
     s0, w, h = fs[0], info["width"], info["height"]
     back = {i for i, b in boxes.items() if track.fr.items[i].get("shape") in ("plane", "disc") or _size(b[s0][0]) >= BIG_M
             or _BACK.search(i) or _BACK.search(track.fr.items[i].get("name") or "")}
+    sets = set(back)                                     # floors, walls, backdrops; the rest of back is only bigger than the picture
     for i in set(boxes) - back:                          # a set piece wider or taller than the picture is framing, not a subject
         pts = [p for p in (track.cams[s0].project(q) for q in boxes[i][s0][1][0]) if p] if s0 in track.cams else []
         if pts and (max(x for x, _ in pts) - min(x for x, _ in pts) > w or max(y for _, y in pts) - min(y for _, y in pts) > h):
@@ -149,7 +155,22 @@ def _faults(track: Track, info: dict, fs: list[int], at: int | None) -> list[dic
     check = [at] if at is not None else fs
     return _separations(track, info, boxes, subj, s0, check) + _leaving(track, info, boxes, subj, fs, check) + \
         _no_floor(track, info, boxes, back, subj, check) + backdrop_edge(track, info, boxes, check) + \
-        pose_faults(track, info, check) + _contacts(track, info, check)
+        pose_faults(track, info, check) + _contacts(track, info, check) + _review(track, info, boxes, back, sets, s0, check, at) + \
+        R.not_measured(track, info, boxes, pictures is not False, at is None)
+
+
+def _review(track, info, boxes, back, sets, s0, check, at) -> list[dict]:
+    """review_faults.py: the camera inside a shape, an empty or one-thing picture (a thing bigger than the picture counts
+    there), and (whole shot) landings and slides."""
+    out, seen = [], [i for i in boxes if i not in sets]
+    for run in (lambda: R.camera_inside(track, info, boxes, back, check), lambda: R.framing(track, info, boxes, seen, _points, check),
+                lambda: R.landings(track, info, {i: b[s0][0] for i, b in boxes.items()}, back, R.ground_top(track, boxes, back, s0))
+                if at is None else []):
+        try:
+            out += run()
+        except Exception:  # noqa: BLE001
+            pass
+    return out
 
 
 def _contacts(track, info, check) -> list[dict]:
