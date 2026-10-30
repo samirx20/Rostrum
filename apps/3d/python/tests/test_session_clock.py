@@ -71,6 +71,6 @@ def test_estimate_only_returns_the_figures_even_over_budget(runtime, monkeypatch
 def test_over_budget_renders_anyway_and_says_the_estimate_at_once(runtime, monkeypatch):
     monkeypatch.setattr(render, "_estimate", _measured(1320.0))
     monkeypatch.setattr(render, "video", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("drawing started")))
-    reply, _ = runtime.call("render_video", {"budget_min": 9}, Who.agent("t"))
+    reply, _ = runtime.call("render_video", {"budget_min": 9, "wait": False}, Who.agent("t"))   # the reply at once, not the failed drawing
     assert reply["ok"] and "job" in reply["summary"], reply          # never refused: the render is a job like any other
     assert "Rendering anyway" in reply["summary"] and "over the 9.0 min budget" in reply["summary"] and "Try one of" in reply["summary"]

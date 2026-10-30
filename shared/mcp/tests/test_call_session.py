@@ -46,7 +46,7 @@ def _record(folder: Path) -> dict:
 
 def test_a_job_started_in_one_command_is_there_in_the_next(call):
     run, folder = call
-    rc, out = run("::", "render_slow")
+    rc, out = run("::", "render_slow", '{"wait": false}')      # started here, finished in the next command
     assert rc == 0, out
     job = re.search(r'"job_id": "(job_\w+)"', out).group(1)
     pid = _record(folder)["pid"]
