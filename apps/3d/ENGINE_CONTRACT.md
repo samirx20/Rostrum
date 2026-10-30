@@ -399,7 +399,11 @@ Each pair is an edge of the cloth solver's own, as strong as the cloth's edges (
 the cloth's own edges, so the cloth follows the seam instead of tearing round it. Its length each step is its starting gap
 × the share of the sewing time left at the end of the step (nothing afterwards, when gravity is back), but never more than
 a quarter of the cloth's mean edge shorter than it is now: a seam something holds open pulls gently and keeps pulling. Pairs sewn twice (a corner where two seams meet) are one edge. Points beside a seam on
-either piece are not pushed apart by the cloth's own collision. A garment too tight to close round what is in it (its
+either piece are not pushed apart by the cloth's own collision. That collision moves a sewn pair together, never apart, and moves no
+point more than a quarter of its thickness in one physics step, so a garment landing in a heap on the ground is sorted out
+over a few steps instead of torn (`sim` 19). Once sewn, after each physics step a pair nearer than two of the cloth's mean edges
+is moved together, each point by its share of the weight, at most half a mean edge a step: the solver alone left a free
+corner (a shoulder seam's neck end, which the neckline pulls on) 5-10 mm open even with the seam edge infinitely stiff. A garment too tight to close round what is in it (its
 pieces smaller round than the body) fails loudly: **tore beside a seam at x y z m: the garment is too tight there**.
 Self-collision leaves pairs that sit close across a seam. The reply's cloth entry gives `"seams"`: the pairs kept.
 
@@ -446,6 +450,7 @@ header is an error naming `<id>.cloth.file`.
 - **v1.26** (Hem brief 23): material `blocks` (a MaterialX document: Storm through MaterialX, Cycles through its own nodes; § Materials › Blocks).
 - **v1.35** (Hem PR7): garments: a cloth body's `seams` and `sewTime` (§ Simulation › Garments); its reply's `seams`; every cloth's coincident points welded (`sim` 15).
   `sim` 18 (Hem, 2026-10-30): seams are edges of the cloth solver, their length shrinking to nothing over the sewing time; every pair joins (was ~6 mm apart); failure *tore beside a seam*.
+  `sim` 19 (Hem, 2026-10-30): the cloth's own collision never opens a seam and moves a point at most a quarter of its thickness per step (a sewn shirt dropped on the ground tore in its heap); a sewn pair within two edges is moved together after each step (the shirt's neck ends stayed 5-10 mm open).
 - **v1.34** (Hem PR6): UDIM tile sets: every material picture field takes a `<UDIM>` set (valid with at least one tile; Cycles' image node gets the tiles found as `tiles`); imports of OBJ / FBX / glTF write a base-colour picture that is one tile of a set (`name.1001.png` or `name_1001.png` with another tile beside it) as the set, and keep a `<UDIM>` name written in the file, its `UsdUVTexture` also given `tiles` (Cycles loads only listed tiles; Storm finds them itself) (core/src/udim.h). A USD file imported by reference keeps its own textures as written: a `<UDIM>` set there shows in Quick; in Final only when its texture node lists `tiles`.
 - **v1.33** (Hem PR4 finish): request `geometry` also answers for a top-level `clay`: its surface as drawn now (posed, layers in), welded into one closed triangle mesh in the clay's own space (the Cycles whole, `clay_whole.h`, welded first when its blocks changed); refused while a stroke is on its preview. "Make a clean mesh" (`rostrum3d/remesh.py`) starts from it.
 - **v1.32** (Hem PR3 leftovers): a copies item's `pathShift` may be keyed (`anim.pathShift`) and takes any number.

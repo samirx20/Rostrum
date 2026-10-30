@@ -34,6 +34,11 @@ class ClothSew {
   // gently and keeps pulling, instead of tearing the cloth). Afterwards gravity is back and every seam's length is nothing,
   // reached the same way.
   void before(JPH::PhysicsSystem& physics, JPH::BodyID id, double t);
+  // After each physics step, once sewn: a pair within kShut cloth edges is moved together, both points towards each other,
+  // at most half a cloth edge a step. The solver works a seam and the cloth's own edges one after another, so at a
+  // free corner (a shoulder seam's neck end) the cloth round it won every step and held the pair 5-10 mm open, even with
+  // the seam edge infinitely stiff; moved after the step, the pair closes and the cloth beside it follows.
+  void after(JPH::PhysicsSystem& physics, JPH::BodyID id);
   bool sewing(double t) const { return !seams_.empty() && t < time_; }
 
  private:
@@ -41,6 +46,9 @@ class ClothSew {
   JPH::Ref<JPH::SoftBodySharedSettings> s_;
   std::vector<Seam> seams_;
   double time_ = 0;
+  float shut_ = 0;   // scaled: pairs nearer than this are moved together after a step
+  float close_ = 0;  // scaled: the most such a pair closes in one step
+  bool sewn_ = false;  // the last step was after the sewing time
   float most_ = 0;  // scaled: the most a seam asks to shorten in one step from where it is
 };
 

@@ -13,6 +13,9 @@ namespace r3d::sim {
 namespace {
 constexpr float kSewDamping = 0.9f;  // speed kept per step while sewing
 constexpr float kMostPull = 0.25f;   // of the cloth's mean edge: the most a seam asks to shorten in one step from where it is
+constexpr double kShut = 2.0;        // of the cloth's mean edge: a sewn pair nearer than this is moved together after each step
+constexpr double kMostClose = 0.5;   // of the cloth's mean edge: the most such a pair closes in one step (the solver reopened a
+                                     // neck end by ~0.25 a step, so a quarter held it ~2 mm open)
 }  // namespace
 
 std::vector<JPH::uint> add_seam_edges(JPH::SoftBodySharedSettings& s, const Cloth& c, float compliance) {
@@ -45,6 +48,8 @@ ClothSew::ClothSew(JPH::Ref<JPH::SoftBodySharedSettings> s, const std::vector<JP
   for (size_t i = 0; i < seam.size(); ++i)
     if (!seam[i]) { sum += s_->mEdgeConstraints[i].mRestLength; ++n; }
   most_ = n ? float(kMostPull * sum / double(n)) : 0.0f;
+  shut_ = n ? float(kShut * sum / double(n)) : 0.0f;
+  close_ = n ? float(kMostClose * sum / double(n)) : 0.0f;
 }
 
 void ClothSew::before(JPH::PhysicsSystem& physics, JPH::BodyID id, double t) {
@@ -64,9 +69,29 @@ void ClothSew::before(JPH::PhysicsSystem& physics, JPH::BodyID id, double t) {
     const float now = (v[e.mVertex[1]].mPosition - v[e.mVertex[0]].mPosition).Length();
     e.mRestLength = std::max(m.gap * left, now - most_);
   }
+  sewn_ = !sew;
   mp->SetGravityFactor(sew ? 0.0f : 1.0f);
   if (sew)
     for (JPH::SoftBodyVertex& p : mp->GetVertices()) p.mVelocity *= kSewDamping;
+}
+
+void ClothSew::after(JPH::PhysicsSystem& physics, JPH::BodyID id) {
+  if (seams_.empty() || !sewn_ || !(shut_ > 0)) return;
+  JPH::BodyLockWrite lock(physics.GetBodyLockInterfaceNoLock(), id);
+  if (!lock.Succeeded()) return;
+  auto* mp = static_cast<JPH::SoftBodyMotionProperties*>(lock.GetBody().GetMotionProperties());
+  JPH::Array<JPH::SoftBodyVertex>& v = mp->GetVertices();
+  for (const Seam& m : seams_) {
+    const JPH::SoftBodySharedSettings::Edge& e = s_->mEdgeConstraints[m.edge];
+    JPH::SoftBodyVertex &a = v[e.mVertex[0]], &b = v[e.mVertex[1]];
+    const float wsum = a.mInvMass + b.mInvMass;
+    const JPH::Vec3 d = b.mPosition - a.mPosition;
+    const float now = d.Length();
+    if (wsum <= 0 || now <= 0 || now >= shut_) continue;
+    const JPH::Vec3 move = d * (std::min(now, close_) / now / wsum);  // shared by weight, as the solver would
+    a.mPosition += move * a.mInvMass;
+    b.mPosition -= move * b.mInvMass;
+  }
 }
 
 }  // namespace r3d::sim
