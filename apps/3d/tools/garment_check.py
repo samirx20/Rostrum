@@ -1,14 +1,16 @@
-# PR7 check (garments from patterns): a scratch project, no window. A simple stand (a capsule body, a bar for shoulders and
-# arms and a neck, all Stays still) and a shirt made of two flat pieces (a front and a back, each a body with sleeve stubs), curved
+# PR7 check (garments from patterns): a scratch project, no window. A simple stand (a capsule body, a shoulder shape and
+# a neck, all Stays still) and a shirt made of two flat pieces (a front and a back, each a body with sleeve stubs), curved
 # round the body, sewn at the sides, under the arms and on the shoulders. The simulation is computed through the document's
 # own path (rostrum3d.sim.compute), the core's reply printed (points, triangles, seams kept, frameMs), then Quick (Storm)
 # stills at the start, while sewing, and at rest, plus a Final (Cycles) still of the last frame. Then: every seam pair is
 # joined at the last frame (all within 1 mm), the cloth has not torn (no triangle edge stretched past 1.3 of its pattern
 # length) and the shirt has not fallen off the stand. The stand is cut smaller than the shirt, as a body is: its body 0.67 m
-# round under a 0.80 m chest, its arm bar (radius 3.5 cm) under 30 cm sleeves. The first stand (radius 14 cm, 0.78 m round
+# round under a 0.80 m chest, its shoulders (28 cm round) under 30 cm sleeves. The first stand (radius 14 cm, 0.78 m round
 # and an arm bar 31 cm round) was as big as the shirt, so its seams could never close (they rested ~6 mm apart).
 # Round 4: a dress form's neck. The body's round top is under the shoulder line (it was at it, 1.52 m, and held the neck
 # ends of the shoulder seams 10-18 mm apart), and a neck 22 cm round rises through the shirt's 16 cm-wide neckline.
+# 3d-shapes-smooth: a shoulder shape (an oval 8 x 10 cm, 60 cm across, 28 cm round) in place of the 7 cm arm bar. The
+# bar let the sleeve's shoulder seam sink round its underside and stretch the cloth 1.39x there; on a shoulder it rests on top.
 # The lead runs it:  heavy.ps1 run "hem: pr7 garment" gpu <venv python> apps\3d\tools\garment_check.py <out folder> [--video]
 # Exit 0 = every check passed; look at garment-*.png: a shirt hanging on the stand, closed at its seams, folds at the waist.
 import math
@@ -40,7 +42,7 @@ cotton = material("cotton", baseColor="#3d6fb0", roughness=0.9, sheen=0.5)
 floor = material("floor", baseColor="#5d6670", roughness=0.7)
 mesh("ground", shape="plane", width=6, depth=6, material=floor)
 mesh("body", shape="capsule", radius=0.12, height=0.62, y=0.82, sz=0.75, material=stand).simulate("still")
-mesh("arms", shape="capsule", radius=0.035, height=0.74, rz=90, y_world=1.44, material=stand).simulate("still")
+mesh("shoulders", shape="capsule", radius=0.05, height=0.6, rz=90, sx=0.8, y_world=1.45, material=stand).simulate("still")
 mesh("neck", shape="cylinder", radius=0.035, height=0.24, y=1.32, material=stand).simulate("still")
 mesh("pole", shape="cylinder", radius=0.025, height=0.82, material=stand).simulate("still")
 shirt = [[-0.2, 0], [0.2, 0], [0.2, 0.36], [0.36, 0.38], [0.36, 0.53], [0.08, 0.55], [0, 0.5], [-0.08, 0.55],
