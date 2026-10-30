@@ -243,13 +243,20 @@ def _whole(wav) -> list[dict]:
     return out
 
 
-def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, song=None, data=None) -> dict:
+# measured fields that are times in the file (not lengths): moved with `offset` so the words say song time
+TIMES_S = ("from_s", "to_s", "start_s", "end_s", "beat_before_s", "last_beat_s", "loudest_from_s", "bed_from_s",
+           "before_from_s", "quiet_from_s", "rival_s", "first_sound_s")
+
+
+def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, song=None, data=None, offset=0.0) -> dict:
     """The faults of `wav`: the asked-for `moments` ([{"at", "kind", "end"}], moments.KINDS; a {"kind": "tempo"} entry
     is checked by tempo_fit), and with `whole` the whole-piece ones (a silent start, a held tone, a near-mono mix, a hit
     the limiter squashed: `limiter` = listen.limiter's result). A soft stop names `peaky` to tame when the limiter's
     drivers are unknown. `drums`: a render's drum tracks' own files (a drop's gap is read on them). `song`: {"tracks":
     the render's track meters, "data": the document's data}, for a mix the limiter squashes (squash.py). `data` (else
-    song's): the document's data, whose brief says what a hit's bars around it must leave (hit_room.py)."""
+    song's): the document's data, whose brief says what a hit's bars around it must leave (hit_room.py). `offset`: where
+    `wav` starts in the song (an audition's stretch; `moments` are given in the file's time): every time in the faults
+    and their words is song time."""
     timed = [m for m in moments or [] if m.get("kind") != "tempo"]
     found = moment_faults(wav, timed, drums) if timed else []
     found += hit_room.faults(wav, timed, data if data is not None else (song or {}).get("data")) if timed else []
@@ -267,6 +274,10 @@ def check(wav, moments=None, limiter=None, whole=True, peaky=None, drums=None, s
             found += hit + mix
     found = sorted(found, key=lambda f: f["at_s"])
     for f in found:
+        if offset:
+            f["at_s"] = round(f["at_s"] + offset, 3)
+            f["measured"] = {k: round(v + offset, 3) if k in TIMES_S and isinstance(v, (int, float)) else v
+                             for k, v in (f.get("measured") or {}).items()}
         f["words"] = _words(f)
     asked = f" (checked {len(moments)} asked moment{'s' * (len(moments) != 1)})" if moments else ""
     said = ("Faults: " + "; ".join(f["words"] for f in found) + ".") if found else f"No faults found{asked}."

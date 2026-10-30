@@ -145,7 +145,7 @@ def _doc(doc, data) -> list[tuple[str, str]]:
         with markers.project(getattr(doc, "folder", None)):
             own = (data.get("ending") or {}).get("chord") or brief.asks(data, "open_ending") or brief.asks(data, "loop")
             ch = None if own else end_doc.last_chord(data)
-            dr = None if _fade_ok(data) or brief.asks(data, "loop") else end_doc.dropped(data)
+            dr = None if _fade_ok(data) or brief.asks(data, "loop") or brief.asks(data, "thin_ending") else end_doc.dropped(data)
     except Exception:  # noqa: BLE001  a document the checks refuse is theirs to name
         return out
     if ch and not ch["resolved"]:

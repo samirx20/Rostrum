@@ -15,7 +15,7 @@ import math
 
 from rostrum_core import RostrumError, codes
 
-from .doc import markers, meter, tempo
+from .doc import markers, meter, tempo, times
 from .script_scope import say
 from .script_time import Beat
 
@@ -82,9 +82,7 @@ def downbeat(song, time, at) -> None:
     g = max(0.0, g)
     song.set(gridStart=round(g, 9))
     song.landings.append((where, beat, at))
-    if g > QUIET_START:
-        say(f"downbeat: {name(root, beat)} lands at {at:g} s; bar 1 starts at {g:.3f} s, so write pickup music in "
-            f"the first {g:.2f} s (at=seconds_of(bar(1) - beats(n))): the song should not start silent.")
+    song.pickup = (name(root, beat), at, g)      # said at the end only when nothing is written before bar 1 (check)
 
 
 def _fits(root: dict, beat: float, at: float) -> list[str]:
@@ -174,8 +172,26 @@ def seconds_of(song, time) -> float:
     return round(tempo.seconds_at(song.root, _beat(time, "time", "seconds_of")), 9)
 
 
+def _first_start(song) -> float | None:
+    """The earliest start (s) of any note, hit or clip the script wrote, None when none can be read."""
+    root, out = {**song.root, "markers": song.marks()}, []
+    for t in song.tracks:
+        for f in [f for _, f, _ in (*t.notes, *t.hits)] + [c.fields for c in t.clips]:
+            try:
+                out.append(times.seconds(f["at"], root, "downbeat"))
+            except (RostrumError, KeyError, TypeError, ValueError):
+                continue
+    return min(out, default=None)
+
+
 def check(song) -> None:
-    """Every landing asked still holds on the finished tempo map (a later tempo change could have moved it)."""
+    """Every landing asked still holds on the finished tempo map (a later tempo change could have moved it); a
+    downbeat that moved bar 1 past QUIET_START with nothing written before it is said (the song would start silent)."""
+    if song.pickup and song.pickup[2] > QUIET_START and ((first := _first_start(song)) is None or first > QUIET_START):
+        what, at, g = song.pickup
+        say(f"downbeat: {what} lands at {at:g} s; bar 1 starts at {g:.3f} s and nothing is written before "
+            f"{g if first is None else first:.2f} s, so write pickup music in the first {g:.2f} s "
+            "(at=seconds_of(bar(1) - beats(n))): the song should not start silent.")
     for what, beat, at in song.landings:
         got = tempo.seconds_at(song.root, beat)
         if abs(got - at) > EXACT:
@@ -188,7 +204,7 @@ API = ["downbeat(time, at)", "land(time, at, ramp_from)", "seconds_of(time)"]
 
 
 def scope(song) -> dict:
-    song.landings = []
+    song.landings, song.pickup = [], None
     return {"downbeat": lambda time, at: downbeat(song, time, at),
             "land": lambda time, at, ramp_from: land(song, time, at, ramp_from),
             "seconds_of": lambda time: seconds_of(song, time)}

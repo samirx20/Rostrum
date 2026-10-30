@@ -73,3 +73,10 @@ def test_run_script_look_renders_after_a_script_that_ran_and_never_after_one_tha
     with pytest.raises(RostrumError):
         run(ctx, {"source": "x", "look": True})
     assert rendered == []
+
+
+def test_render_mix_keeps_bare_expect_times():
+    """`expect: ["#features"]` asks that a sound start there; render_mix once dropped it whole ("No asked moments")."""
+    from rostrum_sound.listen.asked_starts import split
+    moments, starts = split([2.0, 10.0, 18.0], ["#first look", "#big hit", 18.0])
+    assert moments == [{"at": 10.0, "kind": "hit"}] and starts == [("#first look", 2.0), ("18.0", 18.0)]

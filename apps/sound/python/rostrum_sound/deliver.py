@@ -227,7 +227,8 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: 
     `stems` {track id: path}, `busStems` {bus id: path}); `names` maps a track or bus id to the name the screen shows.
     Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the engine renders
     that part itself, mastered and measured on its own; an older render of the whole song is cut here), `seconds` (the
-    delivered length), `songSeconds` (the song's own), `files` (what
+    delivered length), `songSeconds` (all the engine rendered of the song, ring-out included: longer than the song's
+    Length when notes ring past it; for a part, the whole song's), `files` (what
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`, and `clippedFiles`: {file
     name: samples cut flat} for each fixed-point file that went past full scale).
     `opts.length` (render_mix, whenever the song has a Length): the file is exactly that long. Trim never cuts below it, and a

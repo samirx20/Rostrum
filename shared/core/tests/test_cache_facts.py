@@ -52,3 +52,14 @@ def test_child_valid_when_sees_parent():
     assert doc.item("n1")["bend"] == 2
     with pytest.raises(RostrumError):
         doc.apply({"op": "note.set", "target": "n2", "args": {"bend": 2}}, who)
+
+
+def test_entry_missing_a_file_is_made_again(tmp_path):
+    """A clean-up from outside (a person's disk sweep) can delete an entry's files but leave entry.json: that is a miss,
+    and put makes it again, never an error later when the file is read."""
+    c = Cache(tmp_path)
+    folder = c.put("k", "e", lambda tmp: (tmp / "picture.npy").write_bytes(b"x" * 10))
+    (folder / "picture.npy").unlink()
+    assert c.get("k", "e") is None
+    again = c.put("k", "e", lambda tmp: (tmp / "picture.npy").write_bytes(b"y" * 10))
+    assert (again / "picture.npy").read_bytes() == b"y" * 10

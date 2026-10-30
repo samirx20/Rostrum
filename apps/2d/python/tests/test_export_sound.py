@@ -68,3 +68,20 @@ class _NoEngine:
 
     def load(self, scene):
         pass
+
+
+def test_an_empty_song_exports_picture_only_and_says_so(tmp_path):
+    """Sound's fresh empty song shares the project: an export with sound used to fail on it after drawing every frame.
+    It is decided before frame 1: no sound under the picture, and the reply says why (no gate: the export happens)."""
+    from rostrum_core import Document, Who
+    from rostrum_core.storage import save
+    from rostrum_sound import KIND as SOUND
+    from rostrum_sound.doc import markers as sound_markers
+    from rostrum2d import project_sound
+    (tmp_path / "docs").mkdir()
+    with sound_markers.project(tmp_path):
+        save(Document.new(SOUND, tmp_path, "song"))
+    assert project_sound.song(tmp_path) is not None and project_sound.empty(tmp_path, "song")
+    assert project_sound.for_export(tmp_path, "", "mp4", None) is None
+    assert project_sound.for_export(tmp_path, "", "mp4", True) is None        # asked: still picture-only, never refused
+    assert 'the song "song" has nothing in it yet' in exporting.next_steps("look", False, tmp_path)

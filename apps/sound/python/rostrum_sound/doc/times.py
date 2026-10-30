@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 
-from . import markers, tempo
+from . import markers, meter, tempo
 
 
 NEXT = "next"
@@ -61,13 +61,25 @@ def seconds(value, root: dict, where: str, seen=()) -> float:
     """Any time as seconds (beats through the tempo map); marker references go through `markers.py`."""
     t = type(value)
     if t is dict:                                   # the usual note's time first (~100,000 reads per whole-song action)
-        return tempo.seconds_at(root, float(value["beat"]))
+        if "beat" in value:
+            return tempo.seconds_at(root, float(value["beat"]))
+        return bar_seconds(value, root, where)
     if t is float or t is int:
         return float(value)
     value = markers.resolve(root, value, where, seen)
     if isinstance(value, dict):
         return tempo.seconds_at(root, float(value["beat"]))
     return float(value)
+
+
+def bar_seconds(value: dict, root: dict, where: str) -> float:
+    """`{"bar": n}` (bars counted from 1, as the ruler shows them) as seconds: a tool's time may name a bar; a stored
+    time never does (it is beats). Anything else in a dict is a loud error naming the forms."""
+    bar = value.get("bar")
+    if set(value) != {"bar"} or isinstance(bar, bool) or not isinstance(bar, int) or bar < 1:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"{value}", 'must be {"bar": n} with n a whole number from 1, or {"beat": n}',
+                           ["seconds (2.5)", '{"beat": 8}', '{"bar": 3}', '"#drop"'])
+    return tempo.seconds_at(root, meter.bar_start(root, bar))
 
 
 def length_seconds(value, root: dict, start: float = 0.0, note: dict | None = None, where: str = "length") -> float:

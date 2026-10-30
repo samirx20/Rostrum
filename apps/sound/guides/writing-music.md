@@ -143,9 +143,12 @@ violins.shape("art", "sus", "trem", over=(bar(5), bar(9)))                # sust
   middle. Notes written with another articulation keep theirs.
 - `curve`: `"linear"`, `"late"` (most of the change near the end), `"early"` (most near the start), `"smooth"`
   (S-shaped). `over` takes every time the script takes (`bar(9)`, seconds, `"#climax"`, `"#climax-0.5"`).
-- Before a part's first shape of a kind the value holds at its `from_`, after the last at its `to`; several shapes of
-  one kind on a part join into one curve. It applies after `phrase` and before `humanize`; a re-run gives the same
-  values.
+- A shape changes the whole part, not only `over`: before a part's first shape of a kind the value holds at its
+  `from_`, after the last at its `to`, between two shapes at the earlier one's `to`; several shapes of one kind on a
+  part join into one curve (they do not multiply). `brass.shape("vol", 0.3, 1, over=(bar(18), bar(19)))` plays a stab
+  at bar 10 written vel 0.9 at 0.27. To leave the notes before it as written, start the curve from 1 there:
+  `brass.shape("vol", 1, 1, over=(0, bar(18)))` first. It applies after `phrase` and before `humanize`; a re-run gives
+  the same values.
 
 ## The performance layer (on by default)
 

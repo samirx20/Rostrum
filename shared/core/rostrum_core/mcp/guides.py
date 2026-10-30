@@ -83,8 +83,9 @@ class Guides:
         return text
 
     def part(self, topic: str, section: str | None = None, cap: int = CAP) -> str:
-        """The guide cut to fit a reply: `section` (words of a `## ` heading; "all" = whole) gives that section; with
-        none, start-here whole and any other guide's sections up to `cap` characters, then the rest's headings."""
+        """The guide cut to fit a reply: `section` (words of a `## ` heading; "all" = whole) gives that section
+        (a call's name no heading has, "shape": the sections that show `shape(` / `t.shape(`); with none, start-here
+        whole and any other guide's sections up to `cap` characters, then the rest's headings."""
         text = self.get(topic)
         parts = re.split(r"(?m)^(?=## )", text)
         if section == "all" or (section is None and (topic == "start-here" or len(text) <= cap)):
@@ -92,6 +93,8 @@ class Guides:
         if section is not None:
             want = section.lower().lstrip("# ").strip()
             hits = [p for p in parts[1:] if want in p.splitlines()[0].lower()]
+            if not hits and re.fullmatch(r"[a-z_][\w.]*", want):    # a call's name ("shape"): the sections that show it
+                hits = [p for p in parts[1:] if re.search(rf"`[\w.]*\b{re.escape(want)}\(", p.lower())]
             if not hits and want in self._topics:
                 raise RostrumError(codes.NOT_FOUND, "inspect_guide", f'"{section}"', f'no section "{section}" in the guide "{topic}"',
                                    [_head(p) for p in parts[1:]], f'"{want}" is a guide of its own: inspect_guide topic "{want}"')

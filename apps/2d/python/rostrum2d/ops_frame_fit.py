@@ -143,7 +143,8 @@ def _ease_into(ctx, frame, fid, f, t, ease):
 @R.operation("frame.fit", "Frame something: `to` view or rect (the largest frame-shaped box inside `rect` [x, y, w, h], "
              "world px, keeping the frame's turn), or items (the layers `ids` as they show in the export at `at`, depth "
              "included, with `pad` room; `keep` lists layers that stay whole in the frame as well). Keys x, y, zoom at `at`; a field with no keys yet is also keyed at 0 s where "
-             "it was. `ease` (a key ease name) shapes the move into it. Already framed there after 0 s: its place is keyed "
+             "it was. `ease` (a key ease name) shapes the move into it (the zoom's; x and y get the matching curve, so the "
+             "move zooms about one still point and never swings off its subject). Already framed there after 0 s: its place is keyed "
              "anyway (a hold the next fit moves on from); at 0 s on a still frame nothing changes. `cut`: jump there (as "
              "frame.cut).", target=TYPE, label="Frame the view",
              valid_when=UNLOCKED, params=[replace(TO[0], required=True), *TO[1:], AT, EASE,
@@ -174,6 +175,32 @@ def frame_fit(ctx, targets, args):
                 _key(ctx, fid, f, at, v)
             else:
                 ctx.set(fid, f, F.param(TYPE, f).check(round(v, 4), f"{ctx.where} › {fid}.{f}"))
+        _steady(ctx, fid, t)
+
+
+def _steady(ctx, fid, t):
+    """The move into the key at t (seconds) zooms about one still point (frame/push.py): x and y get the curve that
+    matches the zoom's, so a deep push from a wide shot never swings off its subject. Only when x, y and zoom move
+    together (their keys before t at one time) and the zoom's ease is a curve; else the keys stay as eased."""
+    from .frame import push
+    frame, times = ctx.item(fid), _times(ctx)
+    at = lambda k, f: marked.seconds(k["t"], times, f"{fid}.{f}")     # noqa: E731
+    pair = {}
+    for f in MOVE:
+        ks = sorted(keys_of(frame, f), key=lambda k: at(k, f))
+        end = next((i for i, k in enumerate(ks) if abs(at(k, f) - t) < 1e-6), None)
+        if not end:
+            return
+        pair[f] = (ks[end - 1], ks[end])
+    if len({round(at(pair[f][0], f), 6) for f in MOVE}) != 1:
+        return
+    zk = pair["zoom"][0]
+    curve = push.ease_for(zk, float(zk["v"]), float(pair["zoom"][1]["v"]))
+    if curve is None:
+        return
+    for f in ("x", "y"):
+        for name, v in curve.items():
+            ctx.set(pair[f][0]["id"], name, v)
 
 
 def _cut(ctx, fid, args):

@@ -44,6 +44,14 @@ def test_ring_lands_every_part_on_at_and_rings_past_it():
     assert tree["ending"] == {"kind": "ring", "at": "#end", "at_s": 16.0, "home": "D minor"}
 
 
+def test_listed_parts_land_and_the_others_play_as_written():
+    """a1: with parts=[...] a piano left out kept nothing it wrote on or across `at`."""
+    tree = run('ending("ring", at="#end", parts=[b])')
+    piano = _notes(tree, "piano")
+    assert len(piano) == 5 and all(n["dur"] == {"beats": 6} for n in piano[:4])    # untouched, the E5 after `at` too
+    assert _notes(tree, "bass")[-1]["at"] == "#end"
+
+
 def test_a_length_the_script_set_stays():
     """Sam, 2026-10-29: a tool never moves what the writer set; the reply gives the arithmetic instead."""
     tree = run('ending("ring", at="#end")', length="length(bar(7)); ")

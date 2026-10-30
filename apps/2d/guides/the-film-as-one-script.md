@@ -17,7 +17,10 @@ guides; the fragments here show the shape of a technique, not a piece to copy.
    look draws only the frames asked, and a re-run sends the engine only what the script changed). If the stills fail, the merge still stands and the summary says "Look FAILED"; look again with `look_frame`.
    `notes: true` adds the checks' measurements at the end (the same ones `look_frame` with `what: "review"` lists),
    e.g. `Notes (n): [text_crossed:title] text 'X' crossed by 'ring' 10–85 %`. Notes are observations with numbers,
-   never instructions; unasked, the reply carries none.
+   never instructions; unasked, the reply carries none. Without notes, the sheet's reply still names a subject cut by
+   the frame edge at its moments, as `look_frame` does for one ("Cut by the frame edge: phone (group) cut at the right
+   edge, up to 22 % of it outside, 7.5–12 s"): a crop you meant is yours to keep. Keys and transitions timed on a
+   marker count as they play.
 2. `look_frame` at the seconds you care about and judge the picture yourself. Change the script where you want it different.
 3. Run it again with the same path (the file's name is the script's name). Repeat.
 4. For detail, `look_frame` at one time (`area` for a zoom); `look_motion` for what moves when.

@@ -28,3 +28,10 @@ def test_chord_hit_and_tempo_change():
     assert sounding.at(data, 1.9)["chord"] is None   # chord (3 beats = 1.5 s) has ended
     row = {r["track"]: r for r in sounding.over(data, 0, 5)}
     assert row["keys"]["low"] == "D3" and row["keys"]["high"] == "C4" and row["drums"]["hits"] == 2
+
+
+def test_a_hits_vel_is_as_written_not_times_the_fader():
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source('tempo(120); length(bar(2)); c = track("cym", kit="drums", volume=2.0)\n'
+                                      'c.hit("crash", at=bar(1), vel=0.95)\nc.volume = 1.5', "s.py"))
+    assert sounding.over(doc.data, 0, 4)[0]["vel_mean"] == 0.95 and doc.data["tracks"][0]["volume"] == 1.5

@@ -69,4 +69,32 @@ mod tests {
         assert_eq!(super::delta(m, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], (1.0, 0.0, 0.0)).unwrap(), m);
         assert_eq!(super::delta(m, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], (0.5, 100.0, 0.0)).unwrap()[5], -2.25, "a half-size view moves half as far");
     }
+
+    /// A motion-blurred look drawn smaller than the comp (a final look's picture, the playing canvas) keeps its streaked
+    /// layers' pictures as an export does. The view's own matrix was taken for a 3D plane, every kept picture was refused
+    /// and left empty, and every streaked layer vanished from the look without a word (BUG-3b).
+    #[test]
+    fn a_layer_is_kept_under_a_smaller_view() {
+        use blitz_dom::DocumentConfig;
+        use blitz_html::HtmlDocument;
+        use blitz_paint::Run;
+        use blitz_traits::shell::{ColorScheme, Viewport};
+        let (w, h) = (200, 100);
+        let html = "<!DOCTYPE html><html><head></head><body style=\"margin:0\"><div id=\"rostrum-stage\">\
+            <div id=\"tall\" style=\"position:absolute;left:0;top:-500px;width:200px;height:1200px;background:#fff\"></div></div></body></html>";
+        let mut doc = HtmlDocument::from_html(html, DocumentConfig { viewport: Some(Viewport::new(w, h, 1.0, ColorScheme::Light)), ..Default::default() });
+        doc.resolve(0.0);
+        let node = doc.get_element_by_id("tall").unwrap();
+        let mut painter = crate::painter::Painter::cpu(w, h, None).unwrap();
+        painter.set_view(crate::painter::View { scale: 0.5, x0: 0.0, y0: 0.0, w: w as f32, h: h as f32 }).unwrap();
+        blitz_paint::set_plan([(node, Run::Keep(0))].into());
+        painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, w, h, 0, 0)).unwrap();
+        painter.keep_drawn(1).expect("the layer's picture is kept under the view");
+        blitz_paint::set_plan([(node, Run::Cached(0))].into());
+        painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, w, h, 0, 0)).unwrap();
+        blitz_paint::set_plan(Default::default());
+        let mut px = vec![];
+        crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), w / 2, false, false, 0, &mut px);
+        assert!(px[..4].iter().all(|&v| v > 200), "the kept picture is the white layer: {:?}", &px[..4]);
+    }
 }

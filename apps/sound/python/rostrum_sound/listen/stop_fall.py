@@ -26,7 +26,8 @@ def _db(seg):
 
 
 def _low_pulse(m, sr, at) -> float | None:
-    """The bass and kick's onset strength per second in PULSE_AFTER against the BEFORE_S before (1 = goes on as before)."""
+    """The onset strength per second of the whole mix's 40–250 Hz band (bass and kick, but also any low chord or pad attack) in
+    PULSE_AFTER against the BEFORE_S before (1 = goes on as before)."""
     t0 = max(0.0, at - BEFORE_S - 0.2)
     seg = m[int(t0 * sr):int((at + PULSE_AFTER[1] + 0.2) * sr)].astype(np.float64)
     S = np.abs(stft(seg, _N, _HOP)) ** 2
@@ -59,7 +60,8 @@ def why(d) -> list[str]:
     """What keeps going after the stop, in words (from measure's numbers in a fault's `measured`)."""
     out = []
     if d.get("low_pulse_kept") is not None and d["low_pulse_kept"] >= 0.7:
-        out.append(f"the bass and kick keep {100 * d['low_pulse_kept']:.0f} % of their pulse in the 2 s after")
+        out.append(f"the mix's low end (40–250 Hz: bass, kick, and any low chord or pad attack) keeps {100 * d['low_pulse_kept']:.0f} % of its "
+                   "pulse in the 2 s after (read on the whole mix, not on the bass and drum parts alone)")
     if d.get("under_before_db") is not None and d["under_before_db"] < 6:
         out.append(f"the 0.3–1.5 s after is {d['under_before_db']:+g} dB under the 2 s before")
     return out

@@ -522,7 +522,7 @@ impl Painter {
     /// in one paint), in number order, as kept pictures from `cached_len()` on; one it never drew into (all of its layers
     /// culled) is kept as nothing (a transparent px). `n`: how many the paint was to make.
     pub fn keep_drawn(&mut self, n: usize) -> Result<(), String> {
-        let mut drawn = self.cache.take_kept();
+        let mut drawn = self.cache.take_kept()?;
         if drawn.len() > n {
             return Err(format!("a paint drew {} kept pictures, {n} were asked for", drawn.len()));
         }

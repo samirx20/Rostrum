@@ -111,9 +111,10 @@ class Exporter(ExportSheet):
             self._range = "all"
 
     def _has_sound(self) -> bool:
-        """An MP4 of a project with sound (a stale main-mix mark: no switch here; the Sound row and the export say it)."""
+        """An MP4 of a project with sound to play (a stale main-mix mark: no switch here; the Sound row and the export say it;
+        an empty song: none, the export goes out picture-only)."""
         try:
-            return self._choice == "mp4" and project_sound.song(self.bridge.doc.folder, self._comp().get("soundtrack", "")) is not None
+            return project_sound.for_export(self.bridge.doc.folder, self._comp().get("soundtrack", ""), self._choice, None) is not None
         except Exception:  # noqa: BLE001
             return False
 

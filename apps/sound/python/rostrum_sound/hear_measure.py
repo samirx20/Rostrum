@@ -145,7 +145,7 @@ def lines(m: dict, written: dict | None = None) -> str:
         ons = p["onsets"]
         b = p["bands"]
         out.append(f"Part {p['id']} (alone, before master): {_num(p['lufs'])} LUFS, peak {p['peak_db']:.1f} dB, {sounds}; "
-                   f"{len(ons)} starts" + (" " + " ".join(f"{t:g}" for t in ons[:12]) + (" ..." if len(ons) > 12 else "") if ons else "")
+                   f"{len(ons)} sharp attacks found in its sound (soft or legato notes may not show; the Written lines count the notes)" + (" " + " ".join(f"{t:g}" for t in ons[:12]) + (" ..." if len(ons) > 12 else "") if ons else "")
                    + ("; bands " + " ".join(f"{k} {v:.0f}" for k, v in b.items()) if b and p["from_s"] is not None else ""))
     if written:
         for o in written.get("over") or []:

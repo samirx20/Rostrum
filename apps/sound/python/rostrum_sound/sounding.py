@@ -8,8 +8,8 @@ Seconds come from `ears.arrangement.read` (the same reading look_arrangement dra
 markers are the app's own); call inside `markers.project(folder)` when the song has project markers. `at` lists a track
 only when it has a note sounding at `t` (from_s <= t < to_s) or a hit within HIT_S of it; `pitches` are the pitch classes
 sounding across the pitched tracks (drum kits and muted tracks left out), lowest note first; `chord` names them when they
-make a triad, seventh or sus chord (a slash names a bass that is not the root), else None. A hit's `vel` is its velocity
-times the track's fader there (what `arrangement.read` stores); a note's is the written velocity. `over` counts what starts
+make a triad, seventh or sus chord (a slash names a bass that is not the root), else None. A note's and a hit's `vel` is the
+written velocity (0..1); the track's fader (its `volume`) is not in it. `over` counts what starts
 in [a, b): `first_s` / `last_s` are the first and last onsets; `low` / `high` name the lowest and highest note (None for a
 drum-only track); `vel_mean` averages notes and hits. Clips and voice lines are not listed.
 """
@@ -50,7 +50,7 @@ def at(doc: dict, t: float) -> dict:
     for tr in arr["tracks"]:
         notes = [{"pitch": keys.pitch_name(m, key), "midi": m, "vel": round(v, 3), "from_s": round(s, 4), "to_s": round(e, 4)}
                  for s, e, m, v, _ in tr["notes"] if s <= t < e]
-        hits = [{"drum": d, "at_s": round(s, 4), "vel": round(v, 3)} for s, d, v in tr["hits"] if abs(s - t) <= HIT_S]
+        hits = [{"drum": d, "at_s": round(s, 4), "vel": round(v, 3)} for s, d, _, v in tr["hits"] if abs(s - t) <= HIT_S]
         if notes or hits:
             tracks.append({"track": tr["id"], "notes": notes, "hits": hits})
             if tr["id"] not in kits and not tr["mute"]:
@@ -70,7 +70,7 @@ def over(doc: dict, a: float, b: float) -> list[dict]:
         if not notes and not hits:
             continue
         onsets = [n[0] for n in notes] + [h[0] for h in hits]
-        vels = [n[3] for n in notes] + [h[2] for h in hits]
+        vels = [n[3] for n in notes] + [h[3] for h in hits]
         out.append({"track": tr["id"], "notes": len(notes), "hits": len(hits), "first_s": round(min(onsets), 4),
                     "last_s": round(max(onsets), 4),
                     "low": keys.pitch_name(min(n[2] for n in notes), arr["key"]) if notes else None,

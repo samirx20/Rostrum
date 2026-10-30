@@ -7,7 +7,7 @@ working on one page; the topic guides at the end hold the detail.
 ## The loop
 
 1. **Write ONE script** for the whole film, to a file (`C:/work/film.py`).
-2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet.
+2. **Run it with look:** `run_script {"path": "C:/work/film.py", "look": true}`. The reply brings a contact sheet, and names anything cut by the frame edge at its moments.
    Add `notes: true` to get the checks' measurements at the end (what is crossed, cut, empty, and when).
 3. **Look** with `look_frame` at the seconds you care about (a frame in seconds) and judge it yourself. A look is
    what the canvas shows at that moment, like a screenshot of the window while scrubbing: well under a second on any

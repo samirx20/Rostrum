@@ -1,6 +1,7 @@
 """A part's volume, brightness or articulation following a curve over bars: one line per change.
 
-    t.shape("vol", 0.5, 1.1, over=(bar(1), bar(13)), curve="late")   # played dynamics: velocities, and held notes swell
+    t.shape("vol", 0.5, 1.1, over=(bar(1), bar(13)), curve="late")   # velocity x the curve at each note's start; a held note
+                                                                       # follows it as a ratio to that start (x2 at most; 0 stays 0)
     t.shape("bright", 0.2, 1, over=(bar(9), "#climax"))               # a lowpass opening: 0 ≈ 250 Hz … 1 = 20 kHz, or Hz
     t.shape("art", "", "trem", over=(bar(5), bar(9)))                  # notes switch where the curve passes its middle
 

@@ -78,8 +78,8 @@ def notes(wav: str, doc: dict, r: dict) -> list[dict]:
     from .listen.weakest import from_markers
     a, b = r["from_s"], r["to_s"]
     inside = [{**m, "at": m["at"] - a} for m in from_markers(markers.all(doc)) if a <= m["at"] < b]
-    found = check(wav, inside, whole=False)["faults"] if inside else []
-    out = [{"id": f.get("id", f["kind"]), "kind": f["kind"], "at_s": round(f["at_s"] + a, 3), "words": f.get("words", "")} for f in found]
+    found = check(wav, inside, whole=False, offset=a)["faults"] if inside else []     # its words in song time
+    out = [{"id": f.get("id", f["kind"]), "kind": f["kind"], "at_s": f["at_s"], "words": f.get("words", "")} for f in found]
     ceiling = ((doc.get("master") or [{}])[0] or {}).get("truePeak", -1)
     if r.get("truePeak") is not None and r["truePeak"] > ceiling:
         out.append({"id": "true_peak", "kind": "true_peak", "at_s": a, "words": f"true peak {r['truePeak']:.1f} dBTP, over the master's {ceiling:g}"})

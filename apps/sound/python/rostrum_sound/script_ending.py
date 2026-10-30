@@ -12,7 +12,9 @@
 length. `chord`: the home chord of key(...) unless a numeral ("V"), symbol ("Gsus4") or pitches (["D3", "F3", "A3"])
 is given (script_ending_chord.py). `parts`: the tracks that land (default: every pitched track with notes in the 2 bars
 before `at`; for a button also the drum tracks with hits there). Applied when the script ends, after every note is
-written: notes ringing across `at` end on it, notes and hits after it are dropped, nothing else is changed. The kinds
+written: on the landing parts (every track when `parts` is left out; only the listed ones when given, the others play
+as written) notes ringing across `at` end on it, notes and hits after it are dropped, nothing else is changed; the
+reply names each dropped or shortened note by track and time. The kinds
 make each ending land; which ending fits the piece is the writer's. The length is set only when the script has none:
 a length set before stays, and the reply gives the arithmetic against it. A loop has no ending: its last bar plays into bar 1. `song.root["ending"]` keeps what was asked.
 """
@@ -109,7 +111,7 @@ def apply(song) -> None:
         _refuse(f"at={asked['at']!r}", "has no pitched part playing in the 2 bars before it to land the chord",
                 ["parts=[piano, strings]"], "Name the parts that end, or end where they play.")
     counts = E.Counts()
-    for t in song.tracks:
+    for t in song.tracks if asked["parts"] is None else asked["parts"]:     # listed parts: the others are the writer's
         _clear(t, root, at_s, keep_on=kind == "ring", counts=counts)
     said = [counts.said()]
     if kind == "fade":
