@@ -43,7 +43,7 @@ SAY = {
     # tools on their own
     "edit_loudness": "When reaching the loudness target took heavy limiting: measured ways to need less, each with ready ops; `apply` makes one: {\"apply\": \"best\"}. Always a job (it re-renders to search, with or without `apply`): read it with inspect_job wait_s.",
     "render_audition": "Hear any stretch of the song in about a second (from/to or at ± around, solo/mute), read as numbers: loudness and bands per step, hits, each part's level and sharp attacks, the notes there (look: true for its picture), or try an instrument, kit, file or a track's notes; the song is unchanged.",
-    "look_arrangement": "See the written song in 0.05 s, no render: a picture (a row per track: notes by pitch, shaded by level; bars, sections, markers), each track's level and range, and who starts on each marker; no render.",
+    "look_arrangement": "See the written song in 0.05 s, no render: a picture (a row per track: notes by pitch, shaded by level; bars, chords, sections, markers), bar-by-bar text (chord symbols, each line's notes as E4@1 G4@2.5), each track's level and range, and who starts on each marker.",
     "inspect_diagnose": "Everything broken in a song (missing files, past the end, out of range …), each with its fix.",
     "look_video": "The picture the sound is for: frames, a contact sheet, or motion with sudden stops.",
     "edit_sounds_from_motion": "Musical answers to a 2D motion export's moments; adds only what `add` names.",
@@ -149,6 +149,7 @@ ARG_OF = {
     ("render_audition", "bars"): "How many bars.",
     ("look_arrangement", "start"): "Seconds to draw from.",
     ("look_arrangement", "end"): "Seconds to draw to.",
+    ("look_arrangement", "bars"): "Bars 'from-to' ('9-16'): the bar-by-bar text and the picture (default every bar up to 32, else 1-16).",
     ("look_video", "video"): "The picture's path.",
     ("look_video", "at"): "frames: the time to look around.",
     ("look_video", "span"): "frames: frames each side.",

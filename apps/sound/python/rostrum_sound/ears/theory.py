@@ -11,7 +11,10 @@ from ..doc.keys import NAMES, from_signature, parse, pc_name, pitch_name, signat
 # Chord shapes as semitones above the root, most specific first (a tie goes to the earlier one).
 SHAPES = [("maj7", (0, 4, 7, 11)), ("m7", (0, 3, 7, 10)), ("7", (0, 4, 7, 10)), ("m7b5", (0, 3, 6, 10)),
           ("dim7", (0, 3, 6, 9)), ("", (0, 4, 7)), ("m", (0, 3, 7)), ("dim", (0, 3, 6)), ("aug", (0, 4, 8)),
-          ("sus4", (0, 5, 7)), ("sus2", (0, 2, 7)), ("5", (0, 7))]
+          ("sus4", (0, 5, 7)), ("sus2", (0, 2, 7)), ("5", (0, 7)),
+          ("6", (0, 4, 7, 9)), ("m6", (0, 3, 7, 9)), ("7sus4", (0, 5, 7, 10)), ("mMaj7", (0, 3, 7, 11)),
+          ("add9", (0, 2, 4, 7)), ("madd9", (0, 2, 3, 7)), ("9", (0, 2, 4, 7, 10)), ("maj9", (0, 2, 4, 7, 11)),
+          ("m9", (0, 2, 3, 7, 10))]     # appended: chord_from_chroma picks its templates by position above
 INTERVALS = ["unison", "minor 2nd", "major 2nd", "minor 3rd", "major 3rd", "perfect 4th", "tritone", "perfect 5th",
              "minor 6th", "major 6th", "minor 7th", "major 7th", "octave"]
 # Lowest note (MIDI) a simultaneous interval of that many semitones stays clear below (a common orchestration

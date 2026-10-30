@@ -8,7 +8,7 @@ effects), sections, markers and a master. You build it from ONE Python script an
 1. **Write the whole piece as one script**, starting with the brief you were given, word for word: `brief("...")`.
    Then the song's map (tempo, key, length, sections, markers), every track's notes, the effects, the mix and the master
    target. Run it with `run_script` under one `name` for the song.
-2. **See it: `look_arrangement`** (about 0.05 s, no render): who plays when, how loud and how high, the bars numbered.
+2. **See it: `look_arrangement`** (about 0.05 s, no render): who plays when, how loud and how high, the bars numbered, and bar by bar the chords and each line's notes as names (`E4@1 G4@2.5`).
 3. **Hear the moment you care about: `render_audition`** (about a second, no full render):
    `{"from": {"bar": 9}, "to": {"bar": 11}}` or `{"at": "#chorus", "around": 2}`; `solo` / `mute` pick who is heard;
    the reply reads the stretch as numbers (see "You can't hear" below); `look: true` adds its picture (wave, loudness,
