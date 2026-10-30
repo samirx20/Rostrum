@@ -33,6 +33,13 @@ def _as_keys(v):
     return lambda t, v=v: v                     # a still value
 
 
+def _named(values: tuple, order: dict, what: str) -> dict:
+    """Values given without names, in the order the fields are listed."""
+    if len(values) > len(order):
+        raise ValueError(f"{what} takes at most {len(order)} values in order ({', '.join(order)}); got {len(values)}")
+    return dict(zip(order, values))
+
+
 class Film:
     def __init__(self, width: int = 1920, height: int = 1080, fps: float = 30, duration: float = 10,
                  background: str = "#000000"):
@@ -48,6 +55,8 @@ class Film:
         self._grain: dict[str, object] = {}
         self._grain_frame = False
         self.blur_shutter, self.blur_samples = 0.0, 0
+        self._shutter = None                    # keys or a still value, degrees
+        self._cuts: list[float] = []
         self.notes: list[str] = []
         self.folder = CURRENT_FOLDER            # the project folder (markers, voice lines, sound)
         self.sound = None                       # True / False / None (default: the project's main mix when it has one)
@@ -90,23 +99,26 @@ class Film:
         self._cam.update({k: _as_keys(v) for k, v in fields.items()})
         return self
 
-    def light(self, **fields):
+    def light(self, *values, **fields):
         """The light every `data-light` element is shaded by: angle (degrees, where it comes from: 0 above, 90 right),
         elevation (degrees above the picture, 90 = straight on: flat), colour, shadow (the colour of the turned-away
         side), strength, soft (px: how round forms read; small = an edge bevel, large = a pillowed form), cast (px:
         shadow offset; 0 = none), castBlur, castColour, castOpacity. Numbers may be keys. An element's own
-        data-light="soft: 40; cast: 20" wins over these."""
+        data-light="soft: 40; cast: 20" wins over these. Values without names go in that order (angle, elevation, …)."""
+        fields = {**_named(values, light_mod.DEFAULTS, "light"), **fields}
         bad = set(fields) - set(light_mod.DEFAULTS)
         if bad:
             raise ValueError(f"light fields are {', '.join(light_mod.DEFAULTS)}; not {', '.join(sorted(bad))}")
         self._light.update({k: _as_keys(v) for k, v in fields.items()})
         return self
 
-    def grain(self, frame: bool = True, **fields):
+    def grain(self, *values, frame: bool = True, **fields):
         """Film grain (the engine's grain shader): amount (0.1 fine film, 0.4 rough), size (px), seed, colour (1: each
         colour its own grain), smooth (0: square cells), still (1: the same each frame). Numbers may be keys. These
         are also the settings every `data-grain` element starts from (its own data-grain="amount: .3" wins).
-        frame=True grains the whole frame (world and overlay, background included); frame=False only sets them."""
+        frame=True grains the whole frame (world and overlay, background included); frame=False only sets them. Values
+        without names go in that order: film.grain(.06, 1.6) = amount .06, size 1.6."""
+        fields = {**_named(values, grain_mod.DEFAULTS, "grain"), **fields}
         bad = set(fields) - set(grain_mod.DEFAULTS)
         if bad:
             raise ValueError(f"grain fields are {', '.join(grain_mod.DEFAULTS)}; not {', '.join(sorted(bad))}")
@@ -114,10 +126,19 @@ class Film:
         self._grain_frame = bool(frame)
         return self
 
-    def blur(self, shutter: float = 180, samples: int = 8):
+    def blur(self, shutter=180, samples: int = 8):
         """True motion blur: each frame is `samples` pictures across the shutter (degrees; 180 = half a frame), averaged.
-        blur(0) turns it off."""
-        self.blur_shutter, self.blur_samples = float(shutter), int(samples) if shutter > 0 else 0
+        `shutter` may be keys ({t: degrees}; 0 over a stretch turns it off there). blur(0) turns it off."""
+        if isinstance(shutter, (int, float)) and shutter <= 0:
+            self._shutter, self.blur_shutter, self.blur_samples = None, 0.0, 0
+            return self
+        self._shutter = _as_keys(shutter)
+        self.blur_shutter, self.blur_samples = float(self._shutter(0) or 0), int(samples)
+        return self
+
+    def cut(self, *times: float):
+        """Hard cuts at these seconds: a frame's motion-blur samples never reach across one (no two shots in one frame)."""
+        self._cuts = sorted(set(self._cuts) | {float(t) for t in times})
         return self
 
     # --- time and sound from the project ---
@@ -130,7 +151,7 @@ class Film:
 
     def lipsync(self, source: str, at: float = 0.0, text: str | None = None) -> "Mouth":
         """Mouth shapes for a voice clip: "voice:<line id>" (a RostrumSound voice line of this project) or a WAV path,
-        starting at `at` s. Returns mouth(t) -> "X" (rest) or "A".."H" (Preston Blair shapes; inspect_guide 'markup')."""
+        starting at `at` s. Returns mouth(t) -> "X" (rest) or "A".."H" (Preston Blair shapes; look_film {guide: "sound"})."""
         from rostrum_core.lipsync.track import track
         from ..lipsync import voice_line
         wav, words = voice_line.resolve(source, self.folder, "lipsync")
@@ -183,12 +204,16 @@ class Film:
         return world + over
 
     def samples(self, t: float) -> list[str]:
-        """The stage at each shutter sub-frame (motion blur), or [] when blur is off."""
+        """The stage at each shutter sub-frame (motion blur), or [] when blur is off at t. Samples stay inside the shot
+        t is in (film.cut)."""
         n = self.blur_samples
-        if n < 2 or self.blur_shutter <= 0:
+        shutter = float(self._shutter(t)) if self._shutter is not None else 0.0
+        if n < 2 or shutter <= 0:
             return []
-        span = self.blur_shutter / 360 / self.fps
-        return [self.markup(t + span * (i / (n - 1) - 0.5)) for i in range(n)]
+        span = shutter / 360 / self.fps
+        lo = max([c for c in self._cuts if c <= t], default=float("-inf"))
+        hi = min([c for c in self._cuts if c > t], default=float("inf")) - 1e-6
+        return [self.markup(min(max(t + span * (i / (n - 1) - 0.5), lo), hi)) for i in range(n)]
 
     def shell(self) -> str:
         """The page every frame's markup goes into: the app's fonts, the agent's CSS, the stage."""

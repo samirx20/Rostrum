@@ -52,7 +52,7 @@ def load(path: Path, folder: Path) -> Film:
         raise ScriptError(_where(e, path, code)) from None
     f = ns.get("film")
     if not isinstance(f, Film):
-        raise ScriptError(f"{path.name} ran but made no `film`: end with film = Film(...) set up (inspect_guide 'markup')")
+        raise ScriptError(f"{path.name} ran but made no `film`: end with film = Film(...) set up (look_film {guide: true})")
     f.folder = str(folder)
     f.random = (rnd, rnd.getstate())         # the generator as the script left it (its own random.seed(n) counts)
     f.notes[:0] = [f"print: {line}" for line in printed] + script_python.exit_note(ran)

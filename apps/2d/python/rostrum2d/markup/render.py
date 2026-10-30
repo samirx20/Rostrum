@@ -4,6 +4,8 @@ film's CSS or size changed. Looks and the export draw through the same requests 
 a frame the engine refuses fails loudly, naming the time)."""
 from __future__ import annotations
 
+import copy
+import html
 import json
 import re
 import subprocess
@@ -32,6 +34,34 @@ def tag_layers(markup: str) -> str:
         a = None if "data-layer-id" in tag else _ID.search(tag)
         return tag if a is None else f"{tag[:a.end()]} data-layer-id={a.group(1)}{a.group(2)}{a.group(1)}{tag[a.end():]}"
     return _TAG.sub(one, markup)
+
+
+_TEXT = re.compile(r"<([a-zA-Z][\w:-]*)\b([^>]*?)(/?)>([^<]*)")
+_NO_TEXT = {"style", "script", "title", "desc", "defs", "svg", "g", "tspan", "textpath"}   # an SVG <text> is named whole
+TEXT_PREFIX = "rostrum-text-"
+
+
+def tag_texts(markup: str) -> tuple[str, dict[str, str]]:
+    """Every element without an id that holds text of its own (an SVG <text> whatever is inside it) also named, as
+    rostrum-text-N, so the boxes reply measures it too: (tagged markup, {name: its first words}). The request's copy
+    only, like tag_layers."""
+    labels: dict[str, str] = {}
+
+    def one(m):
+        tag, attrs, close, text = m.group(1), m.group(2), m.group(3), m.group(4)
+        own = html.unescape(text).strip()
+        if close or tag.lower() in _NO_TEXT or _ID.search(attrs) or "data-layer-id" in attrs:
+            return m.group(0)
+        if tag == "text" and not own:                       # SVG text: its words may sit in a <tspan>/<textPath>
+            rest = markup[m.end():markup.find("</text>", m.end())]
+            own = html.unescape(re.sub(r"<[^>]*>", " ", rest)).strip()
+        if not own:
+            return m.group(0)
+        name = f"{TEXT_PREFIX}{len(labels)}"
+        words = " ".join(own.split())
+        labels[name] = words if len(words) <= 32 else words[:30].rstrip() + "…"
+        return f'<{tag}{attrs} id="{name}" data-layer-id="{name}"{close}>{text}'
+    return _TEXT.sub(one, markup), labels
 
 
 class Session:
@@ -88,7 +118,9 @@ class Session:
             if not any(n.startswith(note) for n in film.notes):
                 note += f" (first at {t:.2f} s)"
                 film.notes.append(note)
+        labels: dict[str, str] = {}
         if boxes:
+            stage, labels = tag_texts(stage)
             stage = tag_layers(stage)
         req = {"stage": stage, "index": round(t * film.fps)}
         if boxes:
@@ -100,9 +132,13 @@ class Session:
         if encode:
             req["encode"] = True
         try:
-            return self.request({"frame": req})
+            out = self.request({"frame": req})
         except RenderError as e:
             raise RenderError(f"frame at {t:.3f} s: {e}") from None
+        for b in out.get("boxes") or []:                    # an untagged text is named by its words
+            if b.get("id") in labels:
+                b["label"] = labels[b["id"]]
+        return out
 
     def close(self):
         if self.proc.poll() is None:
@@ -138,8 +174,15 @@ def h264(out: Path, film: Film, quality: str = "high") -> dict:
                                           str(rate.kbps), str(rate.quality)]}
 
 
+DRAFT_SAMPLES = 2
+
+
 def export(film: Film, out: Path, log: Path, quality: str = "high", progress=None) -> dict:
-    """Every frame into an MP4 at `out` (written as .partial, renamed only when whole)."""
+    """Every frame into an MP4 at `out` (written as .partial, renamed only when whole). `draft`: a quick look at the
+    whole film moving, motion blur at DRAFT_SAMPLES samples a frame (the rest as written)."""
+    if quality == "draft" and film.blur_samples > DRAFT_SAMPLES:
+        film = copy.copy(film)
+        film.blur_samples = DRAFT_SAMPLES
     part = out.with_name(out.stem + ".partial" + out.suffix)
     part.unlink(missing_ok=True)
     s = Session(log, encode=h264(part, film, quality))

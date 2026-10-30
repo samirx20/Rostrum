@@ -5,7 +5,8 @@ changes. Notes only (information with times, never a refusal): the film is drawn
     notes(session, film, [0.5, 1.5, …], stills=[…]) -> ["#headline is cut by the right edge from 4.2 to 6.0 s (up to 38 px outside)", …]
 
 Boxes come from the engine (`frame` with boxes, boxes.rs): every element with an id, as laid out and painted this
-frame (the camera's transform included), in paint order, with the union of its own text's glyph runs.
+frame (the camera's transform included), in paint order, with the union of its own text's glyph runs; a part inside
+an `<svg>` (a shape, `<g>`, `<text>`) by the box of its drawn outline.
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 from .film import Film
-from .render import Session, stills as draw_stills
+from .render import TEXT_PREFIX, Session, stills as draw_stills
 
 MAX_LINES = 10
 EDGE_PX = 2.0             # glyphs further out than this count as cut
@@ -48,50 +49,78 @@ def notes(session: Session, film: Film, times: list[float], stills: list[Path] |
 def _layout_notes(film: Film, times: list[float], frames: list[list[dict]]) -> list[tuple[float, str]]:
     frame = (0.0, 0.0, float(film.width), float(film.height))
     cuts: dict[tuple, dict[float, float]] = {}     # (id, sides, text?) -> {t: px outside}
-    covers: dict[tuple, dict[float, float]] = {}   # (top id, text id) -> {t: share covered}
+    covers: dict[tuple, dict[float, float]] = {}   # (top id, text id, sits?) -> {t: share covered}
+    names: dict[str, str] = {}
     for t, boxes in zip(times, frames):
         for b in boxes:
-            if _ours(b["id"]) or b.get("opacity", 1) < 0.15:
+            names[b["id"]] = _name(b)
+            if not _measured(b):
                 continue
             g = b.get("glyphs")
             text = g is not None
             r = g if text else b.get("box")
-            if r is None or (not text and not _small_enough(r, frame)):
-                continue
-            sides, px = _outside(r, frame)
+            if r is None or (not text and not _small_enough(r, frame)) or not _visible(r, _clip(b, frame)):
+                continue                            # wholly hidden by a clipping parent: parked, not cut
+            sides, px = _outside(r, frame, _clip(b, frame))
             if sides and _visible(r, frame):
                 cuts.setdefault((b["id"], sides, text), {})[t] = max(px, cuts.get((b["id"], sides, text), {}).get(t, 0))
         for i, under in enumerate(boxes):
             g = under.get("glyphs")
-            if g is None or _ours(under["id"]) or under.get("opacity", 1) < 0.15 or not _visible(g, frame):
+            if g is None or not _measured(under) or not _visible(_meet(g, _clip(under, frame)), frame):
                 continue
+            g = _meet(g, _clip(under, frame))
             kin = _lineage(boxes, i)
             for j in range(i + 1, len(boxes)):
                 top = boxes[j]
-                if top["id"] in kin or _ours(top["id"]) or top.get("opacity", 1) < 0.15 or under["id"] in _lineage(boxes, j):
+                if top["id"] in kin or not _measured(top) or under["id"] in _lineage(boxes, j):
                     continue
                 box = top.get("box")
                 if box is None or _area(box) > WRAPPER_SHARE * _area(frame):
                     continue
+                box = _meet(box, _clip(top, frame))
                 meet = _area(_meet(box, g))
                 share = meet / max(1.0, _area(g))
-                if share >= COVER_SHARE or meet >= SITS_ON * _area(box) > 0:
-                    key = (top["id"], under["id"])
+                sits = meet >= SITS_ON * _area(box) > 0 and _area(box) < _area(g)
+                if share >= COVER_SHARE or sits:
+                    key = (top["id"], under["id"], sits)
                     covers.setdefault(key, {})[t] = max(share, covers.get(key, {}).get(t, 0))
     out = []
     for (ident, sides, text), at in cuts.items():
         px = max(at.values())
-        what = f"#{ident} is cut by the {_sides(sides)}" if text else f"#{ident} runs past the {_sides(sides)}"
-        out.append(((3 if text else 1) + _weight(at, times), f"{what} {_when(at, times)} (up to {px:.0f} px outside)"))
-    for (top, under), at in covers.items():
-        share = max(at.values())
-        part = f" (up to {share * 100:.0f} % of its text)" if COVER_SHARE <= share <= 0.9 else ""
-        out.append((2 + _weight(at, times), f"#{top} covers #{under} {_when(at, times)}{part}"))
-    return out
+        what = f"{names[ident]} is cut by the {_sides(sides)}" if text else f"{names[ident]} runs past the {_sides(sides)}"
+        out.append(((3 if text else 1) + _weight(at, times), ident, f"{what} {_when(at, times)} (up to {px:.0f} px outside)"))
+    by_top: dict[tuple, list] = {}                  # one line per covering element: what it lies on, and when
+    for (top, under, sits), at in covers.items():
+        by_top.setdefault((top, sits), []).append((under, at))
+    for (top, sits), unders in by_top.items():
+        unders.sort(key=lambda u: -len(u[1]))
+        at = {t: 1 for _, a in unders for t in a}
+        listed = ", ".join(names[u] for u, _ in unders[:4]) + (f" and {len(unders) - 4} more" if len(unders) > 4 else "")
+        if sits:
+            out.append((2.5 + _weight(at, times), top, f"{names[top]} sits on the text of {listed} {_when(at, times)}"))
+        else:
+            share = max(max(a.values()) for _, a in unders)
+            part = f" (up to {share * 100:.0f} % of its text)" if len(unders) == 1 and COVER_SHARE <= share <= 0.9 else ""
+            out.append((2 + _weight(at, times), top, f"{names[top]} covers {listed} {_when(at, times)}{part}"))
+    # Each element its first line before any element a second, so ten lines name ten things.
+    out.sort(key=lambda n: -n[0])
+    seen: set = set()
+    first = [n for n in out if not (n[1] in seen or seen.add(n[1]))]
+    rest = [n for n in out if n not in first]
+    return [(w, say) for w, _, say in first] + [(w - 10, say) for w, _, say in rest]
 
 
-def _ours(ident: str) -> bool:
-    return ident.startswith("rostrum-")
+def _measured(b: dict) -> bool:
+    return (not b["id"].startswith("rostrum-") or b["id"].startswith(TEXT_PREFIX)) and b.get("opacity", 1) >= 0.15
+
+
+def _name(b: dict) -> str:
+    return f'the text "{b["label"]}"' if b.get("label") else f"#{b['id']}"
+
+
+def _clip(b: dict, frame):
+    c = b.get("clip")
+    return tuple(c) if c else frame
 
 
 def _lineage(boxes: list[dict], i: int) -> set[str]:
@@ -121,9 +150,12 @@ def _small_enough(r, frame) -> bool:
     return (r[2] - r[0]) < 0.8 * (frame[2] - frame[0]) and (r[3] - r[1]) < 0.8 * (frame[3] - frame[1])
 
 
-def _outside(r, frame) -> tuple[tuple[str, ...], float]:
+def _outside(r, frame, clip=None) -> tuple[tuple[str, ...], float]:
+    """The frame edges `r` passes, counting only edges its clipping parents reach (cut inside a parent is not by the frame)."""
     over = {"left": frame[0] - r[0], "top": frame[1] - r[1], "right": r[2] - frame[2], "bottom": r[3] - frame[3]}
-    sides = tuple(s for s, v in over.items() if v > EDGE_PX)
+    c = clip or frame
+    reach = {"left": c[0] <= frame[0] + 1, "top": c[1] <= frame[1] + 1, "right": c[2] >= frame[2] - 1, "bottom": c[3] >= frame[3] - 1}
+    sides = tuple(s for s, v in over.items() if v > EDGE_PX and reach[s])
     return sides, max((over[s] for s in sides), default=0.0)
 
 
