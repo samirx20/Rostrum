@@ -438,6 +438,11 @@ pub enum FilterEffect {
     /// Creates a lighting effect by treating the input's alpha channel as a height map
     /// and calculating specular (shiny) reflection highlights from a light source.
     SpecularLighting(SpecularLightingFilter),
+
+    /// Rostrum patch (2D SVG filters): the input's colours re-encoded from one space to another, unpremultiplied
+    /// (`color-interpolation-filters`: SVG filter primitives work in linearRGB unless told sRGB). The backend maps
+    /// `Working` to the surface's own space; a step whose two ends are the same space passes its input through.
+    Interpolate(interpolation::Interpolate),
 }
 
 // Assert size of FilterEffect.
@@ -455,6 +460,17 @@ impl FilterEffect {
     pub fn blur(radius: f32) -> Self {
         Self::GaussianBlur(GaussianBlurFilter {
             std_deviation: radius,
+            std_deviation_y: None,
+            edge_mode: EdgeMode::None,
+            smooth: false,
+        })
+    }
+
+    /// Rostrum patch (2D SVG filters): a Gaussian blur with its own σ across and down (`stdDeviation="x y"`).
+    pub fn blur_xy(x: f32, y: f32) -> Self {
+        Self::GaussianBlur(GaussianBlurFilter {
+            std_deviation: x,
+            std_deviation_y: (x != y).then_some(y),
             edge_mode: EdgeMode::None,
             smooth: false,
         })
@@ -464,6 +480,7 @@ impl FilterEffect {
     pub fn smooth_blur(radius: f32) -> Self {
         Self::GaussianBlur(GaussianBlurFilter {
             std_deviation: radius,
+            std_deviation_y: None,
             edge_mode: EdgeMode::None,
             smooth: true,
         })
@@ -543,9 +560,10 @@ impl FilterEffect {
     pub fn expansion_rect(&self) -> Rect {
         match self {
             Self::GaussianBlur(blur) => {
-                // Gaussian blur expands uniformly by 3*sigma (covers 99.7% of distribution)
-                let radius = (blur.std_deviation * 3.0) as f64;
-                Rect::new(-radius, -radius, radius, radius)
+                // Gaussian blur expands by 3*sigma (covers 99.7% of distribution)
+                let rx = (blur.std_deviation * 3.0) as f64;
+                let ry = (blur.std_deviation_y.unwrap_or(blur.std_deviation) * 3.0) as f64;
+                Rect::new(-rx, -ry, rx, ry)
             }
             Self::Offset(offset) => {
                 // Offset shifts pixels; expand bounds asymmetrically so shifted content isn't cut.
@@ -574,8 +592,8 @@ impl FilterEffect {
             }
             // Rostrum patch: a dilated shape and a shader that moves pixels outward reach past the input.
             Self::Morphology(m) if matches!(m.operator, morphology::MorphologyOperator::Dilate) => {
-                let r = m.radius as f64;
-                Rect::new(-r, -r, r, r)
+                let (rx, ry) = (m.radius as f64, m.radius_y.unwrap_or(m.radius) as f64);
+                Rect::new(-rx, -ry, rx, ry)
             }
             Self::RuntimeShader(r) => {
                 let g = r.grow as f64;
@@ -686,6 +704,8 @@ mod blur {
         /// or two numbers (first for x-axis, second for y-axis). Currently only uniform
         /// blur is supported. Consider changing to `(f32, f32)` or a dedicated type.
         pub std_deviation: f32,
+        /// Rostrum patch (2D SVG filters): σ down, when it differs from `std_deviation` (then σ across).
+        pub std_deviation_y: Option<f32>,
         /// Edge mode determining how pixels beyond the input bounds are handled.
         pub edge_mode: EdgeMode,
         /// Rostrum patch (blur r6): a backend that runs a wide blur at a lower resolution softens each level before
@@ -784,6 +804,8 @@ pub mod morphology {
         pub operator: MorphologyOperator,
         /// Operation radius in pixels. Larger values create stronger effects.
         pub radius: f32,
+        /// Rostrum patch (2D SVG filters): the radius down, when it differs (`radius="x y"`).
+        pub radius_y: Option<f32>,
     }
 
     /// Morphological operators for dilate/erode operations.
@@ -806,6 +828,115 @@ pub mod morphology {
     }
 }
 
+/// Rostrum patch (2D SVG filters): `color-interpolation-filters`.
+pub mod interpolation {
+    use super::{Filter, FilterEffect, FilterId, FilterInput, FilterInputs, FilterSource};
+    use std::collections::HashMap;
+
+    /// The colour encoding a buffer of the filter graph holds.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    pub enum FilterColorSpace {
+        /// What the surface holds (sRGB values on a display surface, linear on a linear working one).
+        Working,
+        Srgb,
+        LinearRgb,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    pub struct Interpolate {
+        pub from: FilterColorSpace,
+        pub to: FilterColorSpace,
+    }
+
+    /// Builds a filter graph whose primitives each run in their own colour space: every input is re-encoded into
+    /// the primitive's space once (shared by all readers), and the output back into the working space.
+    pub struct SpacedFilter {
+        pub graph: Filter,
+        spaces: Vec<FilterColorSpace>,
+        converted: HashMap<(u16, FilterColorSpace), FilterId>,
+    }
+
+    impl Default for SpacedFilter {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl SpacedFilter {
+        pub fn new() -> Self {
+            Self { graph: Filter::empty(), spaces: vec![], converted: HashMap::new() }
+        }
+
+        fn space_of(&self, input: &FilterInput) -> Option<FilterColorSpace> {
+            match input {
+                FilterInput::Result(id) => self.spaces.get(id.0 as usize).copied(),
+                // Alpha alone has no colour to re-encode.
+                FilterInput::Source(FilterSource::SourceAlpha) => None,
+                FilterInput::Source(_) => Some(FilterColorSpace::Working),
+            }
+        }
+
+        /// `input` as it reads in `space`.
+        pub fn input_in(&mut self, input: FilterInput, space: FilterColorSpace) -> FilterInput {
+            let Some(from) = self.space_of(&input) else { return input };
+            if from == space {
+                return input;
+            }
+            let key = match input {
+                FilterInput::Result(id) => id.0,
+                FilterInput::Source(FilterSource::SourceGraphic) => u16::MAX,
+                FilterInput::Source(_) => u16::MAX - 1,
+            };
+            if let Some(&id) = self.converted.get(&(key, space)) {
+                return FilterInput::Result(id);
+            }
+            let id = self.push(FilterEffect::Interpolate(Interpolate { from, to: space }), FilterInputs::single(input), space);
+            self.converted.insert((key, space), id);
+            FilterInput::Result(id)
+        }
+
+        fn push(&mut self, effect: FilterEffect, inputs: FilterInputs, space: FilterColorSpace) -> FilterId {
+            let id = self.graph.add(effect, inputs);
+            self.spaces.push(space);
+            id
+        }
+
+        /// A primitive run in `space` (its inputs re-encoded into it); its result is in `space`. `None`: the
+        /// primitive reads and writes the working space as it is (a shader program, a picture).
+        pub fn add(&mut self, effect: FilterEffect, inputs: FilterInputs, space: Option<FilterColorSpace>) -> FilterId {
+            let Some(space) = space else {
+                let inputs = FilterInputs {
+                    primary: inputs.primary.map(|i| self.input_in(i, FilterColorSpace::Working)),
+                    secondary: inputs.secondary.map(|i| self.input_in(i, FilterColorSpace::Working)),
+                };
+                return self.push(effect, inputs, FilterColorSpace::Working);
+            };
+            let inputs = FilterInputs {
+                primary: inputs.primary.map(|i| self.input_in(i, space)),
+                secondary: inputs.secondary.map(|i| self.input_in(i, space)),
+            };
+            self.push(effect, inputs, space)
+        }
+
+        /// A primitive whose result is in `space` without reading anything (a flood colour: sRGB).
+        pub fn add_source(&mut self, effect: FilterEffect, space: FilterColorSpace) -> FilterId {
+            self.push(effect, FilterInputs::NONE, space)
+        }
+
+        /// The graph with `out` (in the working space) as its output.
+        pub fn finish(mut self, out: FilterId) -> Filter {
+            let out = match self.input_in(FilterInput::Result(out), FilterColorSpace::Working) {
+                FilterInput::Result(id) => id,
+                _ => out,
+            };
+            self.graph.set_output(out);
+            self.graph
+        }
+    }
+}
+
 pub mod turbulence {
     /// Generate Perlin noise/turbulence patterns.
     ///
@@ -816,6 +947,8 @@ pub mod turbulence {
     pub struct TurbulenceFilter {
         /// Base frequency for noise generation. Higher values create finer detail.
         pub base_frequency: f32,
+        /// Rostrum patch (2D SVG filters): the frequency down, when it differs (`baseFrequency="x y"`).
+        pub base_frequency_y: Option<f32>,
         /// Number of octaves for fractal noise. More octaves add finer detail.
         pub num_octaves: u32,
         /// Random seed for reproducible noise generation.

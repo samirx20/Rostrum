@@ -1470,17 +1470,23 @@ fn lerp_f32(a: f32, b: f32, t: f32) -> f32 {
 /// softening is part of σ: the last blur adds only the rest, so the blur is as wide as asked. Other blurs keep the
 /// plain halving: the softening's full-size pass doubled the cost of Undertow's ~150 depth-of-field blurs.
 fn gaussian_blur(sigma: f32, smooth: bool, input: Option<ImageFilter>) -> Option<ImageFilter> {
+    gaussian_blur_xy(sigma, sigma, smooth, input)
+}
+
+/// Rostrum patch (2D SVG filters): σ across and down (`stdDeviation="x y"`); the halving follows the larger.
+fn gaussian_blur_xy(sx: f32, sy: f32, smooth: bool, input: Option<ImageFilter>) -> Option<ImageFilter> {
     use skia_safe::{image_filters, FilterMode, Matrix, MipmapMode, SamplingOptions};
     const FULL_RATE_SIGMA: f32 = 8.0;
     if skips("blur") {
         return input;
     }
+    let sigma = sx.max(sy);
     let mut levels = 0;
     while sigma / (1u32 << levels) as f32 > FULL_RATE_SIGMA && levels < 6 {
         levels += 1;
     }
     if levels == 0 {
-        return image_filters::blur((sigma, sigma), None, input, None);
+        return image_filters::blur((sx, sy), None, input, None);
     }
     let linear = SamplingOptions::new(FilterMode::Linear, MipmapMode::None);
     let mut f = input;
@@ -1493,8 +1499,8 @@ fn gaussian_blur(sigma: f32, smooth: bool, input: Option<ImageFilter>) -> Option
     let k = (1u32 << levels) as f32;
     // The softenings' spread at the last level: level i's σ 1 is 2^i / k of its px; their variances add.
     let soft = if !smooth { 0.0 } else { (0..levels).map(|i| ((1u32 << i) as f32 / k).powi(2)).sum::<f32>() };
-    let rest = ((sigma / k).powi(2) - soft).max(0.0).sqrt();
-    f = image_filters::blur((rest, rest), None, f, None);
+    let rest = |sigma: f32| ((sigma / k).powi(2) - soft).max(0.0).sqrt();
+    f = image_filters::blur((rest(sx), rest(sy)), None, f, None);
     image_filters::matrix_transform(&Matrix::scale((k, k)), linear, f)
 }
 
@@ -1569,7 +1575,7 @@ fn convert_filter_node(filter: &Filter, id: FilterId) -> Option<ImageFilter> {
             let shader = skia_safe::shaders::color(sk_color);
             image_filters::shader(shader, None)
         }
-        FilterEffect::GaussianBlur(blur) => gaussian_blur(blur.std_deviation, blur.smooth, input),
+        FilterEffect::GaussianBlur(blur) => gaussian_blur_xy(blur.std_deviation, blur.std_deviation_y.unwrap_or(blur.std_deviation), blur.smooth, input),
         FilterEffect::DropShadow(drop_shadow) => image_filters::drop_shadow(
             (drop_shadow.dx, drop_shadow.dy),
             (drop_shadow.std_deviation, drop_shadow.std_deviation),
@@ -1691,7 +1697,7 @@ fn convert_filter_node(filter: &Filter, id: FilterId) -> Option<ImageFilter> {
             image_filters::blend(mode, secondary, input, None)
         }
         FilterEffect::Morphology(morphology_filter) => {
-            let radius = (morphology_filter.radius, morphology_filter.radius);
+            let radius = (morphology_filter.radius, morphology_filter.radius_y.unwrap_or(morphology_filter.radius));
             match morphology_filter.operator {
                 MorphologyOperator::Dilate => image_filters::dilate(radius, input, None),
                 MorphologyOperator::Erode => image_filters::erode(radius, input, None),
@@ -1722,7 +1728,7 @@ fn convert_filter_node(filter: &Filter, id: FilterId) -> Option<ImageFilter> {
         FilterEffect::Turbulence(turbulence_filter) => {
             let base_frequency = (
                 turbulence_filter.base_frequency,
-                turbulence_filter.base_frequency,
+                turbulence_filter.base_frequency_y.unwrap_or(turbulence_filter.base_frequency),
             );
             let num_octaves = turbulence_filter.num_octaves as usize;
             let seed = turbulence_filter.seed as f32;
@@ -1850,6 +1856,21 @@ fn convert_filter_node(filter: &Filter, id: FilterId) -> Option<ImageFilter> {
             image_filters::image(image, Some(&src), Some(&dst), skia_safe::SamplingOptions::new(filter, skia_safe::MipmapMode::None))
         }),
         FilterEffect::Tile => None,
+        // Rostrum patch (2D SVG filters): `color-interpolation-filters`, the surface's own space for `Working`
+        // (a linear working space, ACEScg included, counts as linear light).
+        FilterEffect::Interpolate(step) => {
+            use anyrender::filters::interpolation::FilterColorSpace as Space;
+            let actual = |s: Space| match s {
+                Space::Working if crate::working_space::get().is_some() => Space::LinearRgb,
+                Space::Working => Space::Srgb,
+                s => s,
+            };
+            match (actual(step.from), actual(step.to)) {
+                (a, b) if a == b => input,
+                (_, Space::LinearRgb) => image_filters::color_filter(color_filters::srgb_to_linear_gamma(), input, None),
+                _ => image_filters::color_filter(color_filters::linear_to_srgb_gamma(), input, None),
+            }
+        }
         FilterEffect::RuntimeShader(r) => runtime_shader_filter(r, input, secondary),
     };
 

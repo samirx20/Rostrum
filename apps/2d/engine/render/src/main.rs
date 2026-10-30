@@ -83,6 +83,8 @@ mod svg_parts_tests;
 #[cfg(test)]
 mod svg_mask_tests;
 #[cfg(test)]
+mod svg_filter_tests;
+#[cfg(test)]
 mod tilt_tests;
 #[cfg(test)]
 mod track_matte_tests;
