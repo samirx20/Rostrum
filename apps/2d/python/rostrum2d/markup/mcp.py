@@ -54,9 +54,9 @@ def _film(name: str, code: str | None, file: str | None = None):
     f = folder()
     link = runner.films_dir(f) / f"{name}.file"
     if file is not None:
-        p = Path(file)
-        if not p.is_absolute() or not p.is_file():
-            raise RostrumError(codes.NOT_FOUND, "film", "file", f"{file} is not an existing script (an absolute path to a .py)")
+        p = Path(file) if Path(file).is_absolute() else f / file          # relative: in the project folder
+        if not p.is_file():
+            raise RostrumError(codes.NOT_FOUND, "film", "file", f"{file} is not an existing script (a .py, absolute or in the project folder)")
         link.write_text(str(p), encoding="utf-8")
         path = p
     elif code is not None:
@@ -91,9 +91,6 @@ def _sheet(film, times: list[float], name: str, width: int, cols: int) -> tuple[
     return sheet, ms, frames
 
 
-_UNMEASURED = " Shapes inside an <svg> are not measured one by one: judge their edges in the pictures."
-
-
 def _review(film, times: list[float], frames: list[Path]) -> list[str]:
     """Plain observations on these frames (cut edges, covered text, near-empty or unmoving stretches): information only."""
     from . import review
@@ -108,6 +105,7 @@ def _review(film, times: list[float], frames: list[Path]) -> list[str]:
 _WORDS = [("light", lambda f, m: bool(f._light) or "data-light" in m, 'data-light / film.light()'),
           ("grain", lambda f, m: bool(getattr(f, "_grain", None)) or "data-grain" in m, 'data-grain / film.grain()'),
           ("camera", lambda f, m: bool(f._cam), "film.camera()"),
+          ("depth", lambda f, m: "data-depth" in m, "data-depth / camera(focus=, aperture=)"),
           ("motion blur", lambda f, m: bool(f.blur_samples), "film.blur()")]
 
 
@@ -127,6 +125,13 @@ def _times(film, args, default_n: int) -> list[float]:
     n = min(24, int(film.duration / every) + 1) if every else default_n
     step = film.duration / n
     return [round(step * (i + 0.5), 3) for i in range(n)]
+
+
+MOTION_FRAMES = 6
+
+
+def _said_min(seconds: float) -> str:
+    return f"{seconds / 60:.0f} min" if seconds >= 90 else f"{max(1, round(seconds))} s"
 
 
 def _notes(film) -> str:
@@ -157,7 +162,8 @@ def run_film(ctx, args):
     keyed = len(film._keys)
     return Reply(f'Film "{args["name"]}": {film.duration:g} s, {film.width}×{film.height} at {film.fps:g} fps, {keyed} keyed '
                  f'element{"s" * (keyed != 1)}{", motion blur on" if film.blur_samples else ""}; {len(times)} frames, '
-                 f'{ms:.0f} ms a frame.{_notes(film)}{_unused(film, times[len(times) // 2])} Next: look_film at the moments that matter at full size '
+                 f'{ms:.0f} ms a frame; an export of all {round(film.duration * film.fps)} frames at that speed takes up to about '
+                 f'{_said_min(ms * film.duration * film.fps / 1000)}.{_notes(film)}{_unused(film, times[len(times) // 2])} Next: look_film at the moments that matter at full size '
                  f'(at: [s]) and judge them as a client would, or across the film with notes (every: 2, notes: true); '
                  f'change the script and run_film again.',
                  {"script": str(path), "times": times, "msPerFrame": round(ms), "notes": film.notes}, files=[sheet], images=[sheet])
@@ -167,6 +173,7 @@ def run_film(ctx, args):
     "name": {"type": "string"},
     "at": {"type": "array", "items": {"type": "number"}, "description": "Seconds. One time: one full-size still."},
     "every": {"type": "number", "description": "A frame every N seconds across the whole film (a review sheet)."},
+    "motion": {"type": "boolean", "description": "Each `at` time as 6 frames in a row (one frame apart), to see movement: motion-blur copies, jitter, a hold."},
     "notes": {"type": "boolean", "description": "Also say what these frames show that a client would notice: text cut by the frame edge, text covered by another element, near-empty frames, stretches where nothing moves."},
     "guide": {"type": ["boolean", "string"], "description": "Read the guide instead: true for the start page, or a section's heading words (\"keys\", \"light\", \"sound\")."},
     "width": {"type": "integer", "description": "Picture width px (default: 1920 for one still, 1600 for a sheet)."},
@@ -185,13 +192,17 @@ def look_film(ctx, args):
         raise RostrumError(codes.BAD_ARGUMENT, "look_film", "name", "names the film to look at (or send guide)")
     film, _ = _film(args["name"], None)
     times = _times(film, args, 12)
+    cols = args.get("columns", 3)
+    if args.get("motion"):                      # consecutive frames from each asked time
+        times = [min(round(t + k / film.fps, 4), film.duration - 1e-3) for t in times[:4] for k in range(MOTION_FRAMES)]
+        cols = MOTION_FRAMES
     width = args.get("width", 1920 if len(times) == 1 else 1600)
-    pic, ms, frames = _sheet(film, times, args["name"], width, args.get("columns", 3))
+    pic, ms, frames = _sheet(film, times, args["name"], width, cols)
     seen = _review(film, times, frames) if args.get("notes") else []
-    # What the notes measure: HTML elements with an id; shapes inside an <svg> only as the whole <svg> (the engine's
-    # boxes stop there), so a cut clock drawn in SVG goes unsaid; the line says so rather than "nothing is cut".
-    said = (" Seen: " + "; ".join(seen) + "." + _UNMEASURED) if seen else (
-        " Seen: no HTML text or box with an id is cut, covered or empty in these frames." + _UNMEASURED if args.get("notes") else "")
+    # What the notes measure: every element with an id, HTML or a part inside an <svg> (by its drawn outline's box).
+    said = (" Seen: " + "; ".join(seen) + ".") if seen else (
+        " Seen: nothing with an id is cut, covered or empty in these frames (elements without an id are not measured)."
+        if args.get("notes") else "")
     return Reply(f'{len(times)} frame{"s" * (len(times) != 1)} of "{args["name"]}" at {", ".join(f"{t:g}" for t in times)} s, '
                  f'{ms:.0f} ms a frame.{said}{_notes(film)}', {"times": times, "msPerFrame": round(ms), "seen": seen},
                  files=[pic], images=[pic])
@@ -200,8 +211,8 @@ def look_film(ctx, args):
 @tools.tool("render_film", {"properties": {
     "name": {"type": "string"},
     "file": {"type": "string", "description": "The MP4 to write (absolute path)."},
-    "quality": {"type": "string", "enum": ["draft", "standard", "high"], "description": "Default high."},
-    "sound": {"type": "boolean", "description": "Put the project's sound (RostrumSound's main mix) under it. Default: yes when the project has one."}},
+    "quality": {"type": "string", "enum": ["draft", "standard", "high"], "description": "Default high. draft: a quick export to watch the whole film move (motion blur at 2 samples a frame)."},
+    "sound": {"type": "boolean", "description": "Put the project's sound (RostrumSound's main mix) under it. Default: yes when the project's song has sound; a missing or empty song exports silent (the reply says so)."}},
     "required": ["name", "file"]})
 def render_film(ctx, args):
     """Export the film to MP4: every frame through the same engine as the looks, then the project's sound under it."""
@@ -240,6 +251,11 @@ def render_film(ctx, args):
         raise RostrumError(codes.RENDER_FAILED, "render_film", args["name"], str(e)) from None
     finally:
         part.unlink(missing_ok=True)            # never a half-made file beside the person's
+    if not song and not silent_why:
+        silent_why = " Silent: sound: false." if args.get("sound") is False else " Silent: this project has no song yet."
+    if not song:                                # where sound comes from, said once: information, not a prompt
+        silent_why += (" A film's sound is this project's RostrumSound song (its run_script: music, voices, or any audio "
+                       "file placed with track(...).clip(file, at=s)); render_film puts its main mix under the picture.")
     mb = out.stat().st_size / 2 ** 20
     return Reply(f'Wrote {out} ({done["frames"]} frames, {mb:.1f} MB, {"with sound " + song["id"] if song else "silent"}) in '
                  f'{done["seconds"]:g} s.{silent_why}{_notes(film)} To review it end to end: look_film every: 2 (it draws the same frames).',

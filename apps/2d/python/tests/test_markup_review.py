@@ -34,7 +34,7 @@ def test_edge_cut_cover_and_empty_frame_are_said_with_their_times(session):
     out = review.notes(session, _film(), TIMES)
     said = "\n".join(out)
     assert any(n.startswith("#headline is cut by the left") and "to 4.5 s" in n for n in out), said
-    assert any(n.startswith("#pointer covers #total") and "to 2.5 s" in n for n in out), said
+    assert any(n.startswith("#pointer sits on #total") and "to 2.5 s" in n for n in out), said
     assert any("at 5.5 s is almost empty" in n and "background colour" in n for n in out), said
     assert not any("#headline" in n for n in out if n.startswith("#pointer")), said    # it passes clear of it
     assert len(out) <= review.MAX_LINES
@@ -44,3 +44,33 @@ def test_only_the_requests_copy_is_tagged():
     out = render.tag_layers('<div id="a"><svg><circle id=\'c\' r="2"/></svg><p data-id="x">hi</p></div>')
     assert 'id="a" data-layer-id="a"' in out and "id='c' data-layer-id='c'" in out and out.count("data-layer-id") == 2
     assert render.tag_layers(out) == out
+
+
+def test_text_without_an_id_is_named_by_its_words():
+    out, labels = render.tag_texts('<div class="mono">CH 02 / ACQUIRE</div><svg><text x="1">'
+                                   '<textPath href="#o">orbit words</textPath></text><g><rect/></g></svg><p id="k">kept</p>')
+    assert list(labels.values()) == ["CH 02 / ACQUIRE", "orbit words"]
+    assert 'class="mono" id="rostrum-text-0" data-layer-id="rostrum-text-0">' in out and 'id="k">kept' in out
+
+
+def test_parked_inside_a_clipping_parent_is_not_cut(session):
+    film = Film(480, 270, fps=30, duration=1, background="#0d0f14")
+    film.scene('<div style="position:absolute; left:40px; top:20px; width:300px; height:200px; overflow:hidden">'
+               '<div id="sheet" style="position:absolute; left:0; top:400px; font: 24px Inter; color:#fff">Parked</div></div>'
+               '<div style="position:absolute; left:400px; top:-12px; font: 600 30px Inter; color:#fff">CH 02</div>')
+    out = review.notes(session, film, [0.5])
+    said = "\n".join(out)
+    assert not any("#sheet" in n for n in out), said
+    assert any(n.startswith('the text "CH 02" is cut by the top edge') for n in out), said
+
+
+def test_parts_inside_an_svg_are_measured(session):
+    film = Film(480, 270, fps=30, duration=1, background="#0d0f14")
+    film.scene('<svg id="pic" width="480" height="270" viewBox="0 0 240 135" style="position:absolute; left:0; top:0">'
+               '<text x="20" y="70" font-size="30" fill="#fff">TITLE</text>'
+               '<circle id="ball" cx="60" cy="60" r="12" fill="#f80"/>'
+               '<text x="200" y="120" font-size="20" fill="#fff">EDGE</text></svg>')
+    out = review.notes(session, film, [0.5])
+    said = "\n".join(out)
+    assert any(n.startswith('#ball sits on the text "TITLE"') or n.startswith('#ball covers the text "TITLE"') for n in out), said
+    assert any(n.startswith('the text "EDGE" is cut by the right edge') for n in out), said

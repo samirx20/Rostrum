@@ -79,6 +79,8 @@ mod seam_tests;
 #[cfg(test)]
 mod shader_tests;
 #[cfg(test)]
+mod svg_parts_tests;
+#[cfg(test)]
 mod tilt_tests;
 #[cfg(test)]
 mod track_matte_tests;

@@ -4,7 +4,8 @@
 //! (same transforms, hoisted z-index children, opacity and overflow clips), in paint order. `glyphs` is the
 //! union of the glyph runs drawn inside a layer (font ascent to descent over each run's advance): the text
 //! itself, without the empty struts and inline boxes an overflow box also counts (KaTeX has many), and
-//! without runs of spaces.
+//! without runs of spaces. The parts of an inline `<svg>` that carry the layer attribute (shapes, `<g>`, `<text>`)
+//! are measured too, from the SVG tree the painter draws (`svg_parts`): an SVG `<text>`'s box is its `glyphs`.
 
 use blitz_dom::{BaseDocument, Node, NodeData, NodeId};
 use kurbo::{Affine, Rect, Vec2};
@@ -73,6 +74,65 @@ fn layer_id<'n>(node: &'n Node, attr: &str) -> Option<&'n str> {
 }
 
 impl Walk<'_> {
+    /// The parts of an inline `<svg>` named by the layer attribute, after the svg in paint order, each as painted: the
+    /// SVG tree parsed for the svg's content box (draw_svg's mapping: object-fit contain, centred), its parts'
+    /// stroke boxes through the svg's placement. A part's `parent` is its nearest named `<g>`, else the svg's owner.
+    fn svg_parts(&mut self, node: &Node, placed: &Placed, clip: Rect, alpha: f32, owner: Option<usize>) {
+        if !self.want.is_empty() {
+            return;
+        }
+        let Some(blitz_dom::node::ImageData::Svg(data)) = node.element_data().and_then(|e| e.image_data()) else { return };
+        let mut named = std::collections::HashSet::new();
+        self.named_below(node, &mut named);
+        if named.is_empty() {
+            return;
+        }
+        let layout = node.final_layout();
+        let (x, y) = ((layout.padding.left + layout.border.left) as f64, (layout.padding.top + layout.border.top) as f64);
+        let w = layout.size.width - layout.padding.left - layout.padding.right - layout.border.left - layout.border.right;
+        let h = layout.size.height - layout.padding.top - layout.padding.bottom - layout.border.top - layout.border.bottom;
+        if w <= 0.0 || h <= 0.0 {
+            return;
+        }
+        let tree = data.tree_for_box(w, h);
+        let size = tree.size();
+        let (sw, sh) = (size.width() as f64, size.height() as f64);
+        let k = (w as f64 / sw).min(h as f64 / sh);
+        let m = Affine::translate(Vec2::new(x + (w as f64 - sw * k) / 2.0, y + (h as f64 - sh * k) / 2.0)) * Affine::scale(k);
+        let parent = owner.and_then(|i| self.out[i]["id"].as_str().map(str::to_string));
+        self.svg_group(tree.root(), m, placed, clip, alpha, parent, &named);
+    }
+
+    fn named_below(&self, node: &Node, out: &mut std::collections::HashSet<String>) {
+        for &c in &node.children {
+            let child = &self.doc.tree()[c];
+            if let Some(l) = layer_id(child, self.attr) {
+                out.insert(l.to_string());
+            }
+            self.named_below(child, out);
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn svg_group(&mut self, g: &usvg::Group, m: Affine, placed: &Placed, clip: Rect, alpha: f32, parent: Option<String>,
+                 named: &std::collections::HashSet<String>) {
+        for n in g.children() {
+            let a = match n { usvg::Node::Group(cg) => alpha * cg.opacity().get(), _ => alpha };
+            let mut next = parent.clone();
+            if named.contains(n.id()) && a > 0.0 {
+                let b = n.abs_stroke_bounding_box();
+                let bx = placed.bbox(m.transform_rect_bbox(Rect::new(b.left() as f64, b.top() as f64, b.right() as f64, b.bottom() as f64)));
+                self.out.push(json!({ "id": n.id(), "parent": parent, "box": rect(bx), "ink": rect(bx), "clip": rect(clip),
+                                      "opacity": r(a as f64 * 1000.0) / 1000.0, "svg": true }));
+                self.glyphs.push(matches!(n, usvg::Node::Text(_)).then_some(bx));
+                next = Some(n.id().to_string());
+            }
+            if let usvg::Node::Group(cg) = n {
+                self.svg_group(cg, m, placed, clip, a, next, named);
+            }
+        }
+    }
+
     /// The glyph runs of an inline root, in page pixels.
     fn runs(node: &Node, transform: &Placed) -> Option<Rect> {
         if !node.flags.is_inline_root() {
@@ -140,6 +200,7 @@ impl Walk<'_> {
             self.out.len() - 1
         });
         let owner = own.or(owner);
+        self.svg_parts(node, &placed, clip, alpha, owner);
         if let (Some(i), Some(g)) = (owner, Self::runs(node, &placed)) {
             self.glyphs[i] = Some(self.glyphs[i].map_or(g, |a| a.union(g)));
         }
