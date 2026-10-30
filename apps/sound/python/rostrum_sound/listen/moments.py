@@ -114,11 +114,16 @@ def _drop(m, sr, ev, at):
     return []
 
 
-def _lift(y, sr, at):
-    """A section lift is heard as the music growing, not as one onset: the 3 s after against the 3 s before."""
+def lift_rise(wav, at) -> float:
+    """A section lift is heard as the music growing, not as one onset: the 3 s after against the 3 s before, in LU."""
     from .bs1770 import integrated
+    y, sr = load(wav)
     cut = lambda s0, s1: max(QUIET_LUFS, integrated(y[max(0, int((at + s0) * sr)):int((at + s1) * sr)], sr))
-    rise = cut(0.0, 3.0) - cut(-3.0, 0.0)
+    return cut(0.0, 3.0) - cut(-3.0, 0.0)
+
+
+def _lift(y, sr, at):
+    rise = lift_rise((y, sr), at)
     return [{"kind": "flat_lift", "at_s": at, "measured": {"rise_lu": num(rise, 1)}}] if rise < LIFT_LU else []
 
 

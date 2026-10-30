@@ -17,11 +17,27 @@ HIT_RING, DRUM_RING = 6.0, 1.0
 
 
 class Counts(dict):
-    def add(self, k, n=1):
+    """How many notes / hits each kind of change touched, and which (track and time), so a reply names what it dropped."""
+    NAMED = 4                   # at most this many named per kind; then "+N more"
+
+    def __init__(self):
+        super().__init__()
+        self.which = {}
+
+    def add(self, k, n=1, which=()):
         self[k] = self.get(k, 0) + n
+        self.which.setdefault(k, []).extend(which)
 
     def said(self) -> str:
-        return ", ".join(f"{n} {k}" for k, n in self.items() if n) or "nothing there to change"
+        def one(k, n):
+            w = self.which.get(k, [])
+            more = f", +{len(w) - self.NAMED} more" if len(w) > self.NAMED else ""
+            return f"{n} {k}" + (f" ({', '.join(w[:self.NAMED])}{more})" if w else "")
+        return ", ".join(one(k, n) for k, n in self.items() if n) or "nothing there to change"
+
+
+def _which(track, s) -> list[str]:
+    return [f"{track.id} {s:.2f} s"]
 
 
 def _span(track, f, root, where):
@@ -46,22 +62,28 @@ def edit(track, root, where, keep, end_at, counts):
     for id_, f, own in track.notes:
         start, end = _span(track, f, root, where)
         if not keep(start):
-            counts.add("notes dropped")
+            counts.add("notes dropped", which=_which(track, start))
             continue
         new = end_at(start, end)
         if new is not None and new < end - 1e-6:
             if new - start < SLIVER:
-                counts.add("notes dropped")
+                counts.add("notes dropped", which=_which(track, start))
                 continue
             f = {**f, "dur": _length(f, start, new, root)}
-            counts.add("notes shortened")
+            counts.add("notes shortened", which=_which(track, start))
         out.append((id_, f, own))
     track.notes = out
 
 
 def drop_hits(track, root, where, keep, counts):
-    kept = [h for h in track.hits if keep(times.seconds(h[1]["at"], root, where))]
-    counts.add("hits dropped", len(track.hits) - len(kept))
+    kept, gone = [], []
+    for h in track.hits:
+        s = times.seconds(h[1]["at"], root, where)
+        if keep(s):
+            kept.append(h)
+        else:
+            gone += _which(track, s)
+    counts.add("hits dropped", len(gone), gone)
     track.hits = kept
 
 
@@ -81,7 +103,7 @@ def cut_hits(track, root, where, end_at, counts):
         if end is not None:
             cut = round(end - s, 6)
             if cut < SLIVER:
-                counts.add("hits dropped")
+                counts.add("hits dropped", which=_which(track, s))
                 continue
             if h.get("cut") is None or cut < h["cut"]:
                 h = {**h, "cut": cut}

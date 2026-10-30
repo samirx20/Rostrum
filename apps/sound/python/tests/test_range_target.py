@@ -26,3 +26,13 @@ def test_a_range_selects_the_notes_starting_in_it_and_an_empty_one_fails():
 def test_seconds_sent_as_text_are_seconds():
     from rostrum_sound.mcp.range_target import _seconds
     assert _seconds({"tempo": 120}, "36.0", "t") == 36.0 and _seconds({"tempo": 120}, {"beat": 8}, "t") == 4.0
+
+
+def test_a_bar_is_a_time_wherever_a_tool_reads_one():
+    """{"bar": n} alone (no beat) is read by times.seconds itself, so render_mix's from/to take it like render_audition's
+    (a7: KeyError 'beat'); a wrong bar names the forms."""
+    from rostrum_sound.doc import times
+    root = Document.new(KIND).data
+    assert times.seconds({"bar": 2}, root, "x") == times.seconds({"beat": 4}, root, "x")
+    with pytest.raises(RostrumError, match="whole number from 1"):
+        times.seconds({"bar": 0}, root, "x")

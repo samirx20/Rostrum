@@ -129,11 +129,22 @@ def silent_stems(r: dict, names: dict) -> list[str]:
     return out
 
 
+# The engine names the song field; a reply names the call that sets it (render_mix has no ringOut argument).
+RING_CALLS = {"(ringOut: false)": "(the script's ring_out(False); for this file only, render_mix with ring_past_length false)",
+              "(ringOut: true)": "(the script's ring_out(True))"}
+
+
+def _calls(w: str) -> str:
+    for field, call in RING_CALLS.items():
+        w = w.replace(field, call)
+    return w
+
+
 def warnings(r: dict) -> list[str]:
     """What a person must know about the files, in plain words (empty: nothing): a file cut flat at full scale, and
     stems that do not add up to the mix (what the master did that they cannot carry). Shown by the Export sheet's
     result line and the render reply, never left to the manifest alone."""
-    out = list(r.get("warnings") or [])        # the engine's own (the song's ending: engine/src/contract/ending.rs)
+    out = [_calls(w) for w in r.get("warnings") or []]   # the engine's own (the song's ending: engine/src/contract/ending.rs)
     clipped = r.get("clippedFiles") or {}
     if clipped:
         out.append("Clipped: " + ", ".join(f"{Path(n).stem} ({k:,} samples cut flat)" for n, k in clipped.items())

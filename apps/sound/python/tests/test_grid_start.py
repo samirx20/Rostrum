@@ -33,8 +33,17 @@ def test_downbeat_lands_with_a_pickup_and_says_so():
                       "t.note('C5', at=bar(21), dur=beats(1))", "sync.py")
     assert abs(times.seconds({"beat": 80}, tree, "t") - 37.0) < 1e-6
     assert tree["gridStart"] == pytest.approx(37.0 - 80 * 60 / 132)
-    assert any("pickup" in line for line in printed())
+    assert not any("pickup music" in line for line in printed())         # it has a pickup note: nothing to say
     assert tempo.contract(tree) == [{"beat": 0.0, "bpm": 132.0, "seconds": tree["gridStart"]}]     # what compile sends
+
+
+def test_downbeat_says_pickup_only_when_nothing_starts_before_bar_1():
+    run_source("tempo(132); downbeat(bar(21), at=37.0)\n"
+               "t = track('keys', builtIn='piano'); t.note('C5', at=bar(21), dur=beats(1))", "sync.py")
+    assert any("pickup music" in line for line in printed())
+    run_source("tempo(132); downbeat(bar(21), at=37.0)\n"
+               "t = track('keys', builtIn='piano'); t.note('D2', at=0.0, dur=2.0)", "sync.py")
+    assert not any("pickup music" in line for line in printed())         # written in seconds before bar 1: heard
 
 
 def test_downbeat_refuses_a_grid_before_zero_naming_bars_that_work():
@@ -72,3 +81,8 @@ def test_humanize_never_moves_a_bar_1_note_before_bar_1_with_a_pickup():
         tree = run_source(f"s = {s}\n" + src, "pickup.py")
         notes = next(x for x in tree["tracks"] if x["id"] == "keys")["notes"]
         assert min(n["at"]["beat"] for n in notes) >= 0
+
+
+def test_a_track_attribute_that_is_not_a_field_fails():      # t.volume = x is read (test_sounding); a typo is never dropped
+    with pytest.raises(RostrumError, match="volume"):
+        run_source("t = track('k', builtIn='grandPiano'); t.volum = 0.5", "t.py")

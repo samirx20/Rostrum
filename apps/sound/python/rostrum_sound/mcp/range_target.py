@@ -24,11 +24,8 @@ SCHEMA_ITEM = {"anyOf": [{"type": "string"}, {"type": "object", "required": ["tr
 
 def _seconds(root, value, where: str) -> float:
     value = _number(value)
-    if isinstance(value, dict) and set(value) == {"bar"}:
-        bar = value["bar"]
-        if isinstance(bar, bool) or not isinstance(bar, int) or bar < 1:
-            raise RostrumError(codes.BAD_ARGUMENT, where, f"{value}", 'must be {"bar": n} with n a whole number from 1')
-        return tempo.seconds_at(root, meter.bar_start(root, bar))
+    if isinstance(value, dict) and "bar" in value:                   # {"bar": n}: times.seconds reads and checks it
+        return times.seconds(value, root, where)
     why = times.problem(value)
     if why:
         raise RostrumError(codes.BAD_ARGUMENT, where, f"{value!r}", why, ["seconds (2.5)", '{"beat": 8}', '{"bar": 3}', '"#drop"'])

@@ -7,7 +7,7 @@ fix, so the fix pass is the obvious next step. Moments come from `expect` or fro
 from __future__ import annotations
 
 from .faults import check as fault_check, heard, weak_fixes
-from .moments import strengths
+from .moments import LIFT_LU, lift_rise, strengths
 
 NAMES = (("back", "entry"), ("return", "entry"), ("entry", "entry"), ("hit", "hit"), ("stop", "stop"), ("out", "drop"),
          ("drop", "drop"), ("climax", "climax"), ("peak", "climax"), ("lift", "lift"))   # first word found wins
@@ -59,14 +59,30 @@ def lines(wav, moments, limiter=None, peaky=None, found=None) -> list[str]:
             d = s["strike"]
             out.append(f"{s['at']:.2f} s {s['kind']} comes across: {d['times_typical']:.1f}x a normal note (rank {d['rank']}), "
                        f"bright attack {d['bright_x']:.1f}x.")
+        said = faulted | {round(s["at"], 2) for s in ok}
+        for m in [m for m in moments if m.get("kind") != "tempo" and round(float(m["at"]), 2) not in said][:LINES - len(out)]:
+            out.append(_passed(wav, m))       # every asked moment gets a line: never a head over an empty list
     return out
 
 
-def words(wav, moments, limiter=None, peaky=None, found=None) -> str:
+def _passed(wav, m) -> str:
+    """An asked moment with nothing weak: what was measured there (a lift: its rise), so the line is a number, not silence."""
+    at, kind = float(m["at"]), m.get("kind", "hit")
+    if kind == "lift":
+        return f"{at:.2f} s lift comes across: the 3 s after are {lift_rise(wav, at):+.1f} LU against the 3 s before (a lift reads from +{LIFT_LU:g})."
+    return f"{at:.2f} s {kind}: nothing weak found there."
+
+
+def words(wav, moments, limiter=None, peaky=None, found=None, starts=0) -> str:
     """The render reply's lines: a head, then the weakest moments numbered, one per line (`limiter`: listen.limiter's
-    result for the render, so a stop the limiter flattens names the track to tame; `peaky`: that track when unknown)."""
+    result for the render, so a stop the limiter flattens names the track to tame; `peaky`: that track when unknown;
+    `starts`: how many bare times `expect` asked, which ask only for a sound to start: listen/asked_starts.py)."""
     if moments:
         head, found = f"Weakest moments ({len(moments)} asked):", lines(wav, moments, limiter, peaky, found)
+    elif starts:
+        head = (f"No moments to judge for strength: the {starts} asked times ask only for a sound to start there (the line "
+                "after these); give one a kind ({\"at\": \"#hero\", \"kind\": \"hit\"}) to judge how it comes across.")
+        found = lines(wav, [], limiter, peaky, found)
     else:
         head = ("No asked moments to check: pass `expect` ([{\"at\": 31.5, \"kind\": \"hit\"}]) or name markers hit / stop / "
                 "drums out / drums back / climax / lift.")

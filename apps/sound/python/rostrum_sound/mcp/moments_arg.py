@@ -15,8 +15,13 @@ UNTIMED = ("climax", "lift", "voice", "drop")   # moments that are not "a sound 
 
 EXPECT = {"expect": {"type": "array", "description": "Moments the music must deliver. Each is a time (seconds, {\"beat\": n} or \"#marker\": a sound must start there) or "
                      "{\"at\": time, \"kind\": \"hit\" | \"stop\" | \"drop\" | \"climax\" | \"lift\" | \"entry\" | \"voice\", \"end\": time (voice only)}: "
-                     "with a kind the faults say whether it comes across (a weak or missing hit, a blurred stop, drums dropping early, "
-                     "a climax cut short or off its time, a build already at the ceiling, a lift that does not lift, a busy speech band in a voice span). "
+                     "with a kind the faults say whether it comes across. What each measures: hit = the attack of a sound starting at `at` (against a normal onset of the piece); "
+                     "stop = the same attack read at `at` (the band's last accent, not where the silence begins) plus whether the next second falls 8 dB (for drums leaving, use drop); "
+                     "drop = the drums going out: the last strong beat before `at` and whether the drum parts are quiet after it (`end`: where they return); "
+                     "climax = the downbeat's attack, whether the level holds 3 s, and where the loudest moment lands; "
+                     "lift = the 3 s after `at` against the 3 s before, in LU, and the top end brightening; "
+                     "entry = the attack of what comes in at `at` (drums back is an entry); "
+                     "voice = the speech band's room between `at` and `end`. "
                      "{\"kind\": \"tempo\", \"bpm\": 132} (no `at`): the brief's tempo; the song's start tempo or the tempo it holds for most of its length "
                      "off by more than 0.5 % is named, with the ways to land a sync moment that keep it."}}
 
