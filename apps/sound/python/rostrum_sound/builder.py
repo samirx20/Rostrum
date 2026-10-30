@@ -19,6 +19,7 @@ from .doc import ids
 from .doc.check import playing
 from .doc.kind import facts as item_facts
 from .doc.registry import MASTER_ID
+from .script_scope import say
 
 INSTRUMENT_KEYS = tuple(FD.INSTRUMENT_FIELD)
 
@@ -59,11 +60,28 @@ class Track(Routing, Inserts):
             raise AttributeError(f"'Track' object has no attribute '{verb}'")
         return call
 
-    def note(self, pitch, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
+    def _vel(self, vel, velocity, where):
+        """The velocity as the song keeps it (0 … 1). Agents' two MIDI habits are read, each said once a run: `velocity=`
+        for `vel=`, and a whole number 2 … 127 as MIDI's 0 … 127 scale (vel=100 is 100/127 = 0.79)."""
+        if velocity is not None:
+            if vel is not None:
+                raise RostrumError(codes.BAD_ARGUMENT, where, "vel= and velocity=", "are the same thing: give one",
+                                   ["vel=0.7"])
+            vel = velocity
+            self.song.tell("velocity", "velocity= was read as vel= (the same thing).")
+        if (isinstance(vel, (int, float)) and not isinstance(vel, bool) and 1 < vel <= 127
+                and float(vel).is_integer()):
+            self.song.tell("midi vel", f"vel={vel:g} was read on MIDI's 0 to 127 scale as {vel / 127:.2f}; "
+                           "every whole-number vel from 2 to 127 is read that way (Rostrum's own scale is 0 to 1).")
+            vel = vel / 127
+        return vel
+
+    def note(self, pitch, at, dur=None, vel=None, pan=None, id=None, end=None, velocity=None, **playing_):
         """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7), or one that ends on a time or a marker:
         note("D4", at="#drop+5", end="#end") (`end="#end" + beats(1)` a beat after it). A list of pitches is a chord.
         Playing fields: art, position, damping, hardness, dynamics=[(0, 0.6), (1, 1)], vibrato={...}, bend=[(0, -100), (0.1, 0)]."""
         where = f"track {self.id} › note"
+        vel = self._vel(vel, velocity, where)
         if (dur is None) == (end is None):
             raise RostrumError(codes.BAD_ARGUMENT, where, f"note {pitch!r}", "needs a length (dur=) or the time it ends at "
                                "(end=), one of them", ["dur=beats(2)", "dur=1.5 (seconds)", 'end="#end"', 'end="#end" + beats(1)', 'dur="next"'])
@@ -76,11 +94,12 @@ class Track(Routing, Inserts):
         self.notes.append((id, f, vel is not None))
         return self
 
-    def chord(self, pitches, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
-        return self.note(list(pitches), at, dur, vel, pan, id, end, **playing_)
+    def chord(self, pitches, at, dur=None, vel=None, pan=None, id=None, end=None, velocity=None, **playing_):
+        return self.note(list(pitches), at, dur, vel, pan, id, end, velocity, **playing_)
 
-    def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None, cut=None):
+    def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None, cut=None, velocity=None):
         """One drum hit: hit("kick", at=beat(0)); cut=0.4 stops it 0.4 s after it is struck (a choked crash)."""
+        vel = self._vel(vel, velocity, f"track {self.id} › hit")
         self.hits.append((id, checked("hit", dict(drum=drum, at=at, vel=vel, pan=pan, tune=tune, decay=decay, cut=cut),
                                       f"track {self.id} › hit", FD.DEFAULTS["hit"]), vel is not None))
         return self
@@ -195,9 +214,21 @@ class Song(MusicMap):
     def set(self, **fields):
         self.root = checked("doc", fields, "song", self.root)
 
+    def tell(self, key, message):
+        """One line in the run's reply saying what was read from a common form (MIDI velocity, a send to a bus not
+        made yet …); the same key is said once a run."""
+        said = self.__dict__.setdefault("said", set())
+        if key not in said:
+            said.add(key)
+            say(message)
+
     def track(self, id, **fields) -> Track:
         if any(t.id == id for t in self.tracks):
             raise RostrumError(codes.BAD_ARGUMENT, "script", f'track "{id}"', "is made twice")
+        near = names.nearest_built_in(fields.get("builtIn"))
+        if near:                                   # "celesta": a common name played by the plainly nearest sound, said
+            self.tell(f"near {fields['builtIn']}", f"{fields['builtIn']} isn't a built-in sound; track \"{id}\" uses {near}, the nearest.")
+            fields = {**fields, "builtIn": near}
         fields = names.read_sound(fields)          # "kit:classic" -> classic, an old kit name renamed, a wrong name refused with the close ones
         self.tracks.append(Track(self, id, fields))
         return self.tracks[-1]
@@ -208,7 +239,33 @@ class Song(MusicMap):
         self.buses.append(Bus(id, fields))
         return self.buses[-1]
 
+    def _sent_buses(self):
+        """A send to a bus the script never made (t.send("reverb", 0.3), as in a DAW) makes that bus, said: a reverb
+        bus for a reverb-like name, a delay bus for delay / echo, else a plain bus; each fully wet, to the master."""
+        made = {b.id for b in self.buses} | {t.id for t in self.tracks}
+        for t in self.tracks:
+            for kind, f in t._routing():
+                name = f.get("bus")
+                if kind != "send" or not isinstance(name, str) or name in made:
+                    continue
+                made.add(name)
+                bus = self.bus(name)
+                low = name.lower()
+                if any(w in low for w in ("reverb", "verb", "hall", "room", "plate", "chamber", "cathedral", "space")):
+                    space = next((s for s in ("cathedral", "room", "hall") if s in low), "hall")
+                    bus.effect("reverb", space=space, mix=1.0)
+                    what = f"a {space} reverb on it"
+                elif any(w in low for w in ("delay", "echo", "slap")):
+                    bus.effect("delay", mix=1.0)
+                    what = "a delay on it"
+                else:
+                    what = "nothing on it yet"
+                self.tell(f"bus {name}", f'track "{t.id}" sends to "{name}", which the script never made: made a bus '
+                          f'"{name}" with {what}, playing to the master.')
+
     def tree(self) -> dict:
+        self._sent_buses()
+        self.close_sections()
         root = {**self.root, "markers": self.marks()}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
         taken |= {i["id"] for k in ("tempos", "meters", "keys", "sections") for i in self.root.get(k, [])}
