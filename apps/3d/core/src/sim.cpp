@@ -603,6 +603,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vecto
         for (size_t c = 0; c < cloths.size(); ++c)
           if (cloths[c].wake <= f) {
             cloth_self[c].step(physics, cloth_ids[c]);
+            cloth_sew[c]->after(physics, cloth_ids[c]);
           }
       }
     auto& row = out.frames[size_t(f)];

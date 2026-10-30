@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace r3d::sim {
 
@@ -15,6 +16,7 @@ constexpr double kThick = 0.9;    // of the cloth's middle edge length
 constexpr double kOwn = 1.6;      // pairs closer than this many thicknesses in the first shape are neighbours (a grid's diagonal: 1.57)
 constexpr double kReach = 1.3;    // pairs gathered out to this many thicknesses, so the passes still see points pushed closer
 constexpr int kPasses = 3;
+constexpr double kMostPush = 0.25;  // of the thickness: the most a point moves in one step
 constexpr float kFriction = 0.3f;  // cloth on cloth
 
 uint32_t hash(int x, int y, int z, uint32_t n) {
@@ -24,10 +26,12 @@ uint32_t hash(int x, int y, int z, uint32_t n) {
 
 ClothSelf::ClothSelf(const Cloth& c, double k) {
   rest_.reserve(c.points.size());
+  was_.resize(c.points.size());
   for (const V3& p : c.points) rest_.push_back({float(p[0] * k), float(p[1] * k), float(p[2] * k)});
   sewn_.assign(c.points.size(), -1);
   for (const auto& sp : c.seams)
     if (sp[0] >= 0 && sp[1] >= 0 && size_t(sp[0]) < sewn_.size() && size_t(sp[1]) < sewn_.size()) {
+      seams_.push_back({sp[0], sp[1]});
       if (sewn_[size_t(sp[0])] < 0) sewn_[size_t(sp[0])] = sp[1];
       if (sewn_[size_t(sp[1])] < 0) sewn_[size_t(sp[1])] = sp[0];
     }
@@ -115,6 +119,7 @@ void ClothSelf::step(JPH::PhysicsSystem& physics, JPH::BodyID id) {
 
   // push apart, a few passes; then take away their speed into each other and slow their sliding
   const float h = float(h_), h2 = h * h;
+  for (size_t i = 0; i < n; ++i) was_[i] = v[i].mPosition;
   for (int pass = 0; pass < kPasses; ++pass)
     for (const Pair& pr : pairs_) {
       JPH::SoftBodyVertex &a = v[pr.a], &b = v[pr.b];
@@ -128,6 +133,23 @@ void ClothSelf::step(JPH::PhysicsSystem& physics, JPH::BodyID id) {
       a.mPosition += push * a.mInvMass;
       b.mPosition -= push * b.mInvMass;
     }
+  // no point moves more than kMostPush of the thickness in a step: a heap (a garment landing in a pile) is sorted out
+  // over a few steps; pushed all at once, a point between many others moved further than an edge and tore the cloth
+  const float most = float(kMostPush) * h;
+  for (size_t i = 0; i < n; ++i) {
+    const JPH::Vec3 d = v[i].mPosition - was_[i];
+    if (d.LengthSq() > most * most) v[i].mPosition = was_[i] + d.Normalized() * most;
+  }
+  // and a sewn pair moves together, never apart: the pass opened seams the seam's gentle pull (cloth_sew.h) couldn't
+  // close again, and a seam held open by it tore the cloth beside it
+  for (const auto& sp : seams_) {
+    JPH::SoftBodyVertex &a = v[size_t(sp[0])], &b = v[size_t(sp[1])];
+    const float wsum = a.mInvMass + b.mInvMass;
+    if (wsum <= 0) continue;
+    const JPH::Vec3 move = ((a.mPosition - was_[size_t(sp[0])]) * a.mInvMass + (b.mPosition - was_[size_t(sp[1])]) * b.mInvMass) / wsum;
+    if (a.mInvMass > 0) a.mPosition = was_[size_t(sp[0])] + move;
+    if (b.mInvMass > 0) b.mPosition = was_[size_t(sp[1])] + move;
+  }
   const float slack2 = (1.05f * h) * (1.05f * h);
   for (const Pair& pr : pairs_) {
     JPH::SoftBodyVertex &a = v[pr.a], &b = v[pr.b];

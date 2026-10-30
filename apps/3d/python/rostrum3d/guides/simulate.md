@@ -127,7 +127,8 @@ seam that comes out twisted). Each edge is sewn to one other edge at most.
 **Placing pieces.** Start each piece a little off the body (a few centimetres) and not inside it; the seams close the gap.
 A front and a back piece usually share their side edges: a back written as the front's mirror (`[-x, y]` for each point),
 turned 180, has each edge at the same side as the front's edge of the same number. Then `sewTime` (Sewing time, seconds,
-0.05–5, default 0.5) says how long the seams take to close; after that they stay sewn, the two edges joined. Cut
+0.05–5, default 0.5) says how long the seams take to close; after that they stay sewn, the two edges joined, also where the garment hangs
+from a seam's end (a shoulder seam at the neck) and when it falls in a heap on the ground. Cut
 the pieces bigger round than the body, as a tailor adds ease (a chest about 15–20 % more than round the body): a garment
 too tight to close fails with *tore beside a seam* and where. The rest is ordinary cloth:
 `clothWeight`, `stiffness`, `clothAir`, `pinned` (above).
