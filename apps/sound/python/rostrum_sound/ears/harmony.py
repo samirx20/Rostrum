@@ -34,6 +34,14 @@ CHORDY_SHARE = 0.3      # a track is a chord part when this share of its notes s
 BASS_BELOW = 7          # a one-line track this far under the chord part (semitones, on average) is its bass, not a melody
 
 
+def plays_chords(v) -> bool:
+    """A track's notes are a chord part: enough of them are chords or sound over another note of the track (a stray
+    chord does not make a melody a chord part)."""
+    v = sorted(v, key=lambda n: n["start"])
+    together = sum(len(n["midis"]) > 1 or any(o is not n and o["start"] < n["end"] - 1e-6 and n["start"] < o["end"] - 1e-6 for o in v) for n in v)
+    return together >= CHORDY_SHARE * len(v)
+
+
 def split_parts(notes) -> tuple[list, list]:
     """(chord notes, melody notes): the chord is named from the tracks that play chords (a note with several pitches, or
     notes that overlap), plus a one-line track well under them (the bass); one-line tracks above are the melody. With no
@@ -41,11 +49,6 @@ def split_parts(notes) -> tuple[list, list]:
     by: dict = {}
     for n in notes:
         by.setdefault(n["track"], []).append(n)
-
-    def plays_chords(v):                 # most of its notes are chords or sound over another note of the track (a stray chord does not make a melody a chord part)
-        v = sorted(v, key=lambda n: n["start"])
-        together = sum(len(n["midis"]) > 1 or any(o is not n and o["start"] < n["end"] - 1e-6 and n["start"] < o["end"] - 1e-6 for o in v) for n in v)
-        return together >= CHORDY_SHARE * len(v)
     chord = [t for t, v in by.items() if plays_chords(v)]
     if not chord:
         return list(notes), []
