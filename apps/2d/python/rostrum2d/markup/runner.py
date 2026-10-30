@@ -1,11 +1,16 @@
 """Running an agent's film script: the code is saved as <project>/films/<name>.py and run with the markup helpers
-in scope; it must leave a `film` (a Film). Errors come back with the script's own line number and the line itself."""
+in scope; it must leave a `film` (a Film). Errors come back with the script's own line number and the line itself.
+
+Plain Python (rostrum_core/script_python.py): any import, print into the notes, and `random` seeded 1 at the start of
+every run, so a re-run draws the same film. Draws inside scene(t) / overlay(t) are fixed per moment (Film.markup), so a
+look, a re-look and the export show the same frame at the same t."""
 from __future__ import annotations
 
 import traceback
 from pathlib import Path
 
 from rostrum_core import script_python
+from rostrum_core.seeded import SeededRandom
 
 from . import film as film_mod
 from .film import Film
@@ -33,7 +38,8 @@ def save(folder: Path, name: str, code: str) -> Path:
 
 def load(path: Path, folder: Path) -> Film:
     code = path.read_text(encoding="utf-8")
-    ns: dict = {"__name__": "film_script", "__file__": str(path)}
+    rnd = SeededRandom(1)
+    ns: dict = {**script_python.globals_for("film_script", rnd, str(path)), "__name__": "film_script"}
     exec(compile(PRELUDE, "<prelude>", "exec"), ns)
     film_mod.CURRENT_FOLDER = str(folder)
     printed: list[str] = []
@@ -48,6 +54,7 @@ def load(path: Path, folder: Path) -> Film:
     if not isinstance(f, Film):
         raise ScriptError(f"{path.name} ran but made no `film`: end with film = Film(...) set up (inspect_guide 'markup')")
     f.folder = str(folder)
+    f.random = (rnd, rnd.getstate())         # the generator as the script left it (its own random.seed(n) counts)
     f.notes[:0] = [f"print: {line}" for line in printed] + script_python.exit_note(ran)
     return f
 

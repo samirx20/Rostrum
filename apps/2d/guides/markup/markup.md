@@ -16,7 +16,9 @@ markers. Looks and the export draw the same frames. Any section: `look_film {gui
 
 ## Script
 
-Runs with `from rostrum2d.markup import *`, `math`, `random` in scope; must leave `film`.
+Runs with `from rostrum2d.markup import *`, `math`, `random` in scope; must leave `film`. Plain Python: any import;
+`print` comes back in the reply. `random` is seeded, so a re-run draws the same film (`random.seed(n)`: another
+draw); inside `scene(t)` the same t always draws the same numbers.
 
 - `film = Film(width, height, fps, duration, background)`
 - `film.css(text)` — a stylesheet. `film.scene(markup or fn(t) -> markup)` — the world (seen through the camera).

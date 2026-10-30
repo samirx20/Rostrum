@@ -51,6 +51,7 @@ class Film:
         self.notes: list[str] = []
         self.folder = CURRENT_FOLDER            # the project folder (markers, voice lines, sound)
         self.sound = None                       # True / False / None (default: the project's main mix when it has one)
+        self.random = None                      # (generator, state): runner.py; draws in scene(t) are fixed per t
 
     # --- the picture ---
     def css(self, text: str):
@@ -140,7 +141,16 @@ class Film:
     def _props_at(self, t: float) -> dict[str, dict]:
         return {i: {k: v(t) for k, v in props.items()} for i, props in self._keys.items()}
 
+    def _seed_at(self, t: float):
+        """Seed the script's `random` for the moment t: the same draws at the same t however often and in whatever
+        order frames are drawn (looks, export, blur samples), and new ones the next moment."""
+        if self.random:
+            rnd, state = self.random
+            rnd.setstate(state)
+            rnd.seed(f"{rnd.random()!r}:{t:.6f}")
+
     def markup(self, t: float, missing: list | None = None) -> str:
+        self._seed_at(t)
         world = self._scene(t) if callable(self._scene) else self._scene
         over = (self._overlay(t) if callable(self._overlay) else self._overlay) or ""
         world, over = expand_icons(world), expand_icons(over)    # <i data-lucide="…"> / <i class="ti ti-…"> -> inline SVG
