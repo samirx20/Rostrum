@@ -260,7 +260,9 @@ otherwise (another blend mode, frosted glass), or that runs
 far past the edge that fast, is redrawn at each step without a new layout. A group whose children each move their own
 way (bubbles rising in a group the frame pans past) is painted once and smeared child by child; only when its children
 pass close enough to smear into each other is it redrawn at each step, each child moved to its place. Titles and paths
-streak like any other layer, their size read from the frame's layout. A fade or a colour
+streak like any other layer, their size read from the frame's layout. A layer or group of any size streaks the same
+way (a depth layer as tall as the whole descent needs no splitting into bands), and a final-quality look at any width
+draws every layer the export draws. A fade or a colour
 change within one step is taken at the frame's time. Only a layer whose shape changes while the shutter is open (a path
 changing shape, letters playing their keys, a layer whose matte changes or slides across it, a group whose children
 change more than their place) is laid out again at every step it needs. Each layer is blurred on its own and laid over the others, as After Effects does. Raising
