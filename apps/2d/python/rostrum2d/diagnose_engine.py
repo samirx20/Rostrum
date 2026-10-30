@@ -9,6 +9,7 @@ from __future__ import annotations
 from . import diagnose, fields as F, fontlist
 from .diagnose import _p
 from rostrum_core import RostrumError
+from rostrum_core.byname import google_family
 
 from .engine import Engine, EngineError
 from .exprbake import items_of
@@ -68,7 +69,7 @@ def _fonts(comp: dict) -> list[dict]:
     have = fontlist.names()
     out = []
     for family, ids in sorted(users.items()):
-        if family not in have:
+        if family not in have and not google_family(family):     # a Google Fonts family is fetched when drawn
             said = fontlist.missing_words(family).split("; inspect_fonts")[0]       # (the agents' hint is not for the list)
             out.append({**_p("missing-font", ids[0], f'{", ".join(ids)}: {said}',
                              f'Pick another font, or install "{family}" on this computer. Until then each of them shows as a dashed red box '

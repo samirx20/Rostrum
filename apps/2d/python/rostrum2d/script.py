@@ -47,7 +47,7 @@ from .ops_expr import expr_id, link_source
 from .rig import motion as rig_motion, script as rig_script
 from .swap import child_index
 from . import script_layout, ui_blocks, ui_pointer
-from . import script_inert, script_time, script_transitions
+from . import script_icons, script_inert, script_time, script_transitions
 from .lipsync import script as lipsync_script
 
 class NoField(AttributeError):
@@ -577,7 +577,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
              **pathdata.for_script(b.layer), **plot.for_script(), **mathtype.for_script(b.layer), **text_measure.for_script(), **rig_script.for_script(b), **rig_motion.for_script(b), **script_layout.for_script(b), **ui_blocks.for_script(b), **ui_pointer.for_script(b), **shafts.for_script(b),
              **lipsync_script.for_script(b), **script_scramble.for_script(b), **script_music.for_script(b), **script_time.for_script(b),
-             **script_transitions.for_script(b)}
+             **script_transitions.for_script(b), **script_icons.for_script(b)}
     try:
         with script_marks(lambda: script_time.times(b)):   # the script's own reads see marker keys at their moment
             with script_python.running(printed, name) as ran:      # print → the reply; exit() ends the script there
@@ -597,7 +597,7 @@ run_source.wants_doc = True            # rostrum_core's run_script tool then pas
 
 API = ["brief(\"the brief's own words\"): stored on the document; a final export's keep quotes it", "comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=, ease=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text(id, body=[\"plain \", (\"words\", {\"color\": …, \"weight\": …}), …]): styled runs in one text; text.run(\"words\").key(\"color\" | \"weight\" | \"scale\" | \"opacity\", {…}) (guide styled-words)", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "item.sample(field, lambda t: … | [values], start=, end=, every=): keys from Python, one per frame", "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text(id, body=[\"plain \", (\"words\", {\"color\": …, \"weight\": …}), …]): styled runs in one text; text.run(\"words\").key(\"color\" | \"weight\" | \"scale\" | \"opacity\", {…}) (guide styled-words)", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made", "icon(name, id=, size=24, color=, stroke_width=, **group fields): a Lucide / Tabler icon by name (\"arrow-right\", \"tabler:heart-filled\") as a group of path layers","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "layer(id): an item made earlier in the script", "limb(id, x=, y=, lengths=, widths=, kind=arm|leg, parent=, taper=, joint=round|ball|none, outline=)",
        "walk(legs=[l, r], arms=, body=, start=, end=, step=, stride=) / step(legs=[l, r], by=px, at=) / idle(chest, head=, arms=, legs=) / follow(bone) / pose({limb: turn, bone: {field: v}}, at=) / blink(slot, open=, closed=)",

@@ -14,6 +14,7 @@ from pathlib import Path
 import pathops
 import uharfbuzz as hb
 from fontTools.pens.transformPen import TransformPen
+from rostrum_core.byname import FontNotFound, font_files
 
 from . import outline as O
 
@@ -30,7 +31,9 @@ def shared_fonts() -> dict[str, Path]:
     return found
 
 
-def font_file(font: str) -> Path:
+def font_file(font: str, weight: float = 400) -> Path:
+    """The file for a font name: a shipped font, a Google Fonts family by name (its upright face nearest `weight`,
+    fetched once into the shared cache: rostrum_core.byname), or an absolute .ttf / .otf path."""
     shared = shared_fonts()
     if font in shared:
         return shared[font]
@@ -41,8 +44,11 @@ def font_file(font: str) -> Path:
         if Path(font).is_file():
             return Path(font)
         raise ValueError(f'font file "{font}" was not found')
-    raise ValueError(f'unknown font "{font}"; use one of {", ".join(shared) or "(none found)"}, or the absolute path '
-                     "of a .ttf / .otf file")
+    try:
+        return font_files(font, weights=[weight], italic=False)[0]
+    except FontNotFound as e:
+        raise ValueError(f'unknown font "{font}"; use one of {", ".join(shared) or "(none found)"}, any Google Fonts '
+                         f"family by name, or the absolute path of a .ttf / .otf file ({e})") from None
 
 
 def _face(file: Path):
@@ -84,7 +90,7 @@ def text_outline(item: dict) -> list[dict]:
         raise ValueError(f'{item["id"]}: the text is empty; give it some words')
     if size <= 0:
         raise ValueError(f'{item["id"]}: size must be above 0 (metres, the height of the em)')
-    file = font_file(font_name)
+    file = font_file(font_name, float(item["weight"]))
     key = ("text", text, str(file), O.stamp(str(file)), item["weight"], size, item["tracking"], item["lineHeight"], item["align"])
     return O.cached(key, lambda: _build(item, file, text, size))
 

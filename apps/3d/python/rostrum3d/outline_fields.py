@@ -30,7 +30,7 @@ def _face(name, label, imp, help):
 
 FIELDS = [
     _t("text", "Text", "primary", TEXT, "The words; a new line starts a new line of text", default="Text"),
-    _t("font", "Font", "primary", TEXT, f"One of the fonts that ship with Rostrum ({FONTS}), or the absolute path of a .ttf / .otf",
+    _t("font", "Font", "primary", TEXT, f"One of the fonts that ship with Rostrum ({FONTS}), any Google Fonts family by name (fetched once), or the absolute path of a .ttf / .otf",
        default="Inter"),
     _n("size", "Size", 0.0001, 1e3, 0.001, "m", "primary", TEXT, 0.1, "The em: roughly the height of a capital is 0.7 of it"),
     _n("weight", "Weight", 1, 1000, 1, "", "secondary", TEXT, 400, "The font's weight axis (100 thin … 900 black); fonts without one need 400"),

@@ -13,7 +13,7 @@ tools = Tools()
 def inspect_fonts(ctx, args):
     """Every font family a text's `font` may name: the fonts shipped with Rostrum2D first (source "shipped": the same on
     every computer), then the fonts installed on this computer (source "installed": another computer may not have
-    them). Each with its real weights (`weights`; a variable family takes any weight in `range`), whether it has an
+    them). Any Google Fonts family works by name too (not listed here; fetched once, then kept). Each with its real weights (`weights`; a variable family takes any weight in `range`), whether it has an
     italic (set the text's `italic`), and its files. A font that isn't listed is refused when set, never drawn in
     another font; a project using one that this computer lacks shows a Missing font problem, draws that text as a dashed red box naming the font, and won't export until `font.replace {from, to}` has set another font on every text that used it (one undo step).
     With no `search`, the shipped families in full and only the count of installed ones (`search` a name, or `all`)."""

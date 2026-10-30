@@ -11,6 +11,7 @@ mcp = ["mcp>=1.0", "pillow>=10.1"]   # pillow (MIT-CMU): the look tools' scaled 
 lipsync = ["numpy", "scipy", "soundfile",                                   # lip sync (rostrum_core.lipsync; all BSD-3)
            "onnxruntime-directml>=1.24; sys_platform == 'win32'",           # MIT
            "onnxruntime>=1.24; sys_platform != 'win32'"]                    # MIT
+byname = ["fonttools>=4", "truststore>=0.9"]  # rostrum_core.byname: a family's faces as one .ttc; the computer's certificates for the fetch (both MIT; it works without either)
 test = ["pytest>=8"]
 
 [build-system]
