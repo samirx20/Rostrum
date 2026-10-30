@@ -15,7 +15,7 @@ from .. import brief, deliver, handoff, master_memo, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from .. import fit_loudness as fit
-from ..listen import applied, fault_shape, squash, static_part, weakest
+from ..listen import applied, asked_starts, fault_shape, squash, static_part, weakest
 from ..listen.faults import check as fault_check
 from . import export_target, pending_edits, session_clock, stop_limiter, tools_fit
 from .moments_arg import EXPECT, parse as parse_expect
@@ -106,19 +106,22 @@ def _copy_to(folder: Path, r: dict, files: list[str]) -> list[str]:
     return [str(Path(p)) for p in out]
 
 
-def asked_moments(doc, expect) -> list[dict]:
-    """The moments a finished render is checked against: `expect` when given, else the song's markers named for one
-    ("hit", "drums back", "climax", listen/weakest.py)."""
+def asked_moments(doc, expect) -> tuple[list[dict], list[tuple[str, float]]]:
+    """(the moments a finished render is checked against, the bare times that ask only for a sound to start):
+    `expect` when given (a bare "#marker" named for a moment is that moment, listen/asked_starts.py), else the song's
+    markers named for one ("hit", "drums back", "climax", listen/weakest.py)."""
     if expect:
-        return parse_expect(doc, expect, "render_mix")[2]
-    return weakest.from_markers(markers.all(doc.data))
+        times_, labels, moments = parse_expect(doc, expect, "render_mix")
+        named, starts = asked_starts.split(times_, labels)
+        return moments + named, starts
+    return weakest.from_markers(markers.all(doc.data)), []
 
 
-def weakest_words(wav, moments, limiter=None, peaky=None, found=None) -> tuple[str, list[str]]:
+def weakest_words(wav, moments, limiter=None, peaky=None, found=None, starts=0) -> tuple[str, list[str]]:
     """The reply's weakest-moments lines; a file the ears cannot read is said, not hidden (the render itself stands).
     `found`: fault_check's faults when already measured (not measured twice)."""
     try:
-        said = weakest.words(wav, moments, limiter, peaky, found)
+        said = weakest.words(wav, moments, limiter, peaky, found, starts)
     except RostrumError as e:
         return f"The listening check could not read the mix: {e}", []
     return said, [ln.split(". ", 1)[1] for ln in said.splitlines()[1:]]
@@ -145,8 +148,9 @@ def register(tools: Tools):
         "to": {"description": "Where the part ends (a time). Needs `from`."},
         "name": {"type": "string", "description": "The mix file's name without its type (\"Launch theme\" -> Launch theme.wav), as the Export sheet's name field. Default: <item>_mix. Characters a file name can't hold are replaced; stems keep their track names. Not for a listening check (solo / mute)."},
         "folder": {"type": "string", "description": "An absolute folder path (made when it is not there): the finished mix, under `name`, is also copied there (and the stems, in a folder beside it called \"<name> stems\"), so the file lands where you want it with no shell copy. The render stays in the project's renders/ as its next version; the reply's `copied` lists the new files."},
-        **{"expect": {**EXPECT["expect"], "description": EXPECT["expect"]["description"] + " The finished reply lists the three weakest of them "
-                      "(time, what is weak, the measured number); with `notes: true`. Default: the song's markers named hit, stop, drums out, drums back, climax or lift."}},
+        **{"expect": {**EXPECT["expect"], "description": EXPECT["expect"]["description"] + " With `notes: true` the finished reply lists the three weakest of them "
+                      "(time, what is weak, the measured number), and for each bare time whether a sound starts within 40 ms of it "
+                      "(data.asked_starts); a bare \"#marker\" whose name asks for a moment (\"#big hit\", \"#drums back\") is checked as that moment. Default: the song's markers named hit, stop, drums out, drums back, climax or lift."}},
         **shared_faults.NOTES,
         "limit_to_target": {"type": "boolean", "default": False,
                             "description": f"True: when the master's limiting would leave this file under its loudness target, the file is rendered with the limit raised as far as the target needs (at most {export_target.AUTO_MOST_DB:g} dB; the song keeps its own maxLimit) and the reply says how far and how many dB of limiting it took. False (default): the song as written."},
@@ -181,7 +185,7 @@ def register(tools: Tools):
                 options["loop"] = True
         target = _target_folder(args.get("folder"))         # a wrong folder answers now, not after the render
         with markers.project(getattr(doc, "folder", None)):          # a time may name a project marker
-            moments = [] if partial else asked_moments(doc, args.get("expect"))   # a wrong expect answers now
+            moments, starts = ([], []) if partial else asked_moments(doc, args.get("expect"))   # a wrong expect answers now
             for k in ("from", "to"):
                 if k in args:
                     options[k] = times.seconds(args[k], doc.data, k)
@@ -227,7 +231,7 @@ def register(tools: Tools):
             if loud is not None and pushed:
                 loud["pushed"] = {k: pushed[k] for k in ("max_limit_db", "was_db", "reaches", "lufs", "limit_db")}
             said = summary(r, goal, loud) + export_target.words(pushed) + "".join(f" {w}" for w in late) + (f" Copied to {copied[0]}" + (f" (and {len(copied) - 1} more)" if len(copied) > 1 else "") + "." if copied else "")
-            weak, found, notes = [], None, []
+            weak, found, notes, start_rows = [], None, [], []
             if not partial and asked_notes:                  # the listening checks: notes, only when asked (faults.py)
                 job.progress(note="listening")
                 limiter, peaky = stop_limiter.read(ctx, doc, r, moments)
@@ -237,7 +241,9 @@ def register(tools: Tools):
                 except RostrumError:                         # the ears cannot read it: weakest_words says so
                     raw = None
                 notes = static_part.warnings(doc)              # a part that never moves in a piece asked to build
-                heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw)
+                heard, weak = weakest_words(r["file"], moments, limiter, peaky, raw, len(starts))
+                start_line, start_rows = asked_starts.check(r["file"], starts)
+                heard += f"\n{start_line}" if start_line else ""
                 said += squash.line(limiter, r.get("tracks"), doc.data)
                 said += "\n" + heard + "\n" + session_clock.fix_pass(getattr(state, "clock", None), r.get("renderSeconds"))
                 if raw is not None:
@@ -248,8 +254,8 @@ def register(tools: Tools):
                     r["faultIds"] = [f["id"] for f in found]
                     r["faultNumbers"] = applied.record(raw, found)
                     state.remember(item, r)
-            return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+            return Reply(said, {**({"loudness": loud} if loud else {}), **({"weakest": weak} if weak else {}), **({"asked_starts": start_rows} if start_rows else {}), **({"copied": copied} if copied else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files, warnings=notes, faults=found)
 
-        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments, args.get('folder'), asked_notes, args.get('limit_to_target'))))}")
+        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'), moments, starts, args.get('folder'), asked_notes, args.get('limit_to_target'))))}")

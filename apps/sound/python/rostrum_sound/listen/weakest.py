@@ -62,11 +62,16 @@ def lines(wav, moments, limiter=None, peaky=None, found=None) -> list[str]:
     return out
 
 
-def words(wav, moments, limiter=None, peaky=None, found=None) -> str:
+def words(wav, moments, limiter=None, peaky=None, found=None, starts=0) -> str:
     """The render reply's lines: a head, then the weakest moments numbered, one per line (`limiter`: listen.limiter's
-    result for the render, so a stop the limiter flattens names the track to tame; `peaky`: that track when unknown)."""
+    result for the render, so a stop the limiter flattens names the track to tame; `peaky`: that track when unknown;
+    `starts`: how many bare times `expect` asked, which ask only for a sound to start: listen/asked_starts.py)."""
     if moments:
         head, found = f"Weakest moments ({len(moments)} asked):", lines(wav, moments, limiter, peaky, found)
+    elif starts:
+        head = (f"No moments to judge for strength: the {starts} asked times ask only for a sound to start there (the line "
+                "after these); give one a kind ({\"at\": \"#hero\", \"kind\": \"hit\"}) to judge how it comes across.")
+        found = lines(wav, [], limiter, peaky, found)
     else:
         head = ("No asked moments to check: pass `expect` ([{\"at\": 31.5, \"kind\": \"hit\"}]) or name markers hit / stop / "
                 "drums out / drums back / climax / lift.")
