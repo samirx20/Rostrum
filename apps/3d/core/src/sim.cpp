@@ -336,7 +336,7 @@ JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, d
   const std::vector<JPH::uint> seams = add_seam_edges(*s, c, stretch);
   SS::OptimizationResults moved;
   s->Optimize(moved);
-  sew->emplace(s, seams, moved.mEdgeRemap, c);
+  sew->emplace(s, seams, moved.mEdgeRemap, c, k);
   return s;
 }
 
